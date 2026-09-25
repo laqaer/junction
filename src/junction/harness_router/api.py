@@ -11,7 +11,13 @@ import logging
 
 from aiohttp import web
 
-from junction.harness_router.lanes import LANE_ID_PATTERN
+from junction.harness_router.connect import probe_harness
+from junction.harness_router.lanes import (
+    LANE_ID_PATTERN,
+    RoutingConfigError,
+    is_routable_harness,
+    save_lane_edit,
+)
 from junction.harness_router.service import get_router
 
 logger = logging.getLogger(__name__)
@@ -58,7 +64,71 @@ async def api_clear_cooldown(request: web.Request) -> web.Response:
     return web.json_response({"code": "ok", "cleared": cleared})
 
 
+# One probe per harness at a time: a double-clicked Check must not spawn two
+# harness processes. Gateway-process state, keyed by harness name.
+_probe_locks: dict[str, asyncio.Lock] = {}
+
+
+def _harness_param(request: web.Request) -> str | None:
+    name = request.match_info.get("harness", "").strip().lower()
+    return name if is_routable_harness(name) else None
+
+
+async def api_harnesses(request: web.Request) -> web.Response:
+    """GET /api/routing/harnesses — connectable harnesses, probes, lanes, picks."""
+    payload = await asyncio.to_thread(get_router().harnesses_view)
+    return web.json_response(payload)
+
+
+async def api_check_harness(request: web.Request) -> web.Response:
+    """POST /api/routing/harnesses/{harness}/check — start it once and record the result."""
+    harness = _harness_param(request)
+    if harness is None:
+        return web.json_response(
+            {"error": "unknown harness", "code": "unknown_harness"}, status=404
+        )
+    router = get_router()
+    lock = _probe_locks.setdefault(harness, asyncio.Lock())
+    async with lock:
+        installed = harness in await asyncio.to_thread(router.installed, refresh=True)
+        settings = await asyncio.to_thread(router.settings)
+        lanes = settings.lanes_for_harness(harness)
+        result = await probe_harness(
+            harness, installed=installed, model=lanes[0].model if lanes else ""
+        )
+        await asyncio.to_thread(router.probes.save, result)
+    logger.info("routing probe %s: %s", harness, result.status)
+    return web.json_response({"code": "ok", "harness": harness, "probe": result.to_dict()})
+
+
+async def api_edit_lane(request: web.Request) -> web.Response:
+    """PUT /api/routing/harnesses/{harness}/lane — change a lane in routing.json."""
+    harness = _harness_param(request)
+    if harness is None:
+        return web.json_response(
+            {"error": "unknown harness", "code": "unknown_harness"}, status=404
+        )
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "invalid JSON", "code": "invalid_json"}, status=400)
+    if not isinstance(body, dict) or not body:
+        return web.json_response(
+            {"error": "expected an object of lane fields", "code": "invalid_lane_edit"}, status=400
+        )
+    router = get_router()
+    try:
+        lane = await asyncio.to_thread(save_lane_edit, harness, body, home=router.home)
+    except RoutingConfigError as exc:
+        return web.json_response({"error": str(exc), "code": "invalid_lane_edit"}, status=400)
+    logger.info("routing lane edited: %s (%s)", harness, ",".join(sorted(body)))
+    return web.json_response({"code": "ok", "lane": lane})
+
+
 def register(app: web.Application) -> None:
     app.router.add_get("/api/routing/status", api_status)
     app.router.add_get("/api/routing/decide", api_decide)
     app.router.add_post("/api/routing/cooldown/clear", api_clear_cooldown)
+    app.router.add_get("/api/routing/harnesses", api_harnesses)
+    app.router.add_post("/api/routing/harnesses/{harness}/check", api_check_harness)
+    app.router.add_put("/api/routing/harnesses/{harness}/lane", api_edit_lane)

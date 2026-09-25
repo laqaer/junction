@@ -3054,6 +3054,18 @@ class KiroPrerequisiteService:
         write_setup_complete_marker(self._data_home)
         self._initial_setup_complete = True
 
+    async def complete_setup_without_kiro(self) -> dict[str, Any]:
+        """Finish first-run setup on another docked harness; return the snapshot.
+
+        The operator connected a different ACP agent (Claude Code, Codex, …)
+        instead of kiro-cli. This writes the same marker ``junction setup``
+        writes and nothing else: Kiro readiness (``ready``) is untouched, so the
+        Kiro-gated endpoints still require a real kiro-cli probe.
+        """
+        await asyncio.to_thread(self._mark_setup_complete)
+        self._status = replace(self._status, initial_setup_complete=True)
+        return self._snapshot_dict()
+
     async def _set_terminal_audit(
         self,
         action: str,

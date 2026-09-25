@@ -64,7 +64,8 @@ _AUTH_RE = re.compile(
     re.IGNORECASE,
 )
 _UNAVAILABLE_RE = re.compile(
-    r"is not installed|No ACP runtime found|failed to spawn|Unknown ACP runtime",
+    r"is not installed|No ACP runtime found|failed to spawn|Unknown ACP runtime"
+    r"|not found\. Install it with",
     re.IGNORECASE,
 )
 

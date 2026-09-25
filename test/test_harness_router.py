@@ -647,3 +647,220 @@ async def test_unaccounted_subagent_skips_the_router(monkeypatch: pytest.MonkeyP
     info = SubagentInfo(id="a4", task="t")
     await SubagentManager._run_accounted(_bind(manager), info, "subagent:a4")
     assert manager.ran_on == [""]
+
+
+# ── connecting harnesses ──
+
+
+class _FakeProvider:
+    def __init__(self, error: Exception | None = None, models: int = 0) -> None:
+        self._error = error
+        self.shut = False
+        entries = [{"modelId": f"m{i}"} for i in range(models)]
+        self._client = SimpleNamespace(available_models=lambda: entries)
+
+    async def start(self) -> None:
+        if self._error is not None:
+            raise self._error
+
+    async def shutdown(self) -> None:
+        self.shut = True
+
+
+@pytest.mark.asyncio
+async def test_probe_maps_outcomes_to_statuses() -> None:
+    from junction.harness_router import connect
+
+    made: list[_FakeProvider] = []
+
+    def maker(error: Exception | None, models: int = 0):
+        def make(harness: str, model: str) -> _FakeProvider:
+            made.append(_FakeProvider(error, models))
+            return made[-1]
+
+        return make
+
+    ok = await connect.probe_harness("codex", installed=True, make_provider=maker(None, 3))
+    assert ok.status == connect.STATUS_CONNECTED and ok.models == 3
+    auth = await connect.probe_harness(
+        "grok",
+        installed=True,
+        make_provider=maker(RuntimeError("JSON-RPC error: Authentication required")),
+    )
+    assert auth.status == connect.STATUS_NEEDS_LOGIN and "Authentication" in auth.detail
+    adapter = await connect.probe_harness(
+        "claude",
+        installed=True,
+        make_provider=maker(RuntimeError("claude-agent-acp not found. Install it with 'npm i'")),
+    )
+    assert adapter.status == connect.STATUS_NOT_INSTALLED
+    other = await connect.probe_harness(
+        "cursor", installed=True, make_provider=maker(RuntimeError("boom"))
+    )
+    assert other.status == connect.STATUS_ERROR
+    missing = await connect.probe_harness("cursor", installed=False, make_provider=maker(None))
+    assert missing.status == connect.STATUS_NOT_INSTALLED
+    assert all(p.shut for p in made) and len(made) == 4
+
+
+@pytest.mark.asyncio
+async def test_probe_times_out() -> None:
+    from junction.harness_router import connect
+
+    class Hang(_FakeProvider):
+        async def start(self) -> None:
+            import asyncio
+
+            await asyncio.sleep(10)
+
+    result = await connect.probe_harness(
+        "codex", installed=True, timeout=0.01, make_provider=lambda h, m: Hang()
+    )
+    assert result.status == connect.STATUS_TIMEOUT
+
+
+def test_probe_store_round_trip(tmp_path: Path) -> None:
+    from junction.harness_router.connect import ProbeResult, ProbeStore
+
+    store = ProbeStore(tmp_path)
+    assert store.load() == {}
+    store.save(ProbeResult("codex", "connected", models=4, checked_at=NOW))
+    store.save(ProbeResult("grok", "needs_login", detail="x", checked_at=NOW))
+    loaded = store.load()
+    assert loaded["codex"].models == 4 and loaded["grok"].status == "needs_login"
+
+
+def test_apply_lane_edit_updates_or_appends_and_validates() -> None:
+    from junction.harness_router.lanes import RoutingConfigError, apply_lane_edit
+
+    doc = {"lanes": [{"id": "max", "harness": "claude", "affinity": {"plan": 0.9}}]}
+    new_doc, lane = apply_lane_edit(doc, "claude", {"weight": 3, "enabled": False})
+    assert lane["id"] == "max" and lane["weight"] == 3.0 and lane["enabled"] is False
+    assert new_doc["lanes"][0]["affinity"] == {"plan": 0.9}
+    assert doc["lanes"][0].get("weight") is None  # input untouched
+    appended, grok = apply_lane_edit(new_doc, "grok", {"billing": "metered"})
+    assert grok["harness"] == "grok" and grok["billing"] == "metered"
+    assert [ln["harness"] for ln in appended["lanes"]] == ["claude", "grok"]
+    for bad in (
+        {"weight": 0},
+        {"weight": "3"},
+        {"billing": "free-ish"},
+        {"window_limit": -1},
+        {"model": "../etc"},
+        {"affinity": {}},
+        {"enabled": "yes"},
+    ):
+        with pytest.raises(RoutingConfigError):
+            apply_lane_edit(doc, "claude", bad)
+    with pytest.raises(RoutingConfigError):
+        apply_lane_edit(doc, "nope", {"enabled": True})
+
+
+def test_save_lane_edit_materializes_and_refuses_a_broken_file(tmp_path: Path) -> None:
+    from junction.harness_router.lanes import RoutingConfigError, save_lane_edit
+
+    lane = save_lane_edit(
+        "codex", {"window_limit": 150}, home=tmp_path, which=_which(_ALL_BINS), env={}
+    )
+    assert lane["window_limit"] == 150
+    written = json.loads((tmp_path / "routing.json").read_text(encoding="utf-8"))
+    assert {ln["harness"] for ln in written["lanes"]} >= {"claude", "codex", "grok"}
+    (tmp_path / "routing.json").write_text("{broken", encoding="utf-8")
+    with pytest.raises(RoutingConfigError):
+        save_lane_edit("codex", {"weight": 2}, home=tmp_path, which=_which(_ALL_BINS), env={})
+    assert (tmp_path / "routing.json").read_text(encoding="utf-8") == "{broken"
+
+
+def test_harnesses_view_lists_featured_and_installed(tmp_path: Path) -> None:
+    from junction.harness_router.connect import ProbeResult
+
+    router = _router(tmp_path, {"grok": "/b/grok", "goose": "/b/goose"})
+    router.probes.save(ProbeResult("grok", "connected", models=2, checked_at=NOW))
+    view = router.harnesses_view()
+    names = [row["harness"] for row in view["harnesses"]]
+    assert names[:5] == ["claude", "codex", "cursor", "grok", "opencode"]
+    assert "goose" in names
+    by = {row["harness"]: row for row in view["harnesses"]}
+    assert by["grok"]["installed"] and by["grok"]["routed"]
+    assert by["grok"]["probe"]["status"] == "connected"
+    assert by["claude"]["installed"] is False and by["claude"]["probe"]["status"] == "unknown"
+    assert by["claude"]["setup"]["login"] == "claude auth login"
+    assert by["goose"]["setup"] is None and by["goose"]["hint"]
+    assert view["preview"]["research"] == "grok"
+
+
+@pytest.mark.asyncio
+async def test_api_check_and_lane_edit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from aiohttp.test_utils import make_mocked_request
+
+    from junction.harness_router import api, connect
+
+    router = _router(tmp_path)
+    monkeypatch.setattr(api, "get_router", lambda: router)
+
+    async def fake_probe(harness: str, *, installed: bool, model: str = "") -> Any:
+        return connect.ProbeResult(harness, connect.STATUS_NEEDS_LOGIN, checked_at=NOW)
+
+    monkeypatch.setattr(api, "probe_harness", fake_probe)
+    req = make_mocked_request(
+        "POST", "/api/routing/harnesses/codex/check", match_info={"harness": "codex"}
+    )
+    body = json.loads((await api.api_check_harness(req)).body)
+    assert body["probe"]["status"] == "needs_login"
+    assert router.probes.load()["codex"].status == "needs_login"
+    unknown = make_mocked_request("POST", "/x", match_info={"harness": "nope"})
+    resp = await api.api_check_harness(unknown)
+    assert resp.status == 404 and json.loads(resp.body)["code"] == "unknown_harness"
+
+    class _Req:
+        match_info = {"harness": "codex"}
+
+        def __init__(self, payload: Any) -> None:
+            self._payload = payload
+
+        async def json(self) -> Any:
+            return self._payload
+
+    ok = await api.api_edit_lane(_Req({"weight": 2}))  # type: ignore[arg-type]
+    assert json.loads(ok.body)["lane"]["weight"] == 2.0
+    bad = await api.api_edit_lane(_Req({"weight": -5}))  # type: ignore[arg-type]
+    assert bad.status == 400 and json.loads(bad.body)["code"] == "invalid_lane_edit"
+
+
+@pytest.mark.asyncio
+async def test_complete_setup_with_agents_needs_a_connected_agent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from aiohttp.test_utils import make_mocked_request
+
+    from junction.dashboard.handlers import kiro_prerequisite as gate
+    from junction.harness_router import service
+    from junction.harness_router.connect import ProbeResult
+
+    router = _router(tmp_path)
+    monkeypatch.setattr(service, "get_router", lambda: router)
+
+    async def owner(_request: Any) -> None:
+        return None
+
+    completed: list[bool] = []
+
+    class _Service:
+        async def complete_setup_without_kiro(self) -> dict[str, Any]:
+            completed.append(True)
+            return {"ready": False, "initial_setup_complete": True}
+
+    monkeypatch.setattr(gate, "_dashboard_owner_only", owner)
+    monkeypatch.setattr(gate, "_service", lambda _request: _Service())
+    monkeypatch.setattr(gate, "sel", lambda: SimpleNamespace(log_api_access=lambda **_: None))
+
+    req = make_mocked_request("POST", "/api/kiro-prerequisite/complete-with-agents")
+    refused = await gate.api_kiro_prerequisite_complete_with_agents(req)
+    assert refused.status == 409 and json.loads(refused.body)["code"] == "no_connected_agent"
+    assert completed == []
+
+    router.probes.save(ProbeResult("codex", "connected", checked_at=NOW))
+    ok = await gate.api_kiro_prerequisite_complete_with_agents(req)
+    body = json.loads(ok.body)
+    assert ok.status == 200 and body["initial_setup_complete"] is True
+    assert completed == [True]

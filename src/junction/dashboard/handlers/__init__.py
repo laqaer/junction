@@ -183,6 +183,7 @@ from junction.dashboard.handlers.hooks import (  # noqa: E402, F401
     api_webhooks_switch,
 )
 from junction.dashboard.handlers.kiro_prerequisite import (  # noqa: E402, F401
+    api_kiro_prerequisite_complete_with_agents,
     api_kiro_prerequisite_repair_specs,
     api_kiro_prerequisite_status,
 )

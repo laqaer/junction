@@ -31,9 +31,6 @@ from junction.harness_router.service import HarnessRouter, RoutingError
 
 logger = logging.getLogger(__name__)
 
-# `route check` gives each harness this long to answer initialize + session/new.
-# npx-launched adapters download on first use, so the first check is slow.
-CHECK_TIMEOUT_SECS = 120.0
 # Session-key prefix for `route run`; the provider gets a fresh workspace each run.
 RUN_SESSION_PREFIX = "route-run"
 
@@ -315,38 +312,15 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
 # ── check ──
 
 
-async def _check_lane(lane: Any) -> tuple[str, str]:
-    provider = _make_provider(lane, os.getcwd())
-    try:
-        await asyncio.wait_for(provider.start(), timeout=CHECK_TIMEOUT_SECS)
-        models = []
-        try:
-            getter = getattr(getattr(provider, "_client", None), "available_models", None)
-            raw = getter() if callable(getter) else getter
-            from junction.acp.client import advertised_model_ids
-
-            models = advertised_model_ids(raw or [])
-        except Exception:
-            models = []
-        detail = f"{len(models)} models" if models else "ready"
-        return "ok", detail
-    except asyncio.TimeoutError:
-        return "timeout", f"no answer in {CHECK_TIMEOUT_SECS:.0f}s"
-    except Exception as exc:
-        from junction.harness_router.limits import classify_exception
-
-        return classify_exception(exc), " ".join(str(exc).split())[:160]
-    finally:
-        try:
-            await provider.shutdown()
-        except Exception:
-            logger.debug("route check: shutdown failed", exc_info=True)
-        gc.collect()
-
-
 async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
-    from junction.acp.runtimes import builtin_specs
-    from junction.harness_router.lanes import backend_for_harness
+    from junction.harness_router.connect import (
+        STATUS_CONNECTED,
+        STATUS_NEEDS_LOGIN,
+        STATUS_NOT_INSTALLED,
+        login_hint,
+        probe_harness,
+        setup_for,
+    )
 
     settings = router.settings()
     installed = router.installed(refresh=True)
@@ -354,22 +328,23 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
     if not lanes:
         print("no lanes to check (see `junction route status`)")
         return 1
-    specs = builtin_specs()
     worst = 0
     for lane in lanes:
-        if lane.harness not in installed:
-            hint = getattr(specs.get(backend_for_harness(lane.harness)), "login_hint", "")
-            print(f"  {lane.id:<14} not installed  {hint}")
-            worst = 1
-            continue
         print(f"  {lane.id:<14} starting…", end="", flush=True)
-        verdict, detail = await _check_lane(lane)
-        print(f"\r  {lane.id:<14} {verdict:<12} {detail}")
-        if verdict != "ok":
-            worst = 1
-            if verdict == "auth":
-                hint = getattr(specs.get(backend_for_harness(lane.harness)), "login_hint", "")
-                print(f"  {'':<14} log in: {hint}")
+        result = await probe_harness(
+            lane.harness, installed=lane.harness in installed, model=lane.model
+        )
+        router.probes.save(result)
+        detail = result.detail or (f"{result.models} models" if result.models else "")
+        print(f"\r  {lane.id:<14} {result.status:<14} {detail}")
+        if result.status == STATUS_CONNECTED:
+            continue
+        worst = 1
+        setup = setup_for(lane.harness)
+        if result.status == STATUS_NEEDS_LOGIN:
+            print(f"  {'':<14} log in: {setup.login if setup else login_hint(lane.harness)}")
+        elif result.status == STATUS_NOT_INSTALLED:
+            print(f"  {'':<14} install: {setup.install if setup else login_hint(lane.harness)}")
     return worst
 
 

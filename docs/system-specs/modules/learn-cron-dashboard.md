@@ -520,9 +520,16 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   persists an owner-only setup-complete marker; existing installations are
   inferred only from that marker or non-empty persisted session/history
   content. Empty directories and zero-byte files created during gateway startup
-  do not bypass first-run setup. App tokens remain denied. The two
-  owner-only POST route (`repair-specs`) rewrites Junction's own agent specs and
-  returns `200`; it is the only write on this surface.
+  do not bypass first-run setup. App tokens remain denied. Two owner-only POST
+  routes write on this surface, both returning `200` with the snapshot:
+  `repair-specs` rewrites Junction's own agent specs, and
+  `complete-with-agents` writes the first-run marker (the dashboard twin of
+  `junction setup`) for an operator who docked another agent instead of
+  kiro-cli. It answers `409` `no_connected_agent` unless the harness router's
+  last probe shows at least one agent connected, and it leaves Kiro `ready`
+  untouched. The first-run screen lists those agents above the Kiro steps
+  (the compact Settings ▸ Agents & plans panel; see
+  [harness-router](harness-router.md)).
   **Probing is boot-and-explicit-action only.** The readiness probe (two
   `kiro-cli` spawns) runs ONCE per gateway, in `warm_up()` shortly after start,
   and thereafter only on an explicit user action: the gate's Refresh / Check
