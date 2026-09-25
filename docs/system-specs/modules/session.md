@@ -41,20 +41,33 @@ Callers: heartbeat callback, taskrunner lesson extraction.
 
 `get_bg_session()` acquires a `_bg` handle, dispatching by provider backend and
 returning `AcpSessionHandle | _ProviderBgSession`. Provider dispatch is via
-`_bg_provider_is_kiro()`, which resolves the `junction-lite` agent backend:
+`_bg_provider_is_kiro()`, which asks whether the active harness
+(`resolved_backend()`: `agent.acp_backend` with `auto` resolved through
+`acp.runtimes.resolve_backend`, cached `_BACKEND_RESOLVE_TTL_SECS` = 60 s) is in
+`ACP_BACKENDS_ACP_RUNTIME`:
 
-- **kiro (`acp`)** — the only backend the multiplexed `AcpRuntime` supports.
+- **kiro-cli / KAS** — the backends the multiplexed `AcpRuntime` supports.
   Each caller (title generation, suggestions, folders, nav) gets its **own**
   ephemeral `sessionId` multiplexed on a single shared `_bg_runtime` (an
   `AcpRuntime`, kiro-cli only), created lazily under `_bg_runtime_lock`.
   `create_session()` runs **outside** the lock so independent callers aren't
   serialized. The runtime is respawned-and-retried once on `AcpRuntimeDead`
   (`max_retries=1`, 2 attempts total).
-- **non-kiro** — falls back to a `_ProviderBgSession` over the shared
-  `BACKGROUND_KEY` `_Session`, serialized by its `Semaphore(1)`. `AcpRuntime` is
-  kiro-only, so any non-kiro backend must use the provider path. In the public
-  Junction edition `agent.provider` is fixed to `acp`, so this branch is the
-  dormant fallback for the reserved `ACP_BACKEND_CLAUDE` seam only.
+- **any other harness** (Codex, Claude Code, OpenCode, …) — a
+  `_ProviderBgSession` over the shared `BACKGROUND_KEY` `_Session`, serialized
+  by its `Semaphore(1)`, built by the provider factory on the configured
+  harness. `AcpRuntime` hosts only its member backends, so a per-process harness
+  must use the provider path; routing it onto the runtime would spawn kiro-cli
+  for a user who configured another agent.
+
+**Task runner steps follow the same split.** `open_task_session` multiplexes
+steps on the run's shared `AcpRuntime` only for an `ACP_BACKENDS_ACP_RUNTIME`
+harness. For any other harness each step gets a dedicated provider
+(`get_or_create`) on the configured agent, and the run is remembered in
+`_dedicated_task_runs` (cleared by `release_subagent_runtime`) so later steps
+skip the bootstrap. A bootstrap provider that turns out not to host a runtime
+marks the run dedicated the same way instead of falling back to a bare kiro-cli
+runtime.
 
 Both paths yield `AcpEvent` through the shared
 `acp/_dispatch.parse_session_update` parser, so there is no behavioral drift

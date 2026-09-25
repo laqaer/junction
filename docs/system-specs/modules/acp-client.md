@@ -458,6 +458,14 @@ Subprocess lifecycle:
   carry that error. These sites authorize on a **freshly verified** probe
   (`verified_ready`, 30s ceiling), never the bare latch — a stale `ready=True`
   would green-light exactly the signed-out spawn the gate exists to prevent.
+  Both sites spawn `kiro-cli` only while the active harness (the session
+  manager's `resolved_backend()`, `auto` resolved) is in
+  `ACP_BACKENDS_KIRO_READINESS` (kiro-cli, KAS). With another agent active,
+  `/api/models` lists that agent's own advertised models (newest live session on
+  it, else its last connection probe; `auto` first; 503
+  `harness_models_pending` while neither exists) and `/api/sessions/usage`
+  answers `{"available": false, "reason": "harness_not_kiro"}`, so the credit
+  pill hides. Neither spawns anything for it.
 - **`AcpAuthRequired` is the authoritative logout signal.** Readiness is probed
   at gateway start and on explicit user action only, so a mid-session sign-out is
   discovered when the ACP attempt fails, not by a poll. `AcpRuntime`/`AcpClient`

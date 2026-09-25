@@ -17,15 +17,22 @@ latched value can be arbitrarily stale. That splits the callers in two:
   history by the time the turn fails. See
   ``docs/system-specs/modules/acp-client.md`` § "Poll-driven spawn sites are
   readiness-gated".
+
+Only the harnesses in ``ACP_BACKENDS_KIRO_READINESS`` are verified through the
+Kiro prerequisite. When the active harness is another agent (Codex, Claude Code,
+OpenCode, …), :func:`reject_if_agent_unverified` verifies THAT agent's own
+connection probe instead, and kiro-cli is never consulted or spawned.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
 from aiohttp import web
 
+from junction.acp.types import ACP_BACKEND_KIRO, ACP_BACKENDS_KIRO_READINESS
 from junction.kiro_prerequisite import KiroPrerequisiteService
 
 logger = logging.getLogger(__name__)
@@ -61,6 +68,19 @@ _clock = time.monotonic
 # Small enough that an external logout cannot linger behind this gate, large
 # enough that a burst of callers collapses onto one probe.
 _VERIFY_MAX_AGE_SECS = 30.0
+
+# The same authorization for a harness outside the Kiro prerequisite: how old its
+# last ``connected`` probe may be. A probe spawns the agent (initialize +
+# session/new, no prompt), which costs more than Kiro's re-check, so one is
+# reused for longer.
+_HARNESS_VERIFY_MAX_AGE_SECS = 300.0
+
+# Longest a rerun waits on that re-probe. Shorter than the Check button's budget
+# because a request is blocked on it; a slow first start answers 503 ``timeout``
+# and the next attempt finds the agent warm.
+_HARNESS_VERIFY_TIMEOUT_SECS = 45.0
+
+_HARNESS_NOT_CONNECTED_CODE = "harness_not_connected"
 
 
 async def kiro_session_ready(service: object) -> bool:
@@ -252,3 +272,92 @@ async def reject_if_kiro_unverified(request: web.Request) -> web.Response | None
         return None
     _warn_refused_once(_log_safe_path(request))
     return web.json_response(_KIRO_NOT_READY_RESPONSE, status=503)
+
+
+def active_backend(request: web.Request) -> str:
+    """The concrete harness new dashboard turns run on (``auto`` resolved).
+
+    Read from the session manager so the gate agrees with the process a turn
+    would actually spawn. Anything unreadable answers the Kiro backend, which
+    keeps the Kiro prerequisite gate — the fail-closed choice this module had
+    before any other harness existed.
+    """
+    state = request.app.get("state")
+    resolve = getattr(getattr(state, "sessions", None), "resolved_backend", None)
+    if not callable(resolve):
+        return ACP_BACKEND_KIRO
+    try:
+        backend = resolve()
+    except Exception:
+        logger.debug("active backend unreadable; gating on the Kiro prerequisite", exc_info=True)
+        return ACP_BACKEND_KIRO
+    return backend if isinstance(backend, str) else ACP_BACKEND_KIRO
+
+
+def runs_on_kiro_readiness(request: web.Request) -> bool:
+    """True when the active harness is verified through the Kiro prerequisite."""
+    return active_backend(request) in ACP_BACKENDS_KIRO_READINESS
+
+
+async def _reject_if_harness_unconnected(request: web.Request, backend: str) -> web.Response | None:
+    """503 unless *backend*'s own connection probe says it is signed in.
+
+    Reuses a recent ``connected`` probe; otherwise probes now (initialize +
+    session/new, no prompt, so no plan quota is spent). The destructive reruns
+    need this for the same reason Kiro's gate exists: they persist truncated
+    history before the turn, so a signed-out agent would lose turns behind a
+    200.
+    """
+    from junction.harness_router.connect import STATUS_CONNECTED, STATUS_ERROR
+    from junction.harness_router.lanes import harness_name
+    from junction.harness_router.profiles import profile_for
+    from junction.harness_router.service import verified_connection
+
+    name = harness_name(backend)
+    try:
+        result = await verified_connection(
+            name,
+            max_age_secs=_HARNESS_VERIFY_MAX_AGE_SECS,
+            timeout=_HARNESS_VERIFY_TIMEOUT_SECS,
+        )
+        status = result.status
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.warning("could not verify the %s connection", name, exc_info=True)
+        status = STATUS_ERROR
+    if status == STATUS_CONNECTED:
+        return None
+    label = profile_for(name).label
+    logger.warning(
+        "%s refused with 503 %s: %s is %s",
+        _log_safe_path(request),
+        _HARNESS_NOT_CONNECTED_CODE,
+        name,
+        status,
+    )
+    return web.json_response(
+        {
+            "error": (
+                f"{label} is not connected ({status}). Check it under "
+                "Settings > Agents & plans, then try again."
+            ),
+            "code": _HARNESS_NOT_CONNECTED_CODE,
+            "harness": name,
+            "status": status,
+        },
+        status=503,
+    )
+
+
+async def reject_if_agent_unverified(request: web.Request) -> web.Response | None:
+    """:func:`reject_if_kiro_unverified` for whichever harness is active.
+
+    Harnesses in ``ACP_BACKENDS_KIRO_READINESS`` go through the Kiro gate
+    unchanged. Any other harness is verified by its own connection probe, so a
+    rerun on Codex or OpenCode neither needs kiro-cli nor spawns it.
+    """
+    backend = active_backend(request)
+    if backend in ACP_BACKENDS_KIRO_READINESS:
+        return await reject_if_kiro_unverified(request)
+    return await _reject_if_harness_unconnected(request, backend)

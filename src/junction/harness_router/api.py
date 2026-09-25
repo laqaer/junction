@@ -11,14 +11,13 @@ import logging
 
 from aiohttp import web
 
-from junction.harness_router.connect import probe_harness
 from junction.harness_router.lanes import (
     LANE_ID_PATTERN,
     RoutingConfigError,
     is_routable_harness,
     save_lane_edit,
 )
-from junction.harness_router.service import get_router
+from junction.harness_router.service import check_harness, get_router
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +63,6 @@ async def api_clear_cooldown(request: web.Request) -> web.Response:
     return web.json_response({"code": "ok", "cleared": cleared})
 
 
-# One probe per harness at a time: a double-clicked Check must not spawn two
-# harness processes. Gateway-process state, keyed by harness name.
-_probe_locks: dict[str, asyncio.Lock] = {}
-
-
 def _harness_param(request: web.Request) -> str | None:
     name = request.match_info.get("harness", "").strip().lower()
     return name if is_routable_harness(name) else None
@@ -87,17 +81,7 @@ async def api_check_harness(request: web.Request) -> web.Response:
         return web.json_response(
             {"error": "unknown harness", "code": "unknown_harness"}, status=404
         )
-    router = get_router()
-    lock = _probe_locks.setdefault(harness, asyncio.Lock())
-    async with lock:
-        installed = harness in await asyncio.to_thread(router.installed, refresh=True)
-        settings = await asyncio.to_thread(router.settings)
-        lanes = settings.lanes_for_harness(harness)
-        result = await probe_harness(
-            harness, installed=installed, model=lanes[0].model if lanes else ""
-        )
-        await asyncio.to_thread(router.probes.save, result)
-    logger.info("routing probe %s: %s", harness, result.status)
+    result = await check_harness(harness, router=get_router())
     return web.json_response({"code": "ok", "harness": harness, "probe": result.to_dict()})
 
 

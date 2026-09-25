@@ -163,8 +163,13 @@ agent means running that agent's own login command, then probing it.
   `session/new`. **No prompt is sent, so a probe spends no plan quota.** The
   outcome is one of `connected`, `needs_login`, `not_installed` (including a
   missing adapter), `timeout`, `error`, and is persisted with a redacted,
-  truncated detail in `<data home>/routing/harnesses.json`. `junction route
-  check` and the dashboard share it.
+  truncated detail and the models the harness advertised (`advertised`, its own
+  ids, at most `PROBE_MODELS_MAX`) in `<data home>/routing/harnesses.json`.
+  `junction route check` and the dashboard share it.
+- `service.check_harness` (probe now) and `service.verified_connection` (reuse a
+  `connected` probe younger than `max_age_secs`, else probe) hold one lock per
+  harness, so a double-clicked Check or a burst of gated requests starts one
+  process. The dashboard's readiness gate uses the latter; see below.
 - Settings ▸ **Agents & plans** (`website/src/pages/settings/AgentsPanel.tsx`)
   renders one card per agent: status, Install / Sign in (typed into the
   dashboard's dock terminal, or copied when the terminal is off), Check, and the
@@ -175,6 +180,26 @@ agent means running that agent's own login command, then probing it.
 - The first-run gate shows the same panel in compact form above the Kiro steps,
   with **Continue with these agents** once any agent is connected
   (`POST /api/kiro-prerequisite/complete-with-agents`). kiro-cli is optional.
+
+## The dashboard on a non-Kiro agent
+
+The session manager resolves the harness new dashboard turns run on
+(`SessionManager.resolved_backend()`: `agent.acp_backend` with `auto` resolved
+through `acp.runtimes.resolve_backend`, cached for 60 s). Everything that used to
+assume kiro-cli reads it:
+
+| Surface | kiro-cli / KAS | Any other agent |
+|---|---|---|
+| Regenerate, edit-resend, rewind, `/v1/chat/completions` | Kiro prerequisite gate | `verified_connection` (5 min, 45 s budget); 503 `harness_not_connected` unless `connected` |
+| `/api/models` | `kiro-cli --list-models` | that agent's advertised models: newest live session, else last probe; `auto` first; 503 `harness_models_pending` while neither exists |
+| `/api/sessions/usage` | Kiro credit scrape | `{"available": false, "reason": "harness_not_kiro"}` (pill hidden) |
+| Task runner steps | shared `AcpRuntime` | one dedicated provider per step on the configured agent |
+| Background one-liners | `_bg` runtime session | provider-backed `_ProviderBgSession` |
+
+Membership is `ACP_BACKENDS_KIRO_READINESS` (gates) and
+`ACP_BACKENDS_ACP_RUNTIME` (runtime hosting), both positive sets (H5/H6). An
+unreadable active backend answers kiro-cli, which keeps the fail-closed Kiro
+gate.
 
 ## Surfaces
 
@@ -211,4 +236,5 @@ Handlers do their file I/O off the event loop.
    swallowed; a corrupt ledger starts fresh.
 6. **No secrets at rest.** The ledger stores redacted, truncated error text.
 
-Pinned by `test/test_harness_router.py`.
+Pinned by `test/test_harness_router.py`, `test/test_harness_readiness_gate.py`, and
+the per-harness cases in `test/test_session.py`.

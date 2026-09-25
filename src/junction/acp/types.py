@@ -223,6 +223,14 @@ ACP_BACKENDS_ACP_RUNTIME = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 # membership rather than "not claude" (harness-parity H5).
 ACP_BACKENDS_KIRO_IDENTITY_STORE = frozenset({ACP_BACKEND_KIRO})
 
+# Backends whose readiness is the Kiro prerequisite (kiro-cli installed and
+# signed in) and whose model catalog is ``kiro-cli --list-models``. The dashboard
+# endpoints that act before a turn (destructive reruns, poll-driven kiro-cli
+# spawns) verify these through ``dashboard/kiro_readiness.py``; every other
+# harness is verified by its own connection probe and never spawns kiro-cli.
+# KAS is a member because it has always been gated this way.
+ACP_BACKENDS_KIRO_READINESS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
+
 # ── Provider labels ──
 # The backend identity key persisted in the session map. It indexes three
 # things, so every producer must agree on it: resume compatibility

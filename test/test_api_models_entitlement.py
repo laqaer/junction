@@ -263,3 +263,16 @@ def test_api_models_returns_only_entitled_rows(tmp_path):
         resp = asyncio.get_event_loop().run_until_complete(agents.api_models(request))
     assert resp.status == 200
     assert _names(json.loads(resp.body)) == ["auto", "claude-sonnet-5"]
+
+
+def test_another_harness_session_does_not_narrow_the_kiro_catalog() -> None:
+    """H12: an OpenCode session's ids are another namespace, never Kiro entitlement."""
+    from junction.providers.acp import AcpProvider
+
+    opencode = MagicMock(spec=AcpProvider)
+    opencode.client = SimpleNamespace(backend="opencode")
+    opencode.available_models = MagicMock(return_value=[{"modelId": "claude-sonnet-4.5"}])
+    request = MagicMock()
+    request.app = {"state": SimpleNamespace(sessions=SimpleNamespace(active_providers=lambda: [opencode]))}
+    catalog = [{"model_name": "auto"}, {"model_name": "claude-sonnet-4.5"}, {"model_name": "claude-opus-4.8"}]
+    assert agents._entitled_kiro_models(request, catalog) == catalog

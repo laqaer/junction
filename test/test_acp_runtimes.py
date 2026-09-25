@@ -11,6 +11,7 @@ from junction.acp.runtimes import (
     RuntimeNotFoundError,
     builtin_specs,
     dsh_launcher_path,
+    resolve_backend,
     resolve_spawn_argv,
     runtime_available,
     select_runtime,
@@ -158,6 +159,27 @@ class TestSelectRuntime:
         assert session_load_meta(ACP_BACKEND_KIRO, session_file="/tmp/x.json") == {
             "_kiro.dev/session_file": "/tmp/x.json"
         }
+
+
+class TestResolveBackend:
+    def test_explicit_backends_pass_through(self, tmp_path: Path):
+        assert resolve_backend(ACP_BACKEND_CODEX, which=_which_for({}), home=tmp_path, env={}) == (
+            ACP_BACKEND_CODEX
+        )
+        assert resolve_backend(ACP_BACKEND_KIRO, which=_which_for({}), home=tmp_path, env={}) == (
+            ACP_BACKEND_KIRO
+        )
+
+    def test_auto_is_the_first_installed_harness(self, tmp_path: Path):
+        which = _which_for({"opencode": "/bin/opencode", "kiro-cli": "/bin/kiro-cli"})
+        assert resolve_backend(ACP_BACKEND_AUTO, which=which, home=tmp_path, env={}) == (
+            ACP_BACKEND_OPENCODE
+        )
+
+    def test_auto_with_nothing_installed_is_kiro(self, tmp_path: Path):
+        assert resolve_backend(ACP_BACKEND_AUTO, which=_which_for({}), home=tmp_path, env={}) == (
+            ACP_BACKEND_KIRO
+        )
 
 
 class TestAcpClientSpawnUsesRegistry:

@@ -39,6 +39,8 @@ from junction.acp.liveness import (
 )
 from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_KIRO,
+    ACP_BACKEND_OPENCODE,
     JSONRPC_METHOD_NOT_FOUND,
     AcpPromptStats,
 )
@@ -7048,6 +7050,61 @@ class TestCaptureAvailableModels:
             {"models": {"availableModels": [{"value": "m1", "name": "M1"}]}}
         )
         assert c.available_models()[0]["modelId"] == "m1"
+
+    @staticmethod
+    def _config_option_response(options):
+        return {
+            "sessionId": "s",
+            "configOptions": [
+                {"id": "mode", "category": "mode", "options": [{"value": "build"}]},
+                {
+                    "id": "model",
+                    "category": "model",
+                    "type": "select",
+                    "currentValue": "opencode/big-pickle",
+                    "options": options,
+                },
+            ],
+        }
+
+    def test_spec_agent_models_from_config_options(self):
+        """OpenCode sends no ``models`` block; its picker is a config option."""
+        c = AcpClient(acp_backend=ACP_BACKEND_OPENCODE)
+        c._capture_available_models(
+            self._config_option_response(
+                [
+                    {"value": "opencode/big-pickle", "name": "Big Pickle"},
+                    {"value": "openrouter/deepseek-v4"},
+                    {"name": "no value"},
+                ]
+            )
+        )
+        assert [(m["modelId"], m["name"]) for m in c.available_models()] == [
+            ("opencode/big-pickle", "Big Pickle"),
+            ("openrouter/deepseek-v4", "openrouter/deepseek-v4"),
+        ]
+        assert c._resolved_model_id == "opencode/big-pickle"
+
+    def test_grouped_config_option_models_are_flattened(self):
+        c = AcpClient(acp_backend=ACP_BACKEND_OPENCODE)
+        c._capture_available_models(
+            self._config_option_response(
+                [
+                    {"group": "openrouter", "options": [{"value": "openrouter/a"}]},
+                    {"group": "opencode", "options": [{"value": "opencode/b"}]},
+                ]
+            )
+        )
+        assert [m["modelId"] for m in c.available_models()] == ["openrouter/a", "opencode/b"]
+
+    def test_kiro_ignores_config_option_models(self):
+        """The Kiro path reads only its ``models`` block, exactly as before."""
+        c = AcpClient(acp_backend=ACP_BACKEND_KIRO)
+        c._capture_available_models(
+            self._config_option_response([{"value": "opencode/big-pickle"}])
+        )
+        assert c.available_models() == []
+        assert c._resolved_model_id is None
 
 
 def _scripted_process(lines, *, returncode=None):

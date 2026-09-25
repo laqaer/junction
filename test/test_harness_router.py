@@ -682,6 +682,7 @@ async def test_probe_maps_outcomes_to_statuses() -> None:
 
     ok = await connect.probe_harness("codex", installed=True, make_provider=maker(None, 3))
     assert ok.status == connect.STATUS_CONNECTED and ok.models == 3
+    assert len(ok.advertised) == 3
     auth = await connect.probe_harness(
         "grok",
         installed=True,
@@ -720,14 +721,82 @@ async def test_probe_times_out() -> None:
 
 
 def test_probe_store_round_trip(tmp_path: Path) -> None:
-    from junction.harness_router.connect import ProbeResult, ProbeStore
+    from junction.harness_router.connect import AdvertisedModel, ProbeResult, ProbeStore
 
     store = ProbeStore(tmp_path)
     assert store.load() == {}
-    store.save(ProbeResult("codex", "connected", models=4, checked_at=NOW))
+    advertised = (AdvertisedModel("gpt-5.5", "GPT-5.5"), AdvertisedModel("gpt-5.5-mini"))
+    store.save(ProbeResult("codex", "connected", models=2, checked_at=NOW, advertised=advertised))
     store.save(ProbeResult("grok", "needs_login", detail="x", checked_at=NOW))
     loaded = store.load()
-    assert loaded["codex"].models == 4 and loaded["grok"].status == "needs_login"
+    assert loaded["codex"].models == 2 and loaded["grok"].status == "needs_login"
+    assert loaded["codex"].advertised == advertised
+    assert loaded["grok"].advertised == ()
+
+
+def test_probe_keeps_what_the_harness_advertised() -> None:
+    from junction.harness_router.connect import PROBE_MODELS_MAX, ProbeResult
+
+    raw = {
+        "status": "connected",
+        "advertised": [
+            {"modelId": "anthropic/claude-x", "name": "Claude X"},
+            {"value": "openrouter/deepseek"},
+            {"modelId": "anthropic/claude-x"},  # duplicate
+            {"modelId": ""},  # no id
+            "not-a-dict",
+        ],
+    }
+    parsed = ProbeResult.from_dict("opencode", raw)
+    assert [(m.id, m.name) for m in parsed.advertised] == [
+        ("anthropic/claude-x", "Claude X"),
+        ("openrouter/deepseek", ""),
+    ]
+    many = {"advertised": [{"id": f"m{i}"} for i in range(PROBE_MODELS_MAX + 5)]}
+    assert len(ProbeResult.from_dict("opencode", many).advertised) == PROBE_MODELS_MAX
+
+
+def test_connected_within_is_fresh_connected_only() -> None:
+    from junction.harness_router.connect import ProbeResult
+
+    assert ProbeResult("codex", "connected", checked_at=NOW).connected_within(60, now=NOW + 30)
+    assert not ProbeResult("codex", "connected", checked_at=NOW).connected_within(60, now=NOW + 61)
+    assert not ProbeResult("codex", "needs_login", checked_at=NOW).connected_within(60, now=NOW)
+    # A clock that went backwards is not evidence of a recent connection.
+    assert not ProbeResult("codex", "connected", checked_at=NOW).connected_within(60, now=NOW - 5)
+
+
+@pytest.mark.asyncio
+async def test_verified_connection_reuses_a_fresh_probe_and_collapses_bursts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import asyncio
+    import time as time_mod
+
+    from junction.harness_router import connect, service
+
+    router = _router(tmp_path)
+    calls: list[str] = []
+
+    async def fake_probe(harness: str, *, installed: bool, model: str = "", timeout: float) -> Any:
+        calls.append(harness)
+        await asyncio.sleep(0)
+        return connect.ProbeResult(harness, connect.STATUS_CONNECTED, checked_at=time_mod.time())
+
+    monkeypatch.setattr(service, "probe_harness", fake_probe)
+    # Nothing recorded yet: a burst of callers shares one probe.
+    results = await asyncio.gather(
+        *(service.verified_connection("codex", max_age_secs=60, router=router) for _ in range(4))
+    )
+    assert calls == ["codex"]
+    assert {r.status for r in results} == {connect.STATUS_CONNECTED}
+    # Fresh enough: answered from the record, nothing spawned.
+    await service.verified_connection("codex", max_age_secs=60, router=router)
+    assert calls == ["codex"]
+    # Stale: probed again.
+    router.probes.save(connect.ProbeResult("codex", connect.STATUS_CONNECTED, checked_at=NOW))
+    await service.verified_connection("codex", max_age_secs=60, router=router)
+    assert calls == ["codex", "codex"]
 
 
 def test_apply_lane_edit_updates_or_appends_and_validates() -> None:
@@ -793,15 +862,15 @@ def test_harnesses_view_lists_featured_and_installed(tmp_path: Path) -> None:
 async def test_api_check_and_lane_edit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from aiohttp.test_utils import make_mocked_request
 
-    from junction.harness_router import api, connect
+    from junction.harness_router import api, connect, service
 
     router = _router(tmp_path)
     monkeypatch.setattr(api, "get_router", lambda: router)
 
-    async def fake_probe(harness: str, *, installed: bool, model: str = "") -> Any:
+    async def fake_probe(harness: str, *, installed: bool, model: str = "", timeout: float) -> Any:
         return connect.ProbeResult(harness, connect.STATUS_NEEDS_LOGIN, checked_at=NOW)
 
-    monkeypatch.setattr(api, "probe_harness", fake_probe)
+    monkeypatch.setattr(service, "probe_harness", fake_probe)
     req = make_mocked_request(
         "POST", "/api/routing/harnesses/codex/check", match_info={"harness": "codex"}
     )

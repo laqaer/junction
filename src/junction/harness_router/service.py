@@ -9,6 +9,7 @@ probe is cached briefly because it walks ``PATH``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import time
@@ -19,11 +20,13 @@ from typing import Any
 
 from junction.harness_router.connect import (
     FEATURED_HARNESSES,
+    PROBE_TIMEOUT_SECS,
     STATUS_UNKNOWN,
     ProbeResult,
     ProbeStore,
     login_hint,
     ordered_harnesses,
+    probe_harness,
     setup_for,
 )
 from junction.harness_router.kinds import TASK_KINDS, normalize_kind
@@ -391,12 +394,68 @@ def reset_router() -> None:
         _default = None
 
 
+# One probe per harness at a time: a double-clicked Check, or a Check racing a
+# readiness re-probe, must not spawn two harness processes. Gateway-process
+# state, keyed by harness name.
+_probe_locks: dict[str, asyncio.Lock] = {}
+
+
+async def _probe_and_record(router: HarnessRouter, harness: str, timeout: float) -> ProbeResult:
+    installed = harness in await asyncio.to_thread(router.installed, refresh=True)
+    settings = await asyncio.to_thread(router.settings)
+    lanes = settings.lanes_for_harness(harness)
+    result = await probe_harness(
+        harness,
+        installed=installed,
+        model=lanes[0].model if lanes else "",
+        timeout=timeout,
+    )
+    await asyncio.to_thread(router.probes.save, result)
+    logger.info("routing probe %s: %s", harness, result.status)
+    return result
+
+
+async def check_harness(
+    harness: str,
+    *,
+    router: HarnessRouter | None = None,
+    timeout: float = PROBE_TIMEOUT_SECS,
+) -> ProbeResult:
+    """Probe *harness* now and record the outcome."""
+    router = router or get_router()
+    async with _probe_locks.setdefault(harness, asyncio.Lock()):
+        return await _probe_and_record(router, harness, timeout)
+
+
+async def verified_connection(
+    harness: str,
+    *,
+    max_age_secs: float,
+    router: HarnessRouter | None = None,
+    timeout: float = PROBE_TIMEOUT_SECS,
+) -> ProbeResult:
+    """The last probe of *harness* when it connected recently enough, else a new one.
+
+    For callers that must not act on a stale answer (a rerun that rewrites
+    history first). The freshness check runs under the per-harness lock, so a
+    burst of callers collapses onto one probe.
+    """
+    router = router or get_router()
+    async with _probe_locks.setdefault(harness, asyncio.Lock()):
+        last = (await asyncio.to_thread(router.probes.load)).get(harness)
+        if last is not None and last.connected_within(max_age_secs, now=time.time()):
+            return last
+        return await _probe_and_record(router, harness, timeout)
+
+
 __all__ = [
     "HarnessRouter",
     "Resolution",
     "RoutingError",
     "ROUTE_TARGETS",
+    "check_harness",
     "get_router",
     "harness_name",
     "reset_router",
+    "verified_connection",
 ]

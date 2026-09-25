@@ -2417,9 +2417,15 @@ class AcpClient:
 
         Also records ``currentModelId`` for ``_track_metadata``'s context
         window lookup.
+
+        A spec-family agent that sends no ``models`` block (OpenCode) advertises
+        its models as the ``model``-category select in ``configOptions``
+        instead; see :meth:`_capture_config_option_models`.
         """
         models = session_resp.get("models")
         if not isinstance(models, dict):
+            if self._is_spec:
+                self._capture_config_option_models(session_resp)
             return
         current_model_id = models.get("currentModelId")
         if isinstance(current_model_id, str) and current_model_id:
@@ -2443,6 +2449,41 @@ class AcpClient:
             )
         if captured:
             self._available_models = captured
+
+    def _capture_config_option_models(self, session_resp: dict) -> None:
+        """Record models a spec-family agent advertised as a config option.
+
+        ACP's session config options carry the model picker as
+        ``{category: "model", type: "select", currentValue, options}``, where
+        ``options`` is a flat ``[{value, name}]`` list or ``[{group, options}]``
+        groups. Mapped onto the ``availableModels`` shape so every reader of
+        :meth:`available_models` sees one format. Best-effort, never raises.
+        """
+        config_options = session_resp.get("configOptions")
+        if not isinstance(config_options, list):
+            return
+        for option in config_options:
+            if not isinstance(option, dict) or option.get("category") != "model":
+                continue
+            current = option.get("currentValue")
+            if isinstance(current, str) and current:
+                self._resolved_model_id = current
+            captured: list[dict[str, str]] = []
+            for entry in option.get("options") or []:
+                grouped = entry.get("options") if isinstance(entry, dict) else None
+                for choice in grouped if isinstance(grouped, list) else [entry]:
+                    value = choice.get("value") if isinstance(choice, dict) else None
+                    if isinstance(value, str) and value:
+                        captured.append(
+                            {
+                                "modelId": value,
+                                "name": str(choice.get("name") or value),
+                                "description": str(choice.get("description") or ""),
+                            }
+                        )
+            if captured:
+                self._available_models = captured
+            return
 
     def available_models(self) -> list[dict[str, str]]:
         """Models advertised by the backend at session init (may be empty)."""

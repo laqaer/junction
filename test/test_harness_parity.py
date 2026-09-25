@@ -32,6 +32,7 @@ from junction.acp.types import (
     ACP_BACKEND_KIRO,
     ACP_BACKENDS_ACP_RUNTIME,
     ACP_BACKENDS_INTERNAL_SANDBOX,
+    ACP_BACKENDS_KIRO_READINESS,
     ACP_BACKENDS_KNOWN,
     ACP_BACKENDS_SELECTABLE,
     ACP_BACKENDS_SESSION_SHARING,
@@ -227,6 +228,7 @@ def test_capability_sets_are_subsets_of_known_backends() -> None:
         ("ACP_BACKENDS_STEER", ACP_BACKENDS_STEER),
         ("ACP_BACKENDS_INTERNAL_SANDBOX", ACP_BACKENDS_INTERNAL_SANDBOX),
         ("ACP_BACKENDS_ACP_RUNTIME", ACP_BACKENDS_ACP_RUNTIME),
+        ("ACP_BACKENDS_KIRO_READINESS", ACP_BACKENDS_KIRO_READINESS),
     ):
         assert members <= ACP_BACKENDS_KNOWN, f"{name} names an unknown backend"
 

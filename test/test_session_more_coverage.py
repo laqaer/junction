@@ -38,6 +38,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from junction import platform_compat
+from junction.acp.types import ACP_BACKEND_KIRO
 from junction.config import JunctionConfig
 from junction.messaging.link import UNBIND_REASON_UNSPECIFIED, ChannelLink
 from junction.session import (
@@ -567,6 +568,13 @@ class TestBackgroundProviderDispatch:
 
 class TestGetBgSessionRespawn:
     """``get_bg_session`` retries a dead ``_bg`` runtime exactly once."""
+
+    @pytest.fixture(autouse=True)
+    def _kiro_backend(self, cfg):
+        """These cases exercise the multiplexed kiro-cli ``AcpRuntime`` path, which
+        serves only runtime-hosted harnesses. Pin it instead of inheriting
+        ``auto``, whose answer depends on which agent CLIs the host has."""
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
 
     @pytest.fixture
     def fake_runtime_cls(self):

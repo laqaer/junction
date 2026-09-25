@@ -258,6 +258,29 @@ def select_runtime(
     )
 
 
+def resolve_backend(
+    configured: str,
+    *,
+    which: WhichFn | None = None,
+    home: Path | None = None,
+    env: Mapping[str, str] | None = None,
+) -> str:
+    """The concrete backend a session for *configured* ``agent.acp_backend`` runs on.
+
+    ``auto`` resolves the way the provider does at start (first installed
+    runtime). When nothing is installed the answer is ``ACP_BACKEND_KIRO``: that
+    is what an unresolvable ``auto`` has always fallen back to, and callers that
+    branch on the backend (the multiplexed-runtime paths, the Kiro readiness
+    gate) keep their existing behavior on such a host.
+    """
+    if configured == ACP_BACKEND_AUTO:
+        try:
+            return select_runtime(ACP_BACKEND_AUTO, which=which, home=home, env=env).id
+        except RuntimeNotFoundError:
+            return ACP_BACKEND_KIRO
+    return configured
+
+
 def resolve_spawn_argv(
     runtime_id: str,
     *,

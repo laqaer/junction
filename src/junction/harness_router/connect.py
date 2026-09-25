@@ -53,6 +53,10 @@ STATUS_UNKNOWN = "unknown"  # never probed
 PROBE_TIMEOUT_SECS = 120.0
 PROBES_FILENAME = "harnesses.json"
 PROBE_DETAIL_MAX_CHARS = 240
+# Advertised models kept per probe: enough for a multi-provider catalog
+# (OpenCode lists every provider it is logged into, 200+), bounded so a harness
+# advertising thousands cannot bloat the record.
+PROBE_MODELS_MAX = 500
 # Session-key prefix for probe providers (each gets its own workspace).
 PROBE_SESSION_PREFIX = "route-probe"
 
@@ -118,6 +122,17 @@ def setup_for(harness: str) -> HarnessSetup | None:
 
 
 @dataclass(frozen=True)
+class AdvertisedModel:
+    """One model a harness advertised at ``session/new``, in its own spelling."""
+
+    id: str
+    name: str = ""
+
+    def to_dict(self) -> dict[str, str]:
+        return {"id": self.id, "name": self.name}
+
+
+@dataclass(frozen=True)
 class ProbeResult:
     """One probe's outcome."""
 
@@ -126,6 +141,11 @@ class ProbeResult:
     detail: str = ""
     models: int = 0
     checked_at: float = 0.0
+    advertised: tuple[AdvertisedModel, ...] = ()
+
+    def connected_within(self, max_age_secs: float, *, now: float) -> bool:
+        """True when this is a ``connected`` outcome no older than *max_age_secs*."""
+        return self.status == STATUS_CONNECTED and 0 <= now - self.checked_at <= max_age_secs
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -133,6 +153,7 @@ class ProbeResult:
             "detail": self.detail,
             "models": self.models,
             "checked_at": self.checked_at,
+            "advertised": [m.to_dict() for m in self.advertised],
         }
 
     @classmethod
@@ -147,7 +168,33 @@ class ProbeResult:
             detail=str(raw.get("detail") or ""),
             models=models if isinstance(models, int) and not isinstance(models, bool) else 0,
             checked_at=float(checked) if isinstance(checked, (int, float)) else 0.0,
+            advertised=parse_advertised(raw.get("advertised")),
         )
+
+
+def parse_advertised(raw: object) -> tuple[AdvertisedModel, ...]:
+    """Parse advertised models from a stored record or an ACP ``availableModels`` list.
+
+    Accepts ``{"id", "name"}`` as stored here and the ``modelId`` / ``value``
+    keys ``acp.client.advertised_model_ids`` reads from ACP. Anything without a
+    string id is skipped rather than guessed at.
+    """
+    if not isinstance(raw, (list, tuple)):
+        return ()
+    out: list[AdvertisedModel] = []
+    seen: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        model_id = entry.get("id") or entry.get("modelId") or entry.get("value")
+        if not isinstance(model_id, str) or not model_id.strip() or model_id in seen:
+            continue
+        name = entry.get("name")
+        seen.add(model_id)
+        out.append(AdvertisedModel(id=model_id, name=name if isinstance(name, str) else ""))
+        if len(out) >= PROBE_MODELS_MAX:
+            break
+    return tuple(out)
 
 
 def _scrub(text: str) -> str:
@@ -200,16 +247,14 @@ class ProbeStore:
         atomic_write(self._path, json.dumps(payload, separators=(",", ":")), mode=0o600)
 
 
-def _models_of(provider: Any) -> int:
+def _models_of(provider: Any) -> tuple[AdvertisedModel, ...]:
     try:
-        from junction.acp.client import advertised_model_ids
-
         getter = getattr(getattr(provider, "_client", None), "available_models", None)
         raw = getter() if callable(getter) else getter
-        return len(advertised_model_ids(raw or []))
+        return parse_advertised(raw)
     except Exception:
         logger.debug("probe: advertised models unavailable", exc_info=True)
-        return 0
+        return ()
 
 
 ProviderMaker = Callable[[str, str], Any]
@@ -246,11 +291,13 @@ async def probe_harness(
     try:
         provider = maker(harness, model)
         await asyncio.wait_for(provider.start(), timeout=timeout)
+        advertised = _models_of(provider)
         return ProbeResult(
             harness=harness,
             status=STATUS_CONNECTED,
-            models=_models_of(provider),
+            models=len(advertised),
             checked_at=now(),
+            advertised=advertised,
         )
     except asyncio.TimeoutError:
         return ProbeResult(harness=harness, status=STATUS_TIMEOUT, checked_at=now())
