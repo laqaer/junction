@@ -1,7 +1,8 @@
 """ACP runtime registry — spawn argv for each dockable coding agent.
 
 Junction's harness plane treats ACP as a family of stdio JSON-RPC agents
-(Cursor, Claude, Codex, DeepSeek Harness, Pi, Kimi, Goose, Grok, Droid, …).
+(Cursor, Claude, Codex, DeepSeek Harness, Pi, Kimi, Goose, Grok, OpenCode,
+Droid, …).
 ``kiro-cli`` is one selectable backend, last in auto preference, and optional.
 
 This module is stdlib-only besides ``junction.acp.types`` so tests can
@@ -27,6 +28,7 @@ from junction.acp.types import (
     ACP_BACKEND_GROK,
     ACP_BACKEND_KIMI,
     ACP_BACKEND_KIRO,
+    ACP_BACKEND_OPENCODE,
     ACP_BACKEND_PI,
     ACP_BACKENDS_SPEC_FAMILY,
 )
@@ -43,6 +45,7 @@ AUTO_PREFERENCE: tuple[str, ...] = (
     ACP_BACKEND_DSH,
     ACP_BACKEND_GOOSE,
     ACP_BACKEND_GROK,
+    ACP_BACKEND_OPENCODE,
     ACP_BACKEND_PI,
     ACP_BACKEND_DROID,
     ACP_BACKEND_KIRO,
@@ -129,7 +132,7 @@ def builtin_specs(
             id=ACP_BACKEND_CODEX,
             argv=codex_argv,
             protocol="spec",
-            login_hint="Install Codex CLI (`codex`) and log in.",
+            login_hint="Install Codex CLI (`npm i -g @openai/codex`) and run `codex login`.",
             needs=("codex",),
         ),
         ACP_BACKEND_KIMI: RuntimeSpec(
@@ -157,8 +160,18 @@ def builtin_specs(
             id=ACP_BACKEND_GROK,
             argv=("grok", "agent", "stdio"),
             protocol="spec",
-            login_hint="Install Grok CLI (`grok`).",
+            login_hint="Install Grok Build (`npm i -g @xai-official/grok`) and run `grok` to sign in.",
             needs=("grok",),
+        ),
+        ACP_BACKEND_OPENCODE: RuntimeSpec(
+            id=ACP_BACKEND_OPENCODE,
+            argv=("opencode", "acp"),
+            protocol="spec",
+            login_hint=(
+                "Install OpenCode (`npm i -g opencode-ai`) and run `opencode auth login` "
+                "(OpenRouter, Anthropic, OpenAI, …)."
+            ),
+            needs=("opencode",),
         ),
         ACP_BACKEND_PI: RuntimeSpec(
             id=ACP_BACKEND_PI,
@@ -253,7 +266,7 @@ def select_runtime(
         return kiro_hit
     raise RuntimeNotFoundError(
         "No ACP runtime found. Install cursor-agent, claude, codex, kimi, "
-        "goose, grok, droid, pi, or the DeepSeek Harness launcher "
+        "goose, grok, opencode, droid, pi, or the DeepSeek Harness launcher "
         "(~/.buzz/tools/dsh-buzz/launch-acp.sh)."
     )
 

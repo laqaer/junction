@@ -28,7 +28,7 @@ Two planes, one product. See [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 1. **Harness plane** — an ACP runtime registry. Default `agent.acp_backend`
    is `auto`: the first installed of Cursor, Claude, Codex, Kimi, DeepSeek
-   Harness, Goose, Grok, Pi, Droid. Pin a concrete id when you want one
+   Harness, Goose, Grok, OpenCode, Pi, Droid. Pin a concrete id when you want one
    agent. A vendor agent CLI remains selectable and last in that preference list.
 2. **Model plane** — a loopback catalog Junction starts with `junction up`.
    The shipped catalog lists namespaced model choices. Role routing

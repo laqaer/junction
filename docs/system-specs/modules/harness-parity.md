@@ -11,7 +11,7 @@ A *harness* is the agent process Junction drives over ACP. The first-class
 harness in this lineage is `kiro-cli` (`ACP_BACKEND_KIRO`, spelled `""`), with a
 growing set of adapted ones. Junction adds the spec-family set in
 `ACP_BACKENDS_SPEC_FAMILY` (cursor, claude, codex, dsh, pi, kimi, goose, grok,
-droid) plus `ACP_BACKEND_AUTO`.
+opencode, droid) plus `ACP_BACKEND_AUTO`.
 
 *Parity* here does not mean equal treatment. It means the opposite, stated
 precisely: **an added harness may only adapt itself to the seams the Kiro
