@@ -162,7 +162,11 @@ HARNESS_PROFILES: Mapping[str, HarnessProfile] = MappingProxyType(
         ACP_BACKEND_GOOSE: HarnessProfile(
             harness=ACP_BACKEND_GOOSE, label="Goose", billing=BILLING_METERED
         ),
-        ACP_BACKEND_PI: HarnessProfile(harness=ACP_BACKEND_PI, label="Pi", billing=BILLING_METERED),
+        ACP_BACKEND_PI: HarnessProfile(
+            harness=ACP_BACKEND_PI,
+            label="Pi",
+            billing=BILLING_METERED,
+        ),
         ACP_BACKEND_DROID: HarnessProfile(
             harness=ACP_BACKEND_DROID, label="Factory Droid", billing=BILLING_SUBSCRIPTION
         ),
