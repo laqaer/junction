@@ -132,6 +132,9 @@ ACP_BACKEND_KIMI = "kimi"
 ACP_BACKEND_GOOSE = "goose"
 ACP_BACKEND_GROK = "grok"
 ACP_BACKEND_DROID = "droid"
+# OpenCode (`opencode acp`). Its own provider login covers OpenRouter, so
+# metered OpenRouter models reach Junction as a harness, not as forwarded traffic.
+ACP_BACKEND_OPENCODE = "opencode"
 # ACP v1 stdio agents driven by AcpClient (one process per session). Not kiro-cli, not KAS.
 ACP_BACKENDS_SPEC_FAMILY = frozenset(
     {
@@ -144,6 +147,7 @@ ACP_BACKENDS_SPEC_FAMILY = frozenset(
         ACP_BACKEND_GOOSE,
         ACP_BACKEND_GROK,
         ACP_BACKEND_DROID,
+        ACP_BACKEND_OPENCODE,
     }
 )
 # Membership gate for the ``acp_backend`` kwarg. An unrecognized value would

@@ -24,6 +24,7 @@ from junction.acp.types import (
     ACP_BACKEND_CURSOR,
     ACP_BACKEND_DSH,
     ACP_BACKEND_KIRO,
+    ACP_BACKEND_OPENCODE,
     ACP_BACKENDS_SELECTABLE,
     ACP_BACKENDS_SPEC_FAMILY,
 )
@@ -42,6 +43,13 @@ class TestBuiltinSpecs:
         assert spec.argv == ("cursor-agent", "acp")
         assert spec.protocol == "spec"
         assert spec.is_spec is True
+
+    def test_opencode_is_opencode_acp(self):
+        spec = builtin_specs()[ACP_BACKEND_OPENCODE]
+        assert spec.argv == ("opencode", "acp")
+        assert spec.is_spec is True
+        assert ACP_BACKEND_OPENCODE in ACP_BACKENDS_SPEC_FAMILY
+        assert ACP_BACKEND_OPENCODE in AUTO_PREFERENCE
 
     def test_kiro_is_optional_and_not_spec(self):
         spec = builtin_specs()[ACP_BACKEND_KIRO]
@@ -85,6 +93,11 @@ class TestAvailability:
     def test_claude_available_if_claude_binary_exists(self):
         spec = builtin_specs()[ACP_BACKEND_CLAUDE]
         assert runtime_available(spec, which=_which_for({"claude": "/bin/claude"})) is True
+
+    def test_opencode_requires_opencode(self):
+        spec = builtin_specs()[ACP_BACKEND_OPENCODE]
+        assert runtime_available(spec, which=_which_for({})) is False
+        assert runtime_available(spec, which=_which_for({"opencode": "/bin/opencode"})) is True
 
     def test_codex_needs_codex_and_npx(self):
         spec = builtin_specs()[ACP_BACKEND_CODEX]

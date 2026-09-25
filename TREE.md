@@ -15,7 +15,7 @@ cron, memory) that speaks
 models it already serves. Junction does not forward provider traffic.
 
 Default `agent.acp_backend` is `auto`: the first installed of Cursor,
-Claude, Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid. `kiro-cli`
+Claude, Codex, Kimi, DeepSeek Harness, Goose, Grok, OpenCode, Pi, Droid. `kiro-cli`
 is last in that list and optional. Set a concrete id to pin.
 
 ```json

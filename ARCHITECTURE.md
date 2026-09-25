@@ -47,7 +47,8 @@ typically `:4202`) **and** memory / cron / skills.
 
 Already on `main`. `agent.acp_backend` defaults to `auto` via
 `src/junction/acp/runtimes.py`. Resolution preference is Cursor, Claude,
-Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid, then `kiro-cli`.
+Codex, Kimi, DeepSeek Harness, Goose, Grok, OpenCode, Pi, Droid, then
+`kiro-cli`.
 Unknown values degrade to `auto`, not to `kiro-cli`.
 
 `agent.provider` stays `acp`. Multi-ACP must not be re-landed. An added
