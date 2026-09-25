@@ -1717,6 +1717,66 @@ export interface AgentImportApplyResponse {
   summary: AgentImportSummary
 }
 
+/* ── Harness router (GET /api/routing/harnesses) ──
+ * One row per connectable coding agent: whether it is installed, the outcome
+ * of the last connection probe, the commands that install it and sign in, and
+ * the routing lane that spends its plan. Timestamps are epoch SECONDS. */
+export type RoutingProbeStatus =
+  | 'connected' | 'needs_login' | 'not_installed' | 'timeout' | 'error' | 'unknown'
+export type RoutingBilling = 'subscription' | 'free' | 'metered'
+
+export interface RoutingProbe {
+  status: RoutingProbeStatus
+  detail: string
+  models: number
+  checked_at: number
+}
+
+export interface RoutingLane {
+  id: string
+  harness: string
+  label: string
+  billing: RoutingBilling
+  enabled: boolean
+  weight: number
+  model: string
+  window_hours: number
+  window_limit: number
+  daily_limit: number
+}
+
+export type RoutingLaneEdit = Partial<Pick<RoutingLane,
+  'enabled' | 'billing' | 'weight' | 'window_limit' | 'daily_limit' | 'model'>>
+
+export interface RoutingHarnessRow {
+  harness: string
+  label: string
+  billing: RoutingBilling
+  featured: boolean
+  installed: boolean
+  setup: { install: string; login: string; docs_url: string } | null
+  hint: string
+  lane: RoutingLane | null
+  lane_count: number
+  routed: boolean
+  window_used: number
+  day_used: number
+  cooldown_until: number
+  cooldown_reason: string
+  probe: RoutingProbe
+}
+
+export interface RoutingHarnessesView {
+  code: string
+  enabled: boolean
+  source: 'auto' | 'config'
+  path: string
+  warnings: string[]
+  kinds: string[]
+  preview: Record<string, string>
+  harnesses: RoutingHarnessRow[]
+}
+
 /* ── Inbound webhooks (GET /api/webhooks) ──
  * Shapes mirror the pinned backend contract. Both one-time secrets — the bearer
  * token and the HMAC signing secret — only ever appear in
@@ -1905,6 +1965,10 @@ export const api = {
   // cross-site triggerable and would leave no audit record.
   repairKiroPrerequisiteSpecs: () =>
     post('/api/kiro-prerequisite/repair-specs').then(j) as Promise<KiroPrerequisiteStatus>,
+  // First run on a docked non-Kiro agent: refused (409) until the harness
+  // router has seen at least one agent connect.
+  completeSetupWithAgents: () =>
+    post('/api/kiro-prerequisite/complete-with-agents').then(j) as Promise<KiroPrerequisiteStatus>,
   onboardingImportScan: () =>
     get('/api/onboarding/import/scan').then(j) as Promise<AgentImportScanResponse>,
   onboardingImportApply: (body: AgentImportApplyRequest) =>
@@ -2440,6 +2504,22 @@ export const api = {
       }>
     }>,
   modelRouterPlan: () => fetch('/api/model-router/plan').then(j),
+  // Harness router (Settings > Agents & plans). Setup commands and probe
+  // statuses are machine data; every displayed word is a catalog key.
+  routingHarnesses: () => fetch('/api/routing/harnesses').then(j) as Promise<RoutingHarnessesView>,
+  checkRoutingHarness: (harness: string) =>
+    post(`/api/routing/harnesses/${encodeURIComponent(harness)}/check`, {}).then(j) as Promise<{
+      code: string
+      harness: string
+      probe: RoutingProbe
+    }>,
+  editRoutingLane: (harness: string, fields: RoutingLaneEdit) =>
+    put(`/api/routing/harnesses/${encodeURIComponent(harness)}/lane`, fields).then(j) as Promise<{
+      code: string
+      lane: RoutingLane
+    }>,
+  clearRoutingCooldown: (lane?: string) =>
+    post('/api/routing/cooldown/clear', lane ? { lane } : {}).then(j) as Promise<{ code: string; cleared: string[] }>,
   planes: () =>
     fetch('/api/planes').then(j) as Promise<{
       product: string

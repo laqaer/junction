@@ -415,30 +415,27 @@ alone; probe whatever already owns it instead of starting a second listener.
 
 Junction can send each task to whichever coding agent you already pay for is
 best placed to do it: Claude Code, Codex (ChatGPT), Cursor, Grok Build, and
-OpenCode (OpenRouter and any other provider it logs into). Each harness keeps
-its own login; Junction never sees a key.
+OpenCode (OpenRouter and any other provider it logs into). Each agent keeps its
+own login; Junction never sees a key. kiro-cli is optional.
 
-1. Install and log in to each harness you use:
+1. `junction up` and open the dashboard. On first run, the setup screen lists
+   your agents; after that they live in **Settings ▸ Agents & plans**.
+2. For each agent: **Install** (if it is missing), then **Sign in**. Both run
+   the agent's own command in the dashboard terminal: `claude auth login`,
+   `codex login`, `cursor-agent login`, `grok login`, `opencode auth login`
+   (choose OpenRouter there). Then **Check**: the agent is started once, with
+   no prompt, and shows **Connected** or what it still needs.
+3. On first run, **Continue with these agents** opens the dashboard once any
+   agent is connected.
+4. Per agent, set **Billing**, **Plan size** (relative size of the plan), and
+   **Tasks per window** if you know the plan's limit. **Who gets what** shows
+   where each kind of work goes right now.
 
-   | Plan | Install | Log in |
-   |---|---|---|
-   | Claude Pro / Max | `npm i -g @anthropic-ai/claude-code` | `claude` then `/login` |
-   | ChatGPT Plus / Pro | `npm i -g @openai/codex` | `codex login` |
-   | Cursor | `curl https://cursor.com/install -fsS \| bash` | `cursor-agent login` |
-   | SuperGrok | `npm i -g @xai-official/grok` | `grok` (sign in once) |
-   | OpenRouter | `npm i -g opencode-ai` | `opencode auth login` → OpenRouter |
-
-2. `junction route init` writes `~/.junction/routing.json` with one lane per
-   installed harness. Set `weight` (relative plan size) or `window_limit`
-   (messages per window) per lane, and `model` on the OpenRouter lane.
-3. `junction route check` starts each harness once and reports `ok`, `auth`
-   (log in again), or `not installed`.
-4. `junction route` shows every lane, its usage window, and the current pick
-   for each kind of work.
-5. Use it: `junction route run -k review "review the diff on this branch"`
-   from a terminal, or ask the dashboard agent to fan a plan out — it calls
-   `spawn_run` with `harness="route"` and a `kind` per step. A plan that hits
-   a usage limit before doing any work moves to the next lane on its own.
+The same from a terminal: `junction route check`, `junction route`, and
+`junction route run -k review "review the diff on this branch"`. Ask the
+dashboard agent to fan a plan out and it calls `spawn_run` with
+`harness="route"` and a `kind` per step. Work that hits a usage limit before
+doing anything moves to the next agent on its own.
 
 How lanes are scored and when work fails over:
 [harness-router](../system-specs/modules/harness-router.md).

@@ -31,6 +31,33 @@ export const SETTINGS_REGISTRY: SettingEntry[] =
     "label": "Update channel"
   },
   {
+    "id": "agents.billing",
+    "label": "Billing",
+    "labelKey": "pages.settings.agentsPanel.billing",
+    "description": "Flat-rate plans are used first; pay-per-use is the overflow.",
+    "tab": "agents",
+    "type": "select",
+    "occurrence": 1
+  },
+  {
+    "id": "agents.model",
+    "label": "Model",
+    "labelKey": "pages.settings.agentsPanel.model",
+    "description": "The model this agent uses for routed work, spelled the way the agent spells it. Leave empty for the agent's default.",
+    "tab": "agents",
+    "type": "input",
+    "occurrence": 1
+  },
+  {
+    "id": "agents.use-for-routing",
+    "label": "Use for routing",
+    "labelKey": "pages.settings.agentsPanel.use_for_routing",
+    "description": "Let Junction send tasks to this agent.",
+    "tab": "agents",
+    "type": "toggle",
+    "occurrence": 1
+  },
+  {
     "id": "browser.attach-token",
     "labelKey": "pages.settings.browserPanel.token_label",
     "tab": "browser",
@@ -1067,7 +1094,7 @@ export const SETTINGS_REGISTRY: SettingEntry[] =
     "id": "chat.response-verbosity",
     "label": "Response Verbosity",
     "labelKey": "pages.settings.chatPanel.response_verbosity",
-    "description": "How terse the agent's prose is. Ultra-concise keeps the whole reply short: answer first, bullets over paragraphs, no filler. Code, commands, and error strings stay verbatim at every level, and security warnings and multi-step instructions keep full detail. Answer-only goes further and drops explanation entirely: one sentence at most, and detail only when you ask for it \u2014 or when a decision is consequential enough (security, exposure, data loss, spend, anything hard to undo) that you need the reasoning to choose correctly.",
+    "description": "How terse the agent's prose is. Ultra-concise keeps the whole reply short: answer first, bullets over paragraphs, no filler. Code, commands, and error strings stay verbatim at every level, and security warnings and multi-step instructions keep full detail. Answer-only goes further and drops explanation entirely: one sentence at most, and detail only when you ask for it — or when a decision is consequential enough (security, exposure, data loss, spend, anything hard to undo) that you need the reasoning to choose correctly.",
     "tab": "chat",
     "type": "select",
     "occurrence": 1

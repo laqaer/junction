@@ -104,6 +104,9 @@ type PanelTarget = PanelTargetSingle | PanelTargetSingle[]
  *  dropped from search, so the gate cross-checks every panel file against it. */
 export const PANEL_TAB_MAP: Record<string, PanelTarget> = {
   'OverviewPanel.tsx': 'overview',
+  // Agents & plans: per-agent routing controls (write routing.json, not config),
+  // indexed so search finds "Use for routing" and "Plan size".
+  'AgentsPanel.tsx': 'agents',
   'ChatPanel.tsx': 'chat',
   'VoicePanel.tsx': 'voice',
   'DisplayPanel.tsx': 'display',
