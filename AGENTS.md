@@ -46,6 +46,7 @@ in the **same commit** when you change what it documents.
 | `computer_use/` | [computer-use](docs/system-specs/modules/computer-use.md) |
 | `acp/`, kiro-cli transport, providers | [acp-client](docs/system-specs/modules/acp-client.md) + [providers](docs/system-specs/modules/providers.md) |
 | `model_router/`, built-in catalog (no provider forwarding) | [model-router](docs/system-specs/modules/model-router.md) |
+| `harness_router/`, `routing.json`, routed `spawn_run`, `junction route` | [harness-router](docs/system-specs/modules/harness-router.md) + [harness-parity](docs/system-specs/modules/harness-parity.md) |
 | Junction overlay, product identity, two-plane thesis | [`JUNCTION.md`](JUNCTION.md) + [`WORKING_BRIEF.md`](WORKING_BRIEF.md) + [`PRODUCT.md`](PRODUCT.md) |
 | adding or adapting an agent harness (BYO, KAS, claude seam) | [harness-parity](docs/system-specs/modules/harness-parity.md) (invariants) + [harness-parity-gate](docs/ci/harness-parity-gate.md) (CI) |
 | sessions, slots, session keys, PIDs | [session](docs/system-specs/modules/session.md) + [history](docs/system-specs/modules/history.md) |

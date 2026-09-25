@@ -12,6 +12,7 @@ from __future__ import annotations
 from aiohttp import web
 
 from junction.dashboard import handlers, ws
+from junction.harness_router import api as harness_router_api
 from junction.model_router.api import api_catalog as api_model_router_catalog
 from junction.model_router.api import api_plan as api_model_router_plan
 from junction.model_router.api import api_status as api_model_router_status
@@ -57,6 +58,7 @@ def register(app: web.Application) -> None:
     app.router.add_get("/api/model-router/catalog", api_model_router_catalog)
     app.router.add_get("/api/model-router/plan", api_model_router_plan)
     app.router.add_get("/api/planes", api_planes)
+    harness_router_api.register(app)
     app.router.add_get("/api/health", handlers.api_health)
     app.router.add_get("/api/live", handlers.api_live)
     app.router.add_get("/api/ready", handlers.api_ready)

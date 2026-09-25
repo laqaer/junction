@@ -17,6 +17,7 @@ Commands:
     junction doctor               Verify setup (--quick is compose-only)
     junction planes               Harness + model + role DAG snapshot
     junction router status        Probe the loopback model catalog
+    junction route                Route work across agent subscriptions
 """
 
 from __future__ import annotations
@@ -1977,6 +1978,11 @@ Examples:
         help="Comma-separated advertised model ids (omit to inherit auto)",
     )
 
+    route_parser = cli_help.add_command(sub, "route")
+    from junction.harness_router.cli import add_arguments as _add_route_arguments
+
+    _add_route_arguments(route_parser)
+
     # mcp-cron (MCP server — spawned by the agent backend, not user-facing)
     sub.add_parser("mcp-cron")
 
@@ -2649,6 +2655,10 @@ The dashboard port is set with the JUNCTION_PORT env var, not a config key.
         from junction.model_router.cli import run_router_command
 
         run_router_command(args)
+    elif args.command == "route":
+        from junction.harness_router.cli import run_route_command
+
+        run_route_command(args)
     elif args.command == "consolidate":
         _consolidate_cmd(args)
     elif args.command == "config":

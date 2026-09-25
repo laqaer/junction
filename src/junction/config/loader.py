@@ -4586,6 +4586,30 @@ def _normalize_acp_backend(value: object) -> str:
     return ACP_BACKEND_AUTO
 
 
+def resolve_acp_backend_override(value: str) -> str:
+    """Backend id for a per-session harness override (``kiro`` → ``""``).
+
+    Unlike :func:`_normalize_acp_backend` this raises on an unknown value: an
+    override is an explicit per-call choice (a spawn's ``harness``, a routed
+    lane), and silently running a different harness than the one named is the
+    failure the harness-parity rules forbid (H3, H8).
+    """
+    from junction.acp.types import (
+        ACP_BACKEND_KIRO,
+        ACP_BACKEND_KIRO_NAME,
+        ACP_BACKENDS_SELECTABLE,
+    )
+
+    if value == ACP_BACKEND_KIRO_NAME:
+        return ACP_BACKEND_KIRO
+    if value in ACP_BACKENDS_SELECTABLE:
+        return value
+    raise ValueError(
+        f"Unknown harness {value!r}; expected one of "
+        + ", ".join(sorted(b for b in ACP_BACKENDS_SELECTABLE if b))
+    )
+
+
 def _validate_activation(value: str) -> str:
     """Return *value* if it is a valid activation mode, else ``mention`` (deny-by-default)."""
     return value if value in _VALID_ACTIVATIONS else ACTIVATION_MENTION
@@ -8473,9 +8497,16 @@ class JunctionConfig:
             extra_env: dict[str, str] | None = None,
             reasoning_effort_override: str | None = None,
             canonical_agent: str | None = None,
+            acp_backend_override: str | None = None,
             **_kwargs: object,
         ) -> AcpProvider:
             wdir = Path(cwd) if cwd else _session_work_dir(session_key)
+            # A per-session harness (a spawn's ``harness`` or a routed lane)
+            # replaces the global agent.acp_backend for this provider only.
+            # Absent, the configured backend is used exactly as before.
+            backend = self.agent.acp_backend
+            if acp_backend_override is not None:
+                backend = resolve_acp_backend_override(acp_backend_override)
             # Canonical agent identity for the session (keys per-agent watchdog
             # windows on the handle) — one shared resolution rule, see
             # resolve_agent_identity.
@@ -8542,7 +8573,7 @@ class JunctionConfig:
                 session_key=session_key,
                 channel_id=channel_id,
                 extra_env=extra_env,
-                acp_backend=self.agent.acp_backend,
+                acp_backend=backend,
                 effort_per_model=_eff_per_model,
                 tool_search=tool_search,
                 tool_search_min_pct=tool_search_min_pct,

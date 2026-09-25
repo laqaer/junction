@@ -335,6 +335,7 @@ POOL_DECISIONS: frozenset[str] = frozenset(
         "bypass_stateless",
         "bypass_cwd",
         "bypass_env",
+        "bypass_harness",
         "disabled",
         "other",
     }
@@ -2867,6 +2868,10 @@ class SessionManager:
             pool_decision = "bypass_cwd"
         elif extra_env:
             pool_decision = "bypass_env"
+        elif extra_factory_kwargs.get("acp_backend_override") is not None:
+            # Pooled processes run the configured backend; a claim only re-keys
+            # and re-models them, so a per-session harness needs its own spawn.
+            pool_decision = "bypass_harness"
         else:
             pool_decision = ""
         pooled = None if pool_decision else await self._drain_and_claim(agent)
