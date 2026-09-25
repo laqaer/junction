@@ -38,6 +38,7 @@ from junction.constants import AWS_PROFILE_NAME_RE, WINDOWS_DEVICE_STEMS
 # the role pin / provider default"). Import-safe: ``effort`` pulls in only
 # ``model_registry`` (stdlib-only), so no cycle back into validation.
 from junction.effort import EFFORT_VALUES
+from junction.harness_router.kinds import TASK_KINDS
 from junction.project_scope import SCOPE_FRAGMENT_RE
 
 # ── Constants ──
@@ -110,6 +111,11 @@ ARTIFACT_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?\Z")
 
 # Valid model name pattern — alphanumerics, hyphens, dots (e.g. "claude-opus-4.8", "deepseek-3.2")
 _MODEL_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+# spawn_run ``harness``: "route" (the harness router picks), a routing lane id,
+# or a harness name. Same grammar as harness_router.lanes.LANE_ID_PATTERN.
+_HARNESS_TARGET_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,47}$")
+_TASK_KIND_RE = re.compile("^(?:" + "|".join(TASK_KINDS) + ")$")
+_TASK_KIND_VALUES = frozenset({"", *TASK_KINDS})
 
 # Content-bound theme-persona consent hash: sha256 rendered as EXACTLY 64
 # lowercase hex chars. This value flows into hmac.compare_digest at the
@@ -993,6 +999,20 @@ SPAWN_RUN_SCHEMA = ToolSchema(
         FieldSpec("include_memory", bool, default=True),
         FieldSpec("include_lessons", bool, default=True),
         FieldSpec("include_project", bool, default=True),
+        # Which harness runs the subagent(s): "route" lets the harness router
+        # pick by task kind and remaining subscription quota; a lane id or a
+        # harness name pins one. Batch-wide; ``harnesses`` sets one per task.
+        FieldSpec("harness", str, max_len=48, pattern=_HARNESS_TARGET_RE),
+        FieldSpec(
+            "harnesses",
+            list,
+            item_type=str,
+            item_max_len=48,
+            item_pattern=_HARNESS_TARGET_RE,
+        ),
+        # Task kind the router scores with; ``kinds`` sets one per task.
+        FieldSpec("kind", str, allowed=_TASK_KIND_VALUES),
+        FieldSpec("kinds", list, item_type=str, item_max_len=16, item_pattern=_TASK_KIND_RE),
     ],
 )
 
@@ -2664,10 +2684,19 @@ SESSION_READ_MESSAGE_SCHEMA = ToolSchema(
     ],
 )
 
+ROUTE_TASK_SCHEMA = ToolSchema(
+    tool_name="route_task",
+    fields=[
+        FieldSpec("kind", str, required=True, allowed=frozenset(TASK_KINDS)),
+        FieldSpec("prefer", str, max_len=48, pattern=_HARNESS_TARGET_RE),
+    ],
+)
+
 # ── Schema Registry ──
 
 MCP_CORE_SCHEMAS: dict[str, ToolSchema] = {
     "spawn_run": SPAWN_RUN_SCHEMA,
+    "route_task": ROUTE_TASK_SCHEMA,
     "spawn_sub_agents": SPAWN_SUB_AGENTS_SCHEMA,
     "spawn_list": SPAWN_LIST_SCHEMA,
     "resource_status": RESOURCE_STATUS_SCHEMA,

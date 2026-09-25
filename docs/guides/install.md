@@ -411,6 +411,38 @@ shipped snapshot. The POST is HTTP 501 with
 `{"ok":false,"code":"model_router_no_forward"}`. A busy `4202` is left
 alone; probe whatever already owns it instead of starting a second listener.
 
+### Route work across your subscriptions
+
+Junction can send each task to whichever coding agent you already pay for is
+best placed to do it: Claude Code, Codex (ChatGPT), Cursor, Grok Build, and
+OpenCode (OpenRouter and any other provider it logs into). Each harness keeps
+its own login; Junction never sees a key.
+
+1. Install and log in to each harness you use:
+
+   | Plan | Install | Log in |
+   |---|---|---|
+   | Claude Pro / Max | `npm i -g @anthropic-ai/claude-code` | `claude` then `/login` |
+   | ChatGPT Plus / Pro | `npm i -g @openai/codex` | `codex login` |
+   | Cursor | `curl https://cursor.com/install -fsS \| bash` | `cursor-agent login` |
+   | SuperGrok | `npm i -g @xai-official/grok` | `grok` (sign in once) |
+   | OpenRouter | `npm i -g opencode-ai` | `opencode auth login` → OpenRouter |
+
+2. `junction route init` writes `~/.junction/routing.json` with one lane per
+   installed harness. Set `weight` (relative plan size) or `window_limit`
+   (messages per window) per lane, and `model` on the OpenRouter lane.
+3. `junction route check` starts each harness once and reports `ok`, `auth`
+   (log in again), or `not installed`.
+4. `junction route` shows every lane, its usage window, and the current pick
+   for each kind of work.
+5. Use it: `junction route run -k review "review the diff on this branch"`
+   from a terminal, or ask the dashboard agent to fan a plan out — it calls
+   `spawn_run` with `harness="route"` and a `kind` per step. A plan that hits
+   a usage limit before doing any work moves to the next lane on its own.
+
+How lanes are scored and when work fails over:
+[harness-router](../system-specs/modules/harness-router.md).
+
 ### What `junction setup` asks
 
 The wizard installs the agent config, then walks through the workspace

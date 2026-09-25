@@ -160,6 +160,8 @@ async def api_spawn(request: web.Request) -> web.Response:
                 "include_memory": body.get("include_memory", True),
                 "include_lessons": body.get("include_lessons", True),
                 "include_project": body.get("include_project", True),
+                "harness": body.get("harness", ""),
+                "kind": body.get("kind", ""),
             },
             SPAWN_RUN_SCHEMA,
         )
@@ -168,6 +170,19 @@ async def api_spawn(request: web.Request) -> web.Response:
     task = (cleaned.get("task") or "").strip()
     if not task:
         return web.json_response({"error": "task is required"}, status=400)
+    # Resolve the harness BEFORE mgr.spawn counts the submission, so a refusal
+    # here is an ordinary (uncounted) 400.
+    route = None
+    harness_target = cleaned.get("harness") or ""
+    if harness_target:
+        from junction.harness_router.service import RoutingError, get_router
+
+        try:
+            route = await asyncio.to_thread(
+                get_router().resolve, harness_target, kind=cleaned.get("kind") or None
+            )
+        except RoutingError as exc:
+            return web.json_response({"error": str(exc), "code": exc.code}, status=400)
     parent_session = body.get("parent_session", "")
     # approval_mode and silent are HTTP API parameters passed by the SDK,
     # NOT MCP tool arguments from the LLM.  The LLM's spawn_run tool
@@ -194,6 +209,10 @@ async def api_spawn(request: web.Request) -> web.Response:
     max_turns = cleaned.get("max_turns") or 0
     cwd = cleaned.get("cwd") or ""
     model = cleaned.get("model") or ""
+    if route is not None and not model:
+        # A lane's pinned model is spelled for its own harness; a caller's
+        # explicit model still wins.
+        model = route.lane.model
     reasoning_effort = cleaned.get("reasoning_effort") or ""
     # Batch/wave identity (transport-layer params from spawn_run MCP, like
     # approval_mode/silent above): validated inline, bounded, never LLM-schema.
@@ -224,6 +243,10 @@ async def api_spawn(request: web.Request) -> web.Response:
         include_memory=cleaned.get("include_memory", True) is not False,
         include_lessons=cleaned.get("include_lessons", True) is not False,
         include_project=cleaned.get("include_project", True) is not False,
+        harness=route.lane.harness if route else "",
+        lane=route.lane.id if route else "",
+        route_kind=route.kind if route else "",
+        routed=bool(route and route.routed),
     )
     if not info:
         # Reached mgr.spawn (submission COUNTED at the top of spawn()) but
@@ -241,6 +264,8 @@ async def api_spawn(request: web.Request) -> web.Response:
         # reconcile to skip this member.
         return web.json_response({"error": info.error, "counted": True}, status=400)
     resp: dict[str, object] = {"id": info.id, "task": task, "status": "spawned"}
+    if route is not None:
+        resp["route"] = route.to_dict()
     if keep:
         # The conversation id is the FIRST run's id: spawn_continue targets it.
         resp["conversation"] = info.id

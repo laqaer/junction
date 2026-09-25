@@ -17,6 +17,7 @@ from typing import Any
 # Descriptor modules, in the order their tools are advertised.
 DOMAIN_MODULES: tuple[str, ...] = (
     "spawn",
+    "routing",
     "learn",
     "ledger",
     "skills",
