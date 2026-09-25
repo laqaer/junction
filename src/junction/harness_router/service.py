@@ -17,6 +17,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from junction.harness_router.connect import (
+    FEATURED_HARNESSES,
+    STATUS_UNKNOWN,
+    ProbeResult,
+    ProbeStore,
+    login_hint,
+    ordered_harnesses,
+    setup_for,
+)
 from junction.harness_router.kinds import TASK_KINDS, normalize_kind
 from junction.harness_router.lanes import (
     Lane,
@@ -111,6 +120,11 @@ class HarnessRouter:
     @property
     def home(self) -> Path | None:
         return self._home
+
+    @property
+    def probes(self) -> ProbeStore:
+        """Last connection probe per harness, stored beside the ledger."""
+        return ProbeStore(self._ledger.path.parent)
 
     # ── Inputs ──
 
@@ -257,6 +271,60 @@ class HarnessRouter:
         return failure
 
     # ── Status ──
+
+    def harnesses_view(self) -> dict[str, Any]:
+        """Every connectable harness with install state, last probe, and its lane.
+
+        What the dashboard's Agents & plans panel renders: the featured
+        subscriptions always, plus any other harness that is installed or has a
+        lane. Setup commands and probe outcomes are machine data; the dashboard
+        owns every displayed word.
+        """
+        settings = self.settings()
+        installed = self.installed(refresh=True)
+        usage = self._ledger.snapshot()
+        probes = self.probes.load()
+        now = time.time()
+        rows = []
+        for name in ordered_harnesses(installed, [ln.harness for ln in settings.lanes]):
+            profile = profile_for(name)
+            lanes = settings.lanes_for_harness(name)
+            lane = lanes[0] if lanes else None
+            used = usage.get(lane.id) if lane else None
+            setup = setup_for(name)
+            probe = probes.get(name) or ProbeResult(harness=name, status=STATUS_UNKNOWN)
+            rows.append(
+                {
+                    "harness": name,
+                    "label": profile.label,
+                    "billing": lane.billing if lane else profile.billing,
+                    "featured": name in FEATURED_HARNESSES,
+                    "installed": name in installed,
+                    "setup": setup.to_dict() if setup else None,
+                    "hint": "" if setup else login_hint(name),
+                    "lane": lane.to_dict() if lane else None,
+                    "lane_count": len(lanes),
+                    "routed": bool(lane and lane.enabled and name in installed),
+                    "window_used": (
+                        used.count_since(now - lane.window_hours * 3600) if used and lane else 0
+                    ),
+                    "day_used": used.count_since(now - 86400) if used else 0,
+                    "cooldown_until": used.cooldown_until if used and used.cooling(now) else 0.0,
+                    "cooldown_reason": used.cooldown_reason if used and used.cooling(now) else "",
+                    "probe": probe.to_dict(),
+                }
+            )
+        preview = {kind: self.decide(kind).to_dict()["lane"] for kind in TASK_KINDS}
+        return {
+            "code": "ok",
+            "enabled": settings.enabled,
+            "source": settings.source,
+            "path": settings.path,
+            "warnings": list(settings.warnings),
+            "kinds": list(TASK_KINDS),
+            "preview": preview,
+            "harnesses": rows,
+        }
 
     def status(self) -> dict[str, Any]:
         """Everything `junction route status` and the dashboard show."""

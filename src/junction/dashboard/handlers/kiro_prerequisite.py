@@ -211,3 +211,40 @@ async def api_kiro_prerequisite_repair_specs(request: web.Request) -> web.Respon
         return denied
     snapshot = await _service(request).repair_agent_specs(_caller(request))
     return web.json_response({**snapshot, "setup_allowed": True})
+
+
+async def api_kiro_prerequisite_complete_with_agents(request: web.Request) -> web.Response:
+    """POST /api/kiro-prerequisite/complete-with-agents — finish first run without kiro-cli.
+
+    kiro-cli is optional: an operator who docked another harness (Claude Code,
+    Codex, Cursor, Grok, OpenCode, …) finishes first-run setup here, the dashboard
+    twin of ``junction setup``. Refused unless the harness router's last probe
+    shows at least one harness connected, so the gate never opens onto a
+    dashboard with no working agent. Owner-only and a POST, like the repair.
+    """
+
+    denied = await _dashboard_owner_only(request)
+    if denied is not None:
+        return denied
+    from junction.harness_router.connect import STATUS_CONNECTED
+    from junction.harness_router.service import get_router
+
+    probes = await asyncio.to_thread(get_router().probes.load)
+    connected = sorted(h for h, p in probes.items() if p.status == STATUS_CONNECTED)
+    if not connected:
+        return web.json_response(
+            {
+                "error": "Connect at least one agent first.",
+                "code": "no_connected_agent",
+            },
+            status=409,
+        )
+    snapshot = await _service(request).complete_setup_without_kiro()
+    sel().log_api_access(
+        caller=_caller(request),
+        operation="kiro_prerequisite.complete_with_agents",
+        outcome="ok",
+        source="dashboard",
+        resources=",".join(connected),
+    )
+    return web.json_response({**snapshot, "setup_allowed": True})

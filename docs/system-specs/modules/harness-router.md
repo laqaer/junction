@@ -148,6 +148,34 @@ stdout. Tool permission requests are asked at the terminal when both ends are a
 TTY, else denied (`--no-prompt` forces deny). It warms the sandbox probe before
 the event loop starts, because the probe never runs on a live loop.
 
+## Connecting harnesses (`connect.py`)
+
+Junction never performs a sign-in and never sees a credential. "Connecting" an
+agent means running that agent's own login command, then probing it.
+
+- `HARNESS_SETUP` holds the install and login shell commands and a docs URL for
+  the featured subscriptions (Claude Code, Codex, Cursor, Grok Build, OpenCode).
+  Claude's install names `@agentclientprotocol/claude-agent-acp` too: Junction
+  drives Claude Code through that adapter, which the `claude` CLI does not ship.
+  Other registry harnesses show their runtime `login_hint` instead.
+- `probe_harness` starts the harness exactly as a session would (provider
+  factory, sandboxed, `acp_backend_override`) and runs `initialize` +
+  `session/new`. **No prompt is sent, so a probe spends no plan quota.** The
+  outcome is one of `connected`, `needs_login`, `not_installed` (including a
+  missing adapter), `timeout`, `error`, and is persisted with a redacted,
+  truncated detail in `<data home>/routing/harnesses.json`. `junction route
+  check` and the dashboard share it.
+- Settings ▸ **Agents & plans** (`website/src/pages/settings/AgentsPanel.tsx`)
+  renders one card per agent: status, Install / Sign in (typed into the
+  dashboard's dock terminal, or copied when the terminal is off), Check, and the
+  lane controls (use for routing, billing, plan size, window limit, model),
+  plus the current pick per kind. On first load it probes every installed agent
+  that was never checked. Every displayed word is a catalog key; commands and
+  statuses are machine data.
+- The first-run gate shows the same panel in compact form above the Kiro steps,
+  with **Continue with these agents** once any agent is connected
+  (`POST /api/kiro-prerequisite/complete-with-agents`). kiro-cli is optional.
+
 ## Surfaces
 
 | Surface | What |
@@ -163,6 +191,9 @@ the event loop starts, because the probe never runs on a live loop.
 | `GET /api/routing/status` | Same payload as `route status --json` |
 | `GET /api/routing/decide?kind=&role=&prefer=&exclude=` | One decision; "no lane" is a 200 with `code: no_lane` |
 | `POST /api/routing/cooldown/clear {lane?}` | Lift a cooldown |
+| `GET /api/routing/harnesses` | Every connectable agent: installed, last probe, setup commands, its lane, picks per kind |
+| `POST /api/routing/harnesses/{harness}/check` | Probe one agent now (one at a time per agent) and record the result |
+| `PUT /api/routing/harnesses/{harness}/lane` | Edit that agent's lane (`enabled`, `billing`, `weight`, `window_limit`, `daily_limit`, `model`) in `routing.json`; `400` `invalid_lane_edit` on a bad value. A missing file is materialized from the detected lanes; a broken one is refused, never overwritten |
 
 `/api/routing` is a mixed internal path (MCP secret or dashboard cookie).
 Handlers do their file I/O off the event loop.

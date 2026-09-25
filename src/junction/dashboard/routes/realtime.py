@@ -75,6 +75,10 @@ def register(app: web.Application) -> None:
         "/api/kiro-prerequisite/repair-specs",
         handlers.api_kiro_prerequisite_repair_specs,
     )
+    app.router.add_post(
+        "/api/kiro-prerequisite/complete-with-agents",
+        handlers.api_kiro_prerequisite_complete_with_agents,
+    )
     app.router.add_get("/api/governance/channels", handlers.api_governance_channels)
 
     # Suggestions (pre-computed contextual prompts)

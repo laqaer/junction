@@ -29,6 +29,7 @@ from junction.acp.types import (
     ACP_BACKENDS_SELECTABLE,
 )
 from junction.harness_router.kinds import TASK_KINDS
+from junction.model_router.catalog import MODEL_ID_MAX_LEN, MODEL_ID_PATTERN
 from junction.harness_router.profiles import BILLING_TYPES, HarnessProfile, profile_for
 
 logger = logging.getLogger(__name__)
@@ -345,3 +346,126 @@ def template_document(harnesses: Iterable[str]) -> dict[str, Any]:
         "max_failover": 2,
         "lanes": lanes,
     }
+
+
+# Fields the dashboard may change on a lane. Everything else in routing.json
+# (affinity overrides, extra lanes, notes) is preserved untouched.
+EDITABLE_LANE_FIELDS: frozenset[str] = frozenset(
+    {"enabled", "billing", "weight", "window_limit", "daily_limit", "model"}
+)
+MAX_LANE_WEIGHT = 100.0
+MIN_LANE_WEIGHT = 0.05
+_EDIT_MODEL_PATTERN = re.compile(MODEL_ID_PATTERN)
+
+
+def _checked_edit(field: str, value: object) -> object:
+    """Validate one edited field, raising RoutingConfigError on a bad value."""
+    if field == "enabled":
+        if not isinstance(value, bool):
+            raise RoutingConfigError("enabled must be true or false")
+        return value
+    if field == "billing":
+        if value not in BILLING_TYPES:
+            raise RoutingConfigError(f"billing must be one of {', '.join(BILLING_TYPES)}")
+        return value
+    if field == "weight":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise RoutingConfigError("weight must be a number")
+        if not MIN_LANE_WEIGHT <= float(value) <= MAX_LANE_WEIGHT:
+            raise RoutingConfigError(
+                f"weight must be between {MIN_LANE_WEIGHT:g} and {MAX_LANE_WEIGHT:g}"
+            )
+        return float(value)
+    if field in ("window_limit", "daily_limit"):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise RoutingConfigError(f"{field} must be a whole number, 0 for none")
+        return value
+    if field == "model":
+        text = value.strip() if isinstance(value, str) else None
+        if text is None or len(text) > MODEL_ID_MAX_LEN or not _EDIT_MODEL_PATTERN.match(text):
+            raise RoutingConfigError("model is not a valid model id")
+        return text
+    raise RoutingConfigError(f"{field} cannot be edited")
+
+
+def apply_lane_edit(
+    document: Mapping[str, Any],
+    harness: str,
+    edits: Mapping[str, object],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return ``(new_document, edited_lane)`` with *edits* applied to *harness*.
+
+    Edits the first lane on that harness, appending one from the harness
+    profile when none exists. Pure: *document* is not mutated. Raises
+    ``RoutingConfigError`` for an unknown harness or field, a bad value, or a
+    result the parser would reject for this lane.
+    """
+    if not is_routable_harness(harness):
+        raise RoutingConfigError(f"unknown harness {harness!r}")
+    unknown = set(edits) - EDITABLE_LANE_FIELDS
+    if unknown:
+        raise RoutingConfigError(f"{', '.join(sorted(unknown))} cannot be edited")
+    checked = {field: _checked_edit(field, value) for field, value in edits.items()}
+    doc = json.loads(json.dumps(dict(document)))
+    lanes = doc.get("lanes")
+    if not isinstance(lanes, list):
+        lanes = []
+        doc["lanes"] = lanes
+    target = next(
+        (ln for ln in lanes if isinstance(ln, dict) and ln.get("harness") == harness), None
+    )
+    if target is None:
+        target = template_document([harness])["lanes"][0]
+        taken = {ln.get("id") for ln in lanes if isinstance(ln, dict)}
+        if target["id"] in taken:
+            target["id"] = f"{harness}-lane"
+        lanes.append(target)
+    target.update(checked)
+    warnings: list[str] = []
+    parsed = parse_lane(target, warnings)
+    if parsed is None or warnings:
+        raise RoutingConfigError("; ".join(warnings) or "lane rejected")
+    doc.setdefault("version", ROUTING_SCHEMA_VERSION)
+    doc.setdefault("enabled", True)
+    return doc, parsed.to_dict()
+
+
+def current_document(
+    *, home: Path | None = None, which: WhichFn | None = None, env: Mapping[str, str] | None = None
+) -> dict[str, Any]:
+    """``routing.json`` as stored, or the detected lanes as a document when absent.
+
+    A present-but-unparseable file raises, so an edit never silently replaces an
+    operator's broken-but-recoverable file with a fresh template.
+    """
+    path = routing_path(home)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return template_document(installed_harnesses(which=which, env=env))
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RoutingConfigError(f"routing.json is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RoutingConfigError("routing.json must hold a JSON object")
+    return data
+
+
+def save_lane_edit(
+    harness: str,
+    edits: Mapping[str, object],
+    *,
+    home: Path | None = None,
+    which: WhichFn | None = None,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """Apply *edits* to *harness*'s lane and write ``routing.json`` atomically."""
+    from junction.atomic_write import atomic_write
+
+    document = current_document(home=home, which=which, env=env)
+    new_doc, lane = apply_lane_edit(document, harness, edits)
+    path = routing_path(home)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write(path, json.dumps(new_doc, indent=2) + "\n")
+    return lane
