@@ -169,4 +169,7 @@ on the **agent** side. Junction does not mint that URL in chat.
   `model_router.probe` (`DEFAULT_ROUTER_PORT` 4202, `DEFAULT_GATEWAY_PORT`
   4200) and the `MODEL_ROUTER_PORT` / `CODEX_ROUTER_PORT` environment
   variables Codex Router already honors.
-- Config: `agent.role_models` keys listed in `ROLE_MODEL_KEYS`.
+- Config: `agent.role_models` and `agent.role_efforts` keys listed in
+  `ROLE_MODEL_KEYS`. Each role is declared in the config schema as
+  `agent.role_models.<role>` / `agent.role_efforts.<role>`, so its
+  Settings ▸ Chat control carries that path as a `configKey`.

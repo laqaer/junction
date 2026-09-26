@@ -345,7 +345,7 @@ def coerce_role_efforts(raw: object) -> dict[str, str]:
     return out
 
 
-def _role_key_properties(noun: str, help: str) -> dict[str, dict]:
+def _role_key_properties(noun: str, help: str, **node: object) -> dict[str, dict[str, object]]:
     """Declared schema sub-keys for a per-role map, one per :data:`ROLE_MODEL_KEYS`.
 
     Declaring them makes ``agent.role_models.<role>`` and
@@ -354,11 +354,15 @@ def _role_key_properties(noun: str, help: str) -> dict[str, dict]:
     above silently drop) fails the settings-registry drift test rather than
     matching the ``.*`` wildcard. Built from the role tuple itself so the schema
     cannot name a role the router does not serve.
+
+    Extra keyword metadata (``enum``) lands on each entry unchanged, so an
+    effort sub-key can offer the same values the chat default does.
     """
     return {
         role: {
             "type": "string",
             "default": "",
+            **node,
             "x-meta": {"label": f"{role.capitalize()} {noun}", "help": help},
         }
         for role in ROLE_MODEL_KEYS
@@ -1511,6 +1515,7 @@ class AgentConfig:
                 "reasoning effort",
                 "Reasoning effort for this class of work. Empty inherits the chat "
                 "default, then the provider/model default.",
+                enum=["", *EFFORT_LEVELS],
             ),
         ),
     )

@@ -245,7 +245,14 @@
       "label": "Orchestration reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -259,7 +266,14 @@
       "label": "Planning reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -273,7 +287,14 @@
       "label": "Execution reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -287,7 +308,14 @@
       "label": "Background reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -301,7 +329,14 @@
       "label": "Subagent reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
