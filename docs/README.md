@@ -28,6 +28,7 @@ New here? Start with [guides/install.md](guides/install.md), then
 | [reference/](reference/README.md) | Upstream documentation we mirror but do not author. |
 | [task-specs/](task-specs/README.md) | Archived per-task specs. Not current context. |
 | [superpowers/](superpowers/README.md) | Dated agentic implementation plans derived from accepted designs. |
+| [business/](business/README.md) | The company plan, offers, launch kit, owner checklist, weekly status and metrics ledger for the Warding relaunch, maintained by the business roles in `.agents/business/`. Not shipped. |
 
 ## The rule for changing docs
 
