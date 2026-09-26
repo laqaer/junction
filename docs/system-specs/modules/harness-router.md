@@ -88,7 +88,7 @@ which is spelled for the configured default harness.
 | Class | Examples | Rest when no reset is stated |
 |---|---|---|
 | `usage_limit` | "usage limit reached", "5-hour limit", "Insufficient credits" | 60 min |
-| `rate_limit` | 429, "rate limit", "overloaded" | 2 min |
+| `rate_limit` | 429, "rate limit", "overloaded", `AcpTurnStalled` (a harness silent while retrying its provider) | 2 min |
 | `auth` | `AcpAuthRequired`, "Authentication required", "run /login" | 30 min |
 | `unavailable` | harness binary missing, "is not installed" | 10 min |
 | `other` | an ordinary task failure | none — it would fail on any lane |

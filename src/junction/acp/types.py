@@ -231,6 +231,16 @@ ACP_BACKENDS_KIRO_IDENTITY_STORE = frozenset({ACP_BACKEND_KIRO})
 # KAS is a member because it has always been gated this way.
 ACP_BACKENDS_KIRO_READINESS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 
+# Backends that retry a failed model call (a provider rate limit, an overload)
+# INSIDE the harness without telling the ACP client: the turn goes silent before
+# any output, or between a tool result and the next model call, and never ends.
+# OpenCode keeps its retry state in its own TUI status and forwards nothing over
+# ACP. Members get the prompt loop's model-wait watchdog
+# (``acp.client._MODEL_WAIT_STALL_TIMEOUT``), which stops such a turn with
+# ``AcpTurnStalled`` so routed work can move to another lane. A harness joins
+# when it is shown to do this; one that streams its own errors never needs it.
+ACP_BACKENDS_SILENT_RETRY = frozenset({ACP_BACKEND_OPENCODE})
+
 # ── Provider labels ──
 # The backend identity key persisted in the session map. It indexes three
 # things, so every producer must agree on it: resume compatibility

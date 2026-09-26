@@ -601,6 +601,30 @@ async def test_routed_subagent_fails_over_after_a_usage_limit(
 
 
 @pytest.mark.asyncio
+async def test_a_stalled_opencode_run_fails_over(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """OpenCode silent on a rate limit: the watchdog's AcpTurnStalled moves the run."""
+    from junction import subagent as subagent_mod
+    from junction.acp.client import AcpTurnStalled
+    from junction.harness_router import service
+    from junction.subagent import SubagentInfo, SubagentManager
+
+    router = _router(tmp_path)
+    monkeypatch.setattr(service, "get_router", lambda: router)
+    manager = _FakeManager([AcpTurnStalled("opencode", 301.0), None])
+    info = SubagentInfo(
+        id="a5", task="t", harness="opencode", lane="opencode", route_kind="bulk", routed=True
+    )
+    monkeypatch.setattr(
+        subagent_mod, "sel", lambda: SimpleNamespace(log_api_access=lambda **_: None)
+    )
+    await SubagentManager._run_accounted(_bind(manager), info, "subagent:a5")
+    assert manager.ran_on[0] == "opencode" and manager.ran_on[1] != "opencode"
+    assert router.ledger.snapshot()["opencode"].cooldown_reason == "rate_limit"
+
+
+@pytest.mark.asyncio
 async def test_pinned_subagent_does_not_move(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

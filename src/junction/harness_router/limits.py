@@ -110,15 +110,19 @@ def classify_failure(text: str) -> str:
 def classify_exception(exc: BaseException) -> str:
     """Classify an exception from a harness turn.
 
-    ``AcpAuthRequired`` is recognised by class name so this module stays
-    import-light, and a ``FileNotFoundError`` means the harness binary is
-    missing; everything else is classified from its message.
+    ``AcpAuthRequired`` and ``AcpTurnStalled`` are recognised by class name so
+    this module stays import-light, and a ``FileNotFoundError`` means the harness
+    binary is missing; everything else is classified from its message. A stalled
+    turn is a harness that went silent while retrying its model provider, which
+    in practice is a rate limit it never reported.
     """
     failure = getattr(exc, "failure", "")
     if isinstance(failure, str) and failure in LANE_FAILURES:
         return failure
     if type(exc).__name__ == "AcpAuthRequired":
         return FAILURE_AUTH
+    if type(exc).__name__ == "AcpTurnStalled":
+        return FAILURE_RATE_LIMIT
     if isinstance(exc, FileNotFoundError):
         # The harness executable itself is missing at spawn.
         return FAILURE_UNAVAILABLE
