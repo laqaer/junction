@@ -36,13 +36,14 @@ The electron-builder configuration lives in
 - mac target: `dmg` (category `public.app-category.developer-tools`). The DMG
   uses a 660×420 logical-size branded drag-to-Applications background, packaged
   as a multi-resolution TIFF with 660×420 (1×) and 1320×840 (2×) representations
-  for Retina displays. `assets/brand/build.py` generates it from the Interchange
-  palette: a flat asphalt ground carrying the Junction wordmark and a one-line
-  drag instruction, a single signal-blue route with an arrowhead between the 96px
-  app and `/Applications` targets, and a faint trunk line along the foot of the
-  window. It holds no gradient. Finder draws the two icon captions itself and the
-  background cannot style them; it has drawn them in dark text even under Dark
-  Mode. The asphalt ground has nothing painted behind them, so legibility has to
+  for Retina displays. `assets/brand/build.py` generates it from the night
+  palette: a flat night ground carrying the wordmark and a one-line drag
+  instruction, a single lamp-amber arrow between the 96px app and
+  `/Applications` targets, and a hairline along the foot of the window with the
+  three ward bars as its divider. It holds no gradient. Finder draws the two icon
+  captions itself and the background cannot style them; it has drawn them in
+  dark text even under Dark Mode. The night ground has nothing painted behind
+  them, so legibility has to
   be confirmed on a mounted DMG: if Finder draws them dark there, the caption band
   just below the two icons needs a light plate (or the window a light ground).
 - Windows target: assisted NSIS. A 164×314 welcome/finish sidebar and a 150×57

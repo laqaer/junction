@@ -50,14 +50,19 @@ legacy env prefix, and no CLI alias besides `junction`.
 
 ## Visual identity
 
-- **Mark:** a "J" whose stem throws a track switch: the letter, and a route
-  splitting off a trunk line. Round caps; white on a signal-blue plate.
-- **Palette ("Interchange"):** signal blue `#1f55ec` (plate, light accent) and
-  `#5c8dff` (dark accent) on asphalt `#0b0e13` / paper `#f4f6f9`. The dashboard's
-  factory theme slug is `junction`.
-- **Type:** Overpass (signage heritage) and Overpass Mono, bundled; no font CDN.
-- **Motif:** wayfinding: route lines with 45°/90° bends, interchange rings,
-  signage plates. No mascot.
+- **Mark:** the Ward Seal: a round seal with a keyhole whose shaft is crossed
+  by three ward bars (the wards in a lock, which stop every wrong key from
+  turning) and one drop of wax at two o'clock. Ink on paper, bars in seal
+  vermillion; the nightly build lights the drop in lamp amber.
+- **Palette:** paper (`#F3EEE3` ground, `#FBF8F1` sheet, `#1A1814` ink,
+  `#B3301A` seal, `#B86A00` lamp) and night (`#0B0E14` ground, `#141A26`
+  surface, `#ECE8E1` foreground, `#FF7A5C` seal, `#FFB547` lamp). The
+  dashboard's factory theme slug is `junction`.
+- **Type:** Fraunces (wordmark and display) and IBM Plex Sans (body and UI),
+  bundled under `website/public/fonts`; no font CDN. The wordmark is
+  "warding" in Fraunces wght 600, opsz 144, tracked -0.015 em.
+- **Motif:** the seal and the refusal, the lit window, the three ward bars.
+  No mascot.
 - **Source of truth:** [`assets/brand/build.py`](assets/brand/build.py)
   generates the mark, glyph, wordmark, lockups, README banner, app icons
   (`.png`/`.ico`/`.icns`, nightly variant), tray template, PWA icons, the

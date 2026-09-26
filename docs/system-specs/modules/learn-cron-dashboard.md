@@ -1450,7 +1450,7 @@ marker (`CONN_RECOVERY_PREFIX`, `BUSY_RECOVERY_PREFIX`), is folded by the fronte
 
 ### Design
 
-- Junction "Interchange" identity: Overpass + Overpass Mono (bundled, no font CDN), dark/light themes with a signal-blue accent
+- Brand identity: the Ward Seal mark and the paper (light) / night (dark) palettes, a vermillion seal and a lamp-amber accent; the brand faces Fraunces + IBM Plex Sans and the UI faces Overpass + Overpass Mono are all bundled (no font CDN)
 - Tailwind CSS 3 with custom theme (`tailwind.config.js`) — design tokens as CSS custom properties, utility classes throughout
 - **Typography scale**: body 14px, descriptions/details 14px (`text-sm`), labels/buttons/sidebar 13px, badges/captions 12px, decorative icons 10-11px. Minimum readable text: 11px. Code blocks: 13px mono. No text below 10px anywhere.
 - CSS grid shell: topbar + nav sidebar + content area

@@ -103,7 +103,8 @@ This repo is a public OSS tree. Never re-add:
 - **The upstream product's identity.** Junction started as a fork; none of that
   product's name, data homes, env prefix, CLI aliases, bundle ids, download or
   update hosts, repository slug, or ghost mascot ship in Junction. Junction's
-  own identity (the J-and-switch mark, the "Interchange" palette, Overpass) is
+  own identity (the Ward Seal mark, the paper-and-night palette, Fraunces and
+  IBM Plex Sans) is
   generated from [`assets/brand/build.py`](assets/brand/build.py); change it
   there, not by hand-editing a raster. The one deliberate exception is the
   Apache-2.0 attribution in `NOTICE`, which the license requires to be kept.
