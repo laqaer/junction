@@ -876,8 +876,20 @@ There are now **four independent** telemetry paths. Keep them straight:
 |------|---------|------|--------|--------|
 | OTEL metrics (`metrics/`) | Ops observability | DELTA histograms / counters | **Never** (local JSONL; OTLP only if the operator sets an endpoint) | `telemetry.enabled` (**off**) |
 | Token row store (`usage/tokens/`) | Cost + context analytics | One row per model-spending turn | **Never** | always on |
-| **Beacon (`beacon.py`)** | **Product analytics** | One anonymous ping per install per day | **Yes — to the Junction endpoint** | `telemetry.beacon_enabled` (**on**) |
-| **Install receipt (`apps/install_receipt.py`)** | **Official app adoption** | One anonymous receipt after a successful official-catalog install/update | **Yes — to the same endpoint** | `telemetry.beacon_enabled` (**on**) |
+| **Beacon (`beacon.py`)** | **Product analytics** | One anonymous ping per install per day | **Only to an operator-configured endpoint** — `telemetry.beacon_endpoint` is **empty** by default, so a stock build sends nothing | `telemetry.beacon_enabled` (**on**) AND a non-empty `telemetry.beacon_endpoint` (**empty**) |
+| **Install receipt (`apps/install_receipt.py`)** | **Official app adoption** | One anonymous receipt after a successful official-catalog install/update | **Same endpoint, same emptiness** | `telemetry.beacon_enabled` (**on**) AND `telemetry.beacon_endpoint` |
+
+**No endpoint ships in the build.** `_DEFAULT_BEACON_ENDPOINT` (`config/loader.py`)
+is `""`: the product is a local control plane and has no analytics collector of
+its own, so nothing egresses until an operator sets `telemetry.beacon_endpoint`
+to an `https://` endpoint they run (config file or `junction config set`; it is
+deliberately not dashboard-editable). With the endpoint empty, `beacon.send` and
+`install_receipt.send` return before touching the filesystem or the network, and
+the beacon logs one **debug** line per process explaining why
+(`beacon._note_unconfigured`). `junction telemetry status` reports
+`reason_code: no_endpoint`. `junction telemetry enable/disable` and the
+`beacon_enabled` toggle keep working: they decide whether a heartbeat goes out
+*once an endpoint exists*.
 
 `src/junction/beacon.py`, tests `test/test_beacon.py`. Fired from
 `slack/gateway.py::run_gateway` on a **detached daemon thread** (never awaited —
@@ -1123,8 +1135,10 @@ retries later rather than silently losing the day.
 
 ### Default-ON with four suppressions
 
-`telemetry.beacon_enabled` defaults **true** and gates the repo's only default-on
-egress family: the heartbeat and official-app install receipts.
+`telemetry.beacon_enabled` defaults **true** and gates the heartbeat and
+official-app install receipts — an egress family that is default-on in *intent*
+but sends nothing until `telemetry.beacon_endpoint` (default **empty**) names a
+collector.
 `telemetry_permitted()` suppresses both when `JUNCTION_TELEMETRY_DISABLED` is
 truthy, an enterprise **governance ceiling** pins `capabilities.telemetry` off,
 the config toggle is false, the process looks like **CI**, `JUNCTION_HOME` is

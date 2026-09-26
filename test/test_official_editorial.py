@@ -106,8 +106,16 @@ class TestFetchSeam:
     def test_the_url_is_the_editorial_document_beside_the_registry(self):
         from junction.apps import official_catalog as oc
 
-        assert oe.OFFICIAL_EDITORIAL_URL.startswith(oc.OFFICIAL_CATALOG_BASE)
-        assert oe.OFFICIAL_EDITORIAL_URL.endswith("editorial.json")
+        assert oe.editorial_url().startswith(oc.catalog_base())
+        assert oe.editorial_url().endswith("editorial.json")
+
+    def test_no_catalog_means_no_document_and_no_cache(self, tmp_path, monkeypatch):
+        from junction.apps import official_catalog as oc
+
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        assert oe.editorial_url() == ""
+        assert oe.load_sections() == []
+        assert not (tmp_path / "editorial.json").exists()
 
     def test_the_download_goes_through_the_shared_fetch_seam(self, monkeypatch):
         # The guards (https-only, refuse redirects, byte cap, exception family)
@@ -120,7 +128,7 @@ class TestFetchSeam:
 
         monkeypatch.setattr(oe, "fetch_document", fake)
         assert oe._download() is not None
-        assert seen == [oe.OFFICIAL_EDITORIAL_URL]
+        assert seen == [oe.editorial_url()]
 
     def test_a_published_categories_key_is_not_read_here(self):
         # The rail's order moved to its own document. A stale editorial document

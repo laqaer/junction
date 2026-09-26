@@ -1353,13 +1353,21 @@ def _update_wheel(layout) -> None:
     from junction import __version__ as local_version
     from junction.platform.update_governance import update_blocked_reason
     from junction.platform.update_layout import (
+        CDN_BASE_ENV,
         cdn_bases,
         cdn_bases_are_safe,
+        cdn_configured,
         release_channel,
         wheel_update_command,
     )
 
     channel = release_channel()
+    if not cdn_configured():
+        # The shipped default: no release CDN, so there is no feed to consult and
+        # no installer to run. Say so plainly instead of failing a fetch of "".
+        print(f"  ℹ️  No release feed is configured (set {CDN_BASE_ENV} to enable updates).")
+        print("  Reinstall the package from your own distribution channel to upgrade.")
+        sys.exit(1)
     feed_base, artifact_base = cdn_bases()
     feed_url = f"{feed_base}/feed/{channel}/latest-cli.json"
 

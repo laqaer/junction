@@ -70,7 +70,7 @@
       "publish": [
         {
           "provider": "generic",
-          "url": "https://updates.getjunction.dev/feed/stable/deb"
+          "url": "https://updates.example.invalid/feed/stable/deb"
         }
       ],
       "depends": [
@@ -92,7 +92,7 @@
       "publish": [
         {
           "provider": "generic",
-          "url": "https://updates.getjunction.dev/feed/stable/rpm"
+          "url": "https://updates.example.invalid/feed/stable/rpm"
         }
       ],
       "depends": [
@@ -224,7 +224,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://updates.getjunction.dev/feed/stable/"
+        "url": "https://updates.example.invalid/feed/stable/"
       }
     ],
     "win": {

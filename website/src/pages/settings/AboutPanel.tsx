@@ -1110,7 +1110,11 @@ export function AboutPanel() {
                       // Falling through to the platform string would blame the
                       // OS and hide the way back.
                       ? i18nT('pages.settings.aboutPanel.automatic_updates_unavailable_channel')
-                      : i18nT('pages.settings.aboutPanel.automatic_updates_unavailable_platform')}
+                      : updatesDisabled === 'feed'
+                        // A stock build names no update feed at all; the OS is
+                        // not the reason, so it gets its own sentence.
+                        ? i18nT('pages.settings.aboutPanel.automatic_updates_unavailable_feed')
+                        : i18nT('pages.settings.aboutPanel.automatic_updates_unavailable_platform')}
             </p>
           ) : (
             <div className="flex flex-col gap-2.5">

@@ -184,8 +184,16 @@ class TestFetchSeam:
     def test_the_url_sits_beside_the_registry(self):
         from junction.apps import official_catalog as oc
 
-        assert co.OFFICIAL_CATEGORY_ORDER_URL.startswith(oc.OFFICIAL_CATALOG_BASE)
-        assert co.OFFICIAL_CATEGORY_ORDER_URL.endswith("category-order.json")
+        assert co.category_order_url().startswith(oc.catalog_base())
+        assert co.category_order_url().endswith("category-order.json")
+
+    def test_no_catalog_means_no_document_and_no_cache(self, tmp_path, monkeypatch):
+        from junction.apps import official_catalog as oc
+
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        assert co.category_order_url() == ""
+        assert co.load_category_order() == []
+        assert not (tmp_path / "category-order.json").exists()
 
     def test_the_download_goes_through_the_shared_fetch_seam(self, monkeypatch):
         # The guards (https-only, refuse redirects, byte cap, exception family)
@@ -198,4 +206,4 @@ class TestFetchSeam:
 
         monkeypatch.setattr(co, "fetch_document", fake)
         assert co._download() is not None
-        assert seen == [co.OFFICIAL_CATEGORY_ORDER_URL]
+        assert seen == [co.category_order_url()]

@@ -596,9 +596,12 @@ reintroduced.
 The client resolves `{feedBase}/{channel}/` as a **directory** (the trailing
 slash matters: without it `new URL("latest-mac.yml", base)` replaces the last
 segment and resolves the wrong channel) and the library appends the platform
-filename. The feed base defaults to `https://updates.getjunction.dev/feed` and is
-overridable through `JUNCTION_UPDATE_FEED`, which enforces HTTPS except on
-loopback so the local harness works. The yml lives on the pointer host while
+filename. There is **no default feed base**: `DEFAULT_FEED_BASE` is empty, and
+the updater is armed only when `JUNCTION_UPDATE_FEED` (or an injected
+`feedBase`) names a pointer host; otherwise `initAutoUpdate` returns
+`disabled: "feed"` and contacts nothing. The variable enforces HTTPS except on
+loopback so the local harness works. The manual-download permalink likewise
+needs `JUNCTION_DOWNLOAD_BASE` and is `null` without it. The yml lives on the pointer host while
 `files[].url` entries are absolute byte-host URLs; electron-updater's
 `newUrlFromBase` ignores the base for absolute URLs, which is what preserves the
 split. First check runs 30s after launch, then every 4 hours.

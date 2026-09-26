@@ -36,7 +36,7 @@ _FEED_TEMPLATE = {
     "sha256": "ea681adb",
     "signature": "V9MGrlYt",
     "version": "0.1.3rc2",
-    "wheel_url": "https://download.getjunction.dev/cli/insider/0.1.3rc2/x.whl",
+    "wheel_url": "https://cdn.test.invalid/cli/insider/0.1.3rc2/x.whl",
 }
 
 
@@ -79,7 +79,7 @@ def _wheel_install(monkeypatch, tmp_path):
     new behaviour is the layout that used to be skipped entirely.
     """
     monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
-    monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+    monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
     (tmp_path / "channel").write_text("insider\n")
     monkeypatch.setattr(update_layout, "data_home", lambda: tmp_path)
     # Pin the packaging stamp rather than inheriting the ambient one: a checkout
@@ -189,6 +189,50 @@ class TestChannelResolution:
         assert feed == artifact == "https://cdn.example"
 
 
+class TestNoReleaseFeedConfigured:
+    """A stock build names no CDN: no fetch, no warning, no command."""
+
+    def test_the_check_is_skipped_silently(self, monkeypatch, caplog):
+        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        seen = _stub_feed(monkeypatch, body=_manifest(version="9.9.9"))
+        with caplog.at_level("WARNING"):
+            asyncio.run(updates._do_update_check())
+
+        info = updates.get_update_info()
+        assert "url" not in seen, "no feed must be fetched"
+        assert info["check_status"] == "unchecked"
+        assert not info["update_available"]
+        assert info["error_code"] is None
+        assert info["managed_by"] == "junction"
+        assert caplog.records == [], "an unconfigured feed is not a failure"
+
+    def test_the_bases_and_command_are_empty(self, monkeypatch):
+        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        assert update_layout.cdn_bases() == ("", "")
+        assert update_layout.cdn_configured() is False
+        assert update_layout.cdn_bases_are_safe() is False
+        assert update_layout.wheel_update_command("stable") == ""
+
+    def test_a_blank_override_counts_as_unset(self, monkeypatch):
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "   ")
+        assert update_layout.cdn_configured() is False
+
+    def test_the_wheel_capability_offers_nothing(self, monkeypatch):
+        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        capability = update_capability.derive_capability(install_root="", dist="wheel")
+        assert capability.managed_by == "junction"
+        assert capability.supported is True
+        assert capability.can_download is False
+        assert capability.remediation is None
+        assert capability.defers is False
+
+    def test_configuring_a_cdn_restores_the_feed(self, monkeypatch):
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.example/")
+        assert update_layout.cdn_configured() is True
+        assert update_layout.cdn_bases() == ("https://cdn.example", "https://cdn.example")
+        assert "https://cdn.example/cli.sh" in update_layout.wheel_update_command("stable")
+
+
 class TestWheelInstallCheck:
     def test_reports_available_against_the_channel_feed(self, monkeypatch):
         seen = _stub_feed(monkeypatch, body=_manifest(version="0.1.3rc2"))
@@ -196,7 +240,7 @@ class TestWheelInstallCheck:
         asyncio.run(updates._do_update_check())
 
         info = updates.get_update_info()
-        assert seen["url"] == "https://updates.getjunction.dev/feed/insider/latest-cli.json"
+        assert seen["url"] == "https://cdn.test.invalid/feed/insider/latest-cli.json"
         assert info["update_available"] is True
         assert info["check_status"] == "succeeded"
         assert info["error_code"] is None

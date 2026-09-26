@@ -121,12 +121,9 @@ test("buildFeedBase url-encodes the channel segment", () => {
   assert.strictEqual(url, "https://cdn.example.dev/feed/a%20b/");
 });
 
-test("buildFeedBase defaults to the public pointer host (DEFAULT_FEED_BASE)", () => {
-  assert.strictEqual(
-    buildFeedBase({ channel: "nightly" }),
-    "https://updates.getjunction.dev/feed/nightly/",
-  );
-  assert.strictEqual(DEFAULT_FEED_BASE, "https://updates.getjunction.dev/feed");
+test("there is no default feed host: buildFeedBase without a base THROWS", () => {
+  assert.strictEqual(DEFAULT_FEED_BASE, "");
+  assert.throws(() => buildFeedBase({ channel: "nightly" }), /no update feed configured/);
 });
 
 test("buildFeedBase THROWS for plain http on non-loopback hosts", () => {
@@ -409,7 +406,7 @@ test("configureUpdater: allowPrerelease=true (nightly/insider stamps are semver 
 // ---------------------------------------------------------------------------
 // CONTRACT with electron-updater internals: the generic provider resolves
 // artifact urls via newUrlFromBase(fileUrl, base). Our pointer/bytes host
-// split (updates.getjunction.dev pointers, download.getjunction.dev bytes) relies
+// split (pointer host for the yml, byte host for the artifacts) relies
 // on the UNDOCUMENTED-but-structural behaviour that an ABSOLUTE file url
 // ignores the base. A library upgrade that changes this must fail CI here,
 // not strand installs in the field.
@@ -417,18 +414,18 @@ test("configureUpdater: allowPrerelease=true (nightly/insider stamps are semver 
 
 test("CONTRACT: absolute artifact urls pass through newUrlFromBase unchanged (pointer/bytes split)", () => {
   const { newBaseUrl, newUrlFromBase } = require("electron-updater/out/util");
-  const base = newBaseUrl(buildFeedBase({ base: "https://updates.getjunction.dev/feed", channel: "nightly" }));
-  const absolute = "https://download.getjunction.dev/desktop/nightly/0.1.0-nightly.20260728t112233/Junction-arm64.dmg";
+  const base = newBaseUrl(buildFeedBase({ base: "https://updates.example.dev/feed", channel: "nightly" }));
+  const absolute = "https://download.example.dev/desktop/nightly/0.1.0-nightly.20260728t112233/Junction-arm64.dmg";
   // Base is on a DIFFERENT host than the artifact: the absolute url must win.
   assert.strictEqual(newUrlFromBase(absolute, base).href, absolute);
 });
 
 test("CONTRACT: relative channel-file names resolve under the feed base directory", () => {
   const { newBaseUrl, newUrlFromBase } = require("electron-updater/out/util");
-  const base = newBaseUrl(buildFeedBase({ base: "https://updates.getjunction.dev/feed", channel: "nightly" }));
+  const base = newBaseUrl(buildFeedBase({ base: "https://updates.example.dev/feed", channel: "nightly" }));
   assert.strictEqual(
     newUrlFromBase("latest-mac.yml", base).href,
-    "https://updates.getjunction.dev/feed/nightly/latest-mac.yml",
+    "https://updates.example.dev/feed/nightly/latest-mac.yml",
   );
 });
 
@@ -703,6 +700,21 @@ test("dev (unpackaged) build returns disabled:'dev'", () => {
   const u = initAutoUpdate(deps);
   assert.strictEqual(u.disabled, "dev");
   assert.strictEqual(calls.setFeedURL.length, 0);
+});
+
+// A stock build ships with no release CDN. With no feed the updater must not be
+// armed at all -- no setFeedURL, no checkForUpdates, no host contacted -- and
+// the reason is its own so the About panel does not blame the platform.
+test("no feed configured returns disabled:'feed' and never arms the updater", () => {
+  const { deps, calls } = makeDeps();
+  deps.feedBase = "";
+  const u = initAutoUpdate(deps);
+  assert.strictEqual(u.disabled, "feed");
+  assert.strictEqual(calls.setFeedURL.length, 0);
+  assert.strictEqual(calls.checkForUpdates, 0);
+  u.check();
+  assert.strictEqual(calls.checkForUpdates, 0);
+  assert.strictEqual(u.getInfo().downloadUrl, null, "no byte host means no permalink");
 });
 
 // ---------------------------------------------------------------------------

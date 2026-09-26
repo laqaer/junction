@@ -36,8 +36,9 @@ from typing import Any
 
 from junction.apps.official_catalog import (
     MAX_BYTES,
-    OFFICIAL_CATALOG_BASE,
     _resolve_ref,
+    catalog_configured,
+    catalog_document_url,
     fetch_document,
 )
 from junction.config.loader import config_dir
@@ -51,7 +52,14 @@ logger = logging.getLogger(__name__)
 #: v2 bump start refusing editorial documents still published at v1.
 SUPPORTED_SCHEMA_VERSION = 1
 
-OFFICIAL_EDITORIAL_URL = f"{OFFICIAL_CATALOG_BASE}editorial.json"
+#: The document's name under the catalog base (see ``official_catalog``).
+OFFICIAL_EDITORIAL_FILE = "editorial.json"
+
+
+def editorial_url() -> str:
+    """URL of the editorial document, or ``""`` when no catalog is configured."""
+    return catalog_document_url(OFFICIAL_EDITORIAL_FILE)
+
 
 #: Same TTLs as the registry: the two documents are published together by one
 #: workflow run, so caching them for different lengths would show a rail ordered
@@ -121,11 +129,18 @@ def _download() -> dict[str, Any] | None:
     refuse-redirects opener, the byte cap and the exception family are security
     behaviour that must not drift between two documents served from one origin.
     """
-    return fetch_document(OFFICIAL_EDITORIAL_URL)
+    return fetch_document(editorial_url())
 
 
 def _load_document(fetcher: Any = None) -> dict[str, Any] | None:
-    """Fetch-or-cache the editorial document, applying the schema gate."""
+    """Fetch-or-cache the editorial document, applying the schema gate.
+
+    Answers ``None`` without reading the cache when no catalog origin is
+    configured (the stock build): there is no document to fetch, and the
+    failure memory must not record a fetch that was never attempted.
+    """
+    if not catalog_configured():
+        return None
     doc = _read_cache()
     if doc is not None and _FAILED_KEY in doc:
         # A recent fetch failed. Answer from the default WITHOUT another attempt --
@@ -338,4 +353,4 @@ def load_sections(fetcher: Any = None) -> list[dict[str, Any]]:
     return out
 
 
-__all__ = ["load_sections", "MAX_BYTES", "OFFICIAL_EDITORIAL_URL"]
+__all__ = ["load_sections", "MAX_BYTES", "OFFICIAL_EDITORIAL_FILE", "editorial_url"]

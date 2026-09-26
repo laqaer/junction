@@ -177,14 +177,49 @@ class TestWheelUpdateCommand:
     def test_includes_channel(self, monkeypatch, tmp_path) -> None:
         (tmp_path / "channel").write_text("nightly\n")
         monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
-        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
 
         from junction.platform.update_layout import wheel_update_command
 
         cmd = wheel_update_command("nightly")
         assert "--channel nightly" in cmd
-        assert "https://download.getjunction.dev/cli.sh" in cmd
+        assert "https://cdn.test.invalid/cli.sh" in cmd
         assert "--proto '=https'" in cmd
+
+    def test_no_cdn_means_no_command(self, monkeypatch, tmp_path) -> None:
+        """A stock build has no installer to fetch, so the command is empty."""
+        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
+
+        from junction.platform.update_layout import wheel_update_command
+
+        assert wheel_update_command("stable") == ""
+
+    def test_no_cdn_refuses_the_cli_update_without_a_fetch(
+        self, monkeypatch, tmp_path, capsys
+    ) -> None:
+        """``junction update`` on a wheel with no CDN says so and exits 1."""
+        monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
+        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setattr("junction.platform.update_layout.distribution", lambda: "wheel")
+        monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
+
+        import urllib.request
+
+        import junction.cli_server as cs
+        from junction.platform.update_layout import InstallLayout
+
+        def boom(*a, **k):
+            raise AssertionError("no fetch may happen without a CDN")
+
+        monkeypatch.setattr(urllib.request, "urlopen", boom)
+        layout = InstallLayout(
+            kind="wheel", proj="", is_git=False, is_externally_managed=False, guidance=""
+        )
+        with pytest.raises(SystemExit) as exc:
+            cs._update_wheel(layout)
+        assert exc.value.code == 1
+        assert "JUNCTION_CDN_BASE" in capsys.readouterr().out
 
     def test_cdn_override(self, monkeypatch, tmp_path) -> None:
         monkeypatch.setenv("JUNCTION_CDN_BASE", "https://custom.cdn.example")
@@ -214,7 +249,7 @@ class TestUpdateWheelCli:
         monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
         monkeypatch.setattr("junction.platform.update_layout.distribution", lambda: "wheel")
         monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
-        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
 
         # Pretend local is 0.2.0 and feed also reports 0.2.0
         monkeypatch.setattr("junction.cli_server.__version__", "0.2.0")
@@ -252,7 +287,7 @@ class TestUpdateWheelCli:
         monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
         monkeypatch.setattr("junction.platform.update_layout.distribution", lambda: "wheel")
         monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
-        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
 
         monkeypatch.setattr("junction.cli_server.__version__", "0.1.3")
         monkeypatch.setattr("junction.__version__", "0.1.3")
@@ -304,7 +339,7 @@ class TestUpdateWheelCli:
         monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
         monkeypatch.setattr("junction.platform.update_layout.distribution", lambda: "wheel")
         monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
-        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
         (tmp_path / "channel").write_text("stable\n")
 
         import urllib.error
@@ -333,7 +368,7 @@ class TestUpdateWheelCli:
         monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
         monkeypatch.setattr("junction.platform.update_layout.distribution", lambda: "wheel")
         monkeypatch.setattr("junction.platform.update_layout.data_home", lambda: tmp_path)
-        monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+        monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
 
         import junction.cli_server as cs
         from junction.platform.update_layout import InstallLayout

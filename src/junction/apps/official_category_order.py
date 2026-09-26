@@ -49,7 +49,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from junction.apps.official_catalog import OFFICIAL_CATALOG_BASE, fetch_document
+from junction.apps.official_catalog import (
+    catalog_configured,
+    catalog_document_url,
+    fetch_document,
+)
 from junction.config.loader import config_dir
 
 logger = logging.getLogger(__name__)
@@ -63,7 +67,14 @@ logger = logging.getLogger(__name__)
 #: without the rest.
 SUPPORTED_SCHEMA_VERSION = 1
 
-OFFICIAL_CATEGORY_ORDER_URL = f"{OFFICIAL_CATALOG_BASE}category-order.json"
+#: The document's name under the catalog base (see ``official_catalog``).
+OFFICIAL_CATEGORY_ORDER_FILE = "category-order.json"
+
+
+def category_order_url() -> str:
+    """URL of the category-order document, or ``""`` when no catalog is configured."""
+    return catalog_document_url(OFFICIAL_CATEGORY_ORDER_FILE)
+
 
 #: Matches the registry's and the editorial document's TTLs: one workflow run
 #: publishes all three, so a shorter TTL here would only buy a window in which the
@@ -125,7 +136,7 @@ def _download() -> dict[str, Any] | None:
     refuse-redirects opener, the byte cap and the exception family are security
     behaviour that must not drift between documents served from one origin.
     """
-    return fetch_document(OFFICIAL_CATEGORY_ORDER_URL)
+    return fetch_document(category_order_url())
 
 
 def _load_document(fetcher: Any = None) -> dict[str, Any] | None:
@@ -133,7 +144,13 @@ def _load_document(fetcher: Any = None) -> dict[str, Any] | None:
 
     The gate is separate from the editorial document's on purpose -- that
     independence is the whole reason the two are published apart.
+
+    Answers ``None`` without reading the cache when no catalog origin is
+    configured (the stock build): there is no document to fetch, and the
+    failure memory must not record a fetch that was never attempted.
     """
+    if not catalog_configured():
+        return None
     doc = _read_cache()
     if doc is not None and _FAILED_KEY in doc:
         # A recent fetch failed. Answer from the default WITHOUT another attempt --
@@ -195,4 +212,9 @@ def load_category_order(fetcher: Any = None) -> list[str]:
     return out
 
 
-__all__ = ["load_category_order", "MAX_CATEGORIES", "OFFICIAL_CATEGORY_ORDER_URL"]
+__all__ = [
+    "load_category_order",
+    "MAX_CATEGORIES",
+    "OFFICIAL_CATEGORY_ORDER_FILE",
+    "category_order_url",
+]

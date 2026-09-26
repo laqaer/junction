@@ -164,15 +164,35 @@ def set_release_channel(channel: str) -> str:
     return normalized
 
 
+#: Environment variable naming the release CDN (feed pointers and artifact
+#: bytes). It is the ONLY source of a feed: a stock build ships with no release
+#: host of its own, so with it unset the wheel install has no update feed, the
+#: gateway skips the feed check silently, and no upstream host is contacted.
+CDN_BASE_ENV = "JUNCTION_CDN_BASE"
+
+
 def cdn_bases() -> tuple[str, str]:
     """``(feed base, artifact base)`` — mirrors ``cli.sh``'s two URL classes.
 
-    Respects ``JUNCTION_CDN_BASE`` override for alternate CDNs / testing.
+    Both come from ``JUNCTION_CDN_BASE``; both are ``""`` when it is unset or
+    blank, which every caller must read as "no feed configured" (see
+    :func:`cdn_configured`) rather than as a URL to fetch.
     """
-    override = (os.environ.get("JUNCTION_CDN_BASE") or "").strip().rstrip("/")
+    override = (os.environ.get(CDN_BASE_ENV) or "").strip().rstrip("/")
     if override:
         return override, override
-    return "https://updates.getjunction.dev", "https://download.getjunction.dev"
+    return "", ""
+
+
+def cdn_configured() -> bool:
+    """Is a release CDN configured at all?
+
+    ``False`` on a stock build. Callers that would otherwise build a feed URL
+    or an installer command must skip quietly on ``False``: an unconfigured
+    feed is the shipped state, not a failure, so it earns no warning.
+    """
+    feed_base, artifact_base = cdn_bases()
+    return bool(feed_base and artifact_base)
 
 
 #: Characters a CDN base may contain. ``JUNCTION_CDN_BASE`` is operator-set and
@@ -188,7 +208,10 @@ def cdn_bases_are_safe() -> bool:
 
     Every caller that builds a shell command from :func:`cdn_bases` must gate on
     this. It lives here, beside ``cdn_bases``, so the CLI path and the gateway's
-    unattended path cannot drift apart on what they consider safe.
+    unattended path cannot drift apart on what they consider safe. An
+    unconfigured CDN (both bases empty) is not safe to build a command from
+    either, so it answers ``False``; callers distinguish the two cases with
+    :func:`cdn_configured` first.
     """
     feed_base, artifact_base = cdn_bases()
     return bool(
@@ -224,10 +247,16 @@ def wheel_update_command(channel: str | None = None) -> str:
     from stdin and to pass what follows to that script. The file form must NOT
     carry it, since ``cli.sh`` parses argv strictly and answers
     "unknown argument '-s'" with exit 2.
+
+    Returns ``""`` when no CDN is configured: there is no installer to fetch, and
+    an empty command is what every consumer (the dashboard's copy-paste box, the
+    Slack unattended path) already treats as "nothing to offer".
     """
     if channel is None:
         channel = release_channel()
     _, artifact_base = cdn_bases()
+    if not artifact_base:
+        return ""
     return (
         "set -e; "
         f"_jn_body=\"$(curl -fsSL --proto '=https' {artifact_base}/cli.sh)\"; "
@@ -243,8 +272,10 @@ __all__ = [
     "detect_install_layout",
     "release_channel",
     "set_release_channel",
+    "CDN_BASE_ENV",
     "cdn_bases",
     "cdn_bases_are_safe",
+    "cdn_configured",
     "wheel_update_command",
     "RELEASE_CHANNELS",
     "EXTERNALLY_MANAGED",

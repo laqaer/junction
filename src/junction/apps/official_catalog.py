@@ -1,9 +1,13 @@
 """Fetch the official app catalog and annotate registry rows with it.
 
-WHAT THIS IS. The catalog at ``apps.getjunction.dev`` is the list Junction
-publishes, delivered as a document rather than baked into the wheel. The bundled
-``app-registry.json`` answers the same question offline -- it is the seed -- so
-both carry ``provenance: "official"``; see ``_apply_trust_fields``.
+WHAT THIS IS. The catalog is a published list of apps, delivered as a document
+rather than baked into the wheel, served from the origin named by
+``JUNCTION_APP_CATALOG_BASE``. A stock build names NO origin: the variable is
+empty by default, every fetch here is then a no-op, and the store answers from
+the bundled ``app-registry.json`` seed plus the built-ins discovered on disk. An
+operator who publishes their own catalog points the variable at it. The seed
+answers the same question offline -- it is the seed -- so both carry
+``provenance: "official"``; see ``_apply_trust_fields``.
 
 WHAT THIS IS NOT, YET. Three deliberate omissions, each a fail-closed gate here
 rather than an ignored field, so the first time one matters it surfaces loudly
@@ -36,6 +40,7 @@ from __future__ import annotations
 import http.client
 import json
 import logging
+import os
 import re
 import time
 import urllib.error
@@ -49,10 +54,43 @@ from junction.config.loader import config_dir
 
 logger = logging.getLogger(__name__)
 
-#: The Junction app registry's publish location. Trailing slash matters: refs are
-#: resolved against it.
-OFFICIAL_CATALOG_BASE = "https://apps.getjunction.dev/"
-OFFICIAL_CATALOG_URL = f"{OFFICIAL_CATALOG_BASE}official-registry.json"
+#: Environment variable naming the catalog origin (an ``https://`` base URL).
+#: Empty by default: a stock build has no catalog host of its own, so nothing
+#: here touches the network until an operator sets it. The three documents
+#: (registry, editorial, category order) all live under this one origin.
+CATALOG_BASE_ENV = "JUNCTION_APP_CATALOG_BASE"
+
+#: The registry document's name under the catalog base.
+OFFICIAL_CATALOG_FILE = "official-registry.json"
+
+
+def catalog_base() -> str:
+    """The configured catalog origin with a trailing slash, or ``""``.
+
+    The trailing slash matters: asset refs are resolved against it. A value
+    that is not ``https://`` is treated as unset rather than fetched, for the
+    same reason :func:`_https_request` refuses other schemes -- a plaintext or
+    ``file://`` origin is exactly the input this module must never act on.
+    """
+    raw = (os.environ.get(CATALOG_BASE_ENV) or "").strip()
+    if not raw:
+        return ""
+    if urllib.parse.urlsplit(raw).scheme != "https":
+        logger.warning("%s must be an https:// URL; ignoring %r", CATALOG_BASE_ENV, raw)
+        return ""
+    return raw.rstrip("/") + "/"
+
+
+def catalog_configured() -> bool:
+    """Is a catalog origin configured? ``False`` on a stock build."""
+    return bool(catalog_base())
+
+
+def catalog_document_url(name: str) -> str:
+    """URL of a document published under the catalog base, or ``""`` when unset."""
+    base = catalog_base()
+    return base + name if base else ""
+
 
 #: The only schemaVersion this code understands. An unknown major is refused
 #: rather than best-guessed: the document's meaning is what changed, and a
@@ -61,8 +99,8 @@ OFFICIAL_CATALOG_URL = f"{OFFICIAL_CATALOG_BASE}official-registry.json"
 SUPPORTED_SCHEMA_VERSION = 1
 
 CACHE_TTL = 3600  # 1 hour
-#: How long a FAILED fetch is remembered. Without this, an outage at
-#: ``apps.getjunction.dev`` costs every ``GET /api/apps/registry`` a fresh attempt
+#: How long a FAILED fetch is remembered. Without this, an outage at the
+#: catalog origin costs every ``GET /api/apps/registry`` a fresh attempt
 #: and up to ``FETCH_TIMEOUT`` seconds of wall clock, for as long as the outage
 #: lasts -- so the store's own page load inherits the CDN's downtime, which is
 #: not the "degrade to the seed" this module promises. Much shorter than the
@@ -165,10 +203,11 @@ def _https_request(url: str) -> urllib.request.Request:
     """Build the catalog GET, refusing any scheme but https.
 
     ``urllib`` honours ``file://``, so the scheme is asserted at the one place a
-    URL turns into a fetch rather than trusted from whoever supplied it. Today
-    the only caller passes a module constant; the guard is here so that stays
-    true if a future caller passes something configurable, which is exactly the
-    change that would otherwise turn this into a file read.
+    URL turns into a fetch rather than trusted from whoever supplied it. The
+    URL is operator-configurable (``JUNCTION_APP_CATALOG_BASE``), and although
+    :func:`catalog_base` already refuses a non-https origin, this guard is what
+    keeps a ``file://`` value from becoming a file read if that check ever
+    loosens.
     """
     scheme = urllib.parse.urlsplit(url).scheme
     if scheme != "https":
@@ -187,8 +226,13 @@ def fetch_document(url: str) -> dict[str, Any] | None:
     from becoming a file read if a caller ever passes something configurable.
 
     Every failure is a degradation rather than an error: each caller has a
-    working answer without the document.
+    working answer without the document. An empty *url* is what every document
+    resolves to while no catalog origin is configured; it is answered ``None``
+    without a fetch, a warning, or a failure marker.
     """
+    if not url:
+        logger.debug("no app catalog configured (%s is empty); skipping fetch", CATALOG_BASE_ENV)
+        return None
     try:
         req = _https_request(url)
         with _open_catalog(req) as resp:
@@ -224,7 +268,7 @@ def fetch_document(url: str) -> dict[str, Any] | None:
 
 def _download() -> dict[str, Any] | None:
     """Fetch THIS module's document. The registry's own call into the seam."""
-    return fetch_document(OFFICIAL_CATALOG_URL)
+    return fetch_document(catalog_document_url(OFFICIAL_CATALOG_FILE))
 
 
 def load_official_catalog(fetcher: Any = None) -> list[dict[str, Any]]:
@@ -232,8 +276,12 @@ def load_official_catalog(fetcher: Any = None) -> list[dict[str, Any]]:
 
     *fetcher* is injected by tests. Empty is always a safe answer: the store
     renders the seed index and the built-ins discovered from disk, which is what
-    it did before this module existed.
+    it did before this module existed -- and what it does on a stock build,
+    where no catalog origin is configured and this returns before touching the
+    cache or the network.
     """
+    if not catalog_configured():
+        return []
     doc = _read_cache()
     if doc is not None and _FAILED_KEY in doc:
         # A recent fetch failed. Answer from the seed WITHOUT another attempt --
@@ -284,7 +332,10 @@ def _resolve_ref(ref: Any) -> str:
         return ""
     if ref.startswith("/"):
         return ref
-    return OFFICIAL_CATALOG_BASE + ref
+    base = catalog_base()
+    # No origin to host the bytes: the ref is dropped rather than emitted as a
+    # bare relative path the browser would resolve against the dashboard.
+    return base + ref if base else ""
 
 
 def _curated_str(value: Any) -> str:
@@ -526,6 +577,12 @@ def fetch_inventory_entries() -> list[dict[str, Any]]:
     produces installs the external one. App trust is keyed by name, so the display
     the consent decision is made on is part of the trust boundary.
     """
+    # No catalog origin: a definite "nothing published", not an outage. Returning
+    # empty (rather than raising) is what lets the install path resolve a seed
+    # row on a stock build; CatalogUnavailable is reserved for "could not ask".
+    if not catalog_configured():
+        return []
+
     # Respect the module's failure memory before paying another timeout.
     #
     # `load_official_catalog` remembers a failed fetch precisely so the next caller does
@@ -539,7 +596,7 @@ def fetch_inventory_entries() -> list[dict[str, Any]]:
     if isinstance(cached, dict) and _FAILED_KEY in cached:
         raise CatalogUnavailable("a recent catalog fetch failed; not retrying yet")
 
-    doc = fetch_document(OFFICIAL_CATALOG_URL)
+    doc = fetch_document(catalog_document_url(OFFICIAL_CATALOG_FILE))
     if not isinstance(doc, dict):
         _write_failure()
     problem = _envelope_error(doc)
@@ -563,7 +620,7 @@ def inventory_for_install(name: str) -> dict[str, Any] | None:
 
     So the install path re-fetches the document over HTTPS and ignores the cache
     entirely. Someone able to write a local file cannot answer for
-    ``apps.getjunction.dev``, and TLS to our own domain is the trust basis this module
+    the configured catalog origin, and TLS to that domain is the trust basis this module
     already documents. This is NOT a substitute for verifying the ``.sig`` sidecar --
     that would also close the case where the CDN itself is wrong -- but it removes
     the local surface, which is the one this client creates for itself.

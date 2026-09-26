@@ -22,18 +22,20 @@
  * without an Electron runtime.
  */
 
-// Default update feed host: updates.getjunction.dev, the pointer hostname
-// reserved for Junction's distribution CDN. That host is not provisioned yet;
-// JUNCTION_UPDATE_FEED points a build at another feed.
+// Update feed host: NONE by default. A stock build ships without a release
+// CDN of its own, so the updater is armed only when JUNCTION_UPDATE_FEED names
+// a pointer host (or a caller injects `feedBase`); otherwise initAutoUpdate
+// returns the disabled surface with `disabled: "feed"` and never contacts a
+// network host.
 //
 // electron-updater's generic provider treats the configured URL as a DIRECTORY
 // and resolves <base>/latest-mac.yml (macOS) or <base>/latest-linux.yml (Linux)
-// from it. The artifact URLs inside those files are ABSOLUTE and point at the
-// byte hostname (download.getjunction.dev), which is what preserves our
-// pointer/bytes host split: `new URL(fileUrl, base)` ignores the base when
-// fileUrl is absolute. That behaviour is structural but undocumented, so
-// test/auto-update.test.js pins it against the real installed library — a
-// version bump that changes it must fail CI, not strand installs in the field.
+// from it. The artifact URLs inside those files are ABSOLUTE and may point at a
+// separate byte hostname, which is what preserves a pointer/bytes host split:
+// `new URL(fileUrl, base)` ignores the base when fileUrl is absolute. That
+// behaviour is structural but undocumented, so test/auto-update.test.js pins it
+// against the real installed library — a version bump that changes it must
+// fail CI, not strand installs in the field.
 const {
   classifyBundleLocation,
   containingDirForBundle,
@@ -223,7 +225,10 @@ function isBundleContainerWritable(resourcesPath) {
   }
 }
 
-const DEFAULT_FEED_BASE = "https://updates.getjunction.dev/feed";
+// Empty: no feed until one is configured (JUNCTION_UPDATE_FEED or an injected
+// `feedBase`). Exported so the test suite can pin that the default contacts
+// nobody.
+const DEFAULT_FEED_BASE = "";
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // every 4h while running
 const LAUNCH_CHECK_DELAY_MS = 30 * 1000; // let startup settle first
 const FORCE_EXIT_AFTER_MS = 5 * 1000; // failsafe: guarantee exit after quitAndInstall
@@ -240,9 +245,11 @@ const FORCE_EXIT_AFTER_MS = 5 * 1000; // failsafe: guarantee exit after quitAndI
  */
 const SUPPORTED_PLATFORMS = new Set(["darwin", "linux", "win32"]);
 
-// Byte host for human (manual) downloads -- deliberately the same CDN the
-// updater pulls from, so a manual reinstall lands on identical artifacts.
-const DOWNLOAD_BASE = "https://download.getjunction.dev";
+// Byte host for human (manual) downloads -- the same CDN the updater pulls
+// from, so a manual reinstall lands on identical artifacts. Empty by default
+// for the same reason as the feed: with no host there is no permalink to offer
+// and manualDownloadUrl answers null.
+const DOWNLOAD_BASE = (process.env.JUNCTION_DOWNLOAD_BASE || "").replace(/\/+$/, "");
 // Channels with a desktop publish lane. "dev" has none.
 const KNOWN_CHANNELS = new Set(["nightly", "insider", "stable"]);
 // Channels with a WINDOWS publish lane. publish-windows.yml is wired into
@@ -460,10 +467,14 @@ function shouldAutoOffer({ candidate, current, followedChannel, defaultChannel }
  *
  * @param {{base:string, channel:string, variant?:string}} o
  * @returns {string}
- * @throws {Error} on a non-HTTPS, non-loopback base
+ * @throws {Error} on a non-HTTPS, non-loopback base, or when no base is
+ *   configured at all (initAutoUpdate refuses to arm before reaching here)
  */
 function buildFeedBase({ base, channel, variant = "" }) {
   const b = (base || DEFAULT_FEED_BASE).replace(/\/+$/, "");
+  if (!b) {
+    throw new Error("no update feed configured (set JUNCTION_UPDATE_FEED)");
+  }
   const tail = variant ? `${encodeURIComponent(variant)}/` : "";
   const url = `${b}/${encodeURIComponent(channel)}/${tail}`;
   const parsed = new URL(url);
@@ -499,7 +510,7 @@ function buildFeedBase({ base, channel, variant = "" }) {
  * @returns {string|null}
  */
 function manualDownloadUrl(channel, osPlatform, osArch = process.arch, linuxFormat = "") {
-  if (!channelHasLane(channel)) return null;
+  if (!DOWNLOAD_BASE || !channelHasLane(channel)) return null;
   // The mac DMG is universal, so darwin needs no arch. Linux has no universal
   // binary: publish-linux.yml publishes one artifact per arch per format under
   // the basenames below, so handing a user the wrong one is an immediate
@@ -1157,6 +1168,13 @@ function initAutoUpdate(deps) {
   if (!SUPPORTED_PLATFORMS.has(osPlatform)) {
     log.info(`[update] ${osPlatform} — auto-update disabled (no publish lane yet)`);
     return { check: () => {}, download: async () => {}, install: async () => {}, getInfo, disabled: "platform" };
+  }
+  // No feed configured: the shipped default. Nothing to check against, so the
+  // updater is never armed and no host is contacted. Reported as its own
+  // reason so About can say "no update feed" rather than blame the platform.
+  if (!feedBase) {
+    log.info("[update] no update feed configured — auto-update disabled");
+    return { check: () => {}, download: async () => {}, install: async () => {}, getInfo, disabled: "feed" };
   }
   // A channel can lack a desktop publish lane entirely -- that is what
   // channelHasLane() records. No PLATFORM restricts channels today: every
