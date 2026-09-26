@@ -873,14 +873,80 @@ class TestAcpClientBackendSelection:
         await _stop_stderr_drain(client)
 
     @pytest.mark.asyncio
-    async def test_spawn_claude_backend_missing_bin_raises(self, tmp_path):
+    async def test_spawn_claude_backend_missing_bin_and_npx_raises(self, tmp_path):
+        """Neither an installed adapter nor npx: the spawn fails loud, and the
+        miss is NOT cached so a later install is picked up without a restart."""
+        import junction.acp.client as _mod
+
         client = AcpClient(work_dir=tmp_path, acp_backend=ACP_BACKEND_CLAUDE)
         with (
             patch("junction.acp.client._resolve_claude_acp_bin", return_value=None),
+            patch("junction.acp.client._resolve_claude_acp_npx_argv", return_value=None),
             patch("asyncio.create_subprocess_exec", new_callable=AsyncMock),
         ):
-            with pytest.raises(AcpError, match="claude-agent-acp not found"):
+            with pytest.raises(AcpError, match="claude-agent-acp not found.*npx"):
                 await client._spawn()
+        assert _mod._claude_acp_argv_cache is _mod._UNRESOLVED
+
+    @pytest.mark.asyncio
+    async def test_spawn_claude_backend_missing_bin_falls_back_to_npx(self, tmp_path):
+        """With only ``claude`` + a Node toolchain on the host, the registry's
+        ``npx -y @agentclientprotocol/claude-agent-acp`` launcher is used."""
+        import junction.acp.client as _mod
+
+        npx_argv = ["/opt/homebrew/bin/npx", "-y", "@agentclientprotocol/claude-agent-acp@^0.60.0"]
+        client = AcpClient(work_dir=tmp_path, acp_backend=ACP_BACKEND_CLAUDE)
+        with (
+            patch("junction.acp.client._resolve_claude_acp_bin", return_value=None),
+            patch("junction.acp.client._resolve_claude_acp_npx_argv", return_value=npx_argv),
+            patch(
+                "junction.acp.client.wrap_argv",
+                side_effect=lambda argv, mode, **kwargs: (argv, None),
+            ),
+            patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+            patch("junction.session._track_pid"),
+            patch("junction.session._track_session_pid"),
+        ):
+            mock_proc = MagicMock()
+            mock_proc.pid = 12345
+            mock_proc.returncode = None
+            mock_exec.return_value = mock_proc
+
+            await client._spawn()
+
+            argv = list(strip_spawn_shim(mock_exec.call_args.args))
+            assert argv == npx_argv
+        # A positive resolution is cached for later spawns.
+        assert _mod._claude_acp_argv_cache == npx_argv
+
+        await _stop_stderr_drain(client)
+
+    def test_resolve_claude_acp_npx_argv_requires_npx(self):
+        """The registry's bare ``npx`` is only usable when npx resolves on the
+        augmented PATH, and it is spawned by absolute path when it does."""
+        registry_argv = ["npx", "-y", "@agentclientprotocol/claude-agent-acp@^0.60.0"]
+        with (
+            patch("junction.acp.runtimes.resolve_spawn_argv", return_value=registry_argv),
+            patch("junction.env.find_node_tool", return_value=None),
+        ):
+            assert acp_client._resolve_claude_acp_npx_argv() is None
+        with (
+            patch("junction.acp.runtimes.resolve_spawn_argv", return_value=registry_argv),
+            patch("junction.env.find_node_tool", return_value="/usr/local/bin/npx"),
+        ):
+            assert acp_client._resolve_claude_acp_npx_argv() == [
+                "/usr/local/bin/npx",
+                "-y",
+                "@agentclientprotocol/claude-agent-acp@^0.60.0",
+            ]
+
+    def test_resolve_claude_acp_argv_prefers_installed_adapter(self):
+        with (
+            patch("junction.acp.client._resolve_claude_acp_bin", return_value=["/bin/adapter"]),
+            patch("junction.acp.client._resolve_claude_acp_npx_argv") as npx,
+        ):
+            assert acp_client._resolve_claude_acp_argv() == ["/bin/adapter"]
+            npx.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_spawn_kiro_backend_unchanged(self, tmp_path):

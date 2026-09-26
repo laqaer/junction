@@ -373,7 +373,11 @@ def _resolve_node_for_script(script_path: str) -> str | None:
 
 
 _UNRESOLVED: object = object()  # sentinel for "not yet resolved"
-_claude_acp_argv_cache: list[str] | None | object = _UNRESOLVED
+# Holds only a POSITIVE resolution. A miss is never cached: the adapter or
+# ``npx`` may appear later (an ``npm i -g`` or a Node bootstrap while the
+# gateway is running), and a cached ``None`` would fail every later spawn
+# until restart.
+_claude_acp_argv_cache: list[str] | object = _UNRESOLVED
 
 
 def _vendored_claude_acp_roots(pkg_dir: Path | None = None) -> list[Path]:
@@ -495,6 +499,49 @@ def _resolve_claude_acp_bin() -> list[str] | None:
             return [node_on_path, resolved]
 
     return None
+
+
+def _resolve_claude_acp_npx_argv() -> list[str] | None:
+    """Return the runtime registry's ``npx`` launcher for the claude adapter, or None.
+
+    The fallback used when no installed ``claude-agent-acp`` is found: the
+    registry (``acp.runtimes``) spells the adapter as ``npx -y
+    @agentclientprotocol/claude-agent-acp@<range>``, which fetches it on first
+    run so a host with only ``claude`` and a Node toolchain works out of the
+    box. ``npx`` is resolved to an absolute path on the augmented PATH (mise /
+    nvm / fnm / volta bin dirs, the npm global bin) so a non-login daemon finds
+    it; a bare name would let the OS raise ``FileNotFoundError`` at spawn.
+    Returns None when the registry gives no npx form or ``npx`` is nowhere.
+    """
+    from junction.acp.runtimes import RuntimeNotFoundError, resolve_spawn_argv
+    from junction.env import find_node_tool
+
+    try:
+        argv = resolve_spawn_argv(ACP_BACKEND_CLAUDE)
+    except RuntimeNotFoundError:
+        return None
+    if not argv:
+        return None
+    if Path(argv[0]).name.split(".")[0] != "npx":
+        # The registry found an installed adapter itself; use it as-is.
+        return argv
+    npx = find_node_tool("npx", augmented_path(os.environ.get("PATH", "")))
+    if not npx:
+        return None
+    return [npx, *argv[1:]]
+
+
+def _resolve_claude_acp_argv() -> list[str] | None:
+    """Full claude-adapter spawn argv: an installed adapter first, then npx.
+
+    Order: ``_resolve_claude_acp_bin`` (env override, vendored copy, mise,
+    augmented PATH) and, only when that finds nothing,
+    ``_resolve_claude_acp_npx_argv``. None means neither exists.
+    """
+    argv = _resolve_claude_acp_bin()
+    if argv:
+        return argv
+    return _resolve_claude_acp_npx_argv()
 
 
 def _resolve_claude_code_executable() -> str | None:
@@ -2701,15 +2748,22 @@ class AcpClient:
                 except (OSError, ValueError, TypeError):
                     logger.warning("initial seed of settings.local.json failed", exc_info=True)
             global _claude_acp_argv_cache  # noqa: PLW0603
-            if _claude_acp_argv_cache is _UNRESOLVED:
-                _claude_acp_argv_cache = await asyncio.to_thread(_resolve_claude_acp_bin)
             claude_argv = _claude_acp_argv_cache
-            if not isinstance(claude_argv, list) or not claude_argv:
+            if not isinstance(claude_argv, list):
+                # Installed adapter first, else the registry's ``npx`` launcher
+                # (see _resolve_claude_acp_argv). Only a hit is cached.
+                resolved = await asyncio.to_thread(_resolve_claude_acp_argv)
+                if resolved:
+                    _claude_acp_argv_cache = resolved
+                claude_argv = resolved
+            if not claude_argv:
                 raise AcpError(
-                    f"{CLAUDE_ACP_BIN} not found. Install it with "
-                    f"'npm i -g {CLAUDE_ACP_NPM_PKG}' (or add it as a project "
-                    f"dependency), or set CLAUDE_AGENT_ACP_BIN to its entry "
-                    f"script."
+                    f"{CLAUDE_ACP_BIN} not found, and 'npx' is not available to "
+                    f"fetch it automatically. Install a Node toolchain (npx is "
+                    f"used automatically when present), install the adapter "
+                    f"with 'npm i -g {CLAUDE_ACP_NPM_PKG}' (or add it as a "
+                    f"project dependency), or set CLAUDE_AGENT_ACP_BIN to its "
+                    f"entry script."
                 )
             argv: list[str] = claude_argv
         elif self._is_spec:
