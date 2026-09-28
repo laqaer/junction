@@ -15,6 +15,35 @@ The upstream component map remains
 [`docs/architecture/overview.md`](docs/architecture/overview.md). This file
 is the Junction thesis that sits on top of it.
 
+## In plain words
+
+An **agent** is a helper that does a job on your computer: it reads files, runs
+commands, writes code. A helper thinks with a **model**, and models come from
+different companies, each reached through an account you have configured.
+
+Junction is the **switchboard** in the middle. It has two panels:
+
+- A **harness panel** — the helpers installed on your machine (Cursor, Claude
+  Code, Codex, and the rest). Pick one, or let Junction take the first it finds.
+- A **model panel** — a list of model names Junction shows you. It is a menu,
+  not a pipeline: Junction shows the names and does not pass your traffic to a
+  provider it does not control.
+
+So: one local window, your own machine, no provider keys typed into a chat box.
+If the model panel is not running, the helpers still work — Junction just shows
+less.
+
+**Merged versus local.** What the panels above describe is merged on `main` and
+ships with a Junction build. Work still on a branch — a fix in progress or a new
+panel not yet merged — is *not* part of the product until a human merges it to
+`main`. The in-flight lanes live in [`docs/TASK_MAP.md`](docs/TASK_MAP.md); this
+file calls out anything local where it appears.
+
+**Update trigger.** When a change moves a boundary or changes behavior this file
+describes — a plane, the auto order, the degradation path, the compose surface —
+update this file in the **same change**. `AGENTS.md` routes the truth; this file
+must not drift behind it.
+
 ## Shape
 
 ```mermaid
@@ -47,9 +76,12 @@ typically `:4202`) **and** memory / cron / skills.
 
 Already on `main`. `agent.acp_backend` defaults to `auto` via
 `src/junction/acp/runtimes.py`. Resolution preference is Cursor, Claude,
-Codex, Kimi, DeepSeek Harness, Goose, Grok, OpenCode, Pi, Droid, then
-`kiro-cli`.
+Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid, then `kiro-cli`.
 Unknown values degrade to `auto`, not to `kiro-cli`.
+
+Adding OpenCode to that order is local only, on a branch, and not yet on
+`main` (`rescue/harness-router` — see
+[`docs/TASK_MAP.md`](docs/TASK_MAP.md)).
 
 `agent.provider` stays `acp`. Multi-ACP must not be re-landed. An added
 harness adapts; it does not widen the Kiro path. Identity is positive
@@ -112,4 +144,3 @@ status|catalog|plan` routes stay the model-plane detail views. The JSON
 snapshot does not carry a dedicated vendor-cli key — optional is an inventory
 flag on the runtime row. Human text for planes, doctor, and `up` is formatted
 in one function so the three surfaces cannot drift.
-

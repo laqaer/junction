@@ -14,6 +14,13 @@ model-router change. Product / architecture / roadmap overlays:
 [`ROADMAP.md`](ROADMAP.md). Package identifiers (`junction`,
 `JUNCTION_HOME`) stay as implementation spellings, not the product name.
 
+**Progress and memory:** GitHub issues own status for bugs, features, and
+stories; ADRs ([`docs/adr/`](docs/adr/README.md)) own the *why*;
+[`docs/TASK_MAP.md`](docs/TASK_MAP.md) is a dated local handoff for work in
+flight. The task map carries the session start/finish steps; the operator's
+`~/dev/memory/INDEX.md` is a reference, not authority. Record work in place —
+commit and push only when explicitly authorized.
+
 ## What this is
 
 Junction is a local control plane: dock ACP coding agents and route their
