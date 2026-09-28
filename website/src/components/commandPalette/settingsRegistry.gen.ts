@@ -924,7 +924,7 @@ export const SETTINGS_REGISTRY: SettingEntry[] =
     "id": "chat.describe-your-role",
     "label": "Describe your role",
     "labelKey": "pages.settings.chatPanel.describe_your_role",
-    "description": "Kiro uses this description to adapt vocabulary and examples to your role.",
+    "description": "Junction uses this description to adapt vocabulary and examples to your role.",
     "tab": "chat",
     "type": "input",
     "occurrence": 1
@@ -1253,7 +1253,7 @@ export const SETTINGS_REGISTRY: SettingEntry[] =
     "id": "chat.your-role",
     "label": "Your Role",
     "labelKey": "pages.settings.chatPanel.your_role",
-    "description": "Kiro matches vocabulary and examples to your professional background",
+    "description": "Junction matches vocabulary and examples to your professional background",
     "tab": "chat",
     "type": "select",
     "occurrence": 1
