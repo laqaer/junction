@@ -28,7 +28,7 @@ from junction.harness_router import limits
         "Insufficient credits are reported by OpenRouter.",
         "You've reached your speed limit.",
         'The harness printed "You\'ve hit your usage limit."',
-        '`Authentication required` is the message to display.',
+        "`Authentication required` is the message to display.",
         "```text\nYou've hit your usage limit.\n```",
         "Please run /login first to test the sign-in flow.",
         "",
