@@ -141,6 +141,28 @@ and running a different harness than the one named is what H3/H8 forbid. The
 warm pool is bypassed with decision `bypass_harness`: pooled processes run the
 configured backend and a claim only re-keys and re-models them.
 
+The model the factory hands the provider is scoped to the harness that will run
+it, never to the configured default (H12). A caller's `model_override` — the
+lane's own model, spelled for its harness — wins outright, passed through
+untouched except on the kiro namespace, where a canonical registry key is
+translated with `model_registry.to_acp_id`. With no explicit pick, a **named**
+Kiro pin (the named kiro agent's model slot) is allowed whenever the target
+harness is in the kiro namespace (`ACP_BACKENDS_KIRO_MODELS`, kiro + kas), while
+the configured global `agent.model` applies only when the target harness is the
+configured one — so an override onto kiro from a Codex-configured install does
+not inherit the Codex model, and a foreign **configured** harness keeps the
+`agent.model` the operator pinned, spelled for that harness, while the value
+derived from the kiro agent spec is never sent to it. No model id crosses a
+distinct harness identity in either direction. `auto` is resolved once, at
+provider creation, with `acp.runtimes.select_runtime`: the provider receives the
+**concrete** backend, so the model namespace and the running harness come from a
+single decision. `auto` is retained, and no model inherited, only when no
+runtime resolves.
+
+**Caution.** Because the provider now receives the concrete backend, an existing
+session persisted under `auto` may see a single provider-switch replay after
+upgrade. Live behavior is unverified.
+
 ### Terminal (`junction route run`)
 
 Runs one prompt on the resolved lane with the same failover rules, streaming to

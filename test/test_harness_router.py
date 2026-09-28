@@ -58,6 +58,19 @@ def _settings(*lanes: Lane, **kw: Any) -> RoutingSettings:
     return RoutingSettings(lanes=tuple(lanes), **kw)
 
 
+@pytest.fixture(autouse=True)
+def _pin_os_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Detect harnesses against a pinned OS home, never the developer's.
+
+    ``load_settings(home=...)`` and ``HarnessRouter(home=...)`` take the Junction
+    DATA home, while harness detection proves the DSH harness from the OS home
+    (``~/.buzz/tools/dsh-buzz/launch-acp.sh``) — two different roots on purpose.
+    Without this pin a developer who has that launcher gets a DSH lane no ``which``
+    stub asked for and these assertions stop being hermetic.
+    """
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+
 # ── kinds ──
 
 
@@ -445,6 +458,144 @@ def test_factory_honours_per_session_backend(tmp_path: Path) -> None:
     override = factory("k2", cwd=str(tmp_path), acp_backend_override="codex")
     assert default._client.backend == "cursor"
     assert override._client.backend == "codex"
+
+
+def _factory_kwargs(cfg: Any, session_key: str, **call: Any) -> dict[str, Any]:
+    """AcpProvider construction kwargs for one factory call, provider stubbed."""
+    from unittest.mock import MagicMock, patch
+
+    with patch("junction.providers.acp.AcpProvider") as mock_provider:
+        mock_provider.return_value = MagicMock()
+        factory = cfg.create_provider_factory()
+        factory(session_key, **call)
+        assert mock_provider.called, "factory did not construct AcpProvider"
+        return mock_provider.call_args.kwargs
+
+
+def test_factory_keeps_kiro_spelled_model_on_the_kiro_harness(tmp_path: Path) -> None:
+    from junction.acp.types import ACP_BACKEND_KIRO
+    from junction.config.loader import JunctionConfig
+
+    cfg = JunctionConfig()
+    cfg.agent.acp_backend = ACP_BACKEND_KIRO
+    cfg.agent.model = "opus-4.8-1m"  # canonical -> kiro's "claude-opus-4.8"
+    kwargs = _factory_kwargs(cfg, "k1", cwd=str(tmp_path))
+    assert kwargs["acp_backend"] == ACP_BACKEND_KIRO
+    assert kwargs["model"] == "claude-opus-4.8"
+
+
+def test_factory_does_not_leak_the_global_model_to_a_foreign_harness(tmp_path: Path) -> None:
+    from junction.acp.types import ACP_BACKEND_KIRO
+    from junction.config.loader import JunctionConfig
+
+    cfg = JunctionConfig()
+    cfg.agent.acp_backend = ACP_BACKEND_KIRO
+    cfg.agent.model = "opus-4.8-1m"
+    kwargs = _factory_kwargs(cfg, "k2", cwd=str(tmp_path), acp_backend_override="codex")
+    assert kwargs["acp_backend"] == "codex"
+    assert kwargs["model"] == ""
+
+
+def test_factory_does_not_leak_a_foreign_global_model_to_a_kiro_override(tmp_path: Path) -> None:
+    from junction.config.loader import JunctionConfig
+
+    cfg = JunctionConfig()
+    cfg.agent.acp_backend = "codex"
+    cfg.agent.model = "codex-native"
+    kwargs = _factory_kwargs(cfg, "k3", cwd=str(tmp_path), acp_backend_override="kiro")
+    assert kwargs["acp_backend"] == ""
+    assert kwargs["model"] == ""
+
+
+def test_factory_keeps_an_explicit_model_on_its_own_foreign_harness(tmp_path: Path) -> None:
+    from junction.config.loader import DEFAULT_MODEL, JunctionConfig
+
+    cfg = JunctionConfig()
+    cfg.agent.acp_backend = "codex"
+    cfg.agent.model = "codex-native"
+    # The configured harness keeps the operator's own pick (that namespace).
+    assert _factory_kwargs(cfg, "k4", cwd=str(tmp_path))["model"] == "codex-native"
+    # The auto-derived kiro spec model is not the operator's pick, so it stays home.
+    cfg.agent.model = DEFAULT_MODEL
+    assert _factory_kwargs(cfg, "k5", cwd=str(tmp_path))["model"] == ""
+
+
+def test_factory_passes_a_routed_lane_model_through_untouched(tmp_path: Path) -> None:
+    from junction.config.loader import JunctionConfig
+
+    cfg = JunctionConfig()
+    kwargs = _factory_kwargs(
+        cfg,
+        "k6",
+        cwd=str(tmp_path),
+        model_override="openrouter/deepseek/deepseek-v4",
+        acp_backend_override="opencode",
+    )
+    assert kwargs["model"] == "openrouter/deepseek/deepseek-v4"
+
+
+def test_factory_pairs_the_model_with_the_auto_selected_harness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from junction.acp.runtimes import builtin_specs
+    from junction.acp.types import ACP_BACKEND_CURSOR, ACP_BACKEND_KIRO
+    from junction.config.loader import JunctionConfig
+
+    cfg = JunctionConfig()  # acp_backend "auto"
+    cfg.agent.model = "opus-4.8-1m"
+    # ``auto`` is resolved once per provider creation, so the harness the
+    # provider runs and the model it is handed always agree: a foreign harness
+    # keeps the operator's pick verbatim, Kiro gets it translated.
+    monkeypatch.setattr(
+        "junction.acp.runtimes.select_runtime",
+        lambda *_a, **_k: builtin_specs()[ACP_BACKEND_CURSOR],
+    )
+    foreign = _factory_kwargs(cfg, "k7", cwd=str(tmp_path))
+    assert (foreign["acp_backend"], foreign["model"]) == (ACP_BACKEND_CURSOR, "opus-4.8-1m")
+    monkeypatch.setattr(
+        "junction.acp.runtimes.select_runtime",
+        lambda *_a, **_k: builtin_specs()[ACP_BACKEND_KIRO],
+    )
+    kiro = _factory_kwargs(cfg, "k8", cwd=str(tmp_path))
+    assert (kiro["acp_backend"], kiro["model"]) == (ACP_BACKEND_KIRO, "claude-opus-4.8")
+
+
+def test_factory_with_no_harness_installed_sends_no_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from junction.acp.runtimes import RuntimeNotFoundError
+    from junction.config.loader import JunctionConfig
+
+    def _no_runtime(*_a: object, **_k: object) -> object:
+        raise RuntimeNotFoundError("none installed")
+
+    monkeypatch.setattr("junction.acp.runtimes.select_runtime", _no_runtime)
+    cfg = JunctionConfig()  # acp_backend "auto", nothing installed
+    cfg.agent.model = "claude-sonnet-4.6"
+    kwargs = _factory_kwargs(cfg, "k9", cwd=str(tmp_path))
+    # ``auto`` stays unresolved (no namespace is known), and the configured
+    # model is not sent into it.
+    assert (kwargs["acp_backend"], kwargs["model"]) == ("auto", "")
+
+
+def test_factory_resolves_an_explicit_auto_override_like_auto(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from junction.acp.runtimes import builtin_specs
+    from junction.acp.types import ACP_BACKEND_CURSOR, ACP_BACKEND_KIRO
+    from junction.config.loader import JunctionConfig
+
+    monkeypatch.setattr(
+        "junction.acp.runtimes.select_runtime",
+        lambda *_a, **_k: builtin_specs()[ACP_BACKEND_CURSOR],
+    )
+    cfg = JunctionConfig()
+    cfg.agent.acp_backend = ACP_BACKEND_KIRO
+    cfg.agent.model = "opus-4.8-1m"
+    kwargs = _factory_kwargs(cfg, "k10", cwd=str(tmp_path), acp_backend_override="auto")
+    # An explicit ``auto`` override picks the installed runtime even when the
+    # configured harness is Kiro, and the kiro-spelled global is not carried over.
+    assert (kwargs["acp_backend"], kwargs["model"]) == (ACP_BACKEND_CURSOR, "")
 
 
 def test_pool_decisions_name_the_harness_bypass() -> None:

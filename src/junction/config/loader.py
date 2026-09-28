@@ -8459,8 +8459,14 @@ class JunctionConfig:
             AcpProvider,  # circular: acp -> client -> session -> config.loader
         )
 
+        # ``agent.model`` unpinned ("auto") is replaced by the model read from the
+        # kiro agent spec, so ``model`` is a KIRO-spelled id whenever the operator
+        # did not name one. ``model_explicit`` distinguishes that derived value
+        # from a model the operator actually configured, which may be spelled for
+        # whichever harness they configured.
+        model_explicit = self.agent.model != DEFAULT_MODEL
         model = self.agent.model
-        if model == DEFAULT_MODEL:
+        if not model_explicit:
             model = self._resolve_agent_model()
 
         sandbox = self.agent.sandbox
@@ -8503,12 +8509,43 @@ class JunctionConfig:
             **_kwargs: object,
         ) -> AcpProvider:
             wdir = Path(cwd) if cwd else _session_work_dir(session_key)
-            # A per-session harness (a spawn's ``harness`` or a routed lane)
-            # replaces the global agent.acp_backend for this provider only.
-            # Absent, the configured backend is used exactly as before.
-            backend = self.agent.acp_backend
-            if acp_backend_override is not None:
-                backend = resolve_acp_backend_override(acp_backend_override)
+            # The harness this provider will run. A per-session override (a
+            # spawn's ``harness`` or a routed lane) replaces the configured
+            # ``agent.acp_backend`` for this provider only.
+            #
+            # ``auto`` names no namespace, so resolve it HERE — once — instead of
+            # letting the provider resolve it a second time at spawn: the model
+            # chosen below and the harness that runs it then come from ONE
+            # decision, and a harness installed in between cannot make them
+            # disagree. When nothing is installed the value stays ``auto`` — the
+            # provider's start raises its usual missing-runtime error and a
+            # harness installed later is still honored (with nothing inherited
+            # to mis-scope, see the model branch below).
+            from junction.acp.runtimes import RuntimeNotFoundError, select_runtime
+            from junction.acp.types import ACP_BACKEND_AUTO
+
+            override = (
+                resolve_acp_backend_override(acp_backend_override)
+                if acp_backend_override is not None
+                else None
+            )
+            configured = self.agent.acp_backend
+            auto = ACP_BACKEND_AUTO
+            if configured == ACP_BACKEND_AUTO or override == ACP_BACKEND_AUTO:
+                try:
+                    auto = select_runtime(ACP_BACKEND_AUTO).id
+                except RuntimeNotFoundError:
+                    auto = ACP_BACKEND_AUTO
+            if configured == ACP_BACKEND_AUTO:
+                configured = auto
+            if override is None:
+                backend = configured
+            elif override == ACP_BACKEND_AUTO:
+                # An explicit ``auto`` override picks the installed runtime
+                # (once, above) — it is not the configured harness.
+                backend = auto
+            else:
+                backend = override
             # Canonical agent identity for the session (keys per-agent watchdog
             # windows on the handle) — one shared resolution rule, see
             # resolve_agent_identity.
@@ -8516,7 +8553,9 @@ class JunctionConfig:
             # Resolve the model, highest tier first:
             #   1. model_override — the caller's explicit pick. The dashboard
             #      passes the slot's own model, else the Junction agent's
-            #      configured default (see chat_runner._run_chat).
+            #      configured default (see chat_runner._run_chat). A lane spells
+            #      its model for its own harness, so this value is always
+            #      expressed in the target harness's namespace.
             #   2. the bound kiro agent's own pinned model, for a named agent.
             #      Custom agents MUST resolve here because the ACP
             #      session/set_mode path switches prompt/tools but not the model,
@@ -8528,14 +8567,37 @@ class JunctionConfig:
             #      applies to every agent, not just "junction": an agent that
             #      pins nothing inherits the user's configured default instead of
             #      silently falling through to the backend's own choice.
+            # An id never crosses a harness namespace (H12). Tier 2 is kiro-
+            # spelled (it reads kiro-cli's own agent spec) and tier 3 belongs to
+            # the CONFIGURED harness, so neither may reach a session that
+            # resolves to a different harness — a per-session override to
+            # another harness takes only the caller's explicit pick, else the
+            # target harness keeps its own default. The global model still
+            # applies verbatim to a FOREIGN configured harness when the operator
+            # pinned it (it is theirs, spoken in that harness's namespace).
             # "" at the end means nothing is pinned anywhere; AcpClient
             # normalizes "" to DEFAULT_MODEL, same as None.
+            from junction.acp.types import ACP_BACKENDS_KIRO_MODELS, ACP_BACKENDS_SPEC_FAMILY
+
+            harness = backend
+            kiro_models = harness in ACP_BACKENDS_KIRO_MODELS
+            # ``auto`` is left unresolved only when nothing is installed, so no
+            # harness namespace is known and no configured model may be sent. A
+            # tier that belongs to the CONFIGURED harness is likewise withheld
+            # from a session an override moved to a different one.
+            known = kiro_models or harness in ACP_BACKENDS_SPEC_FAMILY
+            configured_ok = known and backend == configured
             if model_override:
                 m = model_override
-            elif not agent or agent == "junction":
+            elif kiro_models:
+                if not agent or agent == "junction":
+                    m = model if configured_ok else ""
+                else:
+                    m = self._resolve_named_agent_model(agent) or (model if configured_ok else "")
+            elif model_explicit and configured_ok:
                 m = model
             else:
-                m = self._resolve_named_agent_model(agent) or model
+                m = ""
             # Translation boundary (mirrors the _claude_code factory): the model
             # may be a canonical registry key (e.g. "opus-4.8-1m" — the wire /
             # dropdown value after /api/models canonicalization) OR an already-
@@ -8547,8 +8609,9 @@ class JunctionConfig:
             # native ids and their aliases (claude-haiku-4.5, claude-sonnet-4.5,
             # …) are DISTINCT real kiro models and must pass through unchanged,
             # not get folded to Sonnet the way the claude_code path downgrades
-            # them (the claude backend has no Haiku).
-            m = model_registry.to_acp_id(m) if m else m
+            # them (the claude backend has no Haiku). Only the kiro namespace
+            # needs it: a foreign harness's model is already spelled for itself.
+            m = model_registry.to_acp_id(m) if m and kiro_models else m
             # Thread the slot's effort into a per-model override so the kiro
             # cli.json overlay is written from it at spawn — without this, a
             # kiro cold start (or the handler's reset-then-respawn) would only

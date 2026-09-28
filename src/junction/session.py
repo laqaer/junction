@@ -2863,7 +2863,14 @@ class SessionManager:
         # it, so deferring past that short-circuit keeps per-agent resolution
         # (which globs + reads ``~/.kiro/agents/*.json``) off the hot path for
         # already-live sessions.
-        if model is None:
+        #
+        # A per-session harness override skips this entirely: every tier
+        # ``_session_model`` would fill (the Junction agent's pin, the kiro
+        # agent's slot, the global default) is spelled for the CONFIGURED
+        # harness. Leaving ``model`` None lets the provider factory choose from
+        # the override harness's own namespace instead of handing it a
+        # kiro-spelled id the caller never picked (H12).
+        if model is None and extra_factory_kwargs.get("acp_backend_override") is None:
             # KiroACP-only: the effective model is the kiro/ACP slot.
             #
             # Precedence: the Junction agent's own model > the bound kiro

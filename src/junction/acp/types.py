@@ -235,6 +235,15 @@ ACP_BACKENDS_KIRO_IDENTITY_STORE = frozenset({ACP_BACKEND_KIRO})
 # KAS is a member because it has always been gated this way.
 ACP_BACKENDS_KIRO_READINESS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 
+# Backends that speak kiro-cli's OWN model namespace (``kiro-cli --list-models``).
+# A canonical registry key must be translated with ``model_registry.to_acp_id``
+# before it reaches one of these, and the kiro-spelled global model default
+# applies to them. Every other harness advertises ids in its own namespace, so a
+# model id is never compared, translated, or inherited across the boundary
+# (harness-parity H12). Positive membership rather than "not a spec-family
+# harness", which would sweep in whatever harness is added next.
+ACP_BACKENDS_KIRO_MODELS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
+
 # Backends that retry a failed model call (a provider rate limit, an overload)
 # INSIDE the harness without telling the ACP client: the turn goes silent before
 # any output, or between a tool result and the next model call, and never ends.

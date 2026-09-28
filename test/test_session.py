@@ -12,6 +12,7 @@ import pytest
 
 from junction.acp.types import ACP_BACKEND_KIRO, AcpPromptStats
 from junction.config import JunctionConfig
+from junction.config.loader import DEFAULT_MODEL
 from junction.messaging.link import ChannelLink
 from junction.session import (
     _BG_BLIND_RECYCLE_PROMPTS,
@@ -942,6 +943,86 @@ class TestCancelRaceCondition:
         mgr = SessionManager(cfg, provider_factory=factory)
         await mgr.get_or_create("test-model", model="claude-sonnet")
         assert captured["model_override"] == "claude-sonnet"
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_foreign_override_gets_no_synthesized_model(self, cfg):
+        """A per-session harness override owns its own model namespace.
+
+        The cold-start resolver fills ``model_override`` from the kiro agent
+        slots when the caller passes none; doing that for a session bound to
+        another harness would hand it a kiro-spelled id as if the caller had
+        picked it (H12), and the factory cannot tell the difference.
+        """
+        captured = {}
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            captured.update(kwargs)
+            m = AsyncMock()
+            m.start = AsyncMock()
+            m.is_process_alive = lambda: True
+            m.context_usage_pct = lambda: 0.0
+            m.has_active_turn = lambda: False
+            return m
+
+        cfg.agent.model = "claude-sonnet-4.6"
+        mgr = SessionManager(cfg, provider_factory=factory)
+        await mgr.get_or_create("test-foreign", acp_backend_override="codex")
+        assert captured.get("model_override") is None
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_explicit_model_survives_a_foreign_override(self, cfg):
+        """A caller's own pick is still forwarded verbatim to another harness."""
+        captured = {}
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            captured.update(kwargs)
+            m = AsyncMock()
+            m.start = AsyncMock()
+            m.is_process_alive = lambda: True
+            m.context_usage_pct = lambda: 0.0
+            m.has_active_turn = lambda: False
+            return m
+
+        mgr = SessionManager(cfg, provider_factory=factory)
+        await mgr.get_or_create(
+            "test-foreign-explicit", model="lane-native", acp_backend_override="codex"
+        )
+        assert captured["model_override"] == "lane-native"
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_real_factory_keeps_the_kiro_global_off_a_foreign_override(self, cfg):
+        """End to end through the REAL factory: no kiro model on a codex session."""
+        captured = {}
+
+        from junction.providers.acp import AcpProvider as RealAcpProvider
+
+        class FakeAcpProvider(RealAcpProvider):
+            """A real provider instance whose start/shutdown never spawn."""
+
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+            async def start(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+        cfg.agent.model = "opus-4.8-1m"
+        with patch("junction.providers.acp.AcpProvider", FakeAcpProvider):
+            mgr = SessionManager(cfg, provider_factory=cfg.create_provider_factory())
+            provider, _, _ = await mgr.get_or_create(
+                "test-real-foreign", acp_backend_override="codex"
+            )
+        assert captured["acp_backend"] == "codex"
+        assert captured["model"] == ""
+        # The kiro-spelled global did not reach the codex session's client.
+        assert provider.client._model in ("", DEFAULT_MODEL)
         await mgr.close_all()
 
 
