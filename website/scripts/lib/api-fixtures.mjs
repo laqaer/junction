@@ -21,7 +21,7 @@ export const json = (route, body, status = 200) => route.fulfill({
 
 /** The boot-path responses every harness needs to get a rendered page. */
 const DEFAULTS = {
-  '/api/kiro-prerequisite': {
+  '/api/harness-prerequisite': {
     platform: 'darwin', installed: true, authenticated: true, ready: true,
     initial_setup_complete: true, can_auto_install: false, can_login: false,
     repair_required: false, docs_url: '', setup_allowed: false,

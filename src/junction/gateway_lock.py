@@ -27,7 +27,7 @@ keeps the lock alive after the parent dies. A child that wedges before ``exec``
 therefore pins the home: every later start is refused, and the pid recorded in
 the file names a process that no longer exists. This occurs when ``preexec_fn``
 forces a plain ``fork()`` of the multi-threaded gateway in
-:mod:`junction.kiro_prerequisite`.
+:mod:`junction.harness_prerequisite`.
 
 The remedy is to stop creating such children, not to weaken this guard;
 ``_run_process`` therefore does not use ``preexec_fn``. What this

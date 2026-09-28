@@ -44,7 +44,7 @@ const servers = [
     authChallenge: true,
     authGrantPresent: false,
   },
-  // Authorized through Kiro CLI. The probe still cannot verify the grant is live,
+  // Authorized through CLI. The probe still cannot verify the grant is live,
   // but it CAN see that one exists -- so this row reads "Signed in" and offers no
   // action, and must stay visually distinct from the no-evidence row below.
   {

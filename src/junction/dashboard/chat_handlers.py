@@ -2583,7 +2583,7 @@ async def api_chat_slot_continue(request: web.Request) -> web.Response:
     other dispatch route guards the same way (see ``api_chat_slot_regenerate``).
 
     NOT readiness-gated, and that is deliberate — see
-    ``kiro_readiness.reject_if_kiro_unverified``. Continue is an ordinary send: it
+    ``harness_readiness.reject_if_harness_unverified``. Continue is an ordinary send: it
     queues one synthetic message and lets the runner dispatch it, mutating nothing
     durable up front, so the ACP attempt is its authority and a signed-out install
     reports ``AcpAuthRequired`` in the transcript. Gating it instead put the

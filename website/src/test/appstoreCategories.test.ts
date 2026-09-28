@@ -111,7 +111,7 @@ describe('pickFeatured', () => {
 describe('provenance helpers', () => {
   it('labels built-ins, tagged registries, and core entries', () => {
     expect(sourceLabel({ origin: 'builtin' })).toBe('Built-in')
-    expect(sourceLabel({ _registry: 'kirodotdev-labs' })).toBe('kirodotdev-labs')
+    expect(sourceLabel({ _registry: 'laqaer-labs' })).toBe('laqaer-labs')
     expect(sourceLabel({})).toBe('Junction registry')
   })
 
@@ -126,7 +126,7 @@ describe('provenance helpers', () => {
     // first-party — the badge sits next to an Install that runs setup code
     // with gateway privileges.
     expect(isVerified({ author: 'Junction', _registry: 'evil-registry' })).toBe(false)
-    expect(isVerified({ author: 'junction', _registry: 'kirodotdev-labs' })).toBe(false)
+    expect(isVerified({ author: 'junction', _registry: 'laqaer-labs' })).toBe(false)
   })
 
   it('rejects a forged origin: "builtin" from an external registry entry', () => {

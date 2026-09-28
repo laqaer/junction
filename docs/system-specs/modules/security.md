@@ -1097,7 +1097,7 @@ Sidebar status follows the same read-only boundary. `GET /api/chat/slots` and th
 
 **App-token least-privilege scope (CWE-269)** (`token_auth.py`): an app token is confined to its own app namespace + the API path prefixes the app declares in its manifest `permissions.api` allowlist; everything else is denied. `_enforce_app_scope()` is **deny-by-default** — `_app_api_allowlist()` returns an empty tuple on any failure (app not installed, manifest unreadable), confining the app to its own namespace only. Enforced at all grant points (the normal cookie/query-param flow and the cross-app `/apps/<other>/api` reverse-proxy path re-check); dashboard-user tokens (empty `app` claim) bypass the gate entirely. Denials emit a `log_api_access` SEL event (`operation="app_scope_check"`, `outcome="denied"`).
 
-**Kiro prerequisite setup boundary (`kiro_prerequisite.py`)**: the dashboard's
+**Harness prerequisite setup boundary (`harness_prerequisite.py`)**: the dashboard's
 status/install/login endpoints require the exact configured owner. Before an
 owner exists, only the signed `local-app` and `local-startup` dashboard subjects
 may use them; generic dashboard-user and app-token callers are denied and

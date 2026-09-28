@@ -9,7 +9,7 @@ import { Card } from '../components/ui'
 //
 // These assertions render, rather than scanning source text, for one specific
 // reason: a lexical scan cannot see `className={cond ? 'p-3' : ''}`, and two such
-// `Card` call sites already exist in this repo (KiroPrerequisiteGate). The last
+// `Card` call sites already exist in this repo (HarnessPrerequisiteGate). The last
 // case here is that shape.
 
 const classesOf = (el: HTMLElement) => (el.className || '').split(/\s+/)

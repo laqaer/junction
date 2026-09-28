@@ -1427,7 +1427,7 @@ def _doctor_memory_pressure(issues: list[str]) -> None:
 # On Windows the running executable cannot be replaced, so the downloaded
 # installer can never be applied while a Junction ACP child holds the binary — and
 # the "update pending" state is not cleared after an upgrade either
-# (kirodotdev/Kiro#9825). Nothing in that loop is self-limiting: one installer is
+# (upstream issue #9825). Nothing in that loop is self-limiting: one installer is
 # left behind per process start. A reporting user cleared ~80 GB of them.
 #
 # Junction cannot fix the updater, and must NOT disable updates on the user's behalf:
@@ -1435,7 +1435,7 @@ def _doctor_memory_pressure(issues: list[str]) -> None:
 # interactive CLI, so setting it silently would suppress their security updates.
 # What Junction can do is stop the residue being invisible, since it is Junction's
 # per-session spawning that turns a stale flag into tens of gigabytes.
-# Upstream fix requested in kirodotdev/Kiro#10970.
+# Upstream fix requested in issue #10970.
 _CLI_INSTALLER_GLOB = "kiro-installer*"
 
 # One file can be a download still in flight; two or more is residue, because a

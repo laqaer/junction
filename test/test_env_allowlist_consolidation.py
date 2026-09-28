@@ -1,7 +1,7 @@
 """The shared env-allowlist membership convention: ``platform_compat.env_key_allowed``.
 
 Five subprocess env allowlists delegate their matching to this one predicate —
-``apps.registry._is_safe_env_key``, ``kiro_prerequisite._allowlisted_env``,
+``apps.registry._is_safe_env_key``, ``harness_prerequisite._allowlisted_env``,
 dev_fleet's ``_is_safe_env_key``, the auto-improvement github_repo profile's
 measurement passthrough, and the source-provider CLI env filter. Each keeps its
 OWN allowlist (they are deliberately different trust boundaries); only the
@@ -14,14 +14,14 @@ These tests pin two things:
 1. the convention itself, under a simulated Windows AND a simulated POSIX; and
 2. per-site parity — each call site's admitted key set equals what its own
    private matching logic admits, so the consolidation is behavior-preserving.
-   The wrapper sites (registry, kiro_prerequisite, dev_fleet) carry the
+   The wrapper sites (registry, harness_prerequisite, dev_fleet) carry the
    fold-on-Windows oracle; the two sites whose allowlists are written
    upper-case-exact (github_repo profile, source_providers) carry the exact
    oracle on BOTH platforms, evaluated against the upper-cased key spelling a
    real Windows ``os.environ`` yields — which is exactly why the shared fold
    admits the same set there.
 
-``kiro_prerequisite`` passes three different allowlists through the shared matcher:
+``harness_prerequisite`` passes three different allowlists through the shared matcher:
 ``_PROBE_ENV_KEYS`` for the credential-free ``--version`` probe, and
 ``_IDENTITY_PROBE_ENV_KEYS`` plus ``_IDENTITY_PROXY_ENV_KEYS`` for the ``whoami``
 identity probe, which names Kiro CLI's own credential and the host's (possibly
@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import pytest
 
-from junction import kiro_prerequisite, platform_compat
+from junction import harness_prerequisite, platform_compat
 from junction.apps import registry
 from junction.apps.builtins.auto_improvement.profiles.github_repo import profile as gh_profile
 from junction.apps.builtins.dev_fleet import server as dev_fleet_server
@@ -161,20 +161,20 @@ class TestCallSiteParity:
             environ, registry._SAFE_ENV_KEYS, windows=windows, folds_on_windows=True
         )
 
-    def test_kiro_prerequisite_probe_allowlist(self, monkeypatch, windows: bool) -> None:
+    def test_harness_prerequisite_probe_allowlist(self, monkeypatch, windows: bool) -> None:
         monkeypatch.setattr(platform_compat, "IS_WINDOWS", windows)
         environ = _environ_for(windows)
-        filtered = kiro_prerequisite._allowlisted_env(
-            dict(environ), kiro_prerequisite._PROBE_ENV_KEYS
+        filtered = harness_prerequisite._allowlisted_env(
+            dict(environ), harness_prerequisite._PROBE_ENV_KEYS
         )
         assert set(filtered) == _oracle_admitted(
             environ,
-            kiro_prerequisite._PROBE_ENV_KEYS,
+            harness_prerequisite._PROBE_ENV_KEYS,
             windows=windows,
             folds_on_windows=True,
         )
 
-    def test_kiro_prerequisite_identity_probe_allowlist(self, monkeypatch, windows: bool) -> None:
+    def test_harness_prerequisite_identity_probe_allowlist(self, monkeypatch, windows: bool) -> None:
         """The identity probe's credential carve-out obeys the same convention.
 
         Separate site from ``_PROBE_ENV_KEYS`` because only ``whoami`` carries the
@@ -184,12 +184,12 @@ class TestCallSiteParity:
         """
         monkeypatch.setattr(platform_compat, "IS_WINDOWS", windows)
         environ = _environ_for(windows)
-        filtered = kiro_prerequisite._allowlisted_env(
-            dict(environ), kiro_prerequisite._IDENTITY_PROBE_ENV_KEYS
+        filtered = harness_prerequisite._allowlisted_env(
+            dict(environ), harness_prerequisite._IDENTITY_PROBE_ENV_KEYS
         )
         assert set(filtered) == _oracle_admitted(
             environ,
-            kiro_prerequisite._IDENTITY_PROBE_ENV_KEYS,
+            harness_prerequisite._IDENTITY_PROBE_ENV_KEYS,
             windows=windows,
             folds_on_windows=True,
         )
@@ -203,8 +203,8 @@ class TestCallSiteParity:
         """
         monkeypatch.setattr(platform_compat, "IS_WINDOWS", windows)
         environ = _environ_for(windows)
-        admitted = kiro_prerequisite._allowlisted_env(
-            dict(environ), kiro_prerequisite._IDENTITY_PROBE_ENV_KEYS
+        admitted = harness_prerequisite._allowlisted_env(
+            dict(environ), harness_prerequisite._IDENTITY_PROBE_ENV_KEYS
         )
         assert set(admitted) == {"KIRO_API_KEY"}
 
@@ -218,8 +218,8 @@ class TestCallSiteParity:
         monkeypatch.setattr(platform_compat, "IS_WINDOWS", windows)
         for allowed in (
             registry._SAFE_ENV_KEYS,
-            kiro_prerequisite._PROBE_ENV_KEYS,
-            kiro_prerequisite._IDENTITY_PROXY_ENV_KEYS,
+            harness_prerequisite._PROBE_ENV_KEYS,
+            harness_prerequisite._IDENTITY_PROXY_ENV_KEYS,
             dev_fleet_server._SAFE_ENV_KEYS,
             gh_profile._MEASURE_ENV_PASSTHROUGH,
             source_providers._PROVIDER_BASE_ENV_KEYS,
@@ -287,9 +287,9 @@ class TestCallSiteParity:
         secrets = {"GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY", "SLACK_BOT_TOKEN"}
         for allowed in (
             registry._SAFE_ENV_KEYS,
-            kiro_prerequisite._PROBE_ENV_KEYS,
-            kiro_prerequisite._IDENTITY_PROBE_ENV_KEYS,
-            kiro_prerequisite._IDENTITY_PROXY_ENV_KEYS,
+            harness_prerequisite._PROBE_ENV_KEYS,
+            harness_prerequisite._IDENTITY_PROBE_ENV_KEYS,
+            harness_prerequisite._IDENTITY_PROXY_ENV_KEYS,
             dev_fleet_server._SAFE_ENV_KEYS,
             gh_profile._MEASURE_ENV_PASSTHROUGH,
             source_providers._PROVIDER_BASE_ENV_KEYS,

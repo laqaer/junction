@@ -1,11 +1,11 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { KiroPrerequisiteStatus } from '../api/client'
-import KiroPrerequisiteGate, {
+import type { HarnessPrerequisiteStatus } from '../api/client'
+import HarnessPrerequisiteGate, {
   asSentence,
-  kiroPrerequisiteIsBlocking,
-  kiroPrerequisiteRefetchInterval,
-} from '../components/KiroPrerequisiteGate'
+  harnessPrerequisiteIsBlocking,
+  harnessPrerequisiteRefetchInterval,
+} from '../components/HarnessPrerequisiteGate'
 import { renderWithProviders } from './helpers'
 
 vi.mock('../utils/clipboard', () => ({
@@ -25,14 +25,14 @@ vi.mock('../api/client', () => ({
     }
   },
   api: {
-    kiroPrerequisite: vi.fn(),
-    repairKiroPrerequisiteSpecs: vi.fn(),
+    harnessPrerequisite: vi.fn(),
+    repairHarnessPrerequisiteSpecs: vi.fn(),
   },
 }))
 
 import { api, ApiError } from '../api/client'
 
-function status(overrides: Partial<KiroPrerequisiteStatus> = {}): KiroPrerequisiteStatus {
+function status(overrides: Partial<HarnessPrerequisiteStatus> = {}): HarnessPrerequisiteStatus {
   return {
     platform: 'Linux',
     installed: false,
@@ -54,7 +54,7 @@ function status(overrides: Partial<KiroPrerequisiteStatus> = {}): KiroPrerequisi
   }
 }
 
-describe('KiroPrerequisiteGate', () => {
+describe('HarnessPrerequisiteGate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // The gate remembers first-run completion in localStorage, so each case
@@ -64,23 +64,23 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('keeps a slow readiness poll after setup so later sign-out is detected', () => {
-    expect(kiroPrerequisiteRefetchInterval(status({ ready: true }))).toBe(30_000)
-    expect(kiroPrerequisiteRefetchInterval(status({ initial_setup_complete: true }))).toBe(30_000)
+    expect(harnessPrerequisiteRefetchInterval(status({ ready: true }))).toBe(30_000)
+    expect(harnessPrerequisiteRefetchInterval(status({ initial_setup_complete: true }))).toBe(30_000)
   })
 
   it('polls the host faster while the first-run gate blocks the dashboard', () => {
-    // The gate is what the user stares at while they install Kiro CLI from
+    // The gate is what the user stares at while they install CLI from
     // kiro.dev and sign in. Neither step touches the gateway, so the gate has to
     // keep asking or it can never lift on its own.
-    expect(kiroPrerequisiteIsBlocking(status())).toBe(true)
-    expect(kiroPrerequisiteRefetchInterval(status())).toBe(5_000)
+    expect(harnessPrerequisiteIsBlocking(status())).toBe(true)
+    expect(harnessPrerequisiteRefetchInterval(status())).toBe(5_000)
 
     // Not blocking: ready, a returning user, and a non-owner each have their own
     // screen and must not drive a host probe every 5s.
-    expect(kiroPrerequisiteIsBlocking(status({ ready: true }))).toBe(false)
-    expect(kiroPrerequisiteIsBlocking(status({ initial_setup_complete: true }))).toBe(false)
-    expect(kiroPrerequisiteIsBlocking(status({ setup_allowed: false }))).toBe(false)
-    expect(kiroPrerequisiteIsBlocking(undefined)).toBe(false)
+    expect(harnessPrerequisiteIsBlocking(status({ ready: true }))).toBe(false)
+    expect(harnessPrerequisiteIsBlocking(status({ initial_setup_complete: true }))).toBe(false)
+    expect(harnessPrerequisiteIsBlocking(status({ setup_allowed: false }))).toBe(false)
+    expect(harnessPrerequisiteIsBlocking(undefined)).toBe(false)
   })
 
   it('forces a real host probe on the blocking gate, not a latched read', async () => {
@@ -88,47 +88,47 @@ describe('KiroPrerequisiteGate', () => {
     // poll that omits it can never observe a CLI the user just installed. Driven
     // by an explicit refetch rather than by waiting out the interval, so the
     // assertion is about the force decision and not about elapsed time.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status())
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status())
 
     const rendered = renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    await screen.findByText(/docks ACP coding agents/)
+    await screen.findByText(/connects ACP agents/)
     // Cold mount has no cached status, so it reads the latch.
-    expect(vi.mocked(api.kiroPrerequisite).mock.calls[0][0]).toBe(false)
+    expect(vi.mocked(api.harnessPrerequisite).mock.calls[0][0]).toBe(false)
 
-    await rendered.queryClient.invalidateQueries({ queryKey: ['kiro-prerequisite'] })
+    await rendered.queryClient.invalidateQueries({ queryKey: ['harness-prerequisite'] })
 
     // Every later fetch sees a cached status that reports the gate as blocking, so
     // it probes the host — as 'auto', the coalesced mode, NOT the human 'explicit'.
     await waitFor(() => expect(
-      vi.mocked(api.kiroPrerequisite).mock.calls.some(([refresh]) => refresh === 'auto'),
+      vi.mocked(api.harnessPrerequisite).mock.calls.some(([refresh]) => refresh === 'auto'),
     ).toBe(true))
-    expect(vi.mocked(api.kiroPrerequisite).mock.calls.some(([r]) => r === 'explicit'))
+    expect(vi.mocked(api.harnessPrerequisite).mock.calls.some(([r]) => r === 'explicit'))
       .toBe(false)
   })
 
   it('sends the human Check again as the uncoalesced explicit mode', async () => {
     // A button that can be answered from a cache looks broken, so the click must
     // be distinguishable from the automatic poll at the API boundary.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({ installed: true }))
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({ installed: true }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     fireEvent.click(await screen.findByRole('button', { name: /Check again/ }))
 
     await waitFor(() => expect(
-      vi.mocked(api.kiroPrerequisite).mock.calls.some(([refresh]) => refresh === 'explicit'),
+      vi.mocked(api.harnessPrerequisite).mock.calls.some(([refresh]) => refresh === 'explicit'),
     ).toBe(true))
   })
 
   it('lifts the gate as soon as detection reports a signed-in CLI', async () => {
     // "Guard until sign-in succeeds" in one assertion: the same mounted gate goes
     // from blocking to rendering the app on a later poll, with no reload.
-    vi.mocked(api.kiroPrerequisite)
+    vi.mocked(api.harnessPrerequisite)
       .mockResolvedValueOnce(status())
       .mockResolvedValue(status({
         installed: true,
@@ -138,67 +138,67 @@ describe('KiroPrerequisiteGate', () => {
       }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(await screen.findByText(/docks ACP coding agents/)).toBeInTheDocument()
+    expect(await screen.findByText(/connects ACP agents/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
   })
 
   it('renders the application immediately when Kiro is ready', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: true,
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate>
+      <HarnessPrerequisiteGate>
         <div>Dashboard loaded</div>
-      </KiroPrerequisiteGate>,
+      </HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('Dock an agent')).not.toBeInTheDocument()
+    expect(screen.queryByText('Connect an agent')).not.toBeInTheDocument()
   })
 
-  it('sends the user to Kiro CLI setup instead of installing anything', async () => {
-    // Junction does not install Kiro CLI. A missing CLI must offer a link to
+  it('sends the user to CLI setup instead of installing anything', async () => {
+    // Junction does not install CLI. A missing CLI must offer a link to
     // Kiro's own setup page and NO install action of any kind, so there is
     // nothing for the user to press that would download and run a script.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({ platform: 'Windows' }))
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({ platform: 'Windows' }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(await screen.findByText(/docks ACP coding agents/)).toBeInTheDocument()
+    expect(await screen.findByText(/connects ACP agents/)).toBeInTheDocument()
     expect((await screen.findAllByText(/Windows gateway host/)).length).toBeGreaterThan(0)
 
-    const setupLink = screen.getByRole('link', { name: /Open Kiro CLI setup/ })
+    const setupLink = screen.getByRole('link', { name: /Open CLI setup/ })
     expect(setupLink).toHaveAttribute('href', 'https://kiro.dev/cli/')
     expect(setupLink).toHaveAttribute('target', '_blank')
     expect(setupLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
-    expect(screen.queryByRole('button', { name: /Install Kiro CLI/ })).not.toBeInTheDocument()
-    // No sign-in action exists at all — the user signs in with Kiro CLI.
+    expect(screen.queryByRole('button', { name: /Install CLI/ })).not.toBeInTheDocument()
+    // No sign-in action exists at all — the user signs in with CLI.
     expect(screen.queryByRole('button', { name: 'Sign in to Kiro' })).not.toBeInTheDocument()
   })
 
-  it('tells an installed-but-signed-out CLI to sign in via Kiro CLI', async () => {
-    // Any Kiro CLI that runs is usable regardless of install source, so this
+  it('tells an installed-but-signed-out CLI to sign in via CLI', async () => {
+    // Any CLI that runs is usable regardless of install source, so this
     // state must show the sign-in instruction and the exact command — and no
     // action that would sign the user in on their behalf.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: false,
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(await screen.findByText(/Sign in with Kiro CLI on the gateway host/))
+    expect(await screen.findByText(/Sign in with CLI on the gateway host/))
       .toBeInTheDocument()
     // The command is rendered verbatim so it can be copied and typed.
     expect(screen.getByText('kiro-cli login').tagName).toBe('CODE')
@@ -220,13 +220,13 @@ describe('KiroPrerequisiteGate', () => {
   it('exposes no way to start a sign-in from the dashboard', async () => {
     // Junction does not authenticate for the user: there is no device-flow
     // trigger, no sign-in URL, and no device code surfaced anywhere.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({ installed: true }))
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({ installed: true }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    await screen.findByText(/Sign in with Kiro CLI on the gateway host/)
+    await screen.findByText(/Sign in with CLI on the gateway host/)
     expect(api).not.toHaveProperty('loginKiroPrerequisite')
     expect(screen.queryByRole('link', { name: /Open Kiro sign-in page/ })).not.toBeInTheDocument()
     // Only the two step cards' own affordances: the setup link is gone once the
@@ -236,22 +236,22 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('shows non-owners a redacted owner-setup state', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       platform: 'gateway',
       setup_allowed: false,
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText(/gateway owner needs to finish setup/)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /Open Kiro CLI setup/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Open CLI setup/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
   })
 
   it('swaps the ask-the-owner body for the re-auth remedy while the auth banner is up', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       platform: 'gateway',
       setup_allowed: false,
     }))
@@ -261,7 +261,7 @@ describe('KiroPrerequisiteGate', () => {
     document.body.prepend(banner)
     try {
       renderWithProviders(
-        <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+        <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
       )
       // One instruction, not two: eyebrow, headline, and body all name the
       // sign-in remedy instead of telling the viewer to ask someone else.
@@ -284,7 +284,7 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('lets a non-owner observe owner completion without reloading', async () => {
-    vi.mocked(api.kiroPrerequisite)
+    vi.mocked(api.harnessPrerequisite)
       .mockResolvedValueOnce(status({
         platform: 'gateway',
         setup_allowed: false,
@@ -299,7 +299,7 @@ describe('KiroPrerequisiteGate', () => {
       }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     fireEvent.click(await screen.findByRole('button', { name: 'Check again' }))
@@ -307,21 +307,21 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('keeps cached readiness mounted after a transient refetch failure', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: true,
     }))
     const rendered = renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
 
-    vi.mocked(api.kiroPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
-    await rendered.queryClient.invalidateQueries({ queryKey: ['kiro-prerequisite'] })
+    vi.mocked(api.harnessPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
+    await rendered.queryClient.invalidateQueries({ queryKey: ['harness-prerequisite'] })
 
     expect(screen.getByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('We could not check Kiro CLI.')).not.toBeInTheDocument()
+    expect(screen.queryByText('We could not check your agent CLI.')).not.toBeInTheDocument()
   })
 
   it('blocks an ESTABLISHED install when the agent specs are missing', async () => {
@@ -331,7 +331,7 @@ describe('KiroPrerequisiteGate', () => {
     // it is two stat calls made while answering this request — and it means
     // kiro-cli fails EVERY session/set_mode, so without this screen the install
     // has no affordance anywhere to repair itself.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: false,
@@ -341,7 +341,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText("Junction's agent specs are not installed")).toBeInTheDocument()
@@ -356,7 +356,7 @@ describe('KiroPrerequisiteGate', () => {
     // The gap the missing-specs card cannot cover: statting the file says it is
     // there, while kiro-cli drops it from its agent table, so Junction's agent
     // silently becomes kiro-cli's default one with none of its MCP servers.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: false,
@@ -370,11 +370,11 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(
-      await screen.findByText("Kiro CLI will not load Junction's agent specs"),
+      await screen.findByText("CLI will not load Junction's agent specs"),
     ).toBeInTheDocument()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
     // Exact match on the list entry: the reason below also contains the filename
@@ -392,7 +392,7 @@ describe('KiroPrerequisiteGate', () => {
     // tools/allowedTools grant. So the copy must not imply a rewrite, must name
     // the control the user can actually see, and must point at the two real
     // remedies (update, or an explicit setup --clean).
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
@@ -400,10 +400,10 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    const note = await screen.findByText(/Check again asks Kiro CLI to load the specs again/)
+    const note = await screen.findByText(/Check again asks CLI to load the specs again/)
     expect(note).toHaveTextContent('does not rewrite them')
     // The leading cause is a kiro-cli upgrade, which re-checking cannot fix, so
     // both remedies must be present as their own lines rather than buried.
@@ -420,7 +420,7 @@ describe('KiroPrerequisiteGate', () => {
   it('shows the missing-specs card, not the rejected one, when a spec is absent', async () => {
     // One fault, one card. A spec that is absent cannot also be rejected, and
     // the absent case has a repair that definitely works.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
@@ -429,22 +429,22 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(
       await screen.findByText("Junction's agent specs are not installed"),
     ).toBeInTheDocument()
     expect(
-      screen.queryByText("Kiro CLI will not load Junction's agent specs"),
+      screen.queryByText("CLI will not load Junction's agent specs"),
     ).not.toBeInTheDocument()
   })
 
   it('points a terminal diagnoser past the app-not-running dead end', async () => {
     // `kiro-cli diagnostic` is the first command anyone reaches for and it
-    // refuses with "Kiro CLI app is not running" until the app is launched,
+    // refuses with "CLI app is not running" until the app is launched,
     // which reads as the cause and is not.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
@@ -452,7 +452,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     const hint = await screen.findByText(/kiro-cli diagnostic reports nothing/)
@@ -463,7 +463,7 @@ describe('KiroPrerequisiteGate', () => {
   it('surfaces a failed repair verbatim instead of a generic failure', async () => {
     // The swallowed boot exception is what made the original report
     // undiagnosable; this text names the failing install step.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
@@ -472,7 +472,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('The repair attempt failed')).toBeInTheDocument()
@@ -485,13 +485,13 @@ describe('KiroPrerequisiteGate', () => {
     // The gateway's CSRF check and SEL audit are both method-scoped, so the
     // write cannot hang off the status GET: a SameSite=Lax cookie rides a
     // top-level cross-site GET, and a GET leaves no audit record.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
       missing_agent_specs: ['junction.json'],
     }))
-    vi.mocked(api.repairKiroPrerequisiteSpecs).mockResolvedValue(status({
+    vi.mocked(api.repairHarnessPrerequisiteSpecs).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: true,
@@ -500,17 +500,17 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     const repair = await screen.findByRole('button', { name: 'Check again' })
     // Every status read stays a free, side-effect-free poll.
-    expect(vi.mocked(api.kiroPrerequisite)).toHaveBeenCalledWith(false)
-    expect(vi.mocked(api.kiroPrerequisite)).not.toHaveBeenCalledWith(true)
+    expect(vi.mocked(api.harnessPrerequisite)).toHaveBeenCalledWith(false)
+    expect(vi.mocked(api.harnessPrerequisite)).not.toHaveBeenCalledWith(true)
     fireEvent.click(repair)
 
     await waitFor(() => {
-      expect(vi.mocked(api.repairKiroPrerequisiteSpecs)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(api.repairHarnessPrerequisiteSpecs)).toHaveBeenCalledTimes(1)
     })
     // The POST response IS the post-repair snapshot, so the app unblocks without
     // waiting for the next poll.
@@ -518,13 +518,13 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('shows a failed repair returned by the POST', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
       missing_agent_specs: ['junction.json'],
     }))
-    vi.mocked(api.repairKiroPrerequisiteSpecs).mockResolvedValue(status({
+    vi.mocked(api.repairHarnessPrerequisiteSpecs).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
@@ -533,7 +533,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     fireEvent.click(await screen.findByRole('button', { name: 'Check again' }))
@@ -546,18 +546,18 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('surfaces a rejected repair POST rather than failing silently', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       initial_setup_complete: true,
       missing_agent_specs: ['junction.json'],
     }))
-    vi.mocked(api.repairKiroPrerequisiteSpecs).mockRejectedValue(
+    vi.mocked(api.repairHarnessPrerequisiteSpecs).mockRejectedValue(
       new ApiError(403, 'dashboard owner required'),
     )
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     fireEvent.click(await screen.findByRole('button', { name: 'Check again' }))
@@ -566,7 +566,7 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('leaves a healthy install untouched by the spec check', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: true,
@@ -575,7 +575,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
@@ -587,10 +587,10 @@ describe('KiroPrerequisiteGate', () => {
     // must not crash the gate on `.length` of undefined.
     const legacy = status({ installed: true, authenticated: true, initial_setup_complete: true })
     delete (legacy as { missing_agent_specs?: unknown }).missing_agent_specs
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(legacy)
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(legacy)
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
@@ -601,7 +601,7 @@ describe('KiroPrerequisiteGate', () => {
     // reported by the turn itself (an actionable `kiro-cli login` error card in
     // the transcript), so a persistent banner would nag every surface for a
     // state the dashboard cannot even keep current.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: false,
       ready: false,
@@ -609,7 +609,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
@@ -618,21 +618,21 @@ describe('KiroPrerequisiteGate', () => {
     expect(screen.queryByText('kiro-cli login')).not.toBeInTheDocument()
     // Nothing is paused: no gate chrome of any kind renders over the app.
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByText('Dock an agent')).not.toBeInTheDocument()
+    expect(screen.queryByText('Connect an agent')).not.toBeInTheDocument()
   })
 
   it('leaves an established non-owner dashboard completely unblocked', async () => {
     // `initial_setup_complete` short-circuits before the non-owner branch: a
     // signed-out established install shows no chrome to ANY user. The
     // owner-restore screen is reserved for a genuine first run (below).
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       platform: 'gateway',
       initial_setup_complete: true,
       setup_allowed: false,
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
@@ -642,14 +642,14 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('still shows the owner-restore screen to a non-owner on a genuine first run', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       platform: 'gateway',
       initial_setup_complete: false,
       setup_allowed: false,
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('The gateway owner needs to finish setup.'))
@@ -658,10 +658,10 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('fails open when connected to a gateway without the new endpoint', async () => {
-    vi.mocked(api.kiroPrerequisite).mockRejectedValue(new ApiError(404, 'HTTP 404'))
+    vi.mocked(api.harnessPrerequisite).mockRejectedValue(new ApiError(404, 'HTTP 404'))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
@@ -676,13 +676,13 @@ describe('KiroPrerequisiteGate', () => {
     // Kiro readiness gates nothing in the dashboard, so an unresolved check must
     // not withhold OR degrade the app: mount it fully usable and let only a
     // confirmed first-run status show setup.
-    let resolveStatus: (value: KiroPrerequisiteStatus) => void = () => {}
-    vi.mocked(api.kiroPrerequisite).mockReturnValue(
-      new Promise<KiroPrerequisiteStatus>(resolve => { resolveStatus = resolve }),
+    let resolveStatus: (value: HarnessPrerequisiteStatus) => void = () => {}
+    vi.mocked(api.harnessPrerequisite).mockReturnValue(
+      new Promise<HarnessPrerequisiteStatus>(resolve => { resolveStatus = resolve }),
     )
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     // No waiting screen and no setup chrome — the app itself is already up.
@@ -695,19 +695,19 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('adds NO chrome when a pending check resolves to signed-out', async () => {
-    let resolveStatus: (value: KiroPrerequisiteStatus) => void = () => {}
-    vi.mocked(api.kiroPrerequisite).mockReturnValue(
-      new Promise<KiroPrerequisiteStatus>(resolve => { resolveStatus = resolve }),
+    let resolveStatus: (value: HarnessPrerequisiteStatus) => void = () => {}
+    vi.mocked(api.harnessPrerequisite).mockReturnValue(
+      new Promise<HarnessPrerequisiteStatus>(resolve => { resolveStatus = resolve }),
     )
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
     expect(screen.getByText('Dashboard loaded')).toBeInTheDocument()
 
     resolveStatus(status({ installed: true, initial_setup_complete: true }))
 
-    await waitFor(() => expect(api.kiroPrerequisite).toHaveBeenCalled())
+    await waitFor(() => expect(api.harnessPrerequisite).toHaveBeenCalled())
     expect(screen.getByText('Dashboard loaded')).toBeInTheDocument()
     expect(screen.queryByText('Junction needs Kiro sign-in.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -718,41 +718,41 @@ describe('KiroPrerequisiteGate', () => {
     // The setup gate is reachable ONLY from a resolved status that actually says
     // first-run. While unresolved, even a true first-time user sees the app
     // rather than a setup screen that might turn out to be wrong.
-    let resolveStatus: (value: KiroPrerequisiteStatus) => void = () => {}
-    vi.mocked(api.kiroPrerequisite).mockReturnValue(
-      new Promise<KiroPrerequisiteStatus>(resolve => { resolveStatus = resolve }),
+    let resolveStatus: (value: HarnessPrerequisiteStatus) => void = () => {}
+    vi.mocked(api.harnessPrerequisite).mockReturnValue(
+      new Promise<HarnessPrerequisiteStatus>(resolve => { resolveStatus = resolve }),
     )
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(screen.queryByText('Dock an agent')).not.toBeInTheDocument()
+    expect(screen.queryByText('Connect an agent')).not.toBeInTheDocument()
 
     resolveStatus(status())
 
-    expect(await screen.findByText('Dock an agent')).toBeInTheDocument()
+    expect(await screen.findByText('Connect an agent')).toBeInTheDocument()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
   })
 
   it('keeps setup visible and offers retry for a live gateway error', async () => {
-    vi.mocked(api.kiroPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
+    vi.mocked(api.harnessPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(await screen.findByText('We could not check Kiro CLI.')).toBeInTheDocument()
+    expect(await screen.findByText('We could not check your agent CLI.')).toBeInTheDocument()
     expect(screen.getByText(/Probe failed/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
   })
 
   it('terminates an unpunctuated gateway error before the next sentence', async () => {
-    vi.mocked(api.kiroPrerequisite).mockRejectedValue(new ApiError(401, 'Token required'))
+    vi.mocked(api.harnessPrerequisite).mockRejectedValue(new ApiError(401, 'Token required'))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(
@@ -761,10 +761,10 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('keeps a space between the retry icon and its label', async () => {
-    vi.mocked(api.kiroPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
+    vi.mocked(api.harnessPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     const retry = await screen.findByRole('button', { name: 'Try again' })
@@ -786,53 +786,53 @@ describe('KiroPrerequisiteGate', () => {
     // so the gate would render full-screen setup-branded chrome at a user who has
     // completed setup. The client remembers first-run completion locally, so a
     // returning user gets the dashboard plus a reauth banner instead.
-    localStorage.setItem('junction:kiro-setup-complete', '1')
-    vi.mocked(api.kiroPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
+    localStorage.setItem('junction:harness-setup-complete', '1')
+    vi.mocked(api.harnessPrerequisite).mockRejectedValue(new ApiError(500, 'Probe failed'))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
     expect(screen.queryByText('Junction is almost ready.')).not.toBeInTheDocument()
-    expect(screen.queryByText('We could not check Kiro CLI.')).not.toBeInTheDocument()
+    expect(screen.queryByText('We could not check your agent CLI.')).not.toBeInTheDocument()
   })
 
   it('leaves a returning user fully unblocked when the status is unusable', async () => {
     // An unreachable status check is not evidence the CLI is broken, and the
     // turn reports the truth either way — so a returning user keeps a clean,
     // fully usable dashboard rather than a "could not check" banner.
-    localStorage.setItem('junction:kiro-setup-complete', '1')
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(
-      null as unknown as KiroPrerequisiteStatus,
+    localStorage.setItem('junction:harness-setup-complete', '1')
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(
+      null as unknown as HarnessPrerequisiteStatus,
     )
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('Could not check Kiro CLI.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Could not check your agent CLI.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.queryByText('Junction is almost ready.')).not.toBeInTheDocument()
   })
 
   it('still surfaces an unusable status body to a first-run user', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(
-      null as unknown as KiroPrerequisiteStatus,
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(
+      null as unknown as HarnessPrerequisiteStatus,
     )
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(await screen.findByText('We could not check Kiro CLI.')).toBeInTheDocument()
+    expect(await screen.findByText('We could not check your agent CLI.')).toBeInTheDocument()
     expect(screen.getByText(/returned no prerequisite status/)).toBeInTheDocument()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
   })
 
   it('records first-run completion so later cold starts skip setup chrome', async () => {
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: true,
@@ -840,34 +840,34 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
     await waitFor(() =>
-      expect(localStorage.getItem('junction:kiro-setup-complete')).toBe('1'),
+      expect(localStorage.getItem('junction:harness-setup-complete')).toBe('1'),
     )
   })
 
   it('still gates a genuine first run when no prior completion is remembered', async () => {
     // The remembered bit must not become a blanket bypass: a true first-run
     // user (nothing in storage) still gets the full setup gate.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status())
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status())
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
-    expect(await screen.findByText('Dock an agent')).toBeInTheDocument()
+    expect(await screen.findByText('Connect an agent')).toBeInTheDocument()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
   })
 
   it('reports an unbuildable sandbox as its own state, not a missing CLI', async () => {
     // Verification runs the CLI INSIDE the sandbox, so a host that cannot build
     // one fails verification with the binary present and signed in. Rendering
-    // "Install Kiro CLI" here would be false and its button could not help, so
+    // "Install CLI" here would be false and its button could not help, so
     // this names the real cause and offers only a retry.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'no_backend',
@@ -875,11 +875,11 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(
-      await screen.findByText('Kiro CLI is installed but could not be verified'),
+      await screen.findByText('CLI is installed but could not be verified'),
     ).toBeInTheDocument()
     expect(screen.getByText(/provides no OS-level sandbox/)).toBeInTheDocument()
     // The technical reason names the failing step, so it is shown verbatim.
@@ -887,7 +887,7 @@ describe('KiroPrerequisiteGate', () => {
       screen.getByText('unshare(CLONE_NEWNS) failed with errno 1 (EPERM)'),
     ).toBeInTheDocument()
     // No install/sign-in dead ends, and the dashboard stays withheld.
-    expect(screen.queryByRole('button', { name: 'Install Kiro CLI' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Install CLI' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sign in to Kiro' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
@@ -897,7 +897,7 @@ describe('KiroPrerequisiteGate', () => {
     // The remedies diverge: retry versus change the host. Advising someone to
     // disable their own isolation over a momentary EAGAIN is the outcome this
     // wording exists to prevent.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'transient',
@@ -905,13 +905,13 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText(/temporary resource limit/)).toBeInTheDocument()
     expect(screen.getByText(/do not disable the sandbox/)).toBeInTheDocument()
-    // The aside must not contradict the headline by still saying "Install Kiro CLI".
-    expect(screen.queryByText(/Install Kiro CLI, sign in once/)).not.toBeInTheDocument()
+    // The aside must not contradict the headline by still saying "Install CLI".
+    expect(screen.queryByText(/Install CLI, sign in once/)).not.toBeInTheDocument()
     expect(screen.queryByText(/provides no OS-level sandbox/)).not.toBeInTheDocument()
     // A momentary failure identifies nothing to reconfigure, so the host
     // remedies must stay hidden — they would be advice to break a working setup.
@@ -924,7 +924,7 @@ describe('KiroPrerequisiteGate', () => {
     // indistinguishable from momentary pressure, so a host with the cap set to 0
     // is reported transient forever and is never cached. Suppressing the remedy
     // here left exactly that host with a retry button and no way out.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'transient',
@@ -933,7 +933,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     // Conditional framing, so it never reads as "reconfigure a host that is fine".
@@ -952,7 +952,7 @@ describe('KiroPrerequisiteGate', () => {
     // The probe already knew this was Ubuntu's restricted-profile restriction —
     // NEWUSER succeeded and NEWNS was denied — and that the fix is the narrow
     // AppArmor profile `service install` writes.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'no_backend',
@@ -961,7 +961,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('How to fix')).toBeInTheDocument()
@@ -987,7 +987,7 @@ describe('KiroPrerequisiteGate', () => {
     // the loop, so the whole block is the copy target rather than a small glyph.
     const { copyToClipboard } = await import('../utils/clipboard')
     vi.mocked(copyToClipboard).mockClear()
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'no_backend',
@@ -996,7 +996,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     const command = await screen.findByText('junction service install')
@@ -1016,7 +1016,7 @@ describe('KiroPrerequisiteGate', () => {
     // applies it. An `aa-exec -p` alternative is worse than none: entering a
     // named profile needs privilege, and aa-exec execs unconfined rather than
     // failing, so it reads as applied while changing nothing.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'no_backend',
@@ -1025,7 +1025,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     const command = await screen.findByText('junction service install')
@@ -1042,7 +1042,7 @@ describe('KiroPrerequisiteGate', () => {
     // retry button was the original complaint. The diagnostic pointer is the
     // floor, not the bonus — and the "How to fix" heading must NOT appear over a
     // section holding only a diagnostic, or it promises a fix it cannot deliver.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'no_backend',
@@ -1051,7 +1051,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('junction doctor')).toBeInTheDocument()
@@ -1066,7 +1066,7 @@ describe('KiroPrerequisiteGate', () => {
     // action bisected by the panel edge reads as a rendering defect rather than
     // a scroll cue. Pinning it below the scroll region keeps it whole at any
     // content length or locale.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'no_backend',
@@ -1075,7 +1075,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     const button = await screen.findByRole('button', { name: 'Check again' })
@@ -1089,7 +1089,7 @@ describe('KiroPrerequisiteGate', () => {
   it('offers no host remedy when a foreign sandbox is the cause', async () => {
     // This host's sandbox is fine — it just cannot nest. Sending the user to
     // change a sysctl would be a fix for a problem they do not have.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       sandbox_unavailable: true,
       sandbox_failure_kind: 'foreign_sandbox',
@@ -1098,7 +1098,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText(/Another sandbox already confines/)).toBeInTheDocument()
@@ -1108,7 +1108,7 @@ describe('KiroPrerequisiteGate', () => {
   it('never withholds the dashboard from a ready install over a sandbox flag', async () => {
     // Precedence guard: `ready` wins. A working install must never be hijacked
     // by this screen.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       authenticated: true,
       ready: true,
@@ -1117,12 +1117,12 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
     expect(
-      screen.queryByText('Kiro CLI is installed but could not be verified'),
+      screen.queryByText('CLI is installed but could not be verified'),
     ).not.toBeInTheDocument()
   })
 
@@ -1131,7 +1131,7 @@ describe('KiroPrerequisiteGate', () => {
     // otherwise lie. A returning user keeps their dashboard, and the per-turn
     // error card carries the sandbox failure in context — which is specific now
     // that the probe names the failing step.
-    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
+    vi.mocked(api.harnessPrerequisite).mockResolvedValue(status({
       installed: true,
       initial_setup_complete: true,
       sandbox_unavailable: true,
@@ -1139,7 +1139,7 @@ describe('KiroPrerequisiteGate', () => {
     }))
 
     renderWithProviders(
-      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+      <HarnessPrerequisiteGate><div>Dashboard loaded</div></HarnessPrerequisiteGate>,
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()

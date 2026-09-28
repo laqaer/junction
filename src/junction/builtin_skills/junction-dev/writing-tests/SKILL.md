@@ -93,7 +93,7 @@ Two shapes escape the env var:
   `AcpRuntimeError` naming a prompt file in an unrelated worktree.
 
   Two entries are excluded because they must *never* be redirected —
-  `security._EXTRACT_INTO_TRUST_ROOT_RE` and `kiro_usage_api._CLI_SQLITE_DBS` are
+  `security._EXTRACT_INTO_TRUST_ROOT_RE` and `harness_usage_api._CLI_SQLITE_DBS` are
   security anchors whose whole point is naming the real home. **Stub the reader, never
   move the anchor.** Redirecting a matcher so a test can pass makes it assert against a
   pattern that no longer matches the thing it protects.

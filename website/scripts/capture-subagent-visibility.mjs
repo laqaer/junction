@@ -148,10 +148,10 @@ async function main() {
     if (path === '/api/dashboard/branding') return json(route, { bot_name: 'Kiro', avatar: '' })
     if (path === '/api/recent-projects') return json(route, { dirs: [PROJECT] })
     if (path === '/api/chat/nav/resolve-links') return json(route, { summaries: [] })
-    // KiroPrerequisiteGate wraps the whole app shell and reads
+    // HarnessPrerequisiteGate wraps the whole app shell and reads
     // `status.operation.status` (optional-chained only at `status`), so a bare
     // {} stub throws inside the ErrorBoundary and nothing renders.
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         ready: true,
         setup_allowed: true,

@@ -1,10 +1,11 @@
 # The harness-parity gate
 
-Junction drives one first-class agent harness — `kiro-cli` — and adapts the
-others. This gate is the mechanical half of that rule: it reads the lines a
-change ADDS under `src/junction/` and fails on any that let a harness other
-than Kiro inherit something by default. The invariants it enforces, and the
-judgment-only ones it cannot, are catalogued in
+Junction supports user-selected ACP engines and optional vendor adapters,
+defaulting to `auto`. This gate is the mechanical half of that rule: it reads
+the lines a change ADDS under `src/junction/` and fails on any that let one
+engine inherit a capability, a sandbox waiver, or a default by the absence of
+another. The invariants it enforces, and the judgment-only ones it cannot, are
+catalogued in
 [../system-specs/modules/harness-parity.md](../system-specs/modules/harness-parity.md).
 
 ## What runs where
@@ -34,17 +35,17 @@ none of them needs to resolve an import, which is why the job needs no
 | `bare-literal` | H8 | `backend == "kas"` — `ACP_BACKEND_KIRO` is the empty string, so only the named constant is legible |
 | `sandbox-delegation` | H7 | `is_kiro_cli=` derived from a negation. This flag makes `wrap_argv` SKIP Junction's seatbelt, so it fails OPEN |
 | `vocabulary-home` | H8 | an `ACP_BACKEND_*` identifier or `ACP_BACKENDS_*` set defined outside `acp/types.py` |
-| `non-kiro-default` | H1 | `default=ACP_BACKEND_KAS` and equivalents — an operator who configures nothing gets Kiro |
+| `non-auto-default` | H1 | `default=ACP_BACKEND_KAS` and equivalents — an operator who configures nothing gets a concrete engine instead of `auto` |
 
 ## Why diff-scoped rather than whole-tree
 
-The tree carries nine pre-existing negative identity tests, nearly all in the
-dormant `ACP_BACKEND_CLAUDE` seam. A whole-tree gate would fail every PR until a
-separate conversion change lands, and would charge that break to whoever pushed
-next. Added lines are complete for regression — a line only reaches `main`
-through a diff that added it — and running the script with no `HARNESS_BASE_REF`
-prints the whole-tree count as a **non-failing** report, so the backlog stays
-visible without ever being anyone's build break.
+The tree still carries a few pre-existing negative identity tests. A whole-tree
+gate would fail every PR until a separate conversion change lands, and would
+charge that break to whoever pushed next. Added lines are complete for
+regression — a line only reaches `main` through a diff that added it — and
+running the script with no `HARNESS_BASE_REF` prints the whole-tree count as a
+**non-failing** report, so the backlog stays visible without ever being anyone's
+build break.
 
 The base ref is `github.event.pull_request.base.sha`, resolved through
 `.github/scripts/resolve-i18n-base.sh`, not `origin/main`: the merge ref the run

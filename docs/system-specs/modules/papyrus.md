@@ -666,7 +666,7 @@ no bare `fcntl`/`os.killpg`/`signal.SIGKILL`, `start_new_session=IS_POSIX`
   without `USERPROFILE` cannot resolve `TEXMFHOME`.
   1. The list was POSIX-only. The Windows location hints are now allowlisted
      alongside the POSIX ones (same set and reason as
-     `kiro_prerequisite._SAFE_ENV_KEYS`).
+     `harness_prerequisite._SAFE_ENV_KEYS`).
   2. The match was case-SENSITIVE, which made (1) inert on the platform it was for:
      Windows env names are case-insensitive and `os.environ` upper-cases keys, so
      `items()` yields `SYSTEMROOT` while the list held the documented `SystemRoot`.

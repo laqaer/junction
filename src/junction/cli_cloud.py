@@ -165,7 +165,7 @@ def _cloud_login(args: argparse.Namespace) -> int:
         ui.ok("kiro-cli is already signed in on the instance. Chats should work.")
         return 0
 
-    ui.info("Starting Kiro sign-in on the instance…")
+    ui.info("Starting harness sign-in on the instance…")
     try:
         prompt = login_mod.start_device_login(
             instance_id, profile, region, open_browser=not getattr(args, "no_browser", False)
@@ -442,7 +442,7 @@ def handle_cloud(args: argparse.Namespace) -> int:
         ui.detail("tunnel      Open the dashboard SSM tunnel (alias: connect)")
         ui.detail("connect     Open the dashboard over an SSM tunnel")
         ui.detail("login       Sign kiro-cli in on the instance (fixes chat errors)")
-        ui.detail("logout      Sign kiro-cli out on the instance (switch Kiro account)")
+        ui.detail("logout      Sign kiro-cli out on the instance (switch accounts)")
         ui.detail("stop|start  Pause / resume (save cost)")
         ui.detail("destroy     Remove everything from AWS")
         ui.detail("iam-policy  Print the least-privilege IAM policy to apply")

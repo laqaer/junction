@@ -30,7 +30,7 @@ from chat_test_helpers import _make_state
 
 from junction.dashboard.chat_runner import _flush_segment
 from junction.dashboard.state import _ChatSlot
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 
 def _stream(slot: _ChatSlot, tokens: list[str]) -> list[dict]:
@@ -210,7 +210,7 @@ def test_consumer_scope_releases_on_exception(tmp_path):
 # ── End-to-end: the OpenAI-compatible endpoint still returns every token ──
 
 
-class _ReadyPrerequisite(KiroPrerequisiteService):
+class _ReadyPrerequisite(HarnessPrerequisiteService):
     async def session_ready(self) -> bool:
         return True
 
@@ -244,7 +244,7 @@ async def test_openai_compat_response_survives_a_turn_end_purge(tmp_path):
             "stream": False,
         }
     )
-    request.app = {"state": state, "kiro_prerequisite_service": _READY_PREREQUISITE}
+    request.app = {"state": state, "harness_prerequisite_service": _READY_PREREQUISITE}
     request.get = MagicMock(side_effect=lambda k, d="": d)
     request.remote = "127.0.0.1"
 

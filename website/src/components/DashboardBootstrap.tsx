@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { useRefreshScheduler } from '../hooks/useRefreshScheduler'
-import KiroPrerequisiteGate from './KiroPrerequisiteGate'
+import HarnessPrerequisiteGate from './HarnessPrerequisiteGate'
 
 export default function DashboardBootstrap({ children }: { children: ReactNode }) {
   // This must mount outside the prerequisite gate: a stale access cookie may
   // otherwise prevent App from mounting the scheduler that repairs that cookie.
   useRefreshScheduler()
-  return <KiroPrerequisiteGate>{children}</KiroPrerequisiteGate>
+  return <HarnessPrerequisiteGate>{children}</HarnessPrerequisiteGate>
 }

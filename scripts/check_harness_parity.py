@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""check_harness_parity.py — keep the Kiro harness first-class on lines a change adds.
+"""check_harness_parity.py — enforce explicit harness safety on added lines.
 
-Junction drives one first-class agent harness, ``kiro-cli``
-(``ACP_BACKEND_KIRO``, spelled ``""``), plus adapted ones: the dormant
-``ACP_BACKEND_CLAUDE`` seam, KAS, and whatever a bring-your-own adapter
-registers next. An added harness may only adapt itself to the seams the Kiro
-harness already runs through; it may not move, widen, or generalize them.
+Junction supports user-selected ACP engines and optional vendor adapters.
+The default is ``ACP_BACKEND_AUTO``; capabilities require explicit grants.
 
 The defect class this gate catches is *silent capture*: a call site that spells
 "this is Kiro" as the ABSENCE of another harness. It reads correctly with two
@@ -154,12 +151,12 @@ RULES: tuple[Rule, ...] = (
         exempt=frozenset({VOCABULARY_PATH}),
     ),
     Rule(
-        rule_id="non-kiro-default",
+        rule_id="non-auto-default",
         invariant="H1",
-        pattern=re.compile(r"(?:default\s*=\s*|:\s*str\s*=\s*)ACP_BACKEND_(?!KIRO\b)[A-Z_]+"),
-        message="a harness other than Kiro used as a default",
-        fix="default to ACP_BACKEND_KIRO — an operator who configures nothing, "
-        "and one whose configuration is unusable, both get the Kiro harness",
+        pattern=re.compile(r"(?:default\s*=\s*|:\s*str\s*=\s*)ACP_BACKEND_(?!AUTO\b)[A-Z_]+"),
+        message="a concrete harness used as a default",
+        fix="default to ACP_BACKEND_AUTO so an unconfigured or unusable "
+        "selection resolves through the installed runtime registry",
     ),
 )
 
@@ -419,16 +416,16 @@ PROBES: tuple[tuple[str, str, str, str | None], ...] = (
         "vocabulary-home",
     ),
     (
-        "non-kiro-default",
+        "non-auto-default",
         "src/junction/acp/runtime.py",
         "        acp_backend: str = ACP_BACKEND_KAS,",
-        "non-kiro-default",
+        "non-auto-default",
     ),
     (
-        "non-kiro-field-default",
+        "non-auto-field-default",
         "src/junction/config/loader.py",
         "        default=ACP_BACKEND_CLAUDE,",
-        "non-kiro-default",
+        "non-auto-default",
     ),
     # ── allowed forms: each must produce NO hit ──
     (
@@ -468,9 +465,21 @@ PROBES: tuple[tuple[str, str, str, str | None], ...] = (
         None,
     ),
     (
-        "kiro-default",
+        "kiro-default-is-concrete",
         "src/junction/acp/runtime.py",
         "        acp_backend: str = ACP_BACKEND_KIRO,",
+        "non-auto-default",
+    ),
+    (
+        "auto-default",
+        "src/junction/acp/runtime.py",
+        "        acp_backend: str = ACP_BACKEND_AUTO,",
+        None,
+    ),
+    (
+        "auto-field-default",
+        "src/junction/config/loader.py",
+        "        default=ACP_BACKEND_AUTO,",
         None,
     ),
     (
@@ -547,15 +556,14 @@ def report(violations: Iterable[Violation], *, enforcing: bool, base: str | None
     violations = list(violations)
     if not violations:
         scope = f"lines added since {base}" if enforcing else "whole tree"
-        print(f"harness gate: Kiro identity tested positively in the {scope} ✓")
+        print(f"harness gate: explicit identities and auto defaults in the {scope} ✓")
         return 0
 
     if enforcing:
         print(
             f"::error::harness gate: {len(violations)} line(s) added by this change "
-            f"let a harness other than Kiro inherit something by default. The Kiro "
-            f"harness is first-class: an added harness adapts to these seams, it "
-            f"does not widen them. See docs/system-specs/modules/harness-parity.md."
+            f"violate explicit harness identity, capability, or auto-default rules. "
+            f"See docs/system-specs/modules/harness-parity.md."
         )
     else:
         print(

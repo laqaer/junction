@@ -89,7 +89,7 @@ async function preparePage(context, scan) {
     if (path === '/api/chat/folders') return json(route, [])
     if (path.startsWith('/api/apps')) return json(route, { apps: [], installed: [] })
     // Everything else — including the prerequisite gate, without which the app
-    // renders "Install Kiro CLI" instead of the chat UI and the importer never
+    // renders "Install CLI" instead of the chat UI and the importer never
     // mounts — comes from the shared boot arm.
     return handleBootRoute(route, path, { project: '/tmp/demo', theme: 'light' })
   })

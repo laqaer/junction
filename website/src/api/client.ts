@@ -1544,7 +1544,7 @@ export interface TunnelStatus {
   reconnect_attempt: number
 }
 
-export interface KiroPrerequisiteStatus {
+export interface HarnessPrerequisiteStatus {
   platform: string
   installed: boolean
   authenticated: boolean
@@ -1610,14 +1610,14 @@ export interface KiroPrerequisiteStatus {
   agent_spec_rejection_detail?: string
 }
 
-export interface KiroBonusCreditGrantPayload {
+export interface HarnessBonusCreditGrantPayload {
   name: string
   used: number
   total: number
   days_left?: number
 }
 
-export interface KiroUsagePayload {
+export interface HarnessUsagePayload {
   available?: boolean
   /** Why usage is unavailable when `available` is false (e.g. `api_key_auth`). */
   reason?: string
@@ -1629,7 +1629,7 @@ export interface KiroUsagePayload {
   plan?: string
   cost_usd?: number
   overage_rate?: number | string
-  bonus_credits?: KiroBonusCreditGrantPayload[]
+  bonus_credits?: HarnessBonusCreditGrantPayload[]
   stale?: boolean
   account?: string
   email?: string
@@ -1637,14 +1637,14 @@ export interface KiroUsagePayload {
   start_url?: string
 }
 
-export interface KiroBonusCreditGrant {
+export interface HarnessBonusCreditGrant {
   name: string
   used: number
   total: number
   daysLeft?: number
 }
 
-export interface KiroCreditUsage {
+export interface HarnessCreditUsage {
   used: number
   limit: number
   overage: number
@@ -1652,7 +1652,7 @@ export interface KiroCreditUsage {
   plan?: string
   costUsd?: number
   overageRate?: number
-  bonusCredits: KiroBonusCreditGrant[]
+  bonusCredits: HarnessBonusCreditGrant[]
   stale: boolean
   account?: string
   email?: string
@@ -1889,22 +1889,22 @@ export const api = {
    * several open tabs cannot multiply the `kiro-cli` spawns. `false` reads the
    * gateway's latched state and spawns nothing.
    */
-  kiroPrerequisite: (refresh: false | 'auto' | 'explicit' = false) => {
+  harnessPrerequisite: (refresh: false | 'auto' | 'explicit' = false) => {
     // Built with URLSearchParams like every other query here (see artifacts
     // below): the mode is its own wire value, so there is no query-string
     // literal for the i18n gate to mistake for user-visible copy.
     const params = new URLSearchParams()
     if (refresh) params.set('refresh', refresh)
     const s = params.toString()
-    return get(`/api/kiro-prerequisite${s ? `?${s}` : ''}`).then(
+    return get(`/api/harness-prerequisite${s ? `?${s}` : ''}`).then(
       j,
-    ) as Promise<KiroPrerequisiteStatus>
+    ) as Promise<HarnessPrerequisiteStatus>
   },
   // A POST, not a flag on the status GET: the gateway's CSRF check and its SEL
   // audit are both method-scoped, so a spec rewrite reached from a GET would be
   // cross-site triggerable and would leave no audit record.
-  repairKiroPrerequisiteSpecs: () =>
-    post('/api/kiro-prerequisite/repair-specs').then(j) as Promise<KiroPrerequisiteStatus>,
+  repairHarnessPrerequisiteSpecs: () =>
+    post('/api/harness-prerequisite/repair-specs').then(j) as Promise<HarnessPrerequisiteStatus>,
   onboardingImportScan: () =>
     get('/api/onboarding/import/scan').then(j) as Promise<AgentImportScanResponse>,
   onboardingImportApply: (body: AgentImportApplyRequest) =>
@@ -2112,7 +2112,7 @@ export const api = {
     }
     history: { t: number; mb: number }[]
   }>,
-  sessionsUsage: () => fetch('/api/sessions/usage').then(j) as Promise<{ usage?: KiroUsagePayload }>,
+  sessionsUsage: () => fetch('/api/sessions/usage').then(j) as Promise<{ usage?: HarnessUsagePayload }>,
   providerUsage: () => fetch('/api/usage').then(j),
   mcpProbeCache: () => fetch('/api/mcp/probe').then(j),
   // Agents
@@ -2464,7 +2464,7 @@ export const api = {
   // Optional integrations — backend endpoints are graceful no-ops on a public
   // install (AIM / kiro usage are stubbed). Kept so the UI compiles and
   // degrades gracefully (panels render empty when the feature is absent).
-  kiroUsage: () => fetch('/api/usage/kiro').then(j),
+  harnessUsage: () => fetch('/api/usage/harness').then(j),
   capabilityMcpList: () => fetch('/api/capability/mcp').then(j),
   capabilityMcpInstall: (serverId: string) => post('/api/capability/mcp/install', { server_id: serverId }).then(j),
   capabilityMcpUninstall: (serverId: string) => post('/api/capability/mcp/uninstall', { server_id: serverId }).then(j),

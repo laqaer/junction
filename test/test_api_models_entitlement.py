@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 
 from junction.acp.client import model_is_unusable
 from junction.dashboard.handlers import agents
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 CATALOG = [
     {"model_name": "auto", "description": "Models chosen by task"},
@@ -224,7 +224,7 @@ class _FakeProc:
 
 
 def _kiro_request(tmp_path: Path, *providers: MagicMock) -> MagicMock:
-    service = KiroPrerequisiteService(
+    service = HarnessPrerequisiteService(
         platform_name="linux",
         environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
         home=tmp_path,
@@ -234,7 +234,7 @@ def _kiro_request(tmp_path: Path, *providers: MagicMock) -> MagicMock:
     state = MagicMock()
     state.sessions.active_providers = MagicMock(return_value=list(providers))
     request = MagicMock()
-    request.app = {"kiro_prerequisite_service": service, "state": state}
+    request.app = {"harness_prerequisite_service": service, "state": state}
     return request
 
 

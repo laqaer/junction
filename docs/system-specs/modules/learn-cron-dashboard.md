@@ -509,8 +509,8 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
 - `chat.py` — multi-slot chat with per-tab kiro-cli sessions (`dashboard:{slot.key}`), background LLM streaming (survives browser disconnect), session lifecycle management (active ↔ history), chunk cleanup, tool approval flow. Each tab gets its own kiro-cli process for true multi-agent parallelism — tabs can run tools simultaneously. Sessions idle-expire; on restart, the live tab set is restored from `~/.junction/open_slots.json` (snapshotted on every flush + shutdown by `DashboardState._persist_open_slots()`, replayed on startup by `restore_open_slots()` before the legacy mtime-based `restore_recent_sessions()` so long-running tabs survive regardless of message age; after both restore paths `DashboardState.reseed_slot_counter()` advances `_slot_counter` past the highest restored `chat-<N>-<ts>` index so a newly minted tab can't reuse a low index that collides with a restored tab and scrambles the tab↔session binding), and full tab history is re-injected. Cross-tab context (recent messages from other dashboard sessions, capped at 5k chars) is injected at session start for continuity. `?ws=1` mode returns JSON immediately and pushes chunks via WS. `_prepare_messages()` collapses `chunk` entries into `streaming` role for API responses during active streaming. Timestamp preservation on resume (original `ts` from JSONL) and save (single-pass JSONL write preserving `ts` and `created_at`). **Agent persistence**: `slot.agent` saved to JSONL metadata on close, restored on resume — custom agent sessions survive close/reopen. Pushes `refresh("history")` after chat completion. **Bidirectional Slack sync**: mirrors user messages to linked Slack threads when `slack_client` is available. Stop resets the per-tab session; delete kills the per-tab session via `sessions.remove()` to free resources. **Slash commands**: `_SLASH_COMMANDS` frozenset skips context injection (sent verbatim to kiro-cli). `_BLOCKED_SLASH_COMMANDS` (`/quit`, `/exit`, `/q`, `/chat`, `/paste`, `/reply`, `/editor`, `/tangent`) are rejected before session acquisition — returns warning message without touching kiro-cli — and are excluded from the `GET /api/slash-commands` suggestion payload (both provider paths), so the autocomplete never advertises a command the dashboard rejects. **ACP extension events**: `_run_chat` handles `compaction_status` (shows ✅/❌ completion/failure), `clear_status` (clears slot messages + broadcasts `slot_clear`), `agent_switched` (updates `slot.agent` + resets session + broadcasts `slot_agent_switch`).
 - `ws.py` — WebSocket endpoint at `/api/ws`. Single multiplexed connection for all real-time events. Pushes dashboard status every 5s, current slots on connect, log ring buffer replay on subscribe. The lesson/cron counts in the status snapshot refresh only every 30s (`_WS_COUNTS_CACHE_TTL`) and are computed OFF the event loop by `_load_status_counts` (`asyncio.to_thread` for both `LessonStore.load_all` — blocking JSONL `stat()`+`read_text()` — and `CronService.count_enabled_from_disk`), so slow/large/NFS home-dir latency cannot stall the loop and starve every other WebSocket/coroutine. It deliberately uses `count_enabled_from_disk` (a pure read) rather than `list_jobs`, whose off-thread `_arm_timer` would raise `RuntimeError` and silently cancel all cron timers (see cron spec § Enabled Predicate & Off-Thread Count). Server→Client: `{"type": "dashboard|slots|slot_title|notification|refresh|chat_message|chat_chunk|chat_done|log|refine|sessions_restarting|slot_clear|slot_agent_switch", "data": {...}}`. Client→Server: `{"type": "subscribe_logs|unsubscribe_logs|slot_focused"}`. `slot_focused` (`{"type": "slot_focused", "slot": "<slot-key>"|null}`) is the resume-prefetch intent signal: focusing a slot whose session is persisted but not live schedules a speculative `session/load` (`schedule_eager_spawn(allow_resume=True)` → `get_or_create(speculative=True, speculative_resume=True)`), overlapping the multi-second transcript replay with the user reading that history; `slot: null` means blur (tab hidden). The handler tracks the prefetch task per connection and cancels it on every focus change, blur, and disconnect — rapid tab flipping settles into at most one pending prefetch per socket, and only the task this path armed is ever cancelled, never one from the slot-create/project-set signals. A prefetched session no real turn claims is torn down by a TTL (`_RESUME_PREFETCH_TTL_SECS`, 600s) via `SessionManager.remove_if_unclaimed`, releasing kiro-cli's native per-session lock instead of waiting out the idle sweep. `sessions_restarting` event pushed by `_reset_all_sessions()` with `{"status": "restarting"|"ready"}` so the frontend knows when sessions are being recycled. Each provider shutdown is bounded by `_SHUTDOWN_TIMEOUT_SECS` (5s) via `asyncio.wait_for`; on timeout, `_sync_kill_provider` force-kills the process tree to prevent leaks (see `docs/architecture/resource-protection.md`). `slot_clear` pushed on `/clear` (frontend clears messages for active slot). `slot_agent_switch` pushed on `/agent` switch (frontend re-fetches slots for updated agent label). Uses `asyncio.ensure_future(ws.send_str())` because aiohttp 3.13's `send_str()` is a coroutine. **Security**: `_check_ws_origin()` validates the `Origin` header before accepting the upgrade — rejects missing or cross-origin requests (allowed: `127.0.0.1`, `localhost`, `junction.localhost`). Max 5 concurrent WS connections (`_MAX_WS_CLIENTS`).
 - `handlers.py` — status, system (live CPU/memory/network), memory CRUD, cron CRUD, lesson CRUD, skills, agent config (save + auto-restart sessions), logs SSE with persistent ring buffer (1000 entries, replays on connect) + queue-based handler (also pushes to WS log subscribers via `ensure_future`), log level control, session delete, refine status push via `broadcast_ws` with throttled chunks (~4/sec). `start_time` included in SSE/WS dashboard status payload. MCP management: probe cache (`_bg_mcp_probe()` at startup, 10-min TTL, merges enabled/disabledTools from global mcp.json), server/tool toggle writes to `~/.kiro/settings/mcp.json` + syncs to junction.json, bulk toggle-all, `_sync_mcp_to_agent()` helper.
-- `handlers/kiro_prerequisite.py` + `kiro_prerequisite.py` — authenticated
-  first-run readiness surface. `GET /api/kiro-prerequisite` discovers viable
+- `handlers/harness_prerequisite.py` + `harness_prerequisite.py` — authenticated
+  first-run readiness surface. `GET /api/harness-prerequisite` discovers viable
   `kiro-cli` candidates and checks `whoami`; exact owners receive structured
   platform/install/auth state — all of it DETECTED, never performed, since
   Junction neither installs the CLI nor signs in — while authenticated non-owner
@@ -526,7 +526,7 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   **Probing is boot-and-explicit-action only.** The readiness probe (two
   `kiro-cli` spawns) runs ONCE per gateway, in `warm_up()` shortly after start,
   and thereafter only on an explicit user action: the gate's Refresh / Check
-  again button (`GET /api/kiro-prerequisite?refresh=1`, owner-only) or an
+  again button (`GET /api/harness-prerequisite?refresh=1`, owner-only) or an
   install/login operation. There is deliberately **no timer re-probe and no
   probe on the send path** — `session_ready()` is a pure read of the latched
   status, and the polled status endpoint serves that same latched value, so the
@@ -544,7 +544,7 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   candidate reports `installed=True` (the binary was stat'd; verification is what
   failed) and `authenticated=False` as UNKNOWN, since `whoami` runs through the
   same probe path and is never reached on such a host.
-  **Known interim gap:** `KiroPrerequisiteGate.tsx` keys only on
+  **Known interim gap:** `HarnessPrerequisiteGate.tsx` keys only on
   `sandbox_unavailable` / `installed` / `authenticated`, so `probe_timed_out` has
   no UI consumer yet. On a FIRST-RUN host (`initial_setup_complete=false`) a
   timed-out probe therefore falls past the `sandbox_unavailable` intercept into
@@ -556,16 +556,16 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   returns before either branch.
   **A mid-session logout is discovered by the ACP attempt, not by a probe.**
   Because the latch can be arbitrarily stale, turn-starting paths do **not**
-  gate on it: `reject_if_kiro_not_ready()` is advisory and always admits (its
-  call sites were removed from chat / regenerate / edit-resend / rewind / side /
-  optimizer / `POST /v1/chat/completions`). Blocking a send on a stale latch was
+  gate on it: the advisory readiness guard was removed from chat / regenerate /
+  edit-resend / rewind / side / optimizer / `POST /v1/chat/completions`.
+  Blocking a send on a stale latch was
   the stuck case — a user who signed in from a terminal stayed locked out until
   something re-probed. Instead `chat_runner` handles `AcpAuthRequired`
   explicitly (ahead of the generic `AcpError` branch, since it is a subclass):
   it never re-queues (respawning hits the same wall), appends the actionable
   "not logged in — run `kiro-cli login`" error card, mirrors that message to a
   linked Slack thread (preserving the delivery the old pre-turn gate performed),
-  and calls `KiroPrerequisiteService.mark_signed_out()`. That latch narrows
+  and calls `HarnessPrerequisiteService.mark_signed_out()`. That latch narrows
   `authenticated`/`ready` to false without spawning anything and never touches
   `initial_setup_complete` (so a returning user is never demoted to first-run
   setup). It only ever narrows readiness, and defers while an install/login
@@ -589,7 +589,7 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   server logs)", since the side panel has no other channel to tell the user what
   to do. It latches the service signed-out too.
   **Two classes still fail closed** via the blocking guard
-  `reject_if_kiro_unverified()`, because neither can use the ACP attempt as its
+  `reject_if_harness_unverified()`, because neither can use the ACP attempt as its
   authority: the **poll-driven `kiro-cli` spawn sites** (`/api/models`,
   `/api/sessions/usage`) have no turn to carry the failure and `kiro-cli`
   auto-opens an interactive browser login when run unauthenticated (and
@@ -600,7 +600,7 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   would surface as a successful empty completion. A missing or invalid service
   fails closed in all three.
   **These callers authorize on a FRESH probe, not the latch**
-  (`kiro_verified_ready` → `KiroPrerequisiteService.verified_ready`, re-probing
+  (`harness_verified_ready` → `HarnessPrerequisiteService.verified_ready`, re-probing
   when the latch is older than `_VERIFY_MAX_AGE_SECS` = 30s). The latch is
   written at boot and narrowed only when a chat turn observes an auth failure, so
   an external logout with no chat turn in between would leave it `ready=True`
@@ -963,7 +963,7 @@ an unreadable scan is reported as unchecked rather than clean.
 
 ### Frontend (React SPA)
 
-`KiroPrerequisiteGate` wraps the main dashboard route (the independent
+`HarnessPrerequisiteGate` wraps the main dashboard route (the independent
 `/worlds-popout` route is not gated). `DashboardBootstrap` mounts the proactive
 auth-cookie refresh scheduler outside this gate, so a stale access cookie can
 still refresh while the dashboard body is blocked. On a new gateway it:
@@ -981,9 +981,9 @@ still refresh while the dashboard body is blocked. On a new gateway it:
 **Junction performs neither setup step, and there is no code path that could.**
 Both belong to Kiro CLI. Deleted for install: the installer download
 (`https://cli.kiro.dev/install`), its pinned SHA-256 pair, the bash/PowerShell
-interpreter plan, `POST /api/kiro-prerequisite/install`, the `_install`
-operation, `can_auto_install`, and the `.kiro_cli_binary_trust.json`
-attestation. Deleted for sign-in: `POST /api/kiro-prerequisite/login`, the
+interpreter plan, the install route, the `_install` operation,
+`can_auto_install`, and the `.kiro_cli_binary_trust.json`
+attestation. Deleted for sign-in: the login route, the
 `_login`/`start_login` device-flow spawn, `extract_secure_login_url` and its
 trusted-host allowlist, the progress/ANSI scrubbers that rendered the CLI's
 spinner, `_capture_operation_output`, `can_login`, and the whole
@@ -1035,7 +1035,7 @@ CLI always offers an enabled **Sign in to Kiro** rather than a button-less
 "repair" dead end.
 
 **The first-run gate is the one screen that polls the HOST rather than the latch.**
-`kiroPrerequisiteIsBlocking(status)` is true only while the full-screen first-run
+`harnessPrerequisiteIsBlocking(status)` is true only while the full-screen first-run
 gate is the whole UI (not `ready`, not `initial_setup_complete`, owner). In that
 state the gate polls every 5s AND passes `?refresh=1`, because the two steps it is
 waiting on — installing from kiro.dev and signing in, possibly from a terminal —
@@ -1048,7 +1048,7 @@ reauthentication chrome for an established install — that decision is unchange
 
 Ready dashboards continue prerequisite polling every 30 seconds, but that poll
 is a **free read of the gateway's latched state** — it spawns no `kiro-cli`.
-Only `api.kiroPrerequisite(true)` (`?refresh=1`), wired to the gate's Refresh /
+Only `api.harnessPrerequisite(true)` (`?refresh=1`), wired to the gate's Refresh /
 Check again buttons via a one-shot `forceProbe` ref, asks the host to re-probe.
 A later sign-out is therefore surfaced by the failing *turn*, not by the poll:
 `chat_runner`'s `AcpAuthRequired` handler puts the actionable `kiro-cli login`
@@ -1058,7 +1058,7 @@ message straight into the transcript.
 reauthentication banner, no "Sessions paused" state, and no disabled composer or
 session-creation control. The `ReauthenticationBanner`, the
 `UnavailableStatusBanner`, the copyable-terminal-command block, and the whole
-`KiroReadinessContext` seam (`useKiroSessionReady`, consumed by `ChatInput`,
+readiness-context seam (its session-ready hook, consumed by `ChatInput`,
 `ChatSidebar`, `SideChat`) are **deleted**. Rationale: latched readiness is only
 refreshed at boot and on explicit request, so it is never fresh enough to
 disable UI on — a user who signed in from a terminal would sit behind a dead
@@ -1089,8 +1089,8 @@ pins it.
 (`_save_slot_to_history`, `_pending_rewrite`) *before* dispatching the background
 turn, so "let the ACP attempt be the authority" does not hold for them: by the
 time the turn raises `AcpAuthRequired` the history is already rewritten and no
-error card can undo it. All three therefore call `reject_if_kiro_unverified`
-BEFORE any mutation, returning the shared `kiro_prerequisite_required` 503.
+error card can undo it. All three therefore call `reject_if_harness_unverified`
+BEFORE any mutation, returning the shared `harness_prerequisite_required` 503.
 (`switch-variant` is exempt — it swaps an already-stored variant and starts no
 turn.)
 
@@ -1099,7 +1099,7 @@ no transcript the caller reads. Its collectors pick up only `chunk`/`assistant`
 roles, so the `error` card an `AcpAuthRequired` turn appends is invisible and the
 request would return **HTTP 200 with empty content** — an OpenAI SDK client
 cannot distinguish that from a model that legitimately said nothing. It returns
-the `kiro_prerequisite_required` 503 in OpenAI error shape until the endpoint
+the `harness_prerequisite_required` 503 in OpenAI error shape until the endpoint
 learns to translate `AcpAuthRequired` itself.
 
 **An unresolved check is never rendered as "setup required."** The cold probe

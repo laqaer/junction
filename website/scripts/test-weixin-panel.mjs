@@ -78,7 +78,7 @@ await page.route('**/api/**', async route => {
   const method = route.request().method()
 
   if (p === '/api/auth/me') return json(route, { user: 'owner', app: '' })
-  if (p === '/api/kiro-prerequisite') return json(route, {
+  if (p === '/api/harness-prerequisite') return json(route, {
     platform: 'gateway', installed: true, authenticated: true, ready: true,
     initial_setup_complete: true, can_auto_install: false, can_login: true,
     repair_required: false, docs_url: '', setup_allowed: false,

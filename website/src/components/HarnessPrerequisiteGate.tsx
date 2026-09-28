@@ -15,7 +15,7 @@ import {
 import {
   ApiError,
   api,
-  type KiroPrerequisiteStatus,
+  type HarnessPrerequisiteStatus,
 } from '../api/client'
 import {
   PANEL_CLASS,
@@ -28,14 +28,14 @@ import { copyToClipboard } from '../utils/clipboard'
 import { Badge, Btn, Card, SendBtn } from './ui'
 
 import { i18nT } from '../i18n/t'
-const QUERY_KEY = ['kiro-prerequisite'] as const
+const QUERY_KEY = ['harness-prerequisite'] as const
 
-export function kiroPrerequisiteRefetchInterval(
-  status: KiroPrerequisiteStatus | undefined,
+export function harnessPrerequisiteRefetchInterval(
+  status: HarnessPrerequisiteStatus | undefined,
 ): number | false {
   if (status?.ready) return 30_000
   if (status && status.setup_allowed === false) return 3_000
-  if (kiroPrerequisiteIsBlocking(status)) return 5_000
+  if (harnessPrerequisiteIsBlocking(status)) return 5_000
   return 30_000
 }
 
@@ -44,14 +44,14 @@ export function kiroPrerequisiteRefetchInterval(
 // the HOST rather than read the boot-time latch.
 //
 // Forcing matters because Junction no longer performs setup — the user installs
-// Kiro CLI from kiro.dev and may sign in from a terminal. Neither of those
+// CLI from kiro.dev and may sign in from a terminal. Neither of those
 // touches the gateway, and the latched status is refreshed only at boot or on an
 // explicit request, so a latch-reading poll can never observe them and the gate
 // would hold forever behind a Check again button. Bounded deliberately: it costs
 // two short `kiro-cli` spawns per interval, runs ONLY on this blocking screen,
 // and stops the moment `ready` flips. A returning user never reaches it.
-export function kiroPrerequisiteIsBlocking(
-  status: KiroPrerequisiteStatus | undefined,
+export function harnessPrerequisiteIsBlocking(
+  status: HarnessPrerequisiteStatus | undefined,
 ): boolean {
   if (!status || status.ready) return false
   // A non-owner cannot probe and is shown the "owner must finish setup" screen.
@@ -87,14 +87,14 @@ function SetupShell({
   // primary button reads as a rendering defect rather than a scroll affordance.
   footer?: ReactNode
   cardLabel?: string
-  // The default aside says "Install Kiro CLI, sign in once…", which contradicts
+  // The default aside says "Install CLI, sign in once…", which contradicts
   // a state whose headline is "already installed" and which deliberately offers
   // no install action. States like that pass their own copy so the two columns
   // of the same screen do not disagree.
   asideHeadline?: string
   asideBody?: string
 }) {
-  const label = cardLabel || i18nT('components.kiroPrerequisiteGate.product_is_almost_ready')
+  const label = cardLabel || i18nT('components.harnessPrerequisiteGate.product_is_almost_ready')
   return (
     <main className={SCRIM_CLASS} aria-label={label}>
       <div className={PANEL_CLASS}>
@@ -102,12 +102,12 @@ function SetupShell({
           copy={{
             ariaLabel: label,
             panelHeadline:
-              asideHeadline || i18nT('components.kiroPrerequisiteGate.product_is_almost_ready'),
+              asideHeadline || i18nT('components.harnessPrerequisiteGate.product_is_almost_ready'),
             panelBody:
               asideBody
-              || i18nT('components.kiroPrerequisiteGate.install_kiro_cli_sign_in_once_and_junction_will'),
+              || i18nT('components.harnessPrerequisiteGate.install_harness_cli_sign_in_once_and_junction_will'),
             panelFootnote: i18nT(
-              'components.kiroPrerequisiteGate.secure_setup_on_your_gateway_host',
+              'components.harnessPrerequisiteGate.secure_setup_on_your_gateway_host',
             ),
           }}
         />
@@ -136,9 +136,9 @@ function StepStatus({
   current: boolean
 }) {
   if (complete) {
-    return <Badge variant="ok"><CheckCircle2 className="lucide-inline" /> {i18nT('components.kiroPrerequisiteGate.complete')}</Badge>
+    return <Badge variant="ok"><CheckCircle2 className="lucide-inline" /> {i18nT('components.harnessPrerequisiteGate.complete')}</Badge>
   }
-  return <Badge variant={current ? 'aim' : 'muted'}>{current ? i18nT('components.kiroPrerequisiteGate.required') : i18nT('components.kiroPrerequisiteGate.waiting')}</Badge>
+  return <Badge variant={current ? 'aim' : 'muted'}>{current ? i18nT('components.harnessPrerequisiteGate.required') : i18nT('components.harnessPrerequisiteGate.waiting')}</Badge>
 }
 
 
@@ -178,18 +178,18 @@ function OwnerSetupRequired({
         </div>
         <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-accent">
           {authRequired
-            ? i18nT('components.kiroPrerequisiteGate.sign_in_required')
-            : i18nT('components.kiroPrerequisiteGate.gateway_setup_required')}
+            ? i18nT('components.harnessPrerequisiteGate.sign_in_required')
+            : i18nT('components.harnessPrerequisiteGate.gateway_setup_required')}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-text-strong">
           {authRequired
-            ? i18nT('components.kiroPrerequisiteGate.sign_in_again_to_continue')
-            : i18nT('components.kiroPrerequisiteGate.the_gateway_owner_needs_to_finish_setup')}
+            ? i18nT('components.harnessPrerequisiteGate.sign_in_again_to_continue')
+            : i18nT('components.harnessPrerequisiteGate.the_gateway_owner_needs_to_finish_setup')}
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
           {authRequired
             ? i18nT('api.client.stale_owner_session_sign_in_again')
-            : i18nT('components.kiroPrerequisiteGate.ask_the_junction_owner_to_install_kiro_cli_and')}
+            : i18nT('components.harnessPrerequisiteGate.ask_the_junction_owner_to_install_harness_cli_and')}
         </p>
         {/* "Check again" re-probes readiness, which cannot change for this
             viewer until they sign back in — a retry that cannot succeed is a
@@ -199,7 +199,7 @@ function OwnerSetupRequired({
           <div className="mt-6">
             <Btn type="button" disabled={retrying} onClick={onRetry}>
               <RefreshCw className={`lucide-inline ${retrying ? 'animate-spin' : ''}`} />
-              {i18nT('components.kiroPrerequisiteGate.check_again')}
+              {i18nT('components.harnessPrerequisiteGate.check_again')}
             </Btn>
           </div>
         )}
@@ -214,7 +214,7 @@ function OwnerSetupRequired({
 // this only ever suppresses first-run setup chrome for someone the gateway
 // already confirmed had completed setup, and it never grants session
 // readiness (that stays server-driven via `ready`).
-const SETUP_COMPLETE_KEY = 'junction:kiro-setup-complete'
+const SETUP_COMPLETE_KEY = 'junction:harness-setup-complete'
 
 function rememberedSetupComplete(): boolean {
   return safeGetItem(SETUP_COMPLETE_KEY) === '1'
@@ -236,18 +236,18 @@ function SetupStatusError({
           <AlertTriangle className="lucide-inline" />
         </div>
         <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-danger">
-          {i18nT('components.kiroPrerequisiteGate.setup_check_unavailable')}
+          {i18nT('components.harnessPrerequisiteGate.setup_check_unavailable')}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-text-strong">
-          {i18nT('components.kiroPrerequisiteGate.we_could_not_check_kiro_cli')}
+          {i18nT('components.harnessPrerequisiteGate.we_could_not_check_harness_cli')}
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-          {asSentence(message)} {i18nT('components.kiroPrerequisiteGate.retry_the_gateway_check_before_starting_a_sessio')}
+          {asSentence(message)} {i18nT('components.harnessPrerequisiteGate.retry_the_gateway_check_before_starting_a_sessio')}
         </p>
         <div className="mt-6">
           <SendBtn type="button" disabled={retrying} onClick={onRetry}>
             <RefreshCw className={`lucide-inline ${retrying ? 'animate-spin' : ''}`} />{' '}
-            {i18nT('components.kiroPrerequisiteGate.try_again')}
+            {i18nT('components.harnessPrerequisiteGate.try_again')}
           </SendBtn>
         </div>
       </>
@@ -300,8 +300,8 @@ function CopyCommand({ children }: { children: ReactNode }) {
     resetTimer.current = setTimeout(() => setCopied(false), 1500)
   }
   const label = copied
-    ? i18nT('components.kiroPrerequisiteGate.copied')
-    : i18nT('components.kiroPrerequisiteGate.copy_command')
+    ? i18nT('components.harnessPrerequisiteGate.copied')
+    : i18nT('components.harnessPrerequisiteGate.copy_command')
   return (
     <button
       type="button"
@@ -353,7 +353,7 @@ function remedySteps(remedy: string): React.ReactNode {
       return (
         <ul className="mt-2 list-none space-y-3">
           <li className="text-sm leading-relaxed text-muted">
-            {i18nT('components.kiroPrerequisiteGate.remedy_apparmor_service_install')}
+            {i18nT('components.harnessPrerequisiteGate.remedy_apparmor_service_install')}
             <CopyCommand>
               <code>junction service install</code>
             </CopyCommand>
@@ -364,7 +364,7 @@ function remedySteps(remedy: string): React.ReactNode {
       return (
         <ul className="mt-2 list-none space-y-3">
           <li className="text-sm leading-relaxed text-muted">
-            {i18nT('components.kiroPrerequisiteGate.remedy_max_user_namespaces')}
+            {i18nT('components.harnessPrerequisiteGate.remedy_max_user_namespaces')}
             <CopyCommand>
               <code>sudo sysctl -w user.max_user_namespaces=15000</code>
             </CopyCommand>
@@ -375,7 +375,7 @@ function remedySteps(remedy: string): React.ReactNode {
       return (
         <ul className="mt-2 list-none space-y-3">
           <li className="text-sm leading-relaxed text-muted">
-            {i18nT('components.kiroPrerequisiteGate.remedy_userns_denied')}
+            {i18nT('components.harnessPrerequisiteGate.remedy_userns_denied')}
             <CopyCommand>
               <code>sudo sysctl -w kernel.unprivileged_userns_clone=1</code>
             </CopyCommand>
@@ -385,7 +385,7 @@ function remedySteps(remedy: string): React.ReactNode {
     case 'no_user_ns':
       return (
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          {i18nT('components.kiroPrerequisiteGate.remedy_no_user_ns')}
+          {i18nT('components.harnessPrerequisiteGate.remedy_no_user_ns')}
         </p>
       )
     default:
@@ -406,14 +406,14 @@ function SandboxRemedy({ remedy, transient }: { remedy: string; transient: boole
         <>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
             {transient
-              ? i18nT('components.kiroPrerequisiteGate.if_this_keeps_happening')
-              : i18nT('components.kiroPrerequisiteGate.how_to_fix')}
+              ? i18nT('components.harnessPrerequisiteGate.if_this_keeps_happening')
+              : i18nT('components.harnessPrerequisiteGate.how_to_fix')}
           </p>
           {steps}
         </>
       ) : null}
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        {i18nT('components.kiroPrerequisiteGate.run_junction_doctor_on_the_gateway_host_for_a_ful')}
+        {i18nT('components.harnessPrerequisiteGate.run_junction_doctor_on_the_gateway_host_for_a_ful')}
       </p>
       <CopyCommand>
         <code>junction doctor</code>
@@ -424,7 +424,7 @@ function SandboxRemedy({ remedy, transient }: { remedy: string; transient: boole
         rel="noopener noreferrer"
         target="_blank"
       >
-        {i18nT('components.kiroPrerequisiteGate.linux_sandbox_guide')}
+        {i18nT('components.harnessPrerequisiteGate.linux_sandbox_guide')}
         <ExternalLink className="lucide-inline" />
       </a>
     </div>
@@ -457,12 +457,12 @@ function SandboxUnavailable({
   // no usable namespace, and their remedy step carries the specifics.
   const body =
     failureKind === 'transient'
-      ? i18nT('components.kiroPrerequisiteGate.the_check_hit_a_temporary_limit_and_was_not_cach')
+      ? i18nT('components.harnessPrerequisiteGate.the_check_hit_a_temporary_limit_and_was_not_cach')
       : failureKind === 'foreign_sandbox'
-        ? i18nT('components.kiroPrerequisiteGate.another_sandbox_already_confines_junction_so_it')
+        ? i18nT('components.harnessPrerequisiteGate.another_sandbox_already_confines_junction_so_it')
         : remedy === 'apparmor_userns'
-          ? i18nT('components.kiroPrerequisiteGate.this_host_allows_user_namespaces_but_the_kernel_d')
-          : i18nT('components.kiroPrerequisiteGate.this_host_provides_no_os_level_sandbox_so_kiro_c')
+          ? i18nT('components.harnessPrerequisiteGate.this_host_allows_user_namespaces_but_the_kernel_d')
+          : i18nT('components.harnessPrerequisiteGate.this_host_provides_no_os_level_sandbox_so_harness_c')
   // A momentary failure that clears on retry should not be dressed in the same
   // alarm red as a host-level verdict — the body immediately walks that back.
   const transient = failureKind === 'transient'
@@ -470,12 +470,12 @@ function SandboxUnavailable({
   const eyebrowTone = transient ? 'text-accent' : 'text-danger'
   return (
     <SetupShell
-      asideHeadline={i18nT('components.kiroPrerequisiteGate.sandbox_unavailable')}
-      asideBody={i18nT('components.kiroPrerequisiteGate.junction_isolates_the_agent_in_an_os_level_sand')}
+      asideHeadline={i18nT('components.harnessPrerequisiteGate.sandbox_unavailable')}
+      asideBody={i18nT('components.harnessPrerequisiteGate.junction_isolates_the_agent_in_an_os_level_sand')}
       footer={
         <Btn type="button" disabled={retrying} onClick={onRetry}>
           <RefreshCw className={`lucide-inline ${retrying ? 'animate-spin' : ''}`} />
-          {i18nT('components.kiroPrerequisiteGate.check_again')}
+          {i18nT('components.harnessPrerequisiteGate.check_again')}
         </Btn>
       }
     >
@@ -484,10 +484,10 @@ function SandboxUnavailable({
           <AlertTriangle className="lucide-inline" />
         </div>
         <p className={`mt-6 text-[12px] font-bold uppercase tracking-[0.16em] ${eyebrowTone}`}>
-          {i18nT('components.kiroPrerequisiteGate.sandbox_unavailable')}
+          {i18nT('components.harnessPrerequisiteGate.sandbox_unavailable')}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-text-strong">
-          {i18nT('components.kiroPrerequisiteGate.kiro_cli_is_installed_but_could_not_be_verified')}
+          {i18nT('components.harnessPrerequisiteGate.harness_cli_is_installed_but_could_not_be_verified')}
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{body}</p>
         {/* A foreign outer sandbox means this host is fine, so host remedies
@@ -501,7 +501,7 @@ function SandboxUnavailable({
         {detail ? (
           <div className="mt-5 w-full max-w-lg text-left">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              {i18nT('components.kiroPrerequisiteGate.technical_detail')}
+              {i18nT('components.harnessPrerequisiteGate.technical_detail')}
             </p>
             <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-bg-elevated p-3 text-xs text-muted">
               {detail}
@@ -526,25 +526,25 @@ function AgentSpecsMissing({
 }) {
   return (
     <SetupShell
-      asideHeadline={i18nT('components.kiroPrerequisiteGate.agent_specs_missing')}
-      asideBody={i18nT('components.kiroPrerequisiteGate.junction_installs_the_agent_specs_kiro_cli_load')}
+      asideHeadline={i18nT('components.harnessPrerequisiteGate.agent_specs_missing')}
+      asideBody={i18nT('components.harnessPrerequisiteGate.junction_installs_the_agent_specs_harness_cli_load')}
     >
       <>
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-danger/10 text-danger">
           <AlertTriangle className="lucide-inline" />
         </div>
         <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-danger">
-          {i18nT('components.kiroPrerequisiteGate.agent_specs_missing')}
+          {i18nT('components.harnessPrerequisiteGate.agent_specs_missing')}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-text-strong">
-          {i18nT('components.kiroPrerequisiteGate.junction_s_agent_specs_are_not_installed')}
+          {i18nT('components.harnessPrerequisiteGate.junction_s_agent_specs_are_not_installed')}
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-          {i18nT('components.kiroPrerequisiteGate.junction_writes_its_own_agent_specs_where_kiro')}
+          {i18nT('components.harnessPrerequisiteGate.junction_writes_its_own_agent_specs_where_harness')}
         </p>
         <div className="mt-5 w-full max-w-lg text-left">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-            {i18nT('components.kiroPrerequisiteGate.missing')}
+            {i18nT('components.harnessPrerequisiteGate.missing')}
           </p>
           <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-bg p-3 text-xs text-muted">
             {specs.join('\n')}
@@ -558,7 +558,7 @@ function AgentSpecsMissing({
         {repairError ? (
           <div className="mt-4 w-full max-w-lg text-left" role="alert">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-danger">
-              {i18nT('components.kiroPrerequisiteGate.the_repair_attempt_failed')}
+              {i18nT('components.harnessPrerequisiteGate.the_repair_attempt_failed')}
             </p>
             <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-danger/10 p-3 text-xs text-danger">
               {repairError}
@@ -566,15 +566,15 @@ function AgentSpecsMissing({
           </div>
         ) : null}
         {/* The self-diagnosis dead end: `kiro-cli diagnostic` is the first command
-            anyone reaches for, and it refuses with "Kiro CLI app is not running"
+            anyone reaches for, and it refuses with "CLI app is not running"
             until the app is launched — which reads as the cause and is not. */}
         <p className="mt-5 max-w-lg text-[13px] leading-relaxed text-muted">
-          {i18nT('components.kiroPrerequisiteGate.if_you_are_diagnosing_this_from_a_terminal_kiro')}
+          {i18nT('components.harnessPrerequisiteGate.if_you_are_diagnosing_this_from_a_terminal_harness')}
         </p>
         <div className="mt-6">
           <Btn type="button" disabled={retrying} onClick={onRepair}>
             <RefreshCw className="lucide-inline" />
-            {i18nT('components.kiroPrerequisiteGate.check_again')}
+            {i18nT('components.harnessPrerequisiteGate.check_again')}
           </Btn>
         </div>
       </>
@@ -597,37 +597,37 @@ function AgentSpecsRejected({
 }) {
   return (
     <SetupShell
-      asideHeadline={i18nT('components.kiroPrerequisiteGate.agent_specs_rejected')}
-      asideBody={i18nT('components.kiroPrerequisiteGate.junction_installs_the_agent_specs_kiro_cli_load')}
+      asideHeadline={i18nT('components.harnessPrerequisiteGate.agent_specs_rejected')}
+      asideBody={i18nT('components.harnessPrerequisiteGate.junction_installs_the_agent_specs_harness_cli_load')}
     >
       <>
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-danger/10 text-danger">
           <AlertTriangle className="lucide-inline" />
         </div>
         <p className="mt-6 text-[12px] font-bold uppercase tracking-[0.16em] text-danger">
-          {i18nT('components.kiroPrerequisiteGate.agent_specs_rejected')}
+          {i18nT('components.harnessPrerequisiteGate.agent_specs_rejected')}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-text-strong">
-          {i18nT('components.kiroPrerequisiteGate.kiro_cli_will_not_load_junction_s_agent_specs')}
+          {i18nT('components.harnessPrerequisiteGate.harness_cli_will_not_load_junction_s_agent_specs')}
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-          {i18nT('components.kiroPrerequisiteGate.the_files_are_on_disk_but_kiro_cli_refuses_them')}
+          {i18nT('components.harnessPrerequisiteGate.the_files_are_on_disk_but_harness_cli_refuses_them')}
         </p>
         <div className="mt-5 w-full max-w-lg text-left">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-            {i18nT('components.kiroPrerequisiteGate.rejected')}
+            {i18nT('components.harnessPrerequisiteGate.rejected')}
           </p>
           <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-bg p-3 text-xs text-muted">
             {specs.join('\n')}
           </pre>
         </div>
-        {/* Kiro CLI's own words, verbatim and untranslated. It names the file and
+        {/* CLI's own words, verbatim and untranslated. It names the file and
             the construct it refused, which is the difference between "my agents
             stopped working" and a report someone can act on. */}
         {reason ? (
           <div className="mt-4 w-full max-w-lg text-left">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-              {i18nT('components.kiroPrerequisiteGate.kiro_cli_s_reason')}
+              {i18nT('components.harnessPrerequisiteGate.harness_cli_s_reason')}
             </p>
             <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-bg p-3 text-xs text-muted">
               {reason}
@@ -637,7 +637,7 @@ function AgentSpecsRejected({
         {repairError ? (
           <div className="mt-4 w-full max-w-lg text-left" role="alert">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-danger">
-              {i18nT('components.kiroPrerequisiteGate.the_repair_attempt_failed')}
+              {i18nT('components.harnessPrerequisiteGate.the_repair_attempt_failed')}
             </p>
             <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-danger/10 p-3 text-xs text-danger">
               {repairError}
@@ -653,14 +653,14 @@ function AgentSpecsRejected({
             <code> outside the catalog: a translator must not be able to alter a
             string the user pastes into a shell, and prose cannot be copied. */}
         <p className="mt-4 max-w-lg text-[13px] leading-relaxed text-muted">
-          {i18nT('components.kiroPrerequisiteGate.repair_rewrites_the_specs_junction_owns')}
+          {i18nT('components.harnessPrerequisiteGate.repair_rewrites_the_specs_junction_owns')}
         </p>
         <ul className="mt-3 w-full max-w-lg list-none space-y-2 text-left">
           <li className="text-sm leading-relaxed text-muted">
-            {i18nT('components.kiroPrerequisiteGate.remedy_spec_rejected_update')}
+            {i18nT('components.harnessPrerequisiteGate.remedy_spec_rejected_update')}
           </li>
           <li className="text-sm leading-relaxed text-muted">
-            {i18nT('components.kiroPrerequisiteGate.remedy_spec_rejected_rewrite')}
+            {i18nT('components.harnessPrerequisiteGate.remedy_spec_rejected_rewrite')}
             <CopyCommand>
               <code>junction setup --agent-only --clean</code>
             </CopyCommand>
@@ -672,7 +672,7 @@ function AgentSpecsRejected({
         <div className="mt-4">
           <Btn type="button" disabled={retrying} onClick={onRepair}>
             <RefreshCw className="lucide-inline" />
-            {i18nT('components.kiroPrerequisiteGate.check_again')}
+            {i18nT('components.harnessPrerequisiteGate.check_again')}
           </Btn>
         </div>
       </>
@@ -680,7 +680,7 @@ function AgentSpecsRejected({
   )
 }
 
-export default function KiroPrerequisiteGate({ children }: { children: ReactNode }) {
+export default function HarnessPrerequisiteGate({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   // The gateway probes kiro-cli at boot and on explicit request only, so the
   // background poll below reads latched state for free. A user-driven Refresh
@@ -690,7 +690,7 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
     queryKey: QUERY_KEY,
     queryFn: () => {
       // Probe the host when the user asked (Check again) OR while the blocking
-      // first-run gate is up — see kiroPrerequisiteIsBlocking for why a
+      // first-run gate is up — see harnessPrerequisiteIsBlocking for why a
       // latch-reading poll cannot lift that gate on its own. The two are sent as
       // DIFFERENT modes: the user's click must always probe, while the automatic
       // poll is coalesced server-side so several open tabs do not multiply the
@@ -699,14 +699,14 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
       forceProbe.current = false
       const refresh = explicit
         ? 'explicit' as const
-        : kiroPrerequisiteIsBlocking(queryClient.getQueryData(QUERY_KEY))
+        : harnessPrerequisiteIsBlocking(queryClient.getQueryData(QUERY_KEY))
           ? 'auto' as const
           : false
-      return api.kiroPrerequisite(refresh)
+      return api.harnessPrerequisite(refresh)
     },
-    refetchInterval: (query) => kiroPrerequisiteRefetchInterval(query.state.data),
+    refetchInterval: (query) => harnessPrerequisiteRefetchInterval(query.state.data),
   })
-  const updateStatus = (status: KiroPrerequisiteStatus) => {
+  const updateStatus = (status: HarnessPrerequisiteStatus) => {
     queryClient.setQueryData(QUERY_KEY, status)
   }
   // The repair is a POST, not a flag on the status GET: the gateway's CSRF check
@@ -714,7 +714,7 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
   // would be cross-site triggerable and would leave no audit record. Its response
   // IS the post-repair snapshot, so the result seeds the cache directly.
   const repairMutation = useMutation({
-    mutationFn: api.repairKiroPrerequisiteSpecs,
+    mutationFn: api.repairHarnessPrerequisiteSpecs,
     onSuccess: updateStatus,
   })
 
@@ -769,8 +769,8 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
       return <>{children}</>
     }
     const message = statusQuery.isError
-      ? (statusQuery.error?.message || i18nT('components.kiroPrerequisiteGate.the_gateway_returned_an_unexpected_error'))
-      : i18nT('components.kiroPrerequisiteGate.the_gateway_returned_no_prerequisite_status')
+      ? (statusQuery.error?.message || i18nT('components.harnessPrerequisiteGate.the_gateway_returned_an_unexpected_error'))
+      : i18nT('components.harnessPrerequisiteGate.the_gateway_returned_no_prerequisite_status')
     return (
       <SetupStatusError message={message} retrying={retrying} onRetry={retryStatus} />
     )
@@ -809,7 +809,7 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
       />
     )
   }
-  // Present but refused. Kiro CLI drops a spec it rejects from its agent table,
+  // Present but refused. CLI drops a spec it rejects from its agent table,
   // so `--agent junction` resolves to the default agent with none of Junction's
   // MCP servers -- the same total failure as an absent spec, and the one the
   // stat-only check above cannot see. Ordered AFTER missing for the same reason
@@ -840,7 +840,7 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
   }
   // The CLI is present and executable, but verification runs it INSIDE the
   // sandbox, so a host that cannot build one fails verification. Telling that
-  // user to go get Kiro CLI is false on a host whose CLI is installed and signed
+  // user to go get CLI is false on a host whose CLI is installed and signed
   // in, and Kiro's setup page cannot help them. Placed after
   // `initial_setup_complete` deliberately: an established install is not
   // hijacked by a full-screen gate (the chat error card carries it in context,
@@ -863,14 +863,14 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
         <>
           <div className="mb-7">
             <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold tracking-[0.14em] text-accent">
-              <span className="uppercase">{i18nT('components.kiroPrerequisiteGate.setup')}</span>
+              <span className="uppercase">{i18nT('components.harnessPrerequisiteGate.setup')}</span>
               <ArrowRight className="lucide-inline" />
-              <span>{platform} {i18nT('components.kiroPrerequisiteGate.gateway')}</span>
+              <span>{platform} {i18nT('components.harnessPrerequisiteGate.gateway')}</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-text-strong">{i18nT('components.kiroPrerequisiteGate.set_up_kiro')}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-text-strong">{i18nT('components.harnessPrerequisiteGate.set_up_harness')}</h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">
-              {i18nT('components.kiroPrerequisiteGate.junction_uses_kiro_cli_as_its_agent_engine_comp')}{' '}
-              <strong className="font-semibold text-text">{platform} {i18nT('components.kiroPrerequisiteGate.gateway_host')}</strong>{i18nT('components.kiroPrerequisiteGate.then_the_dashboard_will_open_automatically')}
+              {i18nT('components.harnessPrerequisiteGate.junction_uses_harness_cli_as_its_agent_engine_comp')}{' '}
+              <strong className="font-semibold text-text">{platform} {i18nT('components.harnessPrerequisiteGate.gateway_host')}</strong>. {i18nT('components.harnessPrerequisiteGate.then_the_dashboard_will_open_automatically')}
             </p>
           </div>
 
@@ -881,17 +881,17 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-subtle text-accent">
                     <Package className="lucide-inline" />
                   </span>
-                  {i18nT('components.kiroPrerequisiteGate.get_kiro_cli')}
+                  {i18nT('components.harnessPrerequisiteGate.get_harness_cli')}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   {status.installed
-                    ? i18nT('components.kiroPrerequisiteGate.kiro_cli_was_found_on_this_host')
-                    : i18nT('components.kiroPrerequisiteGate.install_kiro_cli_from_kiros_official_setup_page')}
+                    ? i18nT('components.harnessPrerequisiteGate.harness_cli_was_found_on_this_host')
+                    : i18nT('components.harnessPrerequisiteGate.install_harness_cli_from_harnesss_official_setup_page')}
                 </p>
               </div>
               <StepStatus complete={status.installed} current={!status.installed} />
             </div>
-            {/* A link, not a button: Junction does not install Kiro CLI. Kiro's
+            {/* A link, not a button: Junction does not install CLI. Kiro's
                 own page carries the per-platform steps and stays correct as they
                 change, which a digest-pinned in-app installer did not. */}
             {!status.installed && (
@@ -902,11 +902,11 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {i18nT('components.kiroPrerequisiteGate.open_kiro_cli_setup')}
+                  {i18nT('components.harnessPrerequisiteGate.open_harness_cli_setup')}
                   <ExternalLink className="lucide-inline" />
                 </a>
                 <p className="mt-3 text-[13px] leading-relaxed text-muted" aria-live="polite">
-                  {i18nT('components.kiroPrerequisiteGate.this_page_detects_kiro_cli_automatically')}
+                  {i18nT('components.harnessPrerequisiteGate.this_page_detects_harness_cli_automatically')}
                 </p>
               </div>
             )}
@@ -919,12 +919,12 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-subtle text-accent">
                     <LogIn className="lucide-inline" />
                   </span>
-                  {i18nT('components.kiroPrerequisiteGate.sign_in_to_kiro')}
+                  {i18nT('components.harnessPrerequisiteGate.sign_in_to_harness')}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   {status.authenticated
-                    ? i18nT('components.kiroPrerequisiteGate.this_kiro_cli_is_signed_in')
-                    : i18nT('components.kiroPrerequisiteGate.sign_in_with_kiro_cli_on_the_gateway_host')}
+                    ? i18nT('components.harnessPrerequisiteGate.this_harness_cli_is_signed_in')
+                    : i18nT('components.harnessPrerequisiteGate.sign_in_with_harness_cli_on_the_gateway_host')}
                 </p>
               </div>
               <StepStatus
@@ -950,7 +950,7 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
               <div className="mt-4 space-y-4">
                 <div>
                   <p className="text-[13px] font-medium text-text">
-                    {i18nT('components.kiroPrerequisiteGate.sign_in_personal_label')}
+                    {i18nT('components.harnessPrerequisiteGate.sign_in_personal_label')}
                   </p>
                   <code className="mt-1.5 inline-block rounded-lg border border-border bg-bg px-2.5 py-1.5 font-mono text-[13px] text-text">
                     {status.login_command}
@@ -958,17 +958,17 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
                 </div>
                 <div>
                   <p className="text-[13px] font-medium text-text">
-                    {i18nT('components.kiroPrerequisiteGate.sign_in_sso_label')}
+                    {i18nT('components.harnessPrerequisiteGate.sign_in_sso_label')}
                   </p>
                   <code className="mt-1.5 inline-block rounded-lg border border-border bg-bg px-2.5 py-1.5 font-mono text-[13px] text-text">
                     {status.sso_login_command}
                   </code>
                   <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-                    {i18nT('components.kiroPrerequisiteGate.sign_in_sso_hint')}
+                    {i18nT('components.harnessPrerequisiteGate.sign_in_sso_hint')}
                   </p>
                 </div>
                 <p className="text-[12px] leading-relaxed text-muted">
-                  {i18nT('components.kiroPrerequisiteGate.sign_in_method_note')}
+                  {i18nT('components.harnessPrerequisiteGate.sign_in_method_note')}
                 </p>
               </div>
             )}
@@ -977,8 +977,8 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
           <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
             <p className="text-[13px] text-muted" aria-live="polite">
               {status.installed
-                ? i18nT('components.kiroPrerequisiteGate.kiro_cli_is_installed_finish_signing_in_to_conti')
-                : i18nT('components.kiroPrerequisiteGate.kiro_cli_is_required_on_the_gateway_host', { platform })}
+                ? i18nT('components.harnessPrerequisiteGate.harness_cli_is_installed_finish_signing_in_to_conti')
+                : i18nT('components.harnessPrerequisiteGate.harness_cli_is_required_on_the_gateway_host', { platform })}
             </p>
             <SendBtn
               type="button"
@@ -987,7 +987,7 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
               onClick={retryStatus}
             >
               <RefreshCw className={`lucide-inline ${statusQuery.isFetching ? 'animate-spin' : ''}`} />
-              {i18nT('components.kiroPrerequisiteGate.check_again')}
+              {i18nT('components.harnessPrerequisiteGate.check_again')}
             </SendBtn>
           </div>
         </>

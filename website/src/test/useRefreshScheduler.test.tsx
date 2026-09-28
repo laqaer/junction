@@ -281,7 +281,7 @@ describe('useRefreshScheduler', () => {
       refresh_exp: 0,
     }))
     const { Wrapper, qc } = makeWrapper()
-    qc.setQueryData(['kiro-prerequisite'], { ready: false })
+    qc.setQueryData(['harness-prerequisite'], { ready: false })
     render(<ProbeComponent />, { wrapper: Wrapper })
     await vi.advanceTimersByTimeAsync(0)
 
@@ -297,7 +297,7 @@ describe('useRefreshScheduler', () => {
     }))
     await vi.advanceTimersByTimeAsync(19 * ONE_HOUR_MS + 1000)
 
-    expect(qc.getQueryState(['kiro-prerequisite'])?.isInvalidated).toBe(true)
+    expect(qc.getQueryState(['harness-prerequisite'])?.isInvalidated).toBe(true)
   })
 
   it('TR-F-11: 403 + X-Auth-Required on /api/auth/me triggers proactive refresh (cold-reopen banner fix)', async () => {

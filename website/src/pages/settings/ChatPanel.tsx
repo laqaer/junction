@@ -654,7 +654,7 @@ export function ChatPanel() {
         <SettingsCard index={3}>
           <SettingsSelect
             label={i18nT('pages.settings.chatPanel.your_role')}
-            description={i18nT('pages.settings.chatPanel.kiro_matches_vocabulary_and_examples_to_your_pro')}
+            description={i18nT('pages.settings.chatPanel.harness_matches_vocabulary_and_examples_to_your_pro')}
             value={userRole}
             options={ROLE_OPTIONS}
             optionLabels={roleLabels()}
@@ -664,7 +664,7 @@ export function ChatPanel() {
             <SettingsInput
               label={i18nT('pages.settings.chatPanel.describe_your_role')}
               aria-label={i18nT('pages.settings.chatPanel.describe_your_role')}
-              description={i18nT('pages.settings.chatPanel.kiro_quotes_this_back_to_itself_when_calibrating')}
+              description={i18nT('pages.settings.chatPanel.harness_quotes_this_back_to_itself_when_calibrating')}
               placeholder={i18nT('pages.settings.chatPanel.e_g_solutions_architect_sre_founder')}
               value={localRoleOther}
               onChange={v => setLocalRoleOther(capRoleOther(v))}

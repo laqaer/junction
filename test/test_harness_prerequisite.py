@@ -24,7 +24,7 @@ from aiohttp.test_utils import TestClient, TestServer
 from chat_test_helpers import _make_state
 
 from junction import _process_group_supervisor as supervisor
-from junction import kiro_prerequisite as prerequisite_module
+from junction import harness_prerequisite as prerequisite_module
 from junction import platform_compat
 from junction.agent_files import AGENT_FILENAME
 from junction.config.paths import RETIRED_DATA_HOME_NAMES
@@ -35,17 +35,17 @@ from junction.dashboard.chat_regenerate import (
 )
 from junction.dashboard.chat_rewind import api_chat_slot_rewind
 from junction.dashboard.chat_runner import _run_chat
-from junction.dashboard.handlers.kiro_prerequisite import (
-    api_kiro_prerequisite_repair_specs,
-    api_kiro_prerequisite_status,
+from junction.dashboard.handlers.harness_prerequisite import (
+    api_harness_prerequisite_repair_specs,
+    api_harness_prerequisite_status,
 )
-from junction.dashboard.kiro_readiness import kiro_session_ready
+from junction.dashboard.harness_readiness import harness_session_ready
 from junction.kiro_cli import resolve_kiro_cli
-from junction.kiro_prerequisite import (
+from junction.harness_prerequisite import (
     KIRO_CLI_LOGIN_COMMAND,
     KIRO_CLI_SSO_LOGIN_COMMAND,
     OFFICIAL_INSTALL_DOCS_URL,
-    KiroPrerequisiteService,
+    HarnessPrerequisiteService,
     PrerequisiteStatus,
     ProcessResult,
     _run_process,
@@ -123,18 +123,18 @@ def _agents_dir_never_the_real_home(
     assertions depend on the machine they run on.
     """
     monkeypatch.setenv("KIRO_HOME", str(tmp_path_factory.mktemp("kiro-home")))
-    import junction.kiro_prerequisite as kiro_prerequisite_module
+    import junction.harness_prerequisite as harness_prerequisite_module
 
-    monkeypatch.setattr(kiro_prerequisite_module, "_default_spec_lister", lambda: [], raising=True)
+    monkeypatch.setattr(harness_prerequisite_module, "_default_spec_lister", lambda: [], raising=True)
 
 
-async def _wait_for_operation(service: KiroPrerequisiteService) -> None:
+async def _wait_for_operation(service: HarnessPrerequisiteService) -> None:
     task = service._task
     assert task is not None
     await asyncio.wait_for(task, timeout=5)
 
 
-class TestKiroPrerequisiteHelpers:
+class TestHarnessPrerequisiteHelpers:
     def test_identity_file_lockdown_precedes_content(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -580,7 +580,7 @@ class TestKiroPrerequisiteHelpers:
             calls.append((command, args))
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="win32",
             environ={
                 "LOCALAPPDATA": str(local_app_data),
@@ -730,11 +730,11 @@ class TestKiroPrerequisiteHelpers:
         assert str(executable) in candidates
 
 
-class TestKiroPrerequisiteWorkflow:
+class TestHarnessPrerequisiteWorkflow:
     @pytest.mark.asyncio
     async def test_missing_prerequisite_service_fails_closed(self) -> None:
-        assert await kiro_session_ready(None) is False
-        assert await kiro_session_ready(object()) is False
+        assert await harness_session_ready(None) is False
+        assert await harness_session_ready(object()) is False
 
     @pytest.mark.asyncio
     async def test_missing_route_prerequisite_wiring_fails_closed(self) -> None:
@@ -745,17 +745,17 @@ class TestKiroPrerequisiteWorkflow:
         without a verified readiness latch.
         """
 
-        from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+        from junction.dashboard.harness_readiness import reject_if_harness_unverified
 
         app = web.Application()
         app["state"] = SimpleNamespace()
         request = SimpleNamespace(app=app)
 
-        blocked = await reject_if_kiro_unverified(request)  # type: ignore[arg-type]
+        blocked = await reject_if_harness_unverified(request)  # type: ignore[arg-type]
 
         assert blocked is not None
         assert blocked.status == 503
-        assert json.loads(blocked.body)["code"] == "kiro_prerequisite_required"
+        assert json.loads(blocked.body)["code"] == "harness_prerequisite_required"
 
     @pytest.mark.asyncio
     async def test_explicit_test_harness_mode_assumes_ready(self, tmp_path: Path) -> None:
@@ -767,7 +767,7 @@ class TestKiroPrerequisiteWorkflow:
             del command, args, kwargs
             raise AssertionError("test harness readiness must not probe the host")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -806,7 +806,7 @@ class TestKiroPrerequisiteWorkflow:
             calls.append(args)
             return ProcessResult(ok=args == ["--version"])
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -844,7 +844,7 @@ class TestKiroPrerequisiteWorkflow:
             # leaks into discovery) is skipped and cannot shadow the assertion.
             return ProcessResult(ok=command == str(symlink) and args == ["--version"])
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -874,7 +874,7 @@ class TestKiroPrerequisiteWorkflow:
                 return ProcessResult(ok=True)
             raise OSError("whoami could not spawn")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -902,7 +902,7 @@ class TestKiroPrerequisiteWorkflow:
         async def run(_command: str, args: list[str], **_kwargs: Any) -> ProcessResult:
             raise OSError("--version could not spawn")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -944,7 +944,7 @@ class TestKiroPrerequisiteWorkflow:
             )
             return ProcessResult(ok=False)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -984,7 +984,7 @@ class TestKiroPrerequisiteWorkflow:
             # Signed-out under a rewritten HOME, signed-in against the real home.
             return ProcessResult(ok=home == str(tmp_path))
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1023,7 +1023,7 @@ class TestKiroPrerequisiteWorkflow:
             seen_env.update(kwargs["env"])
             return ProcessResult(ok=False)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={
                 "HOME": str(tmp_path),
@@ -1065,7 +1065,7 @@ class TestKiroPrerequisiteWorkflow:
                 version_env.update(kwargs["env"])
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={
                 "HOME": str(tmp_path),
@@ -1098,7 +1098,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime.installed = True
         runtime.authenticated = True
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1127,7 +1127,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime.installed = True
         runtime.authenticated = True
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -1153,7 +1153,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime.installed = True
         runtime.authenticated = False
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -1191,7 +1191,7 @@ class TestKiroPrerequisiteWorkflow:
         """The credential copy-back parameter is gone — kiro-cli owns its store."""
         executable = tmp_path / ".local" / "bin" / "kiro-cli"
         _make_executable(executable)
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1226,7 +1226,7 @@ class TestKiroPrerequisiteWorkflow:
         original = live.read_bytes()
         probe = AsyncMock(return_value=ProcessResult(ok=True))
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1306,7 +1306,7 @@ class TestKiroPrerequisiteWorkflow:
             staged_env.update(kwargs.get("env") or {})
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1486,7 +1486,7 @@ class TestKiroPrerequisiteWorkflow:
             staged.write_text('{"accessToken":"partial"}', encoding="utf-8")
             raise asyncio.CancelledError
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1518,7 +1518,7 @@ class TestKiroPrerequisiteWorkflow:
         async def audit(**kwargs: Any) -> None:
             events.append(kwargs)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={
                 "HOME": str(tmp_path),
@@ -1589,7 +1589,7 @@ class TestKiroPrerequisiteWorkflow:
         async def broken_audit(**_kwargs: Any) -> None:
             raise OSError("audit unavailable")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1610,7 +1610,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         timestamps = iter((100.0, 110.0, 111.0))
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1640,7 +1640,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         now = [100.0]
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1670,7 +1670,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
         now = [100.0]
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1709,7 +1709,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
         now = [100.0]
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1746,7 +1746,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         now = [100.0]
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1776,7 +1776,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
         now = [100.0]
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1800,7 +1800,7 @@ class TestKiroPrerequisiteWorkflow:
     ) -> None:
         """A probe that raises is not evidence of readiness."""
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1828,7 +1828,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1861,7 +1861,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1905,7 +1905,7 @@ class TestKiroPrerequisiteWorkflow:
                 probe_cancelled.set()
                 raise
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1934,7 +1934,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1968,7 +1968,7 @@ class TestKiroPrerequisiteWorkflow:
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
         data_home = tmp_path / "data-home"
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1978,7 +1978,7 @@ class TestKiroPrerequisiteWorkflow:
         )
 
         ready = await service.snapshot(force=True)
-        restarted = KiroPrerequisiteService(
+        restarted = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -1996,7 +1996,7 @@ class TestKiroPrerequisiteWorkflow:
         data_home.mkdir()
         (data_home / "config.json").write_text("{}\n", encoding="utf-8")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2015,7 +2015,7 @@ class TestKiroPrerequisiteWorkflow:
         (data_home / "history").mkdir()
         (data_home / "sessions" / "empty.jsonl").touch()
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2034,7 +2034,7 @@ class TestKiroPrerequisiteWorkflow:
         session.parent.mkdir(parents=True)
         session.write_text('{"role":"user"}\n', encoding="utf-8")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2062,7 +2062,7 @@ class TestKiroPrerequisiteWorkflow:
         session.parent.mkdir(parents=True)
         session.write_text('{"role":"user"}\n', encoding="utf-8")
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2082,7 +2082,7 @@ class TestKiroPrerequisiteWorkflow:
         assert marker.is_file()
         assert prerequisite_module._established_installation(tmp_path) is True
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2108,7 +2108,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -2140,7 +2140,7 @@ class TestKiroPrerequisiteWorkflow:
         _make_executable(executable)
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -2165,7 +2165,7 @@ class TestKiroPrerequisiteWorkflow:
     async def test_warm_up_failure_is_contained(self, tmp_path: Path) -> None:
         """A failing warm-up must never take the gateway down."""
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2187,7 +2187,7 @@ class TestKiroPrerequisiteWorkflow:
         self,
         tmp_path: Path,
     ) -> None:
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2210,7 +2210,7 @@ class TestKiroPrerequisiteWorkflow:
             calls.append(command)
             return ProcessResult(ok=command == str(second))
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -2238,7 +2238,7 @@ class TestKiroPrerequisiteWorkflow:
             calls.append((command, args))
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="win32",
             environ={
                 "HOME": str(tmp_path),
@@ -2278,7 +2278,7 @@ class TestKiroPrerequisiteWorkflow:
             calls.append((command, args))
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="win32",
             environ={
                 "HOME": str(tmp_path),
@@ -2313,7 +2313,7 @@ class TestKiroPrerequisiteWorkflow:
             calls.append((command, args))
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="win32",
             environ={
                 "HOME": str(tmp_path),
@@ -2347,7 +2347,7 @@ class TestKiroPrerequisiteWorkflow:
             del command, args, kwargs
             return ProcessResult(ok=False)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -2385,7 +2385,7 @@ class TestKiroPrerequisiteWorkflow:
             run_calls.append(command)
             return ProcessResult(ok=False)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -2439,7 +2439,7 @@ class TestKiroPrerequisiteWorkflow:
             return _Process()
 
         monkeypatch.setattr(
-            "junction.kiro_prerequisite.sandboxed_spawn_argv",
+            "junction.harness_prerequisite.sandboxed_spawn_argv",
             sandbox,
         )
         monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
@@ -2504,7 +2504,7 @@ class TestKiroPrerequisiteWorkflow:
         )
 
         assert result.ok is False
-        assert result.error == "Kiro process-group supervisor is unavailable"
+        assert result.error == "Harness process-group supervisor is unavailable"
         spawn.assert_not_awaited()
 
     @pytest.mark.skipif(
@@ -2909,11 +2909,11 @@ class TestKiroPrerequisiteWorkflow:
         # and every spawn is sandboxed now — so stub the builder rather than let
         # host sandbox availability decide the outcome.
         monkeypatch.setattr(
-            "junction.kiro_prerequisite._prepare_sandboxed_spawn",
+            "junction.harness_prerequisite._prepare_sandboxed_spawn",
             passthrough_sandbox,
         )
         monkeypatch.setattr(
-            "junction.kiro_prerequisite._TERMINATION_GRACE_SECS",
+            "junction.harness_prerequisite._TERMINATION_GRACE_SECS",
             0.001,
         )
 
@@ -3015,7 +3015,7 @@ class TestKiroPrerequisiteWorkflow:
         monkeypatch.setattr(platform_compat, "IS_POSIX", False)
         monkeypatch.setattr(platform_compat, "IS_WINDOWS", True)
         monkeypatch.setattr(
-            "junction.kiro_prerequisite._TERMINATION_GRACE_SECS",
+            "junction.harness_prerequisite._TERMINATION_GRACE_SECS",
             0.01,
         )
 
@@ -3411,10 +3411,10 @@ class TestKiroPrerequisiteWorkflow:
         assert tracked == {9876: 9002}
 
 
-class TestKiroPrerequisiteHandlers:
+class TestHarnessPrerequisiteHandlers:
     @staticmethod
     def _app(
-        service: KiroPrerequisiteService,
+        service: HarnessPrerequisiteService,
         *,
         app_claim: str,
         user: str = "test-user",
@@ -3431,11 +3431,11 @@ class TestKiroPrerequisiteHandlers:
 
         app = web.Application(middlewares=[identity])
         app["state"] = SimpleNamespace(owner_id=owner_id)
-        app["kiro_prerequisite_service"] = service
-        app.router.add_get("/api/kiro-prerequisite", api_kiro_prerequisite_status)
+        app["harness_prerequisite_service"] = service
+        app.router.add_get("/api/harness-prerequisite", api_harness_prerequisite_status)
         app.router.add_post(
-            "/api/kiro-prerequisite/repair-specs",
-            api_kiro_prerequisite_repair_specs,
+            "/api/harness-prerequisite/repair-specs",
+            api_harness_prerequisite_repair_specs,
         )
         return app
 
@@ -3448,7 +3448,7 @@ class TestKiroPrerequisiteHandlers:
         # The owner can READ readiness. Neither setup step is a Junction verb:
         # obtaining the CLI and signing in both belong to Kiro CLI, so both
         # routes are absent by construction rather than guarded.
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3473,15 +3473,15 @@ class TestKiroPrerequisiteHandlers:
         monkeypatch.setattr(service, "snapshot", fake_snapshot)
 
         async with TestClient(TestServer(self._app(service, app_claim=""))) as client:
-            read = await client.get("/api/kiro-prerequisite")
+            read = await client.get("/api/harness-prerequisite")
             assert read.status == 200
             body = await read.json()
             assert body["login_command"] == KIRO_CLI_LOGIN_COMMAND
             # The owner branch passes the snapshot through verbatim, so both
             # sign-in commands reach the gate that has to offer the tier choice.
             assert body["sso_login_command"] == KIRO_CLI_SSO_LOGIN_COMMAND
-            assert (await client.post("/api/kiro-prerequisite/login")).status == 404
-            assert (await client.post("/api/kiro-prerequisite/install")).status == 404
+            assert (await client.post("/api/harness-prerequisite/login")).status == 404
+            assert (await client.post("/api/harness-prerequisite/install")).status == 404
 
     @pytest.mark.asyncio
     async def test_status_endpoint_returns_not_ready_instead_of_500_on_probe_error(
@@ -3492,7 +3492,7 @@ class TestKiroPrerequisiteHandlers:
         # A transient probe failure must not surface as an HTTP 500 (which
         # flashes the full-screen "could not check Kiro CLI" gate on reload).
         # The handler returns a retryable not-ready snapshot instead.
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3505,7 +3505,7 @@ class TestKiroPrerequisiteHandlers:
         monkeypatch.setattr(service, "snapshot", boom)
 
         async with TestClient(TestServer(self._app(service, app_claim=""))) as client:
-            resp = await client.get("/api/kiro-prerequisite")
+            resp = await client.get("/api/harness-prerequisite")
             assert resp.status == 200
             body = await resp.json()
 
@@ -3529,7 +3529,7 @@ class TestKiroPrerequisiteHandlers:
         the real auth state as a chat error instead.
         """
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3544,7 +3544,7 @@ class TestKiroPrerequisiteHandlers:
         assert await service.session_ready() is False
         app = web.Application()
         app["state"] = SimpleNamespace()
-        app["kiro_prerequisite_service"] = service
+        app["harness_prerequisite_service"] = service
         app.router.add_post("/api/chat/slots", api_chat_slot_create)
 
         async with TestClient(TestServer(app)) as client:
@@ -3555,7 +3555,7 @@ class TestKiroPrerequisiteHandlers:
         # the handler body and only then fails on this bare SimpleNamespace state
         # (500), rather than being turned away with the prerequisite 503.
         assert create_response.status != 503
-        assert "kiro_prerequisite_required" not in create_text
+        assert "harness_prerequisite_required" not in create_text
 
     @pytest.mark.asyncio
     async def test_central_chat_runner_posts_auth_error_to_linked_slack(
@@ -3571,7 +3571,7 @@ class TestKiroPrerequisiteHandlers:
 
         from junction.acp.client import AcpAuthRequired
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3581,7 +3581,7 @@ class TestKiroPrerequisiteHandlers:
         service._status.ready = True
         service._status.authenticated = True
         state = _make_state(tmp_path)
-        state.kiro_prerequisite_service = service
+        state.harness_prerequisite_service = service
         state.slack_client = MagicMock()
         state.slack_client.post_message = AsyncMock()
         state.broadcast_ws = MagicMock()
@@ -3638,7 +3638,7 @@ class TestKiroPrerequisiteHandlers:
         blocking gate even though an ordinary send does not.
         """
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3663,7 +3663,7 @@ class TestKiroPrerequisiteHandlers:
         )
         app = web.Application()
         app["state"] = state
-        app["kiro_prerequisite_service"] = service
+        app["harness_prerequisite_service"] = service
         app.router.add_post(
             "/api/chat/slots/{slot}/regenerate",
             api_chat_slot_regenerate,
@@ -3692,7 +3692,7 @@ class TestKiroPrerequisiteHandlers:
             bodies = [await response.json() for response in responses]
 
         assert [response.status for response in responses] == [503, 503, 503]
-        assert [body["code"] for body in bodies] == ["kiro_prerequisite_required"] * 3
+        assert [body["code"] for body in bodies] == ["harness_prerequisite_required"] * 3
         # The refusal happens BEFORE any mutation: history is untouched and no
         # session/persistence call was made.
         assert messages == original_messages
@@ -3714,7 +3714,7 @@ class TestKiroPrerequisiteHandlers:
 
         from junction.acp.client import AcpAuthRequired
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3736,7 +3736,7 @@ class TestKiroPrerequisiteHandlers:
         client.stream_command = stream
         client.context_usage_pct = MagicMock(return_value=1.0)
         state = _make_state(tmp_path)
-        state.kiro_prerequisite_service = service
+        state.harness_prerequisite_service = service
         state.broadcast_ws = MagicMock()
         state.push_slots_update = MagicMock()
         state.push_refresh = MagicMock()
@@ -3778,7 +3778,7 @@ class TestKiroPrerequisiteHandlers:
 
         from junction.providers.base import EVENT_COMPLETE, EVENT_TEXT_CHUNK, LLMEvent
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3801,7 +3801,7 @@ class TestKiroPrerequisiteHandlers:
         client.stream_command = stream
         client.context_usage_pct = MagicMock(return_value=1.0)
         state = _make_state(tmp_path)
-        state.kiro_prerequisite_service = service
+        state.harness_prerequisite_service = service
         state.broadcast_ws = MagicMock()
         state.push_slots_update = MagicMock()
         state.context_builder = None
@@ -3843,7 +3843,7 @@ class TestKiroPrerequisiteHandlers:
         from junction.dashboard.state import SUBAGENT_SYNTHESIS_PROMPT
         from junction.providers.base import EVENT_COMPLETE, EVENT_TEXT_CHUNK, LLMEvent
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3864,7 +3864,7 @@ class TestKiroPrerequisiteHandlers:
         client.stream_command = stream
         client.context_usage_pct = MagicMock(return_value=1.0)
         state = _make_state(tmp_path)
-        state.kiro_prerequisite_service = service
+        state.harness_prerequisite_service = service
         state.broadcast_ws = MagicMock()
         state.push_slots_update = MagicMock()
         state.context_builder = None
@@ -3892,7 +3892,7 @@ class TestKiroPrerequisiteHandlers:
         self,
         tmp_path: Path,
     ) -> None:
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3901,8 +3901,8 @@ class TestKiroPrerequisiteHandlers:
 
         async with TestClient(TestServer(self._app(service, app_claim="untrusted-app"))) as client:
             for method, path in (
-                ("get", "/api/kiro-prerequisite"),
-                ("post", "/api/kiro-prerequisite/repair-specs"),
+                ("get", "/api/harness-prerequisite"),
+                ("post", "/api/harness-prerequisite/repair-specs"),
             ):
                 response = await getattr(client, method)(path)
                 assert response.status == 403
@@ -3913,7 +3913,7 @@ class TestKiroPrerequisiteHandlers:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -3949,7 +3949,7 @@ class TestKiroPrerequisiteHandlers:
 
         monkeypatch.setattr(service, "snapshot", ready_snapshot)
         async with TestClient(TestServer(app)) as client:
-            response = await client.get("/api/kiro-prerequisite")
+            response = await client.get("/api/harness-prerequisite")
             assert response.status == 200
             body = await response.json()
             assert body["ready"] is True
@@ -3976,7 +3976,7 @@ class TestKiroPrerequisiteHandlers:
 
             # The repair route is a mutation on the agent home, so it is
             # owner-gated. It is also the ONLY mutation left on this surface.
-            for method, path in (("post", "/api/kiro-prerequisite/repair-specs"),):
+            for method, path in (("post", "/api/harness-prerequisite/repair-specs"),):
                 response = await getattr(client, method)(path)
                 assert response.status == 403
 
@@ -3998,7 +3998,7 @@ class TestKiroPrerequisiteHandlers:
         session = data_home / "sessions" / "existing.jsonl"
         session.parent.mkdir(parents=True)
         session.write_text('{"role":"user"}\n', encoding="utf-8")
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -4014,7 +4014,7 @@ class TestKiroPrerequisiteHandlers:
 
         app = self._app(service, app_claim="")
         async with TestClient(TestServer(app)) as client:
-            response = await client.get("/api/kiro-prerequisite")
+            response = await client.get("/api/harness-prerequisite")
             assert response.status == 200
             body = await response.json()
             assert body["ready"] is False
@@ -4026,7 +4026,7 @@ class TestKiroPrerequisiteHandlers:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -4046,7 +4046,7 @@ class TestKiroPrerequisiteHandlers:
             owner_id="",
         )
         async with TestClient(TestServer(app)) as client:
-            assert (await client.get("/api/kiro-prerequisite")).status == 200
+            assert (await client.get("/api/harness-prerequisite")).status == 200
 
 
 class TestSandboxUnavailableIsNotAMissingBinary:
@@ -4066,8 +4066,8 @@ class TestSandboxUnavailableIsNotAMissingBinary:
     """
 
     @staticmethod
-    def _service(tmp_path: Path, run: Any) -> KiroPrerequisiteService:
-        return KiroPrerequisiteService(
+    def _service(tmp_path: Path, run: Any) -> HarnessPrerequisiteService:
+        return HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -4249,8 +4249,8 @@ class TestTimedOutProbeIsNotAMissingBinary:
     """
 
     @staticmethod
-    def _service(tmp_path: Path, run: Any) -> KiroPrerequisiteService:
-        return KiroPrerequisiteService(
+    def _service(tmp_path: Path, run: Any) -> HarnessPrerequisiteService:
+        return HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -4365,7 +4365,7 @@ class TestTimedOutProbeIsNotAMissingBinary:
         _make_executable(tmp_path / ".local" / "bin" / "kiro-cli")
         service = self._service(tmp_path, self._timed_out)
 
-        with caplog.at_level("DEBUG", logger="junction.kiro_prerequisite"):
+        with caplog.at_level("DEBUG", logger="junction.harness_prerequisite"):
             for _ in range(6):
                 status = await service.snapshot(force=True)
 
@@ -4403,7 +4403,7 @@ class TestTimedOutProbeIsNotAMissingBinary:
 
         service = self._service(tmp_path, flapping)
 
-        with caplog.at_level("DEBUG", logger="junction.kiro_prerequisite"):
+        with caplog.at_level("DEBUG", logger="junction.harness_prerequisite"):
             await service.snapshot(force=True)  # outage 1 -> WARNING
             await service.snapshot(force=True)  # same outage -> DEBUG
             healthy_calls["n"] = 2
@@ -4455,7 +4455,7 @@ class TestJunctionNeverSetsUpKiroCli:
         ):
             assert not hasattr(prerequisite_module, attribute), attribute
         for method in ("start_login", "_login", "_capture_operation_output"):
-            assert not hasattr(KiroPrerequisiteService, method), method
+            assert not hasattr(HarnessPrerequisiteService, method), method
 
     @pytest.mark.asyncio
     async def test_identity_probe_gets_idp_budget_and_version_stays_short(
@@ -4472,7 +4472,7 @@ class TestJunctionNeverSetsUpKiroCli:
         runtime = _FakeRuntime(executable)
         runtime.authenticated = True
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -4515,7 +4515,7 @@ class TestJunctionNeverSetsUpKiroCli:
                 return ProcessResult(ok=True)
             return ProcessResult(ok=False)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -4551,7 +4551,7 @@ class TestJunctionNeverSetsUpKiroCli:
                 await release_probe.wait()
             return ProcessResult(ok=True)
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -4593,7 +4593,7 @@ class TestJunctionNeverSetsUpKiroCli:
         runtime.authenticated = True
         clock = {"now": 1_000.0}
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -4639,7 +4639,7 @@ class TestJunctionNeverSetsUpKiroCli:
         runtime.authenticated = True
         # Frozen clock: every caller reads an identical, floor-passing age, which
         # is the burst this guards against.
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": str(executable.parent)},
             home=tmp_path,
@@ -4679,7 +4679,7 @@ class TestJunctionNeverSetsUpKiroCli:
         # `status`, not `operation`) in a callback that runs for EVERY user. A tab
         # open across a gateway upgrade must not throw on its next poll, so the
         # payload keeps a permanently idle object.
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -4739,9 +4739,9 @@ class TestJunctionNeverSetsUpKiroCli:
             assert not hasattr(prerequisite_module, attribute), attribute
 
     def test_service_exposes_no_install_operation(self) -> None:
-        assert not hasattr(KiroPrerequisiteService, "start_install")
-        assert not hasattr(KiroPrerequisiteService, "_install")
-        assert not hasattr(KiroPrerequisiteService, "_attest_candidate")
+        assert not hasattr(HarnessPrerequisiteService, "start_install")
+        assert not hasattr(HarnessPrerequisiteService, "_install")
+        assert not hasattr(HarnessPrerequisiteService, "_attest_candidate")
 
     def test_status_carries_no_auto_install_capability(self) -> None:
         assert not hasattr(PrerequisiteStatus(platform="Linux"), "can_auto_install")
@@ -4790,8 +4790,8 @@ class TestAgentSpecsNarrowReadiness:
     """
 
     @staticmethod
-    def _service(tmp_path: Path) -> KiroPrerequisiteService:
-        service = KiroPrerequisiteService(
+    def _service(tmp_path: Path) -> HarnessPrerequisiteService:
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -4963,7 +4963,7 @@ class TestAgentSpecsNarrowReadiness:
         behind a repair gate.
         """
         self._agents_dir(tmp_path, monkeypatch, specs=False)
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -5038,7 +5038,7 @@ class TestRejectedAgentSpecsNarrowReadiness:
     def _service(
         tmp_path: Path,
         runner: Any,
-    ) -> KiroPrerequisiteService:
+    ) -> HarnessPrerequisiteService:
         # Staged inside tmp_path so binary discovery and sign-in eligibility do
         # not depend on the host: without these, a machine with a real kiro-cli
         # reaches the probe while CI finds nothing viable and never gets far
@@ -5061,7 +5061,7 @@ class TestRejectedAgentSpecsNarrowReadiness:
                 if (agents / name).is_file()
             ]
 
-        return KiroPrerequisiteService(
+        return HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -5428,7 +5428,7 @@ class TestRejectedAgentSpecsNarrowReadiness:
 class TestAgentSpecRepairIsAPostNotAGet:
     """The repair must never be reachable from the status GET.
 
-    ``/api/kiro-prerequisite`` is an ``add_get``, and BOTH dashboard barriers are
+    ``/api/harness-prerequisite`` is an ``add_get``, and BOTH dashboard barriers are
     method-scoped: ``csrf_middleware`` skips ``check_origin`` for
     ``{GET, HEAD, OPTIONS}`` and ``sel_audit_middleware`` logs only
     ``{POST, PUT, DELETE, PATCH}``. A spec rewrite hung off that GET would be
@@ -5437,8 +5437,8 @@ class TestAgentSpecRepairIsAPostNotAGet:
     """
 
     @staticmethod
-    def _service(tmp_path: Path) -> KiroPrerequisiteService:
-        service = KiroPrerequisiteService(
+    def _service(tmp_path: Path) -> HarnessPrerequisiteService:
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
             home=tmp_path,
@@ -5496,19 +5496,19 @@ class TestAgentSpecRepairIsAPostNotAGet:
         any reflow. What matters is the method the router will accept: GET is the
         one method csrf_middleware and sel_audit_middleware both skip.
         """
-        from junction.dashboard.handlers.kiro_prerequisite import (
-            api_kiro_prerequisite_repair_specs,
+        from junction.dashboard.handlers.harness_prerequisite import (
+            api_harness_prerequisite_repair_specs,
         )
 
         app = web.Application()
         app.router.add_post(
-            "/api/kiro-prerequisite/repair-specs",
-            api_kiro_prerequisite_repair_specs,
+            "/api/harness-prerequisite/repair-specs",
+            api_harness_prerequisite_repair_specs,
         )
         methods = {
             route.method
             for route in app.router.routes()
-            if getattr(route.resource, "canonical", "") == "/api/kiro-prerequisite/repair-specs"
+            if getattr(route.resource, "canonical", "") == "/api/harness-prerequisite/repair-specs"
         }
 
         assert methods == {"POST"}, methods
@@ -5726,12 +5726,12 @@ class TestKiroCliApiKeyCountsAsSignedIn:
         run: Any,
         *,
         api_key: str = "",
-    ) -> KiroPrerequisiteService:
+    ) -> HarnessPrerequisiteService:
         _make_executable(tmp_path / ".local" / "bin" / "kiro-cli")
         environ = {"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"}
         if api_key:
             environ["KIRO_API_KEY"] = api_key
-        return KiroPrerequisiteService(
+        return HarnessPrerequisiteService(
             platform_name="linux",
             environ=environ,
             home=tmp_path,

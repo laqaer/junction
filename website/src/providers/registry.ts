@@ -1,7 +1,7 @@
 import type { ProviderAdapter, ProviderId } from './types'
 import { AcpAdapter } from './adapters/acp'
 
-// Junction is KiroACP-only: kiro-cli over ACP is the sole provider
+// Junction uses ACP as the shared provider for configured harnesses
 // (agent.provider enum is ["acp"]). The adapter registry therefore has a
 // single entry; it is kept as a thin indirection so the 15+ pages that consume
 // useProvider()/the adapter interface for labels/capabilities/model-windows

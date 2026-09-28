@@ -256,7 +256,7 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 // cache stays empty and the generic wording renders, which is also what an
 // unreadable platform gets.
 const platform = params.get('platform')
-if (platform) qc.setQueryData(['kiro-prerequisite'], { platform })
+if (platform) qc.setQueryData(['harness-prerequisite'], { platform })
 
 initI18n('en')
 

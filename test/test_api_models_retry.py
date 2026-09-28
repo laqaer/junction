@@ -23,7 +23,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from junction import sandbox
 from junction.dashboard.handlers import agents
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 
 async def _no_audit(**kwargs: Any) -> None:
@@ -46,9 +46,9 @@ def _kiro_request(tmp_path: Path) -> MagicMock:
     # api_models is readiness-gated (a signed-out gateway must not spawn a
     # browser-opening kiro-cli), so every degraded-branch test has to get past
     # the fail-closed gate first. `assume_ready=True` is the documented test
-    # bypass (see kiro_readiness.reject_if_kiro_unverified); without it these
+    # bypass (see harness_readiness.reject_if_harness_unverified); without it these
     # tests would assert the gate's 503 instead of the branch under test.
-    service = KiroPrerequisiteService(
+    service = HarnessPrerequisiteService(
         platform_name="linux",
         environ={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
         home=tmp_path,
@@ -56,7 +56,7 @@ def _kiro_request(tmp_path: Path) -> MagicMock:
         assume_ready=True,
     )
     request = MagicMock()
-    request.app = {"kiro_prerequisite_service": service}
+    request.app = {"harness_prerequisite_service": service}
     return request
 
 

@@ -38,8 +38,8 @@ function openOnPrSurface(extra: Record<string, unknown> = {}) {
   localStorage.setItem('jn:issue-radar:ui-state', JSON.stringify({ mainView: 'pulls', ...extra }))
 }
 
-const REPO_A = { owner: 'kirodotdev', repo: 'Kiro' }
-const REPO_B = { owner: 'kirodotdev', repo: 'Other' }
+const REPO_A = { owner: 'laqaer', repo: 'junction' }
+const REPO_B = { owner: 'laqaer', repo: 'Other' }
 
 function renderProvider(children?: React.ReactNode, active = REPO_A) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

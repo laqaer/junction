@@ -2143,7 +2143,7 @@ def token_auth_middleware(
                     # rather than set to ``""`` — several sites read a PRESENT
                     # empty claim as positive proof of the dashboard user
                     # (``"app" not in request or request["app"] != ""`` in
-                    # handlers/source_providers, and handlers/kiro_prerequisite),
+                    # handlers/source_providers, and handlers/harness_prerequisite),
                     # so writing ``""`` here would turn their refusal of this
                     # transport into an admission. Absence keeps those exactly
                     # as they were; presence makes the app-ownership guards bite.

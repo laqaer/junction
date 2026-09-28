@@ -318,7 +318,7 @@ class TestStartApiServerWiring:
         import junction.config.loader as _loader
         import junction.dashboard.server as _srv
         import junction.dashboard.state as _st
-        import junction.kiro_prerequisite as _prerequisite
+        import junction.harness_prerequisite as _prerequisite
 
         monkeypatch.setattr(_st, "config_dir", lambda: tmp_path)
         monkeypatch.setattr(_srv, "data_home", lambda: tmp_path)
@@ -326,7 +326,7 @@ class TestStartApiServerWiring:
         service = MagicMock()
         service.close = AsyncMock()
         monkeypatch.setattr(
-            _prerequisite, "KiroPrerequisiteService", MagicMock(return_value=service)
+            _prerequisite, "HarnessPrerequisiteService", MagicMock(return_value=service)
         )
 
         from junction.dashboard.server import start_api_server
@@ -354,7 +354,7 @@ class TestStartApiServerWiring:
         import junction.config.loader as _loader
         import junction.dashboard.server as _srv
         import junction.dashboard.state as _st
-        import junction.kiro_prerequisite as _prerequisite
+        import junction.harness_prerequisite as _prerequisite
 
         # start_api_server now persists .local_secret via server.data_home and
         # warms the token_auth revoked-nonce store via loader.config_dir; patch
@@ -367,7 +367,7 @@ class TestStartApiServerWiring:
         service_factory = MagicMock(return_value=service)
         monkeypatch.setattr(
             _prerequisite,
-            "KiroPrerequisiteService",
+            "HarnessPrerequisiteService",
             service_factory,
         )
 
@@ -386,8 +386,8 @@ class TestStartApiServerWiring:
         )
         try:
             assert state._hook_store is not None
-            assert runner.app["kiro_prerequisite_service"] is service
-            assert state.kiro_prerequisite_service is service
+            assert runner.app["harness_prerequisite_service"] is service
+            assert state.harness_prerequisite_service is service
             service_factory.assert_called_once_with(assume_ready=True)
             # Boot-time readiness warm-up must stay wired: without it the cold
             # probe runs on the dashboard's first status request instead, and

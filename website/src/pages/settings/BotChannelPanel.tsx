@@ -448,7 +448,7 @@ export function BotChannelPanel({ spec }: { spec: BotChannelSpec }) {
         <div className="flex items-center gap-2 rounded-md border border-border bg-bg-elevated px-3 py-2 mb-3">
           <Lock size={13} className="text-muted flex-none" />
           <span className="text-[12px] text-muted">
-            {spec.name} {i18nT('pages.settings.botChannelPanel.settings_are_managed_on_the_machine_running_kiro')}
+            {spec.name} {i18nT('pages.settings.botChannelPanel.settings_are_managed_on_the_machine_running_harness')}
           </span>
         </div>
       )}

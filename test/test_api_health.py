@@ -479,7 +479,7 @@ def test_every_middleware_denial_is_audited_off_the_loop() -> None:
         )
 
 
-def test_both_servers_warm_the_kiro_readiness_probe() -> None:
+def test_both_servers_warm_the_harness_readiness_probe() -> None:
     """Wiring pin: BOTH entrypoints must warm the Kiro readiness probe at boot.
 
     Without the warm-up the cold probe (two sandboxed kiro-cli subprocesses) runs
@@ -517,7 +517,7 @@ async def test_ready_never_waits_on_the_kiro_cli_check() -> None:
     ):
         state = MagicMock()
         state.sessions = MagicMock()
-        state.kiro_prerequisite_service = service
+        state.harness_prerequisite_service = service
 
         resp = await core_mod.api_ready(_req_with_state(state))
         assert resp.status == 200, f"{service!r} must not withhold readiness"

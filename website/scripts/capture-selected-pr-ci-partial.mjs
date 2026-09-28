@@ -106,7 +106,7 @@ const json = (route, body) => route.fulfill({
 /** Fixed singleton endpoints the shell polls, answered from one table so the
  * handler below stays a two-branch dispatch rather than a stub-per-line chain. */
 const FIXED_ROUTES = {
-  '/api/kiro-prerequisite': { ready: true },
+  '/api/harness-prerequisite': { ready: true },
   '/api/status': { sessions: 1, crons: 0, lessons: 0, uptime: 120, version: 'dev' },
   '/api/notifications': { notifications: [], unread: 0 },
   '/api/config': {},

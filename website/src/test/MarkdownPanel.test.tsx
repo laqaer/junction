@@ -116,7 +116,7 @@ describe('MarkdownPanel OverflowMenu', () => {
     ['gateway', 'Show in file manager'],
     ['linux', 'Show in file manager'],
   ])('names the reveal entry for a %s gateway host', (platform, label) => {
-    queryClient.setQueryData(['kiro-prerequisite'], { platform })
+    queryClient.setQueryData(['harness-prerequisite'], { platform })
     openMenu()
     expect(screen.getByText(label)).toBeInTheDocument()
     fireEvent.click(screen.getByText(label))
@@ -124,7 +124,7 @@ describe('MarkdownPanel OverflowMenu', () => {
   })
 
   it('never offers two spellings of the same reveal entry at once', () => {
-    queryClient.setQueryData(['kiro-prerequisite'], { platform: 'darwin' })
+    queryClient.setQueryData(['harness-prerequisite'], { platform: 'darwin' })
     openMenu()
     expect(screen.queryByText('Show in file manager')).not.toBeInTheDocument()
     expect(screen.queryByText('Open in File Explorer')).not.toBeInTheDocument()

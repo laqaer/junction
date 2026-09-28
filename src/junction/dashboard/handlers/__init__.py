@@ -182,9 +182,9 @@ from junction.dashboard.handlers.hooks import (  # noqa: E402, F401
     api_webhooks,
     api_webhooks_switch,
 )
-from junction.dashboard.handlers.kiro_prerequisite import (  # noqa: E402, F401
-    api_kiro_prerequisite_repair_specs,
-    api_kiro_prerequisite_status,
+from junction.dashboard.handlers.harness_prerequisite import (  # noqa: E402, F401
+    api_harness_prerequisite_repair_specs,
+    api_harness_prerequisite_status,
 )
 from junction.dashboard.handlers.mcp import (  # noqa: E402, F401
     _bg_mcp_probe,
@@ -479,7 +479,7 @@ from junction.dashboard.handlers.updates import (  # noqa: E402, F401
     install_log_ring_handler,
 )
 from junction.dashboard.handlers.usage import (  # noqa: E402, F401
-    api_kiro_usage,
+    api_harness_usage,
     api_usage,
 )
 

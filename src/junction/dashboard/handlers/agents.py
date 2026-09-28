@@ -65,7 +65,7 @@ from junction.dashboard.handlers.source_providers import (
     is_owner_dashboard_request,
     stale_owner_session_response,
 )
-from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+from junction.dashboard.harness_readiness import reject_if_harness_unverified
 from junction.dashboard.state import DashboardState
 from junction.executors import discovery_executor, maintenance_executor, subprocess_executor
 from junction.loop_lock import LoopBoundLock
@@ -1023,7 +1023,7 @@ async def api_models(request: web.Request) -> web.Response:
     # opened a browser window every 8s indefinitely. The 503 is the same
     # degraded response the timeout/unresolved branches already return, so the
     # client contract is unchanged; only the subprocess is skipped.
-    blocked = await reject_if_kiro_unverified(request)
+    blocked = await reject_if_harness_unverified(request)
     if blocked is not None:
         return blocked
     kiro_bin: str | None = None

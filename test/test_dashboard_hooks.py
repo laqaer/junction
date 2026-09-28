@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from chat_test_helpers import _make_ready_kiro_prerequisite
+from chat_test_helpers import _make_ready_harness_prerequisite
 
 from junction.dashboard.state import DashboardState
 from junction.history import ConversationLog
@@ -24,7 +24,7 @@ def _make_state(tmp_path):
         start_time=0.0,
         conversation_log=ConversationLog(base_dir=tmp_path),
     )
-    state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+    state.harness_prerequisite_service = _make_ready_harness_prerequisite()
     state.broadcast_ws = MagicMock()
     state.push_slots_update = MagicMock()
     state.context_builder = None

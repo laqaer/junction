@@ -133,7 +133,7 @@ _STALE_CHECKOUT_RETENTION_DAYS = 7
 # through it), and one without ``USERPROFILE`` cannot find a per-user config root
 # (for a TeX child, ``TEXMFHOME``). ``TMPDIR`` is the POSIX spelling only, so a
 # Windows child also had no writable temp dir. Same key set and same reason as
-# ``kiro_prerequisite._SAFE_ENV_KEYS``; kept in the allowlist shape so the
+# ``harness_prerequisite._SAFE_ENV_KEYS``; kept in the allowlist shape so the
 # credential-scrubbing property is unchanged — these are location hints, not
 # secrets.
 _SAFE_ENV_KEYS = frozenset(

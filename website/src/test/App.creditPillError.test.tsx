@@ -1,5 +1,5 @@
 /**
- * Test: the top-bar Kiro credit segment separates "still loading" from "failed".
+ * Test: the top-bar Harness credit segment separates "still loading" from "failed".
  *
  * The segment reads three things off one query: a business object, `null` (the
  * gateway's usage cache has not warmed), and `'none'` (this provider has no
@@ -83,9 +83,9 @@ describe('top-bar credit segment — failed vs loading', () => {
     sessionsUsageMock.mockRejectedValue(Object.assign(new Error('Service Unavailable'), { status: 503 }))
     renderWithProviders(<App />, { route: '/chat', preloadedState: connectedState })
 
-    expect(await screen.findByLabelText(i18nT('app.kiro_credit_usage_unavailable'))).toBeTruthy()
+    expect(await screen.findByLabelText(i18nT('app.harness_credit_usage_unavailable'))).toBeTruthy()
     // The warming spinner must be gone — that is the defect being pinned.
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_checking_2'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_checking_2'))).toBeNull()
   })
 
   it('keeps the warming spinner while the request is still in flight', async () => {
@@ -93,8 +93,8 @@ describe('top-bar credit segment — failed vs loading', () => {
     sessionsUsageMock.mockReturnValue(new Promise(() => {}))
     renderWithProviders(<App />, { route: '/chat', preloadedState: connectedState })
 
-    expect(await screen.findByLabelText(i18nT('app.kiro_credit_usage_checking_2'))).toBeTruthy()
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_unavailable'))).toBeNull()
+    expect(await screen.findByLabelText(i18nT('app.harness_credit_usage_checking_2'))).toBeTruthy()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_unavailable'))).toBeNull()
   })
 
   it('shows the reading once usage resolves', async () => {
@@ -103,9 +103,9 @@ describe('top-bar credit segment — failed vs loading', () => {
     })
     renderWithProviders(<App />, { route: '/chat', preloadedState: connectedState })
 
-    expect(await screen.findByLabelText(i18nT('components.kiroAccountModal.kiro_credit_usage'))).toBeTruthy()
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_unavailable'))).toBeNull()
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_checking_2'))).toBeNull()
+    expect(await screen.findByLabelText(i18nT('components.harnessAccountModal.harness_credit_usage'))).toBeTruthy()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_unavailable'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_checking_2'))).toBeNull()
   })
 
   it('keeps the dash on mobile, where the reading and the spinner are dropped', async () => {
@@ -116,7 +116,7 @@ describe('top-bar credit segment — failed vs loading', () => {
     sessionsUsageMock.mockRejectedValue(Object.assign(new Error('Service Unavailable'), { status: 503 }))
     renderWithProviders(<App />, { route: '/chat', preloadedState: connectedState })
 
-    const failed = await screen.findByLabelText(i18nT('app.kiro_credit_usage_unavailable'))
+    const failed = await screen.findByLabelText(i18nT('app.harness_credit_usage_unavailable'))
     expect(failed.textContent).toContain('—')
   })
 
@@ -127,10 +127,10 @@ describe('top-bar credit segment — failed vs loading', () => {
     sessionsUsageMock.mockResolvedValue({ usage: { available: false, reason: 'api_key_auth' } })
     renderWithProviders(<App />, { route: '/chat', preloadedState: connectedState })
 
-    const pill = await screen.findByLabelText(i18nT('app.kiro_credit_usage_api_key'))
+    const pill = await screen.findByLabelText(i18nT('app.harness_credit_usage_api_key'))
     expect(pill.textContent).toContain('—')
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_checking_2'))).toBeNull()
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_unavailable'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_checking_2'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_unavailable'))).toBeNull()
   })
 
   it('still hides the pill on a reasonless unavailable payload', async () => {
@@ -143,10 +143,10 @@ describe('top-bar credit segment — failed vs loading', () => {
     // assert every usage-segment variant is absent.
     await screen.findByTestId('chat-page')
     await waitFor(() => {
-      expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_checking_2'))).toBeNull()
+      expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_checking_2'))).toBeNull()
     })
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_api_key'))).toBeNull()
-    expect(screen.queryByLabelText(i18nT('app.kiro_credit_usage_unavailable'))).toBeNull()
-    expect(screen.queryByLabelText(i18nT('components.kiroAccountModal.kiro_credit_usage'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_api_key'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('app.harness_credit_usage_unavailable'))).toBeNull()
+    expect(screen.queryByLabelText(i18nT('components.harnessAccountModal.harness_credit_usage'))).toBeNull()
   })
 })

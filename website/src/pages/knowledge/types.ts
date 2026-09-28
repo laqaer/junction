@@ -50,9 +50,9 @@ export interface SourceSummary {
 }
 
 /**
- * Per-source indexing progress and the Kiro requests still owed for it.
+ * Per-source indexing progress and the agent requests still owed for it.
  *
- * Indexing draws billed Kiro requests sweep after sweep while files remain, so
+ * Indexing draws billed agent requests sweep after sweep while files remain, so
  * these counters are what make that ongoing cost visible before it lands on a
  * bill. One model call is one billed request, which is why the UI denominates
  * the figure in requests: `estimated_llm_calls_remaining` keeps the engine-side

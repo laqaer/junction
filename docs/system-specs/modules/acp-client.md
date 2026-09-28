@@ -445,10 +445,10 @@ Subprocess lifecycle:
   interactive browser login for any subcommand run unauthenticated
   (`--no-interactive` does not suppress it; there is no opt-out env var). Every
   dashboard endpoint that shells out to `kiro-cli` on a timer therefore calls
-  `reject_if_kiro_unverified()` BEFORE resolving or spawning the binary:
+  `reject_if_harness_unverified()` BEFORE resolving or spawning the binary:
   `/api/models` (polled every 8s while the model list is degraded) and
   `/api/sessions/usage` (polled every 30s by the credit pill). Both return the
-  shared `kiro_prerequisite_required` 503 — the same degraded response their
+  shared `harness_prerequisite_required` 503 — the same degraded response their
   timeout branches already produce — so the client contract is unchanged and
   only the subprocess is skipped. Without this gate a signed-out gateway opened
   a browser window every 8 seconds indefinitely. These are the **only** blocking
@@ -470,7 +470,7 @@ Subprocess lifecycle:
   session state (see `modules/learn-cron-dashboard.md` § "The dashboard does not
   guide the user to sign in").
 - **The readiness `whoami` runs against the real home, like an ACP session.**
-  `kiro_prerequisite._run_auth_command(..., isolate_home=False)` runs the
+  `harness_prerequisite._run_auth_command(..., isolate_home=False)` runs the
   resolved CLI against the real environment/home under the standard OS sandbox
   with only the Junction data home hidden, and executes a sandbox-visible
   private snapshot of the resolved bytes (keeping the resolved basename so a

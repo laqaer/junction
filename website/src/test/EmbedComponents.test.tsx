@@ -277,7 +277,7 @@ describe('EmbedSettingsPage', () => {
     expect(screen.getByLabelText('Back')).toBeTruthy()
   })
 
-  it('renders the tab buttons (no Provider tab — KiroACP is the only provider)', () => {
+  it('renders the tab buttons (no Provider tab — ACP is the only provider)', () => {
     wrap(<EmbedSettingsPage />)
     expect(screen.getByText('Display')).toBeTruthy()
     expect(screen.getByText('Chat')).toBeTruthy()

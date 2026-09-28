@@ -135,7 +135,7 @@ const API_FIXTURES = {
   '/api/apps/registries': () => ({ registries: [{ name: REG, repo: 'https://github.com/acme-labs/app-registry', branch: 'main' }] }),
   '/api/apps': () => installedApps,
   '/api/auth/me': () => ({ user: 'owner', app: '' }),
-  '/api/kiro-prerequisite': () => ({
+  '/api/harness-prerequisite': () => ({
     platform: 'gateway', installed: true, authenticated: true, ready: true,
     initial_setup_complete: true, can_auto_install: false, can_login: true,
     repair_required: false, docs_url: '', setup_allowed: false,

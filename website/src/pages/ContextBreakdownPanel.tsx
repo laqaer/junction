@@ -373,7 +373,7 @@ function ContextBreakdownCard({ trace }: { trace: ContextTrace }) {
   if (trace.estimated_other_chars > 0) {
     windowSegs.push({
       key: '__estimate__',
-      label: i18nT('pages.contextBreakdown.block_kiro_builtin'),
+      label: i18nT('pages.contextBreakdown.block_harness_builtin'),
       pct: pctOf(trace.estimated_other_chars),
       title: i18nT('pages.contextBreakdown.estimate_label', { pct: fmtPct(pctOf(trace.estimated_other_chars)) }),
       fill: ESTIMATE_FILL,
@@ -412,7 +412,7 @@ function ContextBreakdownCard({ trace }: { trace: ContextTrace }) {
   if (trace.estimated_other_chars > 0) {
     legend.push({
       key: '__estimate__',
-      label: i18nT('pages.contextBreakdown.block_kiro_builtin'),
+      label: i18nT('pages.contextBreakdown.block_harness_builtin'),
       chars: trace.estimated_other_chars,
       fill: ESTIMATE_FILL,
       estimate: true,
@@ -449,9 +449,9 @@ function ContextBreakdownCard({ trace }: { trace: ContextTrace }) {
           sub={i18nT('pages.contextBreakdown.strip_junction_added_sub', { chars: fmtN(junctionAdded) })}
         />
         <Stat
-          label={i18nT('pages.contextBreakdown.strip_kiro_builtin')}
+          label={i18nT('pages.contextBreakdown.strip_harness_builtin')}
           value={fmtPct(pctOf(trace.estimated_other_chars))}
-          sub={i18nT('pages.contextBreakdown.strip_kiro_builtin_sub', {
+          sub={i18nT('pages.contextBreakdown.strip_harness_builtin_sub', {
             chars: fmtN(trace.estimated_other_chars),
           })}
         />

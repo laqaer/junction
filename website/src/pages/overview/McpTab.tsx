@@ -525,7 +525,7 @@ export default function McpTab({ onManagedProviderClick }: McpTabProps = {}) {
                 <td className="px-2.5 py-2 border-b border-border text-sm whitespace-nowrap">
                   <div className="flex gap-1">
                     <ScopeBadge
-                      label={i18nT('pages.overview.mcpTab.kiro')}
+                      label={i18nT('pages.overview.mcpTab.harness')}
                       scope="kiroGlobal"
                       active={eff.kiroGlobal}
                       pendingChange={!pendingUninstall && !!p?.scopes && 'kiroGlobal' in p.scopes}
@@ -589,7 +589,7 @@ export default function McpTab({ onManagedProviderClick }: McpTabProps = {}) {
                     </span>
                   ) : mcpAuthState(s) === 'sign_in_required' ? (
                     /* Prose in the wide column rather than an Authorize control: the sign-in
-                       prompt is raised by Kiro CLI during a session's MCP bring-up, which
+                       prompt is raised by CLI during a session's MCP bring-up, which
                        happens on a turn, and nothing the dashboard can call from this panel
                        starts one — so a button here would claim an action it cannot perform.
                        Navigating to chat IS something the panel can do, so that step is a

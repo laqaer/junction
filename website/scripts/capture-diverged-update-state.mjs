@@ -52,7 +52,7 @@ async function preparePage(context, { diverged }) {
       error_code: null, unavailable_reason: null, remediation: null,
       current_version: '0.3.0', auto_update: true,
     })
-    if (path === '/api/kiro-prerequisite') return json(route, {
+    if (path === '/api/harness-prerequisite') return json(route, {
       platform: 'linux', installed: true, authenticated: true, ready: true,
       initial_setup_complete: true, can_auto_install: false, can_login: false,
       repair_required: false, docs_url: '', setup_allowed: false,

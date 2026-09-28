@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const SETTINGS_DIR = path.resolve(__dirname, '../../../pages/settings')
 
-// Valid tabs from SettingsPage.tsx (fork: KiroACP-only + de-Amazoned, so no
+// Valid tabs from SettingsPage.tsx (fork: ACP-only + de-Amazoned, so no
 // provider/secretary/sync/tasks tabs).
 const VALID_TABS = new Set([
   'overview', 'chat', 'voice', 'display', 'browser', 'skills', 'computer-use',

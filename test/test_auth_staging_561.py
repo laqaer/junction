@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from conftest import requires_symlinks
-from junction.kiro_prerequisite import _AUTH_STAGING_RELATIVE, _ensure_auth_staging_parent
+from junction.harness_prerequisite import _AUTH_STAGING_RELATIVE, _ensure_auth_staging_parent
 
 
 def test_stray_file_is_removed(tmp_path: Path) -> None:

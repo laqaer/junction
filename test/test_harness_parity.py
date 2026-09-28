@@ -1,9 +1,10 @@
 """Structural pins for the harness-parity invariants.
 
-Junction drives one first-class harness, ``kiro-cli``, and adapts the others.
-Each test here closes one invariant from
+Junction supports user-selected ACP engines (default ``auto``) and optional vendor
+adapters. Each test here closes one invariant from
 ``docs/system-specs/modules/harness-parity.md`` by its id, so a change that
-degrades the Kiro path goes red here rather than at an operator's first message.
+degrades the shared path or silently captures an engine goes red here rather
+than at an operator's first message.
 
 Two invariants (H13, H14) are properties of a *change* rather than of a tree and
 have no deterministic form; they are carried by the ``harness-parity`` rule in
@@ -66,7 +67,7 @@ def _field_enum(name: str) -> object:
 
 
 # ---------------------------------------------------------------------------
-# Group A: Kiro is the default and the floor
+# Group A: auto is the default and engines stay selectable
 # ---------------------------------------------------------------------------
 
 
@@ -243,7 +244,7 @@ def test_unknown_backend_rejected_at_construction() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Group C: the Kiro path keeps its own machinery
+# Group C: an engine keeps its own spawn machinery
 # ---------------------------------------------------------------------------
 
 

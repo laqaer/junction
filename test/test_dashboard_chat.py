@@ -19,7 +19,7 @@ from chat_test_helpers import (
     _make_app,
     _make_app_with_agent_routes,
     _make_folder_app,
-    _make_ready_kiro_prerequisite,
+    _make_ready_harness_prerequisite,
     _make_state,
 )
 
@@ -2999,7 +2999,7 @@ class TestKiroReadinessQueueHandoff:
         client.context_usage_pct = MagicMock(return_value=1.0)
         state = _make_state(tmp_path)
         # A service whose latch would answer "not ready" if anything asked it.
-        state.kiro_prerequisite_service = object()
+        state.harness_prerequisite_service = object()
         state.broadcast_ws = MagicMock()
         state.push_slots_update = MagicMock()
         state.context_builder = None
@@ -13061,7 +13061,7 @@ class TestStopTurnSlotState:
             start_time=0.0,
             conversation_log=ConversationLog(base_dir=tmp_path),
         )
-        state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+        state.harness_prerequisite_service = _make_ready_harness_prerequisite()
         return state
 
     @pytest.mark.asyncio

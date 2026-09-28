@@ -34,7 +34,7 @@ from junction.dashboard.handlers.side import (
     api_side_turn,
 )
 from junction.dashboard.side_state import SideState
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 from junction.learn import LessonStore
 from junction.memory import MemoryStore
 from junction.skills import SkillsLoader
@@ -44,12 +44,12 @@ _SIDE_ANSWER = "TCP is connection-oriented and UDP is not."
 _MAIN_CHAT_EVENT_TYPES = frozenset({"chat_message", "chat_done", "chat_segment", "chat_status"})
 
 
-class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
+class _ReadyHarnessPrerequisiteService(HarnessPrerequisiteService):
     async def session_ready(self) -> bool:
         return True
 
 
-_READY_KIRO_PREREQUISITE = object.__new__(_ReadyKiroPrerequisiteService)
+_READY_KIRO_PREREQUISITE = object.__new__(_ReadyHarnessPrerequisiteService)
 
 
 async def _no_audit(**kwargs: Any) -> None:
@@ -58,11 +58,11 @@ async def _no_audit(**kwargs: Any) -> None:
 
 def _make_side_app(
     state,
-    prerequisite_service: KiroPrerequisiteService | None = None,
+    prerequisite_service: HarnessPrerequisiteService | None = None,
 ) -> web.Application:
     app = web.Application()
     app["state"] = state
-    app["kiro_prerequisite_service"] = (
+    app["harness_prerequisite_service"] = (
         prerequisite_service
         if prerequisite_service is not None
         else _READY_KIRO_PREREQUISITE
@@ -240,7 +240,7 @@ async def test_stale_not_ready_does_not_reject_a_side_turn(tmp_path):
 
     state = _make_state(tmp_path)
     parent = state.get_or_create_slot("parent")
-    service = KiroPrerequisiteService(
+    service = HarnessPrerequisiteService(
         platform_name="linux",
         environ={"HOME": str(tmp_path), "PATH": ""},
         home=tmp_path,
@@ -263,7 +263,7 @@ async def test_stale_not_ready_does_not_reject_a_side_turn(tmp_path):
         body = await response.json()
 
     assert response.status == 200
-    assert body.get("code") != "kiro_prerequisite_required"
+    assert body.get("code") != "harness_prerequisite_required"
 
 
 @pytest.mark.asyncio

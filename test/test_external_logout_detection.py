@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from junction import kiro_prerequisite as kp
+from junction import harness_prerequisite as kp
 from junction.session import _MAX_CONCURRENT_COLD_STARTS as _MAX_COLD_STARTS_FOR_TEST
 
 
@@ -80,7 +80,7 @@ def _write_store(
     con.close()
 
 
-def _expire_identity_cache(service: "kp.KiroPrerequisiteService") -> None:
+def _expire_identity_cache(service: "kp.HarnessPrerequisiteService") -> None:
     """Drop the reader's real-time cache.
 
     The fingerprint is cached for a few seconds so a dashboard poll storm cannot
@@ -330,7 +330,7 @@ class TestIdentityFingerprint:
 
         monkeypatch.setattr(kp.hooks, "emit_internal_read_audit", _refuse)
         assert kp.identity_fingerprint(db) == ""
-        assert calls and calls[0][0] == "kiro_prerequisite.identity_fingerprint"
+        assert calls and calls[0][0] == "harness_prerequisite.identity_fingerprint"
 
     def test_the_audit_id_is_registered(self) -> None:
         """An unregistered id is refused by the hook, which would fail every read."""
@@ -387,7 +387,7 @@ class TestFingerprintCaching:
     async def test_polling_reuses_a_cached_read(self, tmp_path: Path) -> None:
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
 
         reads: list[int] = []
         real = kp.identity_fingerprint
@@ -418,7 +418,7 @@ class TestFingerprintCaching:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
 
         # Warm the cache and reconcile, as a status poll plus a first turn would.
         _, live = await service.identity_changed_since_sessions()
@@ -727,7 +727,7 @@ class TestStoreRelocation:
         _write_store(leftover)
         assert kp.identity_fingerprint(leftover) != ""
 
-        service = kp.KiroPrerequisiteService(
+        service = kp.HarnessPrerequisiteService(
             home=tmp_path,
             environ={"XDG_DATA_HOME": str(tmp_path / "elsewhere")},
             platform_name="linux",
@@ -739,7 +739,7 @@ class TestStoreRelocation:
         """The refusal must not disable the ordinary case."""
 
         _write_store(kp.kiro_identity_store_path("linux", tmp_path, {}))
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         assert await service.current_identity_fingerprint(allow_cached=False) != ""
 
 
@@ -782,14 +782,14 @@ class TestProviderMembership:
 class TestIdentityChangePredicate:
     @pytest.mark.asyncio
     async def test_no_change_before_the_first_probe(self, tmp_path: Path) -> None:
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         assert await service.identity_changed_since_probe() is False
 
     @pytest.mark.asyncio
     async def test_change_detected_against_the_recorded_identity(self, tmp_path: Path) -> None:
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         # Stand in for a completed probe: the latch was written while the store
         # named this account.
         service._stamp_probe(await service.current_identity_fingerprint())
@@ -804,7 +804,7 @@ class TestIdentityChangePredicate:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
 
         con = sqlite3.connect(str(db))
@@ -830,7 +830,7 @@ class TestIdentityChangePredicate:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
 
         # No probe has run and nothing has been reconciled.
         changed, live = await service.identity_changed_since_sessions()
@@ -848,7 +848,7 @@ class TestIdentityChangePredicate:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
 
         # Logout happens BEFORE the probe.
         con = sqlite3.connect(str(db))
@@ -870,7 +870,7 @@ class TestIdentityChangePredicate:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
         assert service._session_identity is None
 
@@ -886,7 +886,7 @@ class TestIdentityChangePredicate:
 
     @pytest.mark.asyncio
     async def test_assume_ready_never_reports_a_change(self, tmp_path: Path) -> None:
-        service = kp.KiroPrerequisiteService(
+        service = kp.HarnessPrerequisiteService(
             home=tmp_path, environ={}, platform_name="linux", assume_ready=True
         )
         service._stamp_probe("something")
@@ -910,7 +910,7 @@ class TestBaselinesAreIndependent:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
         # Reconcile the retirement baseline explicitly -- an unset one now reports
         # changed, so the sweep has to have happened before this scenario starts.
@@ -939,7 +939,7 @@ class TestBaselinesAreIndependent:
     async def test_the_session_baseline_advances_only_when_told(self, tmp_path: Path) -> None:
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
         await service.identity_changed_since_sessions()  # adopt
 
@@ -965,7 +965,7 @@ class TestBaselinesAreIndependent:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
 
         first, live = await service.identity_changed_since_sessions()
         second, _ = await service.identity_changed_since_sessions()
@@ -982,7 +982,7 @@ class TestLatchNarrowingPolicy:
 
     class _State:
         def __init__(self, service: object, sessions: object) -> None:
-            self.kiro_prerequisite_service = service
+            self.harness_prerequisite_service = service
             self.sessions = sessions
 
     class _Sessions:
@@ -1010,7 +1010,7 @@ class TestLatchNarrowingPolicy:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
 
         # Switch to another VALID account, then let a poll observe it first.
@@ -1031,7 +1031,7 @@ class TestLatchNarrowingPolicy:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
         service._status = type(service._status)(  # type: ignore[misc]
             **{**vars(service._status), "authenticated": True, "ready": True}
@@ -1058,7 +1058,7 @@ class TestLatchNarrowingPolicy:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
 
         _write_store(db, start_url="https://personal.awsapps.com/start")
@@ -1078,7 +1078,7 @@ class TestLatchNarrowingPolicy:
 
         db = kp.kiro_identity_store_path("linux", tmp_path, {})
         _write_store(db)
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         service._stamp_probe(await service.current_identity_fingerprint())
 
         _write_store(db, start_url="https://personal.awsapps.com/start")
@@ -1102,7 +1102,7 @@ class TestLatchNarrowingPolicy:
         from junction.dashboard import chat_runner
 
         # No store on disk at all: the fingerprint is absent.
-        service = kp.KiroPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
+        service = kp.HarnessPrerequisiteService(home=tmp_path, environ={}, platform_name="linux")
         sessions = self._Sessions(complete=True)
         state = self._State(service, sessions)
 

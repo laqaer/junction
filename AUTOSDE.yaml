@@ -222,7 +222,7 @@ custom-rules:
 
       A SECURITY ANCHOR IS NOT A DATA PATH. Some module-level values are built FROM
       the real home precisely so they can refuse access to it — `security`'s
-      extract-into-trust-root pattern, `kiro_usage_api`'s credential-store paths.
+      extract-into-trust-root pattern, `harness_usage_api`'s credential-store paths.
       Redirecting one to a tmp dir so a test can be isolated makes that test assert
       against a pattern that no longer matches the thing it protects. FLAG it: stub
       the READER, never move the anchor. The mirror-image defect is equally real —
@@ -317,13 +317,12 @@ custom-rules:
       - "src/junction/subagent.py"
       - "src/junction/sandbox.py"
     rule: |
-      Junction drives ONE first-class agent harness — kiro-cli
-      (ACP_BACKEND_KIRO, spelled "") — and ADAPTS the others (the dormant
-      ACP_BACKEND_CLAUDE seam, KAS, and any bring-your-own harness). An added
-      harness may only adapt itself to the seams the Kiro harness already runs
-      through. It may not move, widen, generalize, or add a branch to them. The
-      invariant ids below are defined in
-      docs/system-specs/modules/harness-parity.md; cite the id in the finding.
+      Junction supports user-selected ACP engines and optional vendor adapters;
+      agent.acp_backend defaults to `auto`. An added engine may only adapt itself
+      to the shared seams every engine already runs through. It may not move,
+      widen, generalize, or add a branch to them. The invariant ids below are
+      defined in docs/system-specs/modules/harness-parity.md; cite the id in the
+      finding.
 
       The mechanical shapes are already gated on added lines by
       scripts/check_harness_parity.py, so do NOT re-report them. Report only
@@ -331,13 +330,16 @@ custom-rules:
 
       - H13 — additive at the seam. Registering a harness must be a v1 addition
         at platform/interfaces.py:ProviderRegistry with no CONTRACT_VERSION
-        bump. FLAG a change that puts a new conditional, a new required
-        argument, a new awaited step, or a new failure mode on the KIRO
-        construction path in service of an adapter — including one that reads
-        as harmless refactoring (hoisting a kiro-specific step into a shared
-        helper, replacing an explicit kiro branch with a table lookup, or
-        making a kiro-only default parameter mandatory). The test is not "does
-        it still work for kiro", it is "did the kiro path change at all".
+        bump. FLAG a change that imposes an adapter-specific requirement, a new
+        required argument, a new awaited step, or a new failure mode on the
+        OTHER engines through the shared (auto/default) construction path —
+        including one that reads as harmless refactoring (hoisting an
+        engine-specific step into a shared helper, replacing an explicit engine
+        branch with a table lookup, or making an engine-only default parameter
+        mandatory). Shared code may evolve for everyone; the defect is
+        constraining other engines to accommodate one adapter. The test is not
+        "does it still work for that engine", it is "did the shared path impose
+        something adapter-specific on the rest".
       - H14 — the ABC is the contract. A capability the session layer reads off
         a provider must be declared on providers/base.py:LLMProvider with a
         safe default. FLAG a change that adds a hasattr/getattr probe on the
@@ -345,14 +347,13 @@ custom-rules:
         reachable only on AcpProvider so a missing attribute silently reads as
         False for the adapter.
       - H9/H10 — no lowest-common-denominator. FLAG a change that collapses a
-        per-harness literal (spawn argv construction, PROTOCOL_VERSION, client
+        per-engine literal (spawn argv construction, PROTOCOL_VERSION, client
         capabilities, the pre-spawn agent materialization, the --model pin) into
-        one form every harness accepts. Downgrading the kiro session to make an
+        one form every engine accepts. Downgrading an engine's session to make an
         adapter fit is the defect, even when every existing test still passes.
-      - H1/H3 — Kiro is the floor. FLAG a change that makes the kiro harness
-        conditional on an edition, a feature flag, an env var, or a registry
-        lookup, or that makes an unusable persisted acp_backend raise instead of
-        degrading to kiro with a logged reason.
+      - H1/H3 — Auto is the default. FLAG a change that hardcodes a concrete
+        engine as the default, that makes an unusable persisted acp_backend
+        raise, or that degrades it to anything other than auto.
       - H6/H7 — capability grants. A new capability predicate must be membership
         in a named ACP_BACKENDS_* set in acp/types.py, and every existing
         harness's membership must be an explicit decision in the diff. FLAG a

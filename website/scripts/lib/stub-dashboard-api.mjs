@@ -111,7 +111,7 @@ export async function stubDashboardApi(page, opts = {}) {
 
     if (extra && (await extra(path, route))) return
 
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'darwin', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

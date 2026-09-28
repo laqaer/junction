@@ -1,4 +1,4 @@
-"""Authenticated dashboard handlers for Kiro CLI first-run setup."""
+"""Authenticated dashboard handlers for harness first-run setup."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ from typing import Any
 
 from aiohttp import web
 
-from junction.kiro_prerequisite import (
+from junction.harness_prerequisite import (
     KIRO_CLI_LOGIN_COMMAND,
     KIRO_CLI_SSO_LOGIN_COMMAND,
     OFFICIAL_INSTALL_DOCS_URL,
-    KiroPrerequisiteService,
+    HarnessPrerequisiteService,
     PrerequisiteStatus,
     legacy_idle_operation,
 )
@@ -26,7 +26,7 @@ _LOCAL_DASHBOARD_OWNER_SUBJECTS = frozenset({"local-app", "local-startup"})
 def _not_ready_snapshot(initial_setup_complete: bool = False) -> dict[str, Any]:
     """A retryable not-ready snapshot for when a status probe cannot run.
 
-    Shaped exactly like ``KiroPrerequisiteService.snapshot()`` (built from the
+    Shaped exactly like ``HarnessPrerequisiteService.snapshot()`` (built from the
     same dataclasses so it cannot drift), it reports the CLI as installed but
     not signed in so the dashboard shows a retry path rather than a 500 flash.
 
@@ -48,11 +48,11 @@ def _not_ready_snapshot(initial_setup_complete: bool = False) -> dict[str, Any]:
     return result
 
 
-def _service(request: web.Request) -> KiroPrerequisiteService:
-    service = request.app.get("kiro_prerequisite_service")
-    if not isinstance(service, KiroPrerequisiteService):
+def _service(request: web.Request) -> HarnessPrerequisiteService:
+    service = request.app.get("harness_prerequisite_service")
+    if not isinstance(service, HarnessPrerequisiteService):
         raise web.HTTPServiceUnavailable(
-            text="Kiro prerequisite service unavailable.",
+            text="Harness prerequisite service unavailable.",
             content_type="text/plain",
         )
     return service
@@ -87,7 +87,7 @@ async def _dashboard_owner_only(request: web.Request) -> web.Response | None:
     def _audit() -> None:
         sel().log_api_access(
             caller=audit_caller,
-            operation="kiro_prerequisite_access",
+            operation="harness_prerequisite_access",
             outcome="denied",
             source="dashboard",
             resources=request.path,
@@ -97,12 +97,12 @@ async def _dashboard_owner_only(request: web.Request) -> web.Response | None:
     try:
         await asyncio.to_thread(_audit)
     except Exception:
-        logger.debug("Could not audit denied Kiro prerequisite access", exc_info=True)
+        logger.debug("Could not audit denied Harness prerequisite access", exc_info=True)
     return web.json_response({"error": "dashboard owner required"}, status=403)
 
 
-async def api_kiro_prerequisite_status(request: web.Request) -> web.Response:
-    """GET /api/kiro-prerequisite — current install/login readiness.
+async def api_harness_prerequisite_status(request: web.Request) -> web.Response:
+    """GET /api/harness-prerequisite — current install/login readiness.
 
     Reads LATCHED state by default: readiness is probed at gateway start and
     then only on explicit request, so the SPA's background poll costs no
@@ -142,7 +142,7 @@ async def api_kiro_prerequisite_status(request: web.Request) -> web.Response:
         # already degrades most failures; this is the last-resort backstop.)
         # The first-run bit is read from the data home, not the probe, so it
         # survives this path and keeps a returning user out of first-run setup.
-        logger.warning("Kiro prerequisite status probe failed", exc_info=True)
+        logger.warning("Harness prerequisite status probe failed", exc_info=True)
         snapshot = _not_ready_snapshot(bool(service.initial_setup_complete))
     if _is_dashboard_owner(request):
         return web.json_response({**snapshot, "setup_allowed": True})
@@ -192,8 +192,8 @@ async def api_kiro_prerequisite_status(request: web.Request) -> web.Response:
     )
 
 
-async def api_kiro_prerequisite_repair_specs(request: web.Request) -> web.Response:
-    """POST /api/kiro-prerequisite/repair-specs — rewrite the managed agent specs.
+async def api_harness_prerequisite_repair_specs(request: web.Request) -> web.Response:
+    """POST /api/harness-prerequisite/repair-specs — rewrite the managed agent specs.
 
     A POST rather than a flag on the status GET, because the write must be
     origin-checked and audited: ``csrf_middleware`` skips ``check_origin`` for

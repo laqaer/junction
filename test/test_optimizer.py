@@ -11,21 +11,21 @@ from junction.dashboard.handlers.optimizer import (
     OPTIMIZER_SYSTEM,
     handle_optimize,
 )
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 
-class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
+class _ReadyHarnessPrerequisiteService(HarnessPrerequisiteService):
     async def session_ready(self) -> bool:
         return True
 
 
-_READY_KIRO_PREREQUISITE = object.__new__(_ReadyKiroPrerequisiteService)
+_READY_KIRO_PREREQUISITE = object.__new__(_ReadyHarnessPrerequisiteService)
 
 
 def _ready_app(state):
     return {
         "state": state,
-        "kiro_prerequisite_service": _READY_KIRO_PREREQUISITE,
+        "harness_prerequisite_service": _READY_KIRO_PREREQUISITE,
     }
 
 
@@ -84,7 +84,7 @@ class TestOptimizerEndpoint:
         a signed-out CLI itself.
         """
 
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -98,7 +98,7 @@ class TestOptimizerEndpoint:
         request = MagicMock()
         request.app = {
             "state": MagicMock(sessions=mock_sessions),
-            "kiro_prerequisite_service": service,
+            "harness_prerequisite_service": service,
         }
 
         resp = await handle_optimize(request)
@@ -108,7 +108,7 @@ class TestOptimizerEndpoint:
         # fails validation on this MagicMock request), rather than returning the
         # prerequisite 503.
         assert resp.status != 503
-        assert data.get("code") != "kiro_prerequisite_required"
+        assert data.get("code") != "harness_prerequisite_required"
         request.json.assert_called()
 
     @pytest.mark.asyncio

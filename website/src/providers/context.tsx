@@ -2,7 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { getAdapter } from './registry'
 import type { ProviderAdapter } from './types'
 
-// KiroACP-only: kiro-cli over ACP is the sole provider, so there is exactly one
+// ACP is the shared provider for configured harnesses, so there is exactly one
 // adapter and no provider selection. The context is retained (rather than
 // inlining the adapter at each call site) so the many useProvider() consumers
 // stay unchanged.

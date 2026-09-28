@@ -142,7 +142,7 @@ _SPEC_REJECTION_MARKER = "is invalid"
 # candidate and must stay on a short leash, so a genuinely missing or hung
 # binary is still reported quickly rather than blocking the gate for the full
 # identity budget. Sized to cover the observed refresh with headroom, while the
-# in-flight latch in :meth:`KiroPrerequisiteService.snapshot` keeps the gate's
+# in-flight latch in :meth:`HarnessPrerequisiteService.snapshot` keeps the gate's
 # machine polls answering from cached state instead of queueing behind a probe
 # this long.
 _IDENTITY_PROBE_TIMEOUT_SECS = 30
@@ -165,7 +165,7 @@ _KIRO_AUTH_SANDBOX_MODE = "standard"
 _UNVERIFIED_SANDBOX_MODE = "strict"
 _SETUP_COMPLETE_FILENAME = ".kiro_cli_setup_complete"
 _PROCESS_GROUP_SUPERVISOR = str(Path(__file__).with_name("_process_group_supervisor.py"))
-_PROCESS_GROUP_SUPERVISOR_ERROR = "Kiro process-group supervisor is unavailable"
+_PROCESS_GROUP_SUPERVISOR_ERROR = "Harness process-group supervisor is unavailable"
 try:
     _PROCESS_GROUP_SUPERVISOR_CODE = Path(_PROCESS_GROUP_SUPERVISOR).read_text(encoding="utf-8")
 except OSError:
@@ -178,7 +178,7 @@ _AUTH_STAGING_RELATIVE = Path(".kiro") / "junction-auth-staging"
 FAKE_ACP_TEST_MODE_ENV = "JUNCTION_FAKE_ACP_TEST_MODE"
 _MAX_AUTH_EXECUTABLE_BYTES = 512 * 1024 * 1024
 _MAX_AUTH_STORE_FILE_BYTES = 64 * 1024 * 1024
-_AUTH_STORE_READ_ERROR = "Kiro identity file could not be read safely"
+_AUTH_STORE_READ_ERROR = "Harness identity file could not be read safely"
 # The Kiro CLI identity database is PROJECTED, never byte-copied. It is the CLI's
 # main store: identity lives in two small tables, while `history` /
 # `conversations*` hold chat transcripts and grow without bound (a real user
@@ -214,7 +214,7 @@ _AUTH_FINGERPRINT_ABSENT = ""
 # SEL audit label for the identity-fingerprint read. Registered in
 # hooks._AUDIT_ONLY_READ_IDS; an unregistered id is refused there, and this reader
 # fails closed on that refusal rather than reading unaudited.
-_IDENTITY_FINGERPRINT_READ_ID = "kiro_prerequisite.identity_fingerprint"
+_IDENTITY_FINGERPRINT_READ_ID = "harness_prerequisite.identity_fingerprint"
 # Blob fields that identify WHICH account is signed in and survive a token
 # refresh. An ALLOWLIST on purpose: the same blobs carry `access_token`,
 # `refresh_token`, `expires_at` and `client_secret`, and a denylist would admit
@@ -296,7 +296,7 @@ _PROBE_ENV_KEYS = frozenset(
 # SECURITY: the exposure delta is one probe's argv, not a new surface. The value
 # reaches the same resolved binary this same probe already executes, in the same
 # standard sandbox posture, against the same real home (see
-# :meth:`KiroPrerequisiteService._run_auth_command`'s ``isolate_home=False`` note),
+# :meth:`HarnessPrerequisiteService._run_auth_command`'s ``isolate_home=False`` note),
 # on a fixed ``whoami`` argv. It is kept OUT of :data:`_PROBE_ENV_KEYS` because
 # ``--version`` is the FIRST execution of a candidate that has not yet answered
 # anything, and nothing about resolving a version needs a key.
@@ -776,7 +776,7 @@ def _project_identity_database(source: Path, destination: Path) -> bool:
 
 
 def _atomic_write_secret_bytes(path: Path, content: bytes) -> None:
-    """Atomically stage one bounded Kiro identity file, owner-only from birth.
+    """Atomically stage one bounded Harness identity file, owner-only from birth.
 
     ``restrict_to_owner=True`` locks the temp file down BEFORE the identity
     bytes reach it — the previous post-rename lockdown left them readable
@@ -861,7 +861,7 @@ def kiro_identity_store_path(
 
     Every platform resolves among FIXED, home-anchored locations, drawn from the
     same set as the trusted live-store list in
-    ``dashboard/handlers/kiro_usage_api.py`` (``_CLI_SQLITE_DBS``). No
+    ``dashboard/handlers/harness_usage_api.py`` (``_CLI_SQLITE_DBS``). No
     environment variable is consulted -- not ``XDG_DATA_HOME`` on Linux, not
     ``APPDATA`` or ``LOCALAPPDATA`` on Windows -- because the fence that makes
     this store unwritable by agent file tools (``_SENSITIVE_HOME_DIRS``) is
@@ -927,7 +927,7 @@ def identity_store_is_relocated(
     reports absent even when a current-layout Local store is healthy -- the
     same answer such hosts got when the anchor lived under Roaming, so the
     posture is status quo there, and the once-per-service log in
-    :meth:`KiroPrerequisiteService.current_identity_fingerprint` makes it
+    :meth:`HarnessPrerequisiteService.current_identity_fingerprint` makes it
     diagnosable. A variable set to exactly the default location is not a
     relocation.
     """
@@ -1768,9 +1768,9 @@ async def _write_audit(
 
     def _write() -> None:
         sel().log_tool_invocation(
-            session_key="dashboard:kiro-prerequisite",
+            session_key="dashboard:harness-prerequisite",
             source="dashboard",
-            tool_name=f"kiro_prerequisite_{action}",
+            tool_name=f"harness_prerequisite_{action}",
             tool_kind="system_setup",
             outcome=outcome,
             error=error,
@@ -1852,7 +1852,7 @@ def _established_installation(data_home: Path) -> bool:
 
 
 def _default_spec_lister() -> list[tuple[str, Path]]:
-    """Production enumerator for :class:`KiroPrerequisiteService`'s spec probe.
+    """Production enumerator for :class:`HarnessPrerequisiteService`'s spec probe.
 
     Delegates so path resolution and the ownership guard stay in ``agent.py``
     (see ``present_required_agent_specs``).
@@ -1905,7 +1905,7 @@ def _unlaunchable_mcp_servers(spec_path: Path) -> str:
     for name, entry in sorted(servers.items()):
         if not isinstance(entry, dict):
             return (
-                f"The MCP server {name!r} is not an object, so Kiro CLI cannot "
+                f"The MCP server {name!r} is not an object, so the harness cannot "
                 f"start it and the session runs without its tools."
             )
         stdio = entry.get("command")
@@ -1916,13 +1916,13 @@ def _unlaunchable_mcp_servers(spec_path: Path) -> str:
         if not launchable:
             return (
                 f"The MCP server {name!r} names neither a command to run nor a "
-                f"url to reach, so Kiro CLI cannot start it and the session runs "
+                f"url to reach, so the harness cannot start it and the session runs "
                 f"without its tools."
             )
     return ""
 
 
-class KiroPrerequisiteService:
+class HarnessPrerequisiteService:
     """Single-gateway coordinator for prerequisite probes and setup operations."""
 
     def __init__(
@@ -2120,7 +2120,7 @@ class KiroPrerequisiteService:
     async def _repair_agent_specs(self) -> str:
         """Rewrite the managed agent specs. Returns the failure text, or ``""``.
 
-        Reached ONLY from the ``POST /api/kiro-prerequisite/repair-specs`` handler,
+        Reached ONLY from the ``POST /api/harness-prerequisite/repair-specs`` handler,
         never from ``snapshot()``. That placement is load-bearing, not stylistic:
         the status route is an ``add_get``, and both dashboard barriers are
         method-scoped — ``csrf_middleware`` skips ``check_origin`` for
@@ -2337,7 +2337,7 @@ class KiroPrerequisiteService:
         # skips check_origin for GET; sel_audit_middleware logs only
         # POST/PUT/DELETE/PATCH), so a write reached from a status read would be
         # cross-site triggerable and unaudited. It is a POST route instead:
-        # ``repair_agent_specs`` / ``POST /api/kiro-prerequisite/repair-specs``.
+        # ``repair_agent_specs`` / ``POST /api/harness-prerequisite/repair-specs``.
         return result
 
     def mark_signed_out(self) -> None:
@@ -2536,7 +2536,7 @@ class KiroPrerequisiteService:
 
         Because this value can therefore be arbitrarily stale, turn-starting
         callers treat it as ADVISORY and let the real ACP attempt be the
-        authority (see ``dashboard/kiro_readiness.py``). Poll-driven
+        authority (see ``dashboard/harness_readiness.py``). Poll-driven
         ``kiro-cli`` spawn sites still gate on it — they have no turn to carry
         the failure, and an unauthenticated spawn opens a browser window on
         every poll.
@@ -2876,7 +2876,7 @@ class KiroPrerequisiteService:
                 "gateway-status",
                 "probe execution failed",
             )
-            return ProcessResult(ok=False, error="Kiro CLI probe could not run")
+            return ProcessResult(ok=False, error="Harness probe could not run")
         if result.ok:
             audit_detail = ""
         elif result.timed_out:
@@ -2913,7 +2913,7 @@ class KiroPrerequisiteService:
         session), so a CLI whose session/registry lives in the real home is
         detected and device login writes its own credential store where the CLI
         normally keeps it. ``isolate_home=True`` keeps a credential-minimal
-        temporary HOME holding only Kiro identity files, for read-only probes
+        temporary HOME holding only Harness identity files, for read-only probes
         that must never see the real ``~/.aws`` / ``~/.ssh``.
         """
 
@@ -3033,7 +3033,7 @@ class KiroPrerequisiteService:
                 "gateway-status",
                 "probe execution failed",
             )
-            return ProcessResult(ok=False, error="Kiro identity probe could not run")
+            return ProcessResult(ok=False, error="Harness identity probe could not run")
         if result.ok:
             audit_detail = ""
         elif result.timed_out:

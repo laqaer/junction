@@ -128,8 +128,8 @@ _TOTAL_DEADLINE_SECS = 30
 # and emits a fail-closed SEL audit. The read-ids below are registered in
 # ``junction.hooks._INTERNAL_READ_ALLOWLIST``.
 _JSON_TOKEN_READ_IDS = (
-    "kiro_usage_api.sso_token_cli",
-    "kiro_usage_api.sso_token_ide",
+    "harness_usage_api.sso_token_cli",
+    "harness_usage_api.sso_token_ide",
 )
 
 # kiro-cli's OWN SQLite auth store — the store kiro-cli itself authenticates
@@ -184,7 +184,7 @@ _SQLITE_TOKEN_KEYS = ("kirocli:odic:token", "codewhisperer:odic:token", "kirocli
 # SEL audit label for the SQLite live-token read. Not an allowlist entry (that
 # gate is for sensitive-path reads via safe_read_file_internal); this is only
 # the audit event's tool_name so the credential access is traceable.
-_SQLITE_AUDIT_READ_ID = "kiro_usage_api.sqlite_token"
+_SQLITE_AUDIT_READ_ID = "harness_usage_api.sqlite_token"
 
 # Range guard: reject absurd numbers so a corrupt/hostile response can't render
 # as a wild figure. Real plans are in the thousands; a million-credit ceiling is

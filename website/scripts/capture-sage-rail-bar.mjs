@@ -107,7 +107,7 @@ const FIXTURES = {
   },
   [`${SAGE}/namespaces`]: { namespaces: [{ name: 'default', count: 0 }] },
   [`${SAGE}/learnings`]: { namespace: 'default', learnings: [] },
-  '/api/kiro-prerequisite': {
+  '/api/harness-prerequisite': {
     platform: 'linux', installed: true, authenticated: true, ready: true,
     initial_setup_complete: true, can_auto_install: false, can_login: false,
     repair_required: false, docs_url: '', setup_allowed: false,

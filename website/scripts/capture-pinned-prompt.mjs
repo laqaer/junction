@@ -124,7 +124,7 @@ async function main() {
     // The prerequisite gate blocks the whole app shell until this resolves, and it
     // reads `operation.status` unguarded — a catch-all `[]` throws inside the
     // ErrorBoundary and the transcript never mounts at all.
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, { ready: true, setup_allowed: true, operation: { status: 'idle', message: '' } })
     }
     if (path.startsWith('/api/instances')) return json(route, { instances: [], active: '' })

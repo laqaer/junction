@@ -3,7 +3,7 @@
  *
  * Asserts SettingsPage *lists* its tabs (panel tests only cover the panels).
  * The Browser tab is present; there is no Provider tab because Junction has a
- * single KiroACP / kiro-cli provider with nothing to select.
+ * single ACP / kiro-cli provider with nothing to select.
  *
  * The five chat integrations live under ONE Channels tab (rows inside
  * ChannelsPanel), the sidebar carries Preferences/System group headers, and
@@ -100,7 +100,7 @@ describe('SettingsPage tabs', () => {
     expect(screen.getByText('Browser')).toBeInTheDocument()
   })
 
-  it('does not list a Provider tab (KiroACP is the only provider)', () => {
+  it('does not list a Provider tab (ACP is the only provider)', () => {
     renderAt('/settings')
     expect(screen.queryByText('Provider')).not.toBeInTheDocument()
   })

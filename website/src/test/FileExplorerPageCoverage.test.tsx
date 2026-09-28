@@ -395,7 +395,7 @@ describe('FileExplorerPage reveal', () => {
 
   /** Publish a gateway platform into the cache the prerequisite gate owns. */
   function setGatewayPlatform(qc: QueryClient, platform: string) {
-    act(() => { qc.setQueryData(['kiro-prerequisite'], { platform }) })
+    act(() => { qc.setQueryData(['harness-prerequisite'], { platform }) })
   }
 
   it('names Finder by name when the gateway host is macOS', async () => {

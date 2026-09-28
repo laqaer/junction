@@ -670,7 +670,7 @@ class TestSlotCreatePinIsFinal:
 
         from aiohttp import web
         from aiohttp.test_utils import TestClient, TestServer
-        from chat_test_helpers import _make_ready_kiro_prerequisite
+        from chat_test_helpers import _make_ready_harness_prerequisite
 
         from junction.dashboard.chat import api_chat_slot_create
         from junction.dashboard.state import DashboardState
@@ -690,7 +690,7 @@ class TestSlotCreatePinIsFinal:
             start_time=0.0,
             conversation_log=ConversationLog(base_dir=tmp_path),
         )
-        state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+        state.harness_prerequisite_service = _make_ready_harness_prerequisite()
 
         app = web.Application()
         app["state"] = state

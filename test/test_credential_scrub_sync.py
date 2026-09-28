@@ -33,8 +33,8 @@ from junction.config.loader import (
     read_env_file_credential,
     strip_kiro_cli_api_key,
 )
-from junction.kiro_prerequisite import (
-    KiroPrerequisiteService,
+from junction.harness_prerequisite import (
+    HarnessPrerequisiteService,
     ProcessResult,
 )
 
@@ -190,14 +190,14 @@ class TestIdentityProbeEnvFileFallback:
     """Post-scrub Docker: whoami still sees the credential, --version never does."""
 
     @staticmethod
-    def _service(tmp_path: Path, run: Any) -> KiroPrerequisiteService:
+    def _service(tmp_path: Path, run: Any) -> HarnessPrerequisiteService:
         _make_executable(tmp_path / ".local" / "bin" / "kiro-cli")
         data_home = tmp_path / "data-home"
         data_home.mkdir(parents=True, exist_ok=True)
         (data_home / ".env").write_text("KIRO_API_KEY=key-from-env-file\n")
         # No KIRO_API_KEY in the environ — the entrypoint scrubbed it.
         environ = {"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"}
-        return KiroPrerequisiteService(
+        return HarnessPrerequisiteService(
             platform_name="linux",
             environ=environ,
             home=tmp_path,

@@ -1690,18 +1690,18 @@ describe('Alt+Shift+S/X model cycling via React Query cache', () => {
   })
 })
 
-describe('Kiro credits pill', () => {
+describe('Harness credits pill', () => {
   it('shows a checking/loading state until usage resolves with plan data', async () => {
     const { api } = await import('../api/client')
     vi.mocked(api.sessionsUsage).mockResolvedValueOnce({ usage: {} } as never)
     renderWithProviders(<App />, { route: '/chat' })
-    expect(await screen.findByTitle(/Kiro credit usage/)).toBeInTheDocument()
+    expect(await screen.findByTitle(/Harness credit usage/)).toBeInTheDocument()
   })
 
   it('renders used/limit and percentage once loaded', async () => {
     renderWithProviders(<App />, { route: '/chat' })
     // default mock: 3044 total used of 10000 = 30%
-    const pill = await screen.findByTitle('Kiro credit usage')
+    const pill = await screen.findByTitle('Harness credit usage')
     expect(pill).toBeInTheDocument()
   })
 
@@ -1712,14 +1712,14 @@ describe('Kiro credits pill', () => {
     } as never)
     renderWithProviders(<App />, { route: '/chat' })
     // credits_used=10500 total / 10000 plan = 105% (500 over plan)
-    expect(await screen.findByTitle('Kiro credit usage')).toBeInTheDocument()
+    expect(await screen.findByTitle('Harness credit usage')).toBeInTheDocument()
   })
 
   it('opens a details modal with breakdown rows when clicked', async () => {
     renderWithProviders(<App />, { route: '/chat' })
-    const pill = await screen.findByTitle('Kiro credit usage')
+    const pill = await screen.findByTitle('Harness credit usage')
     fireEvent.click(pill)
-    expect(await screen.findByRole('dialog', { name: 'Kiro Account' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Harness Account' })).toBeInTheDocument()
     expect(await screen.findByText('owner@example.com')).toBeInTheDocument()
     expect(screen.getByText(/Signed in with Social login/)).toBeInTheDocument()
     expect(await screen.findByText('KIRO POWER')).toBeInTheDocument()
@@ -1732,20 +1732,20 @@ describe('Kiro credits pill', () => {
   })
 })
 
-describe('Kiro credits pill — edge cases', () => {
+describe('Harness credits pill — edge cases', () => {
   it('stays in loading state if the usage fetch rejects', async () => {
     const { api } = await import('../api/client')
     vi.mocked(api.sessionsUsage).mockRejectedValueOnce(new Error('boom'))
     renderWithProviders(<App />, { route: '/chat' })
     // useQuery (retry:false) surfaces the error and leaves data undefined; pill stays in the checking/loading state
-    expect(await screen.findByTitle(/Kiro credit usage/)).toBeInTheDocument()
+    expect(await screen.findByTitle(/Harness credit usage/)).toBeInTheDocument()
   })
 
   it('opens the modal in a loading state when clicked before data resolves', async () => {
     const { api } = await import('../api/client')
     vi.mocked(api.sessionsUsage).mockResolvedValueOnce({ usage: {} } as never)
     renderWithProviders(<App />, { route: '/chat' })
-    const loadingPill = await screen.findByTitle(/Kiro credit usage/)
+    const loadingPill = await screen.findByTitle(/Harness credit usage/)
     fireEvent.click(loadingPill)
     expect(await screen.findByLabelText('Checking credit usage')).toBeInTheDocument()
   })
@@ -1755,7 +1755,7 @@ describe('Kiro credits pill — edge cases', () => {
     // only credits_plan present -> credits_used falls back to 0
     vi.mocked(api.sessionsUsage).mockResolvedValueOnce({ usage: { credits_plan: 500 } } as never)
     renderWithProviders(<App />, { route: '/chat' })
-    const pill = await screen.findByTitle('Kiro credit usage')
+    const pill = await screen.findByTitle('Harness credit usage')
     expect(pill).toHaveTextContent('0/500') // sub-1000 -> no "K" formatting
     fireEvent.click(pill)
     expect(await screen.findByText('0 credits')).toBeInTheDocument() // Overage used row
@@ -1765,7 +1765,7 @@ describe('Kiro credits pill — edge cases', () => {
     const { api } = await import('../api/client')
     vi.mocked(api.sessionsUsage).mockResolvedValueOnce({ usage: { credits_plan: 0, credits_covered: 0 } } as never)
     renderWithProviders(<App />, { route: '/chat' })
-    expect(await screen.findByTitle('Kiro credit usage')).toBeInTheDocument()
+    expect(await screen.findByTitle('Harness credit usage')).toBeInTheDocument()
   })
 
   it('falls back to an empty object when the response has no usage key', async () => {
@@ -1773,12 +1773,12 @@ describe('Kiro credits pill — edge cases', () => {
     vi.mocked(api.sessionsUsage).mockResolvedValueOnce({} as never)
     renderWithProviders(<App />, { route: '/chat' })
     // d?.usage is undefined -> `|| {}` -> credits_plan absent -> stays loading
-    expect(await screen.findByTitle(/Kiro credit usage/)).toBeInTheDocument()
+    expect(await screen.findByTitle(/Harness credit usage/)).toBeInTheDocument()
   })
 
   it('closes the modal on Escape', async () => {
     renderWithProviders(<App />, { route: '/chat' })
-    const pill = await screen.findByTitle('Kiro credit usage')
+    const pill = await screen.findByTitle('Harness credit usage')
     // Focus the pill first, as a real click does: focus restore is `Modal`'s
     // generic behaviour (it returns focus to whatever was focused when the
     // dialog opened), not a per-call-site `ref.focus()` in App.
@@ -1795,8 +1795,8 @@ describe('Kiro credits pill — edge cases', () => {
     // Backend reports available:false when kiro-cli is absent (e.g. a Claude-only provider).
     vi.mocked(api.sessionsUsage).mockResolvedValue({ usage: { available: false } } as never)
     renderWithProviders(<App />, { route: '/chat' })
-    await waitFor(() => expect(screen.queryByTitle(/Kiro credit usage/)).not.toBeInTheDocument())
-    expect(screen.queryByTitle('Kiro credit usage')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByTitle(/Harness credit usage/)).not.toBeInTheDocument())
+    expect(screen.queryByTitle('Harness credit usage')).not.toBeInTheDocument()
   })
 
   it('auto-closes the modal if usage resolves to unavailable while it is open', async () => {
@@ -1804,7 +1804,7 @@ describe('Kiro credits pill — edge cases', () => {
     let resolveUsage: (v: unknown) => void = () => {}
     vi.mocked(api.sessionsUsage).mockReturnValue(new Promise(r => { resolveUsage = r }) as never)
     renderWithProviders(<App />, { route: '/chat' })
-    const pill = await screen.findByTitle(/Kiro credit usage/)
+    const pill = await screen.findByTitle(/Harness credit usage/)
     fireEvent.click(pill)
     expect(await screen.findByLabelText('Checking credit usage')).toBeInTheDocument()
     await act(async () => { resolveUsage({ usage: { available: false } }); await Promise.resolve() })
@@ -1817,7 +1817,7 @@ describe('Kiro credits pill — edge cases', () => {
     renderWithProviders(<App />, { route: '/chat' })
     // Non-finite plan is rejected by the Number.isFinite guard, so the loaded
     // pill (which would otherwise show "NaN / NaN") never appears.
-    await waitFor(() => expect(screen.queryByTitle('Kiro credit usage')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByTitle('Harness credit usage')).not.toBeInTheDocument())
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument()
   })
 })

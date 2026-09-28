@@ -27,7 +27,7 @@ async function collect(platform?: string) {
   vi.spyOn(api, 'collectDiagnostics').mockResolvedValue(BUNDLE as never)
   const view = renderWithProviders(<ReportProblemModal open onClose={vi.fn()} />)
   if (platform) {
-    act(() => { view.queryClient.setQueryData(['kiro-prerequisite'], { platform }) })
+    act(() => { view.queryClient.setQueryData(['harness-prerequisite'], { platform }) })
   }
   await userEvent.click(screen.getByRole('button', { name: 'Create report' }))
   await waitFor(() => expect(screen.getByText('Saved to')).toBeInTheDocument())

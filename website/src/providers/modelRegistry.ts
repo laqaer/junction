@@ -25,7 +25,7 @@ const REGISTRY: Record<string, Entry> = Object.fromEntries(
 
 // NOTE: 'claude_code' here is the model_registry.json providers-map KEY — the
 // canonical model-id namespace shared with the backend — NOT a selectable
-// provider (the fork is KiroACP/kiro-cli only). Keep the literal verbatim.
+// provider (the fork is ACP/kiro-cli only). Keep the literal verbatim.
 const PROVIDER = 'claude_code'
 
 /** Dropdown rows (canonical key + display + window), default first. */

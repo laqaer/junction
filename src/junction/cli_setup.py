@@ -39,7 +39,7 @@ from junction.skills import SkillsLoader
 
 def _mark_first_run_complete() -> None:
     """Record that setup finished. kiro-cli is not required for this marker."""
-    from junction.kiro_prerequisite import write_setup_complete_marker
+    from junction.harness_prerequisite import write_setup_complete_marker
 
     try:
         write_setup_complete_marker()

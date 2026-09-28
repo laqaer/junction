@@ -2,7 +2,7 @@
 
 The dashboard renders server prose verbatim into a localized UI --
 ``setError(res.error)`` (``JobForm.tsx``), ``{operation.error || operation.message}``
-(``KiroPrerequisiteGate.tsx``). So an English sentence produced in Python lands
+(``HarnessPrerequisiteGate.tsx``). So an English sentence produced in Python lands
 untranslated inside a Chinese page, and no amount of frontend i18n can reach it:
 the string never passes through a catalog. The backend is emitting *presentation*
 where it should emit *data*.

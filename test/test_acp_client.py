@@ -8153,7 +8153,7 @@ class TestResolveKiroBinEnvOverride:
 
     def test_env_override_used_when_valid(self, tmp_path):
         from junction.acp.client import _resolve_kiro_bin
-        from junction.kiro_prerequisite import TrustedAcpExecutableSnapshot
+        from junction.harness_prerequisite import TrustedAcpExecutableSnapshot
 
         fake = tmp_path / "kiro-cli"
         fake.write_text("#!/bin/sh\n")
@@ -8164,7 +8164,7 @@ class TestResolveKiroBinEnvOverride:
                 return_value=str(fake),
             ),
             patch(
-                "junction.kiro_prerequisite.snapshot_trusted_acp_executable",
+                "junction.harness_prerequisite.snapshot_trusted_acp_executable",
                 return_value=TrustedAcpExecutableSnapshot("/immutable/kiro-cli"),
             ),
         ):
@@ -8220,7 +8220,7 @@ class TestResolveKiroBinEnvOverride:
     async def test_spawn_launches_self_updated_override(self, tmp_path):
         from junction import sandbox as sandbox_module
         from junction.acp import client as client_module
-        from junction.kiro_prerequisite import KiroPrerequisiteService
+        from junction.harness_prerequisite import HarnessPrerequisiteService
 
         fake = tmp_path / "kiro-cli"
         fake.write_bytes(b"#!/bin/sh\n# original\n")
@@ -8247,7 +8247,7 @@ class TestResolveKiroBinEnvOverride:
             # A Kiro self-update legitimately rewrites the binary after gateway
             # start. Trust is "it runs", so the updated bytes still launch — the
             # snapshot just pins whatever bytes are resolved at spawn time.
-            KiroPrerequisiteService(home=tmp_path, data_home=tmp_path / "data")
+            HarnessPrerequisiteService(home=tmp_path, data_home=tmp_path / "data")
             fake.write_bytes(b"#!/bin/sh\n# self-updated\n")
             fake.chmod(0o755)
 

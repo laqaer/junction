@@ -235,7 +235,7 @@ async function main() {
     if (path === '/api/terminal/sessions') return json(route, { sessions: [] })
     if (path === '/api/sessions/usage') return json(route, { sessions: [] })
     // The full shape from capture-apps.mjs — the shell reads `operation.status`.
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'gateway', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: true,

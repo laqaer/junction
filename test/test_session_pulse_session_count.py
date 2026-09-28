@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from chat_test_helpers import _make_ready_kiro_prerequisite
+from chat_test_helpers import _make_ready_harness_prerequisite
 
 from junction.dashboard import session_pulse_counter as spc
 from junction.dashboard.state import DashboardState, SlotOrigin
@@ -58,7 +58,7 @@ def _make_state(tmp_path) -> DashboardState:
         start_time=0.0,
         conversation_log=ConversationLog(base_dir=tmp_path / "log"),
     )
-    state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+    state.harness_prerequisite_service = _make_ready_harness_prerequisite()
     return state
 
 

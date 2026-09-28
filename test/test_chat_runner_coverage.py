@@ -31,7 +31,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from chat_test_helpers import _make_ready_kiro_prerequisite
+from chat_test_helpers import _make_ready_harness_prerequisite
 
 from junction.acp.types import (
     EVENT_COMPLETE,
@@ -78,7 +78,7 @@ def _state(tmp_path, **kwargs) -> DashboardState:
         conversation_log=ConversationLog(base_dir=tmp_path),
         **kwargs,
     )
-    state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+    state.harness_prerequisite_service = _make_ready_harness_prerequisite()
     state.broadcast_ws = MagicMock()
     state.push_slots_update = MagicMock()
     state.push_refresh = MagicMock()
@@ -862,7 +862,7 @@ class TestMarkKiroSignedOut:
 
     def test_latch_failure_never_raises(self):
         state = MagicMock()
-        state.kiro_prerequisite_service.mark_signed_out.side_effect = RuntimeError("io")
+        state.harness_prerequisite_service.mark_signed_out.side_effect = RuntimeError("io")
 
         chat_runner._mark_kiro_signed_out(state)
 

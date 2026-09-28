@@ -80,7 +80,7 @@ async function stubContext(context) {
 
   await context.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'darwin', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

@@ -76,7 +76,7 @@ async function main() {
     if (path === '/api/chat/slots') return json(route, slots)
     const m = path.match(/^\/api\/chat\/slots\/([^/]+)/)
     if (m) return json(route, details[decodeURIComponent(m[1])] || details['long-session'])
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'linux', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

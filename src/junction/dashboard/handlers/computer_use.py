@@ -556,7 +556,7 @@ async def api_computer_use_config_save(request: web.Request) -> web.Response:
     (that is what lets the operator's own Settings panel write a file the agent
     cannot), so without this gate an agent that can author an app manifest could read
     its own ``.app_secret``, mint an app token and flip ``enabled: true`` on its own
-    desktop automation. Same guard as ``handlers/kiro_prerequisite.py`` and
+    desktop automation. Same guard as ``handlers/harness_prerequisite.py`` and
     ``handlers/messaging.py``'s notification push.
 
     **There is no governance ceiling on this route, and therefore no 409.** Computer

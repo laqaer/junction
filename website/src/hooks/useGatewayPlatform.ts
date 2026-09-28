@@ -1,6 +1,6 @@
 import { useContext } from 'react'
 import { QueryClient, QueryClientContext, useQuery, skipToken } from '@tanstack/react-query'
-import type { KiroPrerequisiteStatus } from '../api/client'
+import type { HarnessPrerequisiteStatus } from '../api/client'
 
 /** What the gateway host is, for copy that names an OS feature by its real name. */
 export type GatewayPlatform = 'darwin' | 'windows' | 'other'
@@ -57,8 +57,8 @@ const ORPHAN_TREE_CACHE = new QueryClient()
  */
 export function useGatewayPlatform(): GatewayPlatform {
   const provided = useContext(QueryClientContext)
-  const { data } = useQuery<KiroPrerequisiteStatus>(
-    { queryKey: ['kiro-prerequisite'], queryFn: skipToken },
+  const { data } = useQuery<HarnessPrerequisiteStatus>(
+    { queryKey: ['harness-prerequisite'], queryFn: skipToken },
     provided ?? ORPHAN_TREE_CACHE,
   )
   return classifyPlatform(data?.platform)

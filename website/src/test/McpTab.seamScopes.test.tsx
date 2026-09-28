@@ -44,7 +44,7 @@ describe('McpTab — seam-aware Globals column', () => {
   it('shows only the core Kiro global badge when no provider scope is configured', async () => {
     mockApi.mcpGlobalScopes.mockResolvedValue({ scopes: [] })
     renderTab()
-    expect(await screen.findByRole('button', { name: /Kiro:/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Harness:/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Claude/ })).toBeNull()
   })
 

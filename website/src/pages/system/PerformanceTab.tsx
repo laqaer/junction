@@ -466,7 +466,7 @@ function ResourceStats({ d, resource }: { d: SystemData | null; resource: Resour
           {d.mcp_processes && (
             <>
               <Stat label={i18nT('pages.performanceTab.sandbox_procs')} value={fmtNumber(d.mcp_processes.sandbox)} />
-              <Stat label={i18nT('pages.performanceTab.kiro_cli_procs')} value={fmtNumber(d.mcp_processes.kiro_cli)} />
+              <Stat label={i18nT('pages.performanceTab.harness_cli_procs')} value={fmtNumber(d.mcp_processes.kiro_cli)} />
               <Stat label={i18nT('pages.performanceTab.builder_mcp_procs')} value={fmtNumber(d.mcp_processes.builder_mcp)} />
             </>
           )}

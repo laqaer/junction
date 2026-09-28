@@ -595,7 +595,7 @@ function LaunchProgressCard({ job, onCancel, onSignin, cancelling }: {
 
       {(job.status === 'awaiting_signin' || unconfirmedSignin) && (
         <div className="mt-3 rounded-md border border-accent-subtle bg-bg-elevated px-3 py-2.5">
-          <div className="text-[13px] font-medium text-text-strong">{i18nT('pages.settings.remoteInstancesPanel.sign_in_to_kiro')}</div>
+          <div className="text-[13px] font-medium text-text-strong">{i18nT('pages.settings.remoteInstancesPanel.sign_in_to_harness')}</div>
           <div className="text-[12px] text-muted mt-0.5">
             {unconfirmedSignin
               ? i18nT('pages.settings.remoteInstancesPanel.sign_in_unconfirmed')

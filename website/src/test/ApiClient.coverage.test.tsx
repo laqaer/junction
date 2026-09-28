@@ -541,13 +541,13 @@ describe('session-expired banner', () => {
 /* ──────────────────── 2. URL and body construction ──────────────────── */
 
 describe('query-string builders', () => {
-  it('kiroPrerequisite distinguishes latched read, coalesced poll and explicit probe', async () => {
-    await api.kiroPrerequisite()
-    expect(call().url).toBe('/api/kiro-prerequisite')
-    await api.kiroPrerequisite('auto')
-    expect(call(1).url).toBe('/api/kiro-prerequisite?refresh=auto')
-    await api.kiroPrerequisite('explicit')
-    expect(call(2).url).toBe('/api/kiro-prerequisite?refresh=explicit')
+  it('harnessPrerequisite distinguishes latched read, coalesced poll and explicit probe', async () => {
+    await api.harnessPrerequisite()
+    expect(call().url).toBe('/api/harness-prerequisite')
+    await api.harnessPrerequisite('auto')
+    expect(call(1).url).toBe('/api/harness-prerequisite?refresh=auto')
+    await api.harnessPrerequisite('explicit')
+    expect(call(2).url).toBe('/api/harness-prerequisite?refresh=explicit')
   })
 
   it('cloud lifecycle calls carry only the coordinates they were given', async () => {

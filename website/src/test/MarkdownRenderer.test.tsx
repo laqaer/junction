@@ -472,7 +472,7 @@ describe('MarkdownRenderer path chips — stat gate', () => {
     stubKind(isDir ? 'dir' : 'file', !isDir)
     const path = isDir ? '/Users/me/workspace' : '/home/user/a.md'
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    qc.setQueryData(['kiro-prerequisite'], { platform })
+    qc.setQueryData(['harness-prerequisite'], { platform })
     const { container } = render(
       <QueryClientProvider client={qc}>
         <MarkdownRenderer content={`\`${path}\``} />

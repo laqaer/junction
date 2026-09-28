@@ -1,7 +1,7 @@
 """Shared pre-enqueue guard for Kiro-backed dashboard sessions.
 
 Readiness is probed once at gateway start and then only on an explicit user
-action (see ``kiro_prerequisite.KiroPrerequisiteService.session_ready``), so the
+action (see ``harness_prerequisite.HarnessPrerequisiteService.session_ready``), so the
 latched value can be arbitrarily stale. That splits the callers in two:
 
 * **Ordinary sends are UNGATED.** A stale not-ready value must never block a
@@ -11,7 +11,7 @@ latched value can be arbitrarily stale. That splits the callers in two:
   locked out until something re-probed. These handlers mutate nothing before the
   turn, so a failed turn costs only an error card.
 * **Endpoints that act BEFORE the turn still BLOCK**
-  (:func:`reject_if_kiro_unverified`) — the poll-driven ``kiro-cli`` spawn sites
+  (:func:`reject_if_harness_unverified`) — the poll-driven ``kiro-cli`` spawn sites
   and the destructive reruns. Neither can rely on the ACP attempt as its
   authority: one has no turn at all, the other has already rewritten durable
   history by the time the turn fails. See
@@ -26,13 +26,13 @@ import time
 
 from aiohttp import web
 
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 logger = logging.getLogger(__name__)
 
 _KIRO_NOT_READY_RESPONSE = {
-    "error": "Kiro CLI setup or sign-in is required before starting a session.",
-    "code": "kiro_prerequisite_required",
+    "error": "Harness setup or sign-in is required before starting a session.",
+    "code": "harness_prerequisite_required",
 }
 _KIRO_NOT_READY_CODE = _KIRO_NOT_READY_RESPONSE["code"]
 
@@ -54,7 +54,7 @@ _refusal_warned_at: float | None = None
 _REFUSAL_REWARN_SECS = 1800.0
 
 # Indirected so a test can advance it without touching the ``time`` module globally,
-# the same clock-injection shape ``KiroPrerequisiteService`` uses for its own staleness.
+# the same clock-injection shape ``HarnessPrerequisiteService`` uses for its own staleness.
 _clock = time.monotonic
 
 # How stale a probe may be and still authorize a destructive or spawning call.
@@ -63,15 +63,15 @@ _clock = time.monotonic
 _VERIFY_MAX_AGE_SECS = 30.0
 
 
-async def kiro_session_ready(service: object) -> bool:
+async def harness_session_ready(service: object) -> bool:
     """Return the service's latched readiness. Fails closed on a bad service."""
 
-    if not isinstance(service, KiroPrerequisiteService):
+    if not isinstance(service, HarnessPrerequisiteService):
         return False
     return await service.session_ready()
 
 
-async def kiro_verified_ready(service: object) -> bool:
+async def harness_verified_ready(service: object) -> bool:
     """Return readiness backed by a probe that is FRESH ENOUGH to authorize on.
 
     The latch alone cannot authorize these callers. It is written at boot and
@@ -89,7 +89,7 @@ async def kiro_verified_ready(service: object) -> bool:
     routes, or several pollers firing together) into one probe.
     """
 
-    if not isinstance(service, KiroPrerequisiteService):
+    if not isinstance(service, HarnessPrerequisiteService):
         return False
     return await service.verified_ready(max_age_secs=_VERIFY_MAX_AGE_SECS)
 
@@ -179,7 +179,7 @@ def _warn_refused_once(path: str) -> None:
         return
     _refusal_warned_at = now
     logger.warning(
-        "%s refused with 503 %s: Kiro CLI is not verified ready. Further refusals log "
+        "%s refused with 503 %s: Harness is not verified ready. Further refusals log "
         "at DEBUG until it recovers or %.0fs elapse. Check the prerequisite snapshot "
         "for which condition — a missing binary, a sandbox refusal and a timed-out "
         "probe are three different failures.",
@@ -209,13 +209,13 @@ def _clear_refusal_warning() -> None:
 
 
 def _service(request: web.Request) -> object:
-    service = request.app.get("kiro_prerequisite_service")
+    service = request.app.get("harness_prerequisite_service")
     if service is None:
-        service = getattr(request.app.get("state"), "kiro_prerequisite_service", None)
+        service = getattr(request.app.get("state"), "harness_prerequisite_service", None)
     return service
 
 
-async def reject_if_kiro_unverified(request: web.Request) -> web.Response | None:
+async def reject_if_harness_unverified(request: web.Request) -> web.Response | None:
     """Return 503 for the endpoints that must fail closed on a stale latch.
 
     Two classes qualify, both because the ACP attempt cannot be their authority:
@@ -242,12 +242,12 @@ async def reject_if_kiro_unverified(request: web.Request) -> web.Response | None
     body, not a fourth class. A missing or invalid service fails closed here.
 
     These callers must not trust the latch in EITHER direction, so this uses
-    :func:`kiro_verified_ready` — a stale ``ready=True`` is as dangerous as a
+    :func:`harness_verified_ready` — a stale ``ready=True`` is as dangerous as a
     stale ``ready=False`` here (it authorizes the history rewrite or the
     browser-opening spawn), and only these paths pay for the re-probe.
     """
 
-    if await kiro_verified_ready(_service(request)):
+    if await harness_verified_ready(_service(request)):
         _clear_refusal_warning()
         return None
     _warn_refused_once(_log_safe_path(request))

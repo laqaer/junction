@@ -23,7 +23,7 @@ import { stubDashboardApi, json } from './lib/stub-dashboard-api.mjs'
 const OUT = process.argv[2] || '/tmp/pr-shots'
 mkdirSync(OUT, { recursive: true })
 
-const REPO = { owner: 'kirodotdev', repo: 'Kiro', provider: 'github', host: 'github.com' }
+const REPO = { owner: 'laqaer', repo: 'junction', provider: 'github', host: 'github.com' }
 const REPOS = { repos: [{ ...REPO, enabled: true, permissions: { push: true, triage: true } }] }
 
 // The newest single page — what first_page=1 returns, UN-enriched (no diff/checks).
@@ -95,7 +95,7 @@ await stubDashboardApi(page, {
 
 async function open(uiState) {
   await page.addInitScript((s) => {
-    localStorage.setItem('jn:issue-radar:active-repo', JSON.stringify({ owner: 'kirodotdev', repo: 'Kiro' }))
+    localStorage.setItem('jn:issue-radar:active-repo', JSON.stringify({ owner: 'laqaer', repo: 'junction' }))
     if (s) localStorage.setItem('jn:issue-radar:ui-state', JSON.stringify(s))
     else localStorage.removeItem('jn:issue-radar:ui-state')
   }, uiState)

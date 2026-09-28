@@ -193,7 +193,7 @@ class TestFetchUsageBg:
         # Force the text-scrape fallback path by default (the real API client
         # would otherwise read this host's live token). API-primary behavior is
         # covered explicitly in TestFetchUsageBgApi.
-        with patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits", return_value=None):
+        with patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits", return_value=None):
             yield
         _reset_usage_globals()
 
@@ -433,7 +433,7 @@ class TestFetchUsageDeadline:
         try:
             with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
                  patch.object(sessions_mod, "_fetch_whoami", AsyncMock(return_value={})), \
-                 patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits", _hang):
+                 patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits", _hang):
                 # The outer wait_for is the assertion: unfixed, _fetch_usage_bg
                 # never returns and this raises instead of hanging the suite.
                 await asyncio.wait_for(sessions_mod._fetch_usage_bg(), timeout=10)
@@ -460,7 +460,7 @@ class TestFetchUsageDeadline:
         try:
             with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
                  patch.object(sessions_mod, "_fetch_whoami", AsyncMock(return_value={})), \
-                 patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits", _hang):
+                 patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits", _hang):
                 await asyncio.wait_for(sessions_mod._fetch_usage_bg(), timeout=10)
         finally:
             released.set()
@@ -470,7 +470,7 @@ class TestFetchUsageDeadline:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"email": "me@corp.com", "_profile_arn": arn})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value={**api_dict, "_profile_arn": arn}):
             await asyncio.wait_for(sessions_mod._fetch_usage_bg(), timeout=10)
 
@@ -587,7 +587,7 @@ class TestTextScrapeRegressesApiValue:
 
 
 class TestFetchUsageBgApi:
-    """The API path (kiro_usage_api.fetch_usage_limits) is primary; the text
+    """The API path (harness_usage_api.fetch_usage_limits) is primary; the text
     scrape is only a fallback."""
 
     @pytest.fixture(autouse=True)
@@ -617,7 +617,7 @@ class TestFetchUsageBgApi:
                           AsyncMock(return_value={
                               "email": "me@corp.com",
                               "_profile_arn": "arn:aws:codewhisperer:us-east-1:1:profile/A"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict), \
              patch("asyncio.create_subprocess_exec", spawn):
             await sessions_mod._fetch_usage_bg()
@@ -633,7 +633,7 @@ class TestFetchUsageBgApi:
     @pytest.mark.asyncio
     async def test_api_none_falls_back_to_text_scrape(self):
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=None), \
              patch("asyncio.create_subprocess_exec",
                    AsyncMock(return_value=_mock_proc(SAMPLE_USAGE.encode()))):
@@ -650,7 +650,7 @@ class TestFetchUsageBgApi:
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={
                               "_profile_arn": "arn:aws:codewhisperer:us-east-1:1:profile/A"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict), \
              patch.object(sessions_mod, "redact_credentials", lambda s: (s, 0)), \
              patch.object(sessions_mod, "redact_exfiltration_urls", lambda s: ("REDACTED", 0)):
@@ -688,7 +688,7 @@ class TestApiKeyAuthFailFast:
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"email": "a@b.com",
                                                   "account_type": "ApiKey"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits") as fetch:
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits") as fetch:
             await sessions_mod._fetch_usage_bg()
         fetch.assert_not_called()
         assert sessions_mod._usage_cache == {"available": False, "reason": "api_key_auth"}
@@ -701,7 +701,7 @@ class TestApiKeyAuthFailFast:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"account_type": reported})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits") as fetch:
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits") as fetch:
             await sessions_mod._fetch_usage_bg()
         fetch.assert_not_called()
         assert sessions_mod._usage_cache == {"available": False, "reason": "api_key_auth"}
@@ -715,7 +715,7 @@ class TestApiKeyAuthFailFast:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"account_type": "ApiKey"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits") as fetch, \
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits") as fetch, \
              patch("asyncio.create_subprocess_exec", spawn):
             await sessions_mod._fetch_usage_bg()
         fetch.assert_not_called()
@@ -730,7 +730,7 @@ class TestApiKeyAuthFailFast:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"account_type": "IamIdentityCenter"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict) as fetch:
             await sessions_mod._fetch_usage_bg()
         fetch.assert_called_once()
@@ -880,7 +880,7 @@ class TestIdentityAccountCoupling:
         }
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits", return_value=api_dict), \
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits", return_value=api_dict), \
              patch.object(sessions_mod, "_fetch_whoami", AsyncMock(return_value=identity)):
             await sessions_mod._fetch_usage_bg()
         cache = sessions_mod._usage_cache
@@ -901,7 +901,7 @@ class TestIdentityAccountCoupling:
         }
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits", return_value=api_dict), \
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits", return_value=api_dict), \
              patch.object(sessions_mod, "_fetch_whoami", AsyncMock(return_value=identity)):
             await sessions_mod._fetch_usage_bg()
         cache = sessions_mod._usage_cache
@@ -939,7 +939,7 @@ class TestPollDoesNotSpendCredits:
     async def test_fresh_cache_never_refreshes(self):
         sessions_mod._usage_cache = {"credits_plan": 10.0}
         sessions_mod._usage_cache_ts = time.time()
-        with patch.object(sessions_mod, "reject_if_kiro_unverified",
+        with patch.object(sessions_mod, "reject_if_harness_unverified",
                           AsyncMock(return_value=None)), \
              patch.object(sessions_mod, "_fetch_usage_bg", AsyncMock()) as fetch:
             resp = await sessions_mod.api_sessions_usage(self._request())
@@ -951,7 +951,7 @@ class TestPollDoesNotSpendCredits:
         # The timer is still the trigger -- this is not "never refresh".
         sessions_mod._usage_cache = {"credits_plan": 10.0}
         sessions_mod._usage_cache_ts = time.time() - (sessions_mod._USAGE_REFRESH_SECS + 1)
-        with patch.object(sessions_mod, "reject_if_kiro_unverified",
+        with patch.object(sessions_mod, "reject_if_harness_unverified",
                           AsyncMock(return_value=None)), \
              patch.object(sessions_mod, "_fetch_usage_bg", AsyncMock()) as fetch:
             await sessions_mod.api_sessions_usage(self._request())
@@ -963,7 +963,7 @@ class TestPollDoesNotSpendCredits:
         # so reintroducing one re-creates the credit-spend loop.
         assert not hasattr(sessions_mod, "_auth_store_changed")
         assert not hasattr(sessions_mod, "_usage_auth_fingerprint")
-        assert not hasattr(sessions_mod.kiro_usage_api, "auth_store_fingerprint")
+        assert not hasattr(sessions_mod.harness_usage_api, "auth_store_fingerprint")
 
 
 class TestIdentityIsNotStale:
@@ -992,7 +992,7 @@ class TestIdentityIsNotStale:
             sessions_mod._usage_cache_ts = 0.0
             with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
                  patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
-                 patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+                 patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                               return_value=dict(api_dict)), \
                  patch.object(sessions_mod, "_fetch_whoami", fake_whoami):
                 await sessions_mod._fetch_usage_bg()
@@ -1029,7 +1029,7 @@ class TestCredentialSelectionIsAnchored:
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"email": "me@corp.com",
                                                   "_profile_arn": self.ARN})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict) as fetch:
             await sessions_mod._fetch_usage_bg()
         assert fetch.call_args.kwargs.get("expected_arn") == self.ARN
@@ -1043,7 +1043,7 @@ class TestCredentialSelectionIsAnchored:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
              patch.object(sessions_mod, "_fetch_whoami", whoami), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value={"credits_used": 1.0, "credits_plan": 10.0,
                                         "source": "api", "_profile_arn": self.ARN}):
             await sessions_mod._fetch_usage_bg()
@@ -1065,7 +1065,7 @@ class TestCredentialSelectionIsAnchored:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
              patch.object(sessions_mod, "_fetch_whoami", whoami), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=None), \
              patch("asyncio.create_subprocess_exec",
                    AsyncMock(return_value=_mock_proc(SAMPLE_USAGE.encode()))):
@@ -1085,7 +1085,7 @@ class TestCredentialSelectionIsAnchored:
         with patch.object(sessions_mod, "_resolve_kiro_bin_for_spawn", return_value="/bin/kiro"), \
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
              patch.object(sessions_mod, "_fetch_whoami", AsyncMock(return_value={})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict) as fetch:
             await sessions_mod._fetch_usage_bg()
         fetch.assert_called_once()
@@ -1103,7 +1103,7 @@ class TestCredentialSelectionIsAnchored:
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"email": "solo@b.com",
                                                   "account_type": "BuilderId"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict) as fetch:
             await sessions_mod._fetch_usage_bg()
         fetch.assert_called_once()
@@ -1120,7 +1120,7 @@ class TestCredentialSelectionIsAnchored:
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"account_type": "BuilderId"})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict), \
              patch("asyncio.create_subprocess_exec", spawn):
             await sessions_mod._fetch_usage_bg()
@@ -1135,7 +1135,7 @@ class TestCredentialSelectionIsAnchored:
              patch.object(sessions_mod, "wrap_argv", lambda argv, **k: (list(argv), None)), \
              patch.object(sessions_mod, "_fetch_whoami",
                           AsyncMock(return_value={"_profile_arn": self.ARN})), \
-             patch.object(sessions_mod.kiro_usage_api, "fetch_usage_limits",
+             patch.object(sessions_mod.harness_usage_api, "fetch_usage_limits",
                           return_value=api_dict):
             await sessions_mod._fetch_usage_bg()
         assert "_profile_arn" not in sessions_mod._usage_cache
@@ -1159,7 +1159,7 @@ class TestTextScrapeIsOptIn:
         # The API path yields no plan, which is exactly what used to fall through
         # to the billed scrape.
         monkeypatch.setattr(
-            sessions_mod.kiro_usage_api, "fetch_usage_limits", lambda **k: None
+            sessions_mod.harness_usage_api, "fetch_usage_limits", lambda **k: None
         )
         monkeypatch.setattr(
             sessions_mod, "_resolve_kiro_bin_for_spawn", AsyncMock(return_value="/bin/kiro")
@@ -1206,7 +1206,7 @@ class TestTextScrapeIsOptIn:
         # Keep what it gave alongside the unavailable marker instead of discarding it.
         monkeypatch.setattr(sessions_mod, "_text_scrape_enabled", lambda: False)
         monkeypatch.setattr(
-            sessions_mod.kiro_usage_api,
+            sessions_mod.harness_usage_api,
             "fetch_usage_limits",
             lambda **k: {"plan": "KIRO POWER", "resets": "2026-09-01",
                          "_profile_arn": "arn:aws:codewhisperer:us-east-1:1:profile/A"},

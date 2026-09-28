@@ -4964,7 +4964,7 @@ def _seed_prompt(
     guidance = _TYPE_GUIDANCE.get(spec_type, _TYPE_GUIDANCE["feature"])
     paths = "\n".join(f"  - {spec_dir / f}" for f in files)
     return (
-        f"You are the Kiro Spec agent for spec **{name}** (type: **{spec_type}**).\n\n"
+        f"You are the Junction Spec agent for spec **{name}** (type: **{spec_type}**).\n\n"
         f"{guidance}\n\n"
         f"Write ONLY to these EXACT absolute paths (never invent another location):\n"
         f"{paths}\n"

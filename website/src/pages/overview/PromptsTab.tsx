@@ -146,7 +146,7 @@ export default function PromptsTab() {
           <SearchInput placeholder={i18nT('pages.overview.promptsTab.filter_prompts')} value={filter} onChange={e => setFilter(e.target.value)} />
         </div>
       )}
-      {prompts.length === 0 && !loading && !error && <p className="text-muted italic text-sm px-3 py-4">{i18nT('pages.overview.promptsTab.no_prompts_found_install_a')} {provider.labels.pluginRegistryName.toLowerCase().replace(/s$/, '')} {i18nT('pages.overview.promptsTab.with_prompts_or_create_prompts_in_kiro_prompts')}</p>}
+      {prompts.length === 0 && !loading && !error && <p className="text-muted italic text-sm px-3 py-4">{i18nT('pages.overview.promptsTab.no_prompts_found_install_a_registry_with_prompts_or', { registry: provider.labels.pluginRegistryName.toLowerCase().replace(/s$/, '') })}</p>}
       {loading && <p className="text-muted italic text-sm px-3 py-4">{i18nT('pages.overview.promptsTab.loading_prompts')}</p>}
       {error && <p className="text-red-400 text-sm px-3 py-4">{error.message || i18nT('pages.overview.promptsTab.failed_to_load_prompts')}</p>}
     </Card>

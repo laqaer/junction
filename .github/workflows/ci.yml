@@ -329,11 +329,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check harness identity tests on the lines this change adds
-        # Junction drives one first-class harness (kiro-cli) and adapts the
-        # others. The defect class is a call site that spells "this is kiro" as
-        # the ABSENCE of another harness: correct with two backends, and then it
-        # hands the third a capability or a sandbox waiver nobody granted it.
-        # It fails toward the permissive answer, so nothing else goes red.
+        # Junction supports user-selected ACP engines (default `auto`) and adapts
+        # the optional vendor ones. The defect class is a call site that spells
+        # one engine as the ABSENCE of another: correct with two backends, and
+        # then it hands a third a capability or a sandbox waiver nobody granted
+        # it. It fails toward the permissive answer, so nothing else goes red.
         #
         # Diff-scoped for the same reason as the brand gate above: the tree
         # carries pre-existing negative tests in the dormant claude seam, and

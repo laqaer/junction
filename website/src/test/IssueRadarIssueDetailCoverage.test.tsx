@@ -121,14 +121,14 @@ const IssueDetail = (await import('../apps/issue-radar/components/IssueDetail'))
 // class survives the mock because the factory spreads importOriginal().
 const { AssigneesConflictError } = await import('../apps/issue-radar/api')
 
-const REF = { owner: 'kirodotdev', repo: 'Kiro' }
-const SCOPE = 'github:github.com:kirodotdev/Kiro'
-const OTHER_SCOPE = 'github:github.com:kirodotdev/Other'
+const REF = { owner: 'laqaer', repo: 'junction' }
+const SCOPE = 'github:github.com:laqaer/junction'
+const OTHER_SCOPE = 'github:github.com:laqaer/Other'
 
 const ROW: Issue = {
   number: 11,
   title: 'Row title',
-  url: 'https://github.com/kirodotdev/Kiro/issues/11',
+  url: 'https://github.com/laqaer/junction/issues/11',
   labels: ['from-row'],
   comments: 2,
   author: 'alice',
@@ -159,7 +159,7 @@ function detailData(over: Partial<IssueDetailData> = {}): IssueDetailData {
     body: 'The description body',
     state: 'open',
     state_reason: null,
-    url: 'https://github.com/kirodotdev/Kiro/issues/11#detail',
+    url: 'https://github.com/laqaer/junction/issues/11#detail',
     author: 'alice',
     author_association: 'MEMBER',
     created_at: '2026-07-01T00:00:00Z',
@@ -289,7 +289,7 @@ describe('IssueDetail — header and first paint', () => {
     const h = header()
     // The #number links out to the provider, using the detail URL once it lands.
     expect(within(h).getByRole('link', { name: '#11' }).getAttribute('href'))
-      .toBe('https://github.com/kirodotdev/Kiro/issues/11#detail')
+      .toBe('https://github.com/laqaer/junction/issues/11#detail')
     expect(within(h).getByText('Open')).toBeTruthy()
     expect(within(titleBlock()).getByText('alice')).toBeTruthy()
     // Admin comes from the authoritative roster, not author_association.
@@ -309,7 +309,7 @@ describe('IssueDetail — header and first paint', () => {
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Row title')
     expect(within(header()).getByRole('link', { name: '#11' }).getAttribute('href'))
-      .toBe('https://github.com/kirodotdev/Kiro/issues/11')
+      .toBe('https://github.com/laqaer/junction/issues/11')
     // The row carries only label NAMES, so the chip is synthesized against the
     // repo colour map — a name the map does not know falls back to neutral grey.
     expect(within(sidebar()).getByText('from-row')).toBeTruthy()
@@ -353,7 +353,7 @@ describe('IssueDetail — header and first paint', () => {
 
     await openOverflow()
     await userEvent.click(screen.getByRole('menuitem', { name: 'Copy link to this issue' }))
-    expect(writeText).toHaveBeenCalledWith('https://github.com/kirodotdev/Kiro/issues/11#detail')
+    expect(writeText).toHaveBeenCalledWith('https://github.com/laqaer/junction/issues/11#detail')
     // The item stays put and relabels — a select that closed the menu would take
     // the confirmation off screen the instant it was earned.
     const copied = await screen.findByRole('menuitem', { name: 'Link copied' })
@@ -379,7 +379,7 @@ describe('IssueDetail — header and first paint', () => {
     // the subject changes carries a URL this row no longer points at.
     view.rerender(
       <QueryClientProvider client={view.qc}>
-        <IssueDetail issue={{ ...ROW, number: 12, url: 'https://github.com/kirodotdev/Kiro/issues/12' }} />
+        <IssueDetail issue={{ ...ROW, number: 12, url: 'https://github.com/laqaer/junction/issues/12' }} />
       </QueryClientProvider>,
     )
     await waitFor(() => expect(api.issueDetail).toHaveBeenCalledTimes(2))
@@ -1066,9 +1066,9 @@ describe('IssueDetail — activity timeline', () => {
     expect(rail).toContain('as not planned')
     expect(rail).toContain('closed this')
     expect(within(m).getByRole('link', { name: 'abcdef1' }).getAttribute('href'))
-      .toBe('https://github.com/kirodotdev/Kiro/commit/abcdef1234567890')
+      .toBe('https://github.com/laqaer/junction/commit/abcdef1234567890')
     expect(within(m).getByRole('link', { name: 'fedcba0' }).getAttribute('href'))
-      .toBe('https://github.com/kirodotdev/Kiro/commit/fedcba0987654321')
+      .toBe('https://github.com/laqaer/junction/commit/fedcba0987654321')
     // A commit-less `referenced` still names the event; only the link is dropped.
     expect(rail).toContain('referenced this in commit')
     expect(within(m).getAllByRole('link').length).toBe(2)
@@ -1081,7 +1081,7 @@ describe('IssueDetail — linked pull requests and issues', () => {
       kind: 'cross-referenced', actor: 'bob', created_at: '2026-07-05T00:00:00Z',
       source: {
         number: 42, title: 'Fixes the thing', state: 'open', is_pr: true,
-        url: 'https://github.com/kirodotdev/Kiro/pull/42',
+        url: 'https://github.com/laqaer/junction/pull/42',
       },
     }),
     // A duplicate of the same target — deduped by URL.
@@ -1089,7 +1089,7 @@ describe('IssueDetail — linked pull requests and issues', () => {
       kind: 'cross-referenced', actor: 'carol', created_at: '2026-07-06T00:00:00Z',
       source: {
         number: 42, title: 'Fixes the thing', state: 'open', is_pr: true,
-        url: 'https://github.com/kirodotdev/Kiro/pull/42',
+        url: 'https://github.com/laqaer/junction/pull/42',
       },
     }),
     // A FOREIGN repo, and a closed one with no title of its own.
@@ -1193,7 +1193,7 @@ describe('IssueDetail — provider vocabulary', () => {
           kind: 'cross-referenced', actor: 'bob',
           source: {
             number: 42, title: 'Fixes the thing', state: 'open', is_pr: true,
-            url: 'https://gitlab.example.com/kirodotdev/Kiro/-/merge_requests/42',
+            url: 'https://gitlab.example.com/laqaer/junction/-/merge_requests/42',
           },
         }),
       ],

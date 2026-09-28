@@ -28,7 +28,7 @@ vi.mock('../apps/issue-radar/api', async (importOriginal) => ({
   },
 }))
 
-const REPO = { owner: 'kirodotdev', repo: 'Kiro' }
+const REPO = { owner: 'laqaer', repo: 'junction' }
 
 function State() {
   const { issues: rows, issuesLoading, issuesPartial, setStateFilter } = useIssueRadar()
@@ -49,7 +49,7 @@ function renderProvider(seed?: unknown) {
   // provider reads so `issuesQuery.data` is defined on the first render and the
   // first-page query never enables. scopeKey = provider:host:owner/repo.
   if (seed !== undefined) {
-    client.setQueryData(['issue-radar', 'issues', 'github:github.com:kirodotdev/Kiro', 'open'], seed)
+    client.setQueryData(['issue-radar', 'issues', 'github:github.com:laqaer/junction', 'open'], seed)
   }
   render(
     <QueryClientProvider client={client}>

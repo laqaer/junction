@@ -194,9 +194,9 @@ async function main() {
     }
     if (path === '/api/chat/slots') return json(route, slots)
     if (path.startsWith('/api/chat/slots/')) return json(route, detail(scene.assistant, scene.running, scene.role))
-    // KiroPrerequisiteGate reads status.operation.status on boot; an array-shaped
+    // HarnessPrerequisiteGate reads status.operation.status on boot; an array-shaped
     // stub throws inside the app-shell ErrorBoundary and nothing renders at all.
-    if (path === '/api/kiro-prerequisite') return json(route, {
+    if (path === '/api/harness-prerequisite') return json(route, {
       platform: 'darwin', installed: true, authenticated: true, ready: true,
       initial_setup_complete: true, can_auto_install: false, can_login: false,
       repair_required: false, docs_url: '', setup_allowed: true,

@@ -75,7 +75,7 @@ logger = logging.getLogger(__name__)
 
 GH_TIMEOUT_SEC = 20.0
 # Open issues are loaded in FULL via --paginate, which can span many pages on a
-# busy repo (kirodotdev/Kiro ~2.6k open → ~26 pages), so it gets a much larger
+# busy repo (~2.6k open → ~26 pages), so it gets a much larger
 # budget than the single-shot calls. The result is cached, so this cost is paid
 # once per refresh, not per view.
 GH_PAGINATE_TIMEOUT_SEC = 120.0

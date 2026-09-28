@@ -1,4 +1,4 @@
-# Harness parity: Kiro first, everything else adapted
+# Harness parity: user-selected engines, positive identity
 
 **Junction inverts H1's default, not H5–H12.** `agent.acp_backend`
 defaults to `auto` (first installed spec-family ACP runtime). kiro-cli remains
@@ -7,23 +7,26 @@ are still opt-in membership sets. Unknown values degrade to `auto`, not kiro-cli
 Pinned by `test_harness_parity.py::test_auto_is_the_default_backend` and
 `::test_unselectable_backend_degrades_to_auto`.
 
-A *harness* is the agent process Junction drives over ACP. The first-class
-harness in this lineage is `kiro-cli` (`ACP_BACKEND_KIRO`, spelled `""`), with a
-growing set of adapted ones. Junction adds the spec-family set in
-`ACP_BACKENDS_SPEC_FAMILY` (cursor, claude, codex, dsh, pi, kimi, goose, grok,
-droid) plus `ACP_BACKEND_AUTO`.
+A *harness* is the agent process Junction drives over ACP. Junction supports a
+set of user-selectable engines: the spec-family set in `ACP_BACKENDS_SPEC_FAMILY`
+(cursor, claude, codex, dsh, pi, kimi, goose, grok, droid) plus
+`ACP_BACKEND_AUTO`, with `kiro-cli` (`ACP_BACKEND_KIRO`, spelled `""`) among
+them and optional like any other.
 
-*Parity* here does not mean equal treatment. It means the opposite, stated
-precisely: **an added harness may only adapt itself to the seams the Kiro
-harness already runs through. It may not move, widen, generalize, or add a
-branch to those seams.** A harness that cannot be adapted without changing the
-Kiro path is not ready to land.
+*Parity* here means every engine runs through the same shared seams. Stated
+precisely: **an added engine adapts itself to those seams rather than moving
+them. It may not impose an adapter-specific requirement, failure mode, or
+widened grant on the engines it did not come from, and it may not collapse a
+per-engine literal into one form every engine accepts.** Shared code may still
+evolve for everyone's benefit; what it must not do is degrade one engine to make
+a new one fit. An engine that cannot land without constraining the others is
+not ready to land.
 
 The failure mode this file exists to prevent is not a broken adapter — that
-fails loudly on its own first session. It is the *silent capture* of the Kiro
-path: a call site that spells "kiro" as `not is_<other>_backend`, so harness
-number three inherits a capability, a sandbox waiver, or a session label that
-nobody granted it, and the Kiro user who never opted into BYO pays for it. Two
+fails loudly on its own first session. It is the *silent capture* of an
+engine's path: a call site that spells one engine as `not is_<other>_backend`,
+so engine number three inherits a capability, a sandbox waiver, or a session
+label that nobody granted it, and a user who never selected it pays for it. Two
 such sites shipped before this file existed
 (`AcpProvider.is_session_sharing_eligible`, `AcpRuntime.spawn`'s
 `is_kiro_cli`); both read as correct until you count the backends.
@@ -48,10 +51,10 @@ invariants and names what pins each one.
 - The ids are stable. Source docstrings and review findings cite them bare
   (`H4`, `H6`), so the id is the lookup key.
 
-## Group A: Kiro is the default and the floor
+## Group A: auto is the default and engines stay selectable
 
-These break by *addition*: a harness lands, nothing at these sites is edited,
-and Kiro stops being the guaranteed path.
+These break by *addition*: an engine lands, nothing at these sites is edited,
+and the default no longer resolves to a usable, selectable runtime.
 
 | Id | Guarantees | Pinned by | Constrains |
 |---|---|---|---|
@@ -62,10 +65,10 @@ and Kiro stops being the guaranteed path.
 
 ## Group B: identity is tested positively
 
-The whole group is one rule with several faces: **no call site may express
-"this is the Kiro harness" as the absence of another harness.** A negative test
-is correct exactly until the next harness exists, and it fails *open* — the new
-harness is treated as Kiro.
+The whole group is one rule with several faces: **no call site may express one
+engine's identity as the absence of another engine.** A negative test is correct
+exactly until the next engine exists, and it fails *open* — the new engine is
+treated as the one it was compared against.
 
 | Id | Guarantees | Pinned by | Constrains |
 |---|---|---|---|
@@ -74,16 +77,16 @@ harness is treated as Kiro.
 | H7 | `is_kiro_cli` is a positive Kiro test at every call site. It drives internal-sandbox delegation: macOS skips Junction's seatbelt because Kiro's sandbox cannot nest inside it, and Windows permits the official Kiro backend to run despite having no Junction OS wrapper. Passed for a harness with no internal sandbox, it hands isolation to a layer that never starts; this is the only Group B row that is also a security invariant. **Windows requires `is_kiro_cli is True` exactly** — `None` and `_spawns_kiro_cli` basename inference can never grant the backend-less-host exception. On macOS a site may grant membership explicitly or pass `None` to defer to the positive basename test. | `test_harness_parity.py::test_is_kiro_cli_is_positive`, `test_sandbox_argv.py::TestKiroInternalSandboxExclusion` | `acp/runtime.py` (`AcpRuntime.spawn`), `acp/client.py` (`AcpClient.ensure_ready`), `sandbox.py` (`wrap_argv`, `_spawns_kiro_cli`) |
 | H8 | New harness identifiers live in `acp/types.py` and are added to `ACP_BACKENDS_KNOWN`; every capability set is a subset of it; and `AcpProvider.__init__` rejects anything outside it. `ACP_BACKEND_KIRO` is the empty string, so a value that falls through every identity check spawns `kiro-cli` under a foreign label. | `test_harness_parity.py::test_capability_sets_are_subsets_of_known_backends`, `::test_unknown_backend_rejected_at_construction` | `acp/types.py` (`ACP_BACKENDS_KNOWN`), `providers/acp.py` (`AcpProvider.__init__`) |
 
-## Group C: the Kiro path keeps its own machinery
+## Group C: an engine keeps its own machinery
 
-An adapter that lands by *generalizing* a Kiro-specific step to a
-lowest-common-denominator one has degraded the Kiro session even when every
-test still passes.
+An adapter that lands by *generalizing* an engine-specific step to a
+lowest-common-denominator one has degraded that engine's session even when
+every test still passes.
 
 | Id | Guarantees | Pinned by | Constrains |
 |---|---|---|---|
 | H9 | `kiro-cli` remains the default branch of spawn-argv resolution, keeping its pre-spawn agent materialization (`kiro-cli` discovers selectable modes from `~/.kiro/agents/*.json` at startup, so a later `set_mode` fails with "Mode not found" without it) and its `--model` pin (the only way to run a model outside the agent's provider). A dict-of-builders refactor that treats Kiro as one entry among N drops both. | `test_harness_parity.py::test_kiro_spawn_argv_keeps_its_own_branch` | `acp/runtime.py` (`AcpRuntime._resolve_spawn_argv`) |
-| H10 | Protocol version and client capabilities stay per-harness literals. Collapsing them to one handshake that every harness accepts silently downgrades the Kiro session's declared capabilities. | `test_harness_parity.py::test_handshake_is_per_backend` | `acp/runtime.py` (`AcpRuntime.spawn`), `acp/types.py` (`ACP_CLIENT_CAPABILITIES`, `KAS_CLIENT_CAPABILITIES`) |
+| H10 | Protocol version and client capabilities stay per-engine literals. Collapsing them to one handshake that every engine accepts silently downgrades the session's declared capabilities. | `test_harness_parity.py::test_handshake_is_per_backend` | `acp/runtime.py` (`AcpRuntime.spawn`), `acp/types.py` (`ACP_CLIENT_CAPABILITIES`, `KAS_CLIENT_CAPABILITIES`) |
 | H11 | The provider label is a closed mapping and an absent label means Kiro. It indexes resume compatibility, session-map persistence, and session-file cleanup routing, so a harness with no `PROVIDER_LABEL_*` of its own persists as a Kiro session and its transcript is pruned for want of a Kiro session file. | `test_harness_parity.py::test_every_known_backend_has_a_label` | `acp/types.py` (`PROVIDER_LABEL_*`), `providers/acp.py` (`provider_label`, `cleanup_session`), `session.py` (`detect_provider_switch`) |
 | H12 | Model pre-flight keeps "empty or unknown advertised set means allow", and never compares ids across harness namespaces. Harnesses advertise ids in their own spelling; one shared membership test across two namespaces calls every legitimate model unusable and withholds the model. | `test_harness_parity.py::test_model_preflight_allows_unknown_advertised_set` | `acp/client.py` (`model_is_unusable`, `advertised_model_ids`) |
 
@@ -95,8 +98,8 @@ and the absence of a mechanism is not something a source scan can see. The
 
 | Id | Guarantees | Pinned by | Constrains |
 |---|---|---|---|
-| H13 | Harness support is additive at the `ProviderRegistry` seam: a v1 addition, no `CONTRACT_VERSION` bump. The Kiro construction path gains no conditional, no new required argument, and no new failure mode in service of an adapter. | review-only (`AUTOSDE.yaml` → `harness-parity`) | `platform/interfaces.py` (`ProviderRegistry`), `config/loader.py` (`create_provider_factory`) |
-| H14 | A capability the session layer reads off a provider is declared on `LLMProvider` with a safe default. An adapter never forces a `hasattr` / `getattr` probe onto the Kiro path, and never leaves a Kiro-only attribute reachable through the ABC where a missing one reads as `False`. | review-only (`AUTOSDE.yaml` → `harness-parity`) | `providers/base.py` (`LLMProvider`), `providers/acp.py` (`AcpProvider`) |
+| H13 | Engine support is additive at the `ProviderRegistry` seam: a v1 addition, no `CONTRACT_VERSION` bump. An adapter imposes no requirement, required argument, or failure mode on the other engines through the shared (`auto`) construction path. | review-only (`AUTOSDE.yaml` → `harness-parity`) | `platform/interfaces.py` (`ProviderRegistry`), `config/loader.py` (`create_provider_factory`) |
+| H14 | A capability the session layer reads off a provider is declared on `LLMProvider` with a safe default. An adapter never forces a `hasattr` / `getattr` probe onto the default path, and never leaves an engine-only attribute reachable through the ABC where a missing one reads as `False`. | review-only (`AUTOSDE.yaml` → `harness-parity`) | `providers/base.py` (`LLMProvider`), `providers/acp.py` (`AcpProvider`) |
 
 ## The CI half
 
@@ -115,10 +118,10 @@ source of truth for what blocks.
 2. Cite the id in the source docstring it constrains, and add the row here in
    the same change.
 3. Never relax a check to make a red invariant green. A parity failure that
-   flips GREEN because the Kiro path was made to match the adapter is the
-   regression this file exists to catch, not a fix. If a harness genuinely
+   flips GREEN because an engine's path was made to match the adapter is the
+   regression this file exists to catch, not a fix. If an engine genuinely
    cannot be adapted within these invariants, the correct outcome is that the
-   harness does not land yet — say so in the PR instead of widening a seam.
-4. A new harness adds rows to `ACP_BACKENDS_KNOWN`, a `PROVIDER_LABEL_*`, and
+   engine does not land yet — say so in the PR instead of widening a seam.
+4. A new engine adds rows to `ACP_BACKENDS_KNOWN`, a `PROVIDER_LABEL_*`, and
    an explicit decision for every Group B membership set. "Inherited the
    default" is not a decision.

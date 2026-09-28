@@ -80,7 +80,7 @@ async function main() {
     }
     // The prerequisite gate wraps the whole shell and reads
     // `status.operation.status`; without it nothing renders at all.
-    if (path.startsWith('/api/kiro-prerequisite')) {
+    if (path.startsWith('/api/harness-prerequisite')) {
       return json(route, {
         platform: 'linux', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

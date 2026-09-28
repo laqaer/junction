@@ -107,7 +107,7 @@ async function main() {
       }
       if (path.startsWith('/api/agents/detail/')) return json(route, { name: 'junction', model: 'claude-opus-5', skills: [] })
       if (path === '/api/agents/installed') return json(route, [])
-      if (path === '/api/kiro-prerequisite') {
+      if (path === '/api/harness-prerequisite') {
         return json(route, {
           platform: 'linux', installed: true, authenticated: true, ready: true,
           initial_setup_complete: true, can_auto_install: false, can_login: false,

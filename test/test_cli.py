@@ -1375,7 +1375,7 @@ class TestSandboxActiveMarkerCleared:
 class TestDirectCliOverrideAttestation:
     def test_agent_command_pins_override_before_jail_gate(self, tmp_path, monkeypatch):
         """A direct CLI agent command must pin its override before any re-exec or spawn."""
-        from junction import cli, kiro_prerequisite
+        from junction import cli, harness_prerequisite
 
         executable = tmp_path / "kiro-cli"
         executable.write_bytes(b"direct CLI override")
@@ -1388,9 +1388,9 @@ class TestDirectCliOverrideAttestation:
         monkeypatch.setattr(cli, "boot_platform", lambda *_args, **_kwargs: None)
         monkeypatch.setattr(cli.sys, "argv", ["junction", "chat", "--no-jail"])
         # Exercise the POSIX-only override contract on every CI platform.
-        register_attestation = kiro_prerequisite.register_process_start_override_attestation
+        register_attestation = harness_prerequisite.register_process_start_override_attestation
         monkeypatch.setattr(
-            kiro_prerequisite,
+            harness_prerequisite,
             "register_process_start_override_attestation",
             lambda: register_attestation(
                 platform_name="linux",
@@ -1401,7 +1401,7 @@ class TestDirectCliOverrideAttestation:
         def inspect_before_provider(_command, _no_jail):
             # Read the PINNED attestation (not a fresh hash) so this asserts the
             # override was recorded before the gate, not merely hashable at it.
-            observed["digest"] = kiro_prerequisite._OPERATOR_OVERRIDE_ATTESTATIONS.get(
+            observed["digest"] = harness_prerequisite._OPERATOR_OVERRIDE_ATTESTATIONS.get(
                 os.path.normcase(str(executable))
             )
             raise SystemExit(0)

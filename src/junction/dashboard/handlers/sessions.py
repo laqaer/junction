@@ -27,8 +27,8 @@ import junction.dashboard.handlers as _h
 from junction import session_ledger
 from junction.acp.client import _resolve_kiro_bin_for_spawn
 from junction.config.paths import kiro_agents_dir
-from junction.dashboard.handlers import kiro_usage_api
-from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+from junction.dashboard.handlers import harness_usage_api
+from junction.dashboard.harness_readiness import reject_if_harness_unverified
 from junction.dashboard.session_memory import SessionMemorySampler
 from junction.dashboard.state import DashboardState
 from junction.executors import subprocess_executor
@@ -761,7 +761,7 @@ async def _fetch_usage_bg() -> None:
         # showing a fabricated number.
         api_usage = await asyncio.get_running_loop().run_in_executor(
             subprocess_executor(),
-            functools.partial(kiro_usage_api.fetch_usage_limits, expected_arn=expected_arn),
+            functools.partial(harness_usage_api.fetch_usage_limits, expected_arn=expected_arn),
         )
         if api_usage and api_usage.get("credits_plan") is not None:
             # API output is untrusted too: redact every string leaf before caching.
@@ -939,7 +939,7 @@ async def api_sessions_usage(request: web.Request) -> web.Response:
     # `kiro-cli chat --no-interactive ... /usage`, which auto-opens a browser
     # login while signed out. This endpoint is polled every 30s by the top-bar
     # credit pill, so an unauthenticated gateway spawned a browser every 30s.
-    blocked = await reject_if_kiro_unverified(request)
+    blocked = await reject_if_harness_unverified(request)
     if blocked is not None:
         return blocked
     now = time.time()

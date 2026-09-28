@@ -41,7 +41,7 @@ await new Promise(r => server.listen(PORT, '127.0.0.1', r))
 const json = (route, body, status = 200) =>
   route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
-const REPO = { owner: 'kirodotdev', repo: 'Kiro', provider: 'github', host: 'github.com' }
+const REPO = { owner: 'laqaer', repo: 'junction', provider: 'github', host: 'github.com' }
 const REPOS = { repos: [{ ...REPO, enabled: true, permissions: { push: true, triage: true } }] }
 
 // Two open issues; #2 has no `bug` label, so filtering to `bug` hides it.
@@ -98,7 +98,7 @@ await page.route('**/api/**', async route => {
   const q = new URL(route.request().url()).searchParams
   // ── boot endpoints ──
   if (path === '/api/auth/me') return json(route, { user: 'owner', app: '' })
-  if (path === '/api/kiro-prerequisite') return json(route, { platform: 'gateway', installed: true, authenticated: true, ready: true, initial_setup_complete: true, can_auto_install: false, can_login: true, repair_required: false, docs_url: '', setup_allowed: false, operation: { status: 'idle', message: '' } })
+  if (path === '/api/harness-prerequisite') return json(route, { platform: 'gateway', installed: true, authenticated: true, ready: true, initial_setup_complete: true, can_auto_install: false, can_login: true, repair_required: false, docs_url: '', setup_allowed: false, operation: { status: 'idle', message: '' } })
   if (path === '/api/themes') return json(route, { themes: [], installed: [] })
   if (path === '/api/theme/boot') return json(route, { mode: 'light', theme: '' })
   if (path === '/api/dashboard/branding') return json(route, { bot_name: 'Junction', avatar: '' })
@@ -142,7 +142,7 @@ const settle = (ms = 1400) => page.waitForTimeout(ms)
 
 async function open(uiState) {
   await page.addInitScript((s) => {
-    localStorage.setItem('jn:issue-radar:active-repo', JSON.stringify({ owner: 'kirodotdev', repo: 'Kiro' }))
+    localStorage.setItem('jn:issue-radar:active-repo', JSON.stringify({ owner: 'laqaer', repo: 'junction' }))
     if (s) localStorage.setItem('jn:issue-radar:ui-state', JSON.stringify(s))
     else localStorage.removeItem('jn:issue-radar:ui-state')
   }, uiState)

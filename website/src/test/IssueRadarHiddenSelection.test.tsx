@@ -40,7 +40,7 @@ vi.mock('../apps/issue-radar/components/PrDetail', () => ({
   default: ({ pull }: { pull: { number: number } }) => <div>pr-detail-{pull.number}</div>,
 }))
 
-const REPO = { owner: 'kirodotdev', repo: 'Kiro' }
+const REPO = { owner: 'laqaer', repo: 'junction' }
 
 function renderWorkspace(ui?: React.ReactNode) {
   return renderWithProviders(

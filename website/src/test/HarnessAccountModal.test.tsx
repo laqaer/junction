@@ -1,11 +1,11 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import KiroAccountModal from '../components/KiroAccountModal'
-import type { KiroCreditUsage } from '../api/client'
+import HarnessAccountModal from '../components/HarnessAccountModal'
+import type { HarnessCreditUsage } from '../api/client'
 import { renderWithProviders } from './helpers'
 
-const BASE_USAGE: KiroCreditUsage = {
+const BASE_USAGE: HarnessCreditUsage = {
   used: 10,
   limit: 100,
   overage: 0,
@@ -15,14 +15,14 @@ const BASE_USAGE: KiroCreditUsage = {
   accountType: 'SocialGoogle',
 }
 
-describe('KiroAccountModal', () => {
+describe('HarnessAccountModal', () => {
   beforeEach(() => {
     localStorage.removeItem('junction:account-email-hidden')
   })
 
   it('combines owner identity, plan, remaining credits, and billing details', async () => {
     renderWithProviders(
-      <KiroAccountModal
+      <HarnessAccountModal
         open
         onClose={vi.fn()}
         usage={{
@@ -56,7 +56,7 @@ describe('KiroAccountModal', () => {
     expect(screen.getByText(/Used: 185.84 \/ 2,000/)).toBeInTheDocument()
     expect(screen.getByText(/Days until expiration: 153/)).toBeInTheDocument()
 
-    const progress = screen.getByRole('progressbar', { name: 'Kiro credit usage' })
+    const progress = screen.getByRole('progressbar', { name: 'Harness credit usage' })
     expect(progress).toHaveAttribute('aria-valuemin', '0')
     expect(progress).toHaveAttribute('aria-valuemax', '2000')
     expect(progress).toHaveAttribute('aria-valuenow', '636')
@@ -69,7 +69,7 @@ describe('KiroAccountModal', () => {
 
   it('caps the bar and remaining credits when usage exceeds the plan', async () => {
     renderWithProviders(
-      <KiroAccountModal
+      <HarnessAccountModal
         open
         onClose={vi.fn()}
         usage={{ ...BASE_USAGE, used: 2_500, limit: 2_000, overage: 500 }}
@@ -84,7 +84,7 @@ describe('KiroAccountModal', () => {
 
   it('keeps the panel useful when structured identity is unavailable', async () => {
     renderWithProviders(
-      <KiroAccountModal
+      <HarnessAccountModal
         open
         onClose={vi.fn()}
         usage={{ ...BASE_USAGE, email: undefined, account: undefined }}
@@ -97,7 +97,7 @@ describe('KiroAccountModal', () => {
 
   it('hides email by default and persists an explicit visibility choice', async () => {
     const firstRender = renderWithProviders(
-      <KiroAccountModal open onClose={vi.fn()} usage={BASE_USAGE} />,
+      <HarnessAccountModal open onClose={vi.fn()} usage={BASE_USAGE} />,
     )
 
     const email = await screen.findByText('owner@example.com')
@@ -109,7 +109,7 @@ describe('KiroAccountModal', () => {
 
     firstRender.unmount()
     renderWithProviders(
-      <KiroAccountModal open onClose={vi.fn()} usage={BASE_USAGE} />,
+      <HarnessAccountModal open onClose={vi.fn()} usage={BASE_USAGE} />,
     )
 
     const persistedEmail = await screen.findByText('owner@example.com')
@@ -121,7 +121,7 @@ describe('KiroAccountModal', () => {
 
   it('keeps the generic label for an unspecified social provider', async () => {
     renderWithProviders(
-      <KiroAccountModal
+      <HarnessAccountModal
         open
         onClose={vi.fn()}
         usage={{ ...BASE_USAGE, accountType: 'Social' }}
@@ -132,7 +132,7 @@ describe('KiroAccountModal', () => {
   })
 
   it('renders independent identity and usage failure states', async () => {
-    renderWithProviders(<KiroAccountModal open onClose={vi.fn()} usage="none" />)
+    renderWithProviders(<HarnessAccountModal open onClose={vi.fn()} usage="none" />)
 
     expect(await screen.findByText('Account details unavailable')).toBeInTheDocument()
     expect(screen.getByText('Credit usage unavailable')).toBeInTheDocument()
@@ -142,7 +142,7 @@ describe('KiroAccountModal', () => {
     // 'failed' and null are both "no reading", but only null still has a fetch
     // outstanding. Spinning on 'failed' would repeat, one level down, the defect
     // the top-bar pill was fixed for: the drill-in must not claim it is checking.
-    renderWithProviders(<KiroAccountModal open onClose={vi.fn()} usage="failed" />)
+    renderWithProviders(<HarnessAccountModal open onClose={vi.fn()} usage="failed" />)
 
     expect(await screen.findByText('Account details unavailable')).toBeInTheDocument()
     expect(screen.getByText('Credit usage unavailable')).toBeInTheDocument()
@@ -151,7 +151,7 @@ describe('KiroAccountModal', () => {
   })
 
   it('keeps spinning only while the reading is genuinely still in flight', async () => {
-    renderWithProviders(<KiroAccountModal open onClose={vi.fn()} usage={null} />)
+    renderWithProviders(<HarnessAccountModal open onClose={vi.fn()} usage={null} />)
 
     expect(await screen.findByText('Checking account…')).toBeInTheDocument()
     expect(screen.queryByText('Account details unavailable')).not.toBeInTheDocument()
@@ -161,7 +161,7 @@ describe('KiroAccountModal', () => {
     // 'api-key' is terminal by construction: the usage API needs an SSO/OIDC
     // token that auth type never has (#5728). The panel must say so — not spin,
     // and not show the generic unavailable line that reads as a transient error.
-    renderWithProviders(<KiroAccountModal open onClose={vi.fn()} usage="api-key" />)
+    renderWithProviders(<HarnessAccountModal open onClose={vi.fn()} usage="api-key" />)
 
     expect(
       await screen.findByText('Credit usage isn’t available for API key authentication'),
@@ -174,7 +174,7 @@ describe('KiroAccountModal', () => {
   it('calls onClose from the accessible close control', async () => {
     const onClose = vi.fn()
     renderWithProviders(
-      <KiroAccountModal open onClose={onClose} usage={BASE_USAGE} />,
+      <HarnessAccountModal open onClose={onClose} usage={BASE_USAGE} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -183,12 +183,12 @@ describe('KiroAccountModal', () => {
 
   it('exposes a named modal dialog without an explicit ariaLabel', async () => {
     renderWithProviders(
-      <KiroAccountModal open onClose={vi.fn()} usage={BASE_USAGE} />,
+      <HarnessAccountModal open onClose={vi.fn()} usage={BASE_USAGE} />,
     )
 
     // The name comes from the rendered title (icon + text) via Modal's
     // aria-labelledby default, so it cannot fall out of sync with the header.
-    const dialog = await screen.findByRole('dialog', { name: 'Kiro Account' })
+    const dialog = await screen.findByRole('dialog', { name: 'Harness Account' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
   })
 })

@@ -13,13 +13,13 @@ import { i18nT } from '../../i18n/t'
 import { useImeGuard } from '../../hooks/useImeGuard'
 
 /**
- * Indexing progress and the Kiro requests a source still owes.
+ * Indexing progress and the agent requests a source still owes.
  *
  * A watched folder keeps spending at idle long after it was added and the
  * add-time estimate has scrolled away. The remaining figure is what turns that
  * into something a user can see before it reaches a bill.
  *
- * Both figures name the same unit the bill does — Kiro requests — so the number
+ * Both figures name the same unit the bill does — agent requests — so the number
  * can be compared against it without the reader having to guess whether one
  * "model call" is one billed request.
  *
@@ -59,7 +59,7 @@ export function SourceSpendDisplay({ spend }: { spend?: SourceSpend }) {
               derived from file sizes, so rendering "11,460" claims a precision it
               does not have while the leading ~ says otherwise. Compact keeps the
               magnitude legible and localizes the scale word (11K / 1.1万). */}
-          {i18nT('pages.knowledge.sourcesList.kiro_requests_left', {
+          {i18nT('pages.knowledge.sourcesList.harness_requests_left', {
             calls: fmtCompact(remaining, { maximumSignificantDigits: 2 }),
           })}
         </span>
@@ -429,7 +429,7 @@ export default function SourcesList({ onIngest, uploadNamespace, setUploadNamesp
           a title-attribute tooltip cannot deliver to touch or keyboard users. */}
       <div className="flex items-start gap-1.5 text-[11px] text-muted">
         <Coins size={12} className="shrink-0 mt-px" aria-hidden="true" />
-        <span>{i18nT('pages.knowledge.sourcesList.indexing_uses_kiro_requests_each_source_costs_mo')}</span>
+        <span>{i18nT('pages.knowledge.sourcesList.indexing_uses_harness_requests_each_source_costs_mo')}</span>
       </div>
       <div className="flex justify-end">
         <button onClick={() => setShowAdd(true)} className="px-3 py-1.5 text-[13px] bg-accent text-accent-fg rounded-md hover:bg-accent/80">{i18nT('pages.knowledge.sourcesList.add_source')}</button>
@@ -589,7 +589,7 @@ export default function SourcesList({ onIngest, uploadNamespace, setUploadNamesp
               </div>
               {/* Meta + actions. Wraps at ANY width and never nowrap: the row carries a
                   variable number of figures (item count, word count, indexing progress,
-                  remaining Kiro requests) and pinning it to one line pushed the trailing
+                  remaining agent requests) and pinning it to one line pushed the trailing
                   action button outside the card border and squeezed the source name to
                   nothing at mid widths. */}
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end shrink-0 pl-6 sm:pl-0 sm:max-w-[70%]">

@@ -328,7 +328,7 @@ It fails on any key defined **twice inside one object** in any
 needs no edit.
 
 Why it exists: `ja.json` once carried eleven such keys in
-`components.kiroPrerequisiteGate`. `JSON.parse` keeps the LAST occurrence, so the
+`components.harnessPrerequisiteGate`. `JSON.parse` keeps the LAST occurrence, so the
 earlier value was dead weight no reader ever saw — and the file could not be
 safely round-tripped, because any tool that reserialised it silently DROPPED the
 shadowed translations. That is exactly how they were eventually removed: as an
@@ -342,4 +342,3 @@ Two properties make it work, and both are asserted directly in the same file:
 - It compares keys by their **decoded** value, because `"n\u0061me"` and
   `"name"` are the same key per ECMA-404. A byte-wise comparison would call them
   distinct and wave a real duplicate through.
-

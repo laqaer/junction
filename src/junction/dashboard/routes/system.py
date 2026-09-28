@@ -55,7 +55,7 @@ def register(app: web.Application) -> None:
     app.router.add_get("/api/sessions/memory", handlers.api_sessions_memory)
     app.router.add_get("/api/sessions/health", handlers.api_sessions_health)
     app.router.add_get("/api/sessions/usage", handlers.api_sessions_usage)
-    app.router.add_get("/api/usage/kiro", handlers.api_kiro_usage)
+    app.router.add_get("/api/usage/harness", handlers.api_harness_usage)
     app.router.add_get("/api/usage", handlers.api_usage)
     app.router.add_get("/api/telemetry/startup", handlers.api_telemetry_startup)
     app.router.add_get("/api/telemetry/context-trace", handlers.api_context_trace)

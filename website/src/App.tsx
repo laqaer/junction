@@ -38,7 +38,7 @@ import { useNotificationSound } from './hooks/useNotificationSound'
 import { recordSessionStart, recordEvent } from './rum'
 import { ZoomProvider } from './hooks/ZoomProvider'
 import { api, isAuthBannerShown } from './api/client'
-import type { KiroCreditUsage, KiroUsagePayload } from './api/client'
+import type { HarnessCreditUsage, HarnessUsagePayload } from './api/client'
 import { safeSetItem } from './utils/safeStorage'
 import { gcOrphanedStorage } from './utils/storageGc'
 import { isMetricNumber, metricNumber } from './utils/metrics'
@@ -116,7 +116,7 @@ import ShortcutsModal from './components/ShortcutsModal'
 import QuickSearchSurface from './components/QuickSearchSurface'
 import ReportProblemModal from './components/ReportProblemModal'
 import FeedbackPill from './components/FeedbackPill'
-import KiroAccountModal, { type KiroAccountUsage } from './components/KiroAccountModal'
+import HarnessAccountModal, { type HarnessAccountUsage } from './components/HarnessAccountModal'
 import WindowsTitlebarMenu from './components/WindowsTitlebarMenu'
 
 import { i18nT } from './i18n/t'
@@ -1623,7 +1623,7 @@ export default function App() {
 
   const [updating, setUpdating] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [kiroUsageOpen, setKiroUsageOpen] = useState(false)
+  const [harnessUsageOpen, setHarnessUsageOpen] = useState(false)
   const [changes, setChanges] = useState('')
   const [showChangelog, setShowChangelog] = useState(false)
   const [autoUpdate, setAutoUpdate] = useState(true)
@@ -1835,7 +1835,7 @@ export default function App() {
   // than once (strip + inline header copies).
   useInstanceShortcuts()
 
-  // Kiro CLI monthly credit usage. /api/sessions/usage TRIGGERS the background
+  // CLI monthly credit usage. /api/sessions/usage TRIGGERS the background
   // `kiro-cli /usage` fetch AND returns the cached result, so the pill is
   // self-sufficient on any page. Month-to-date total = credits_used, which the
   // backend already sets to the TRUE total (covered + overage). Do NOT add
@@ -1847,11 +1847,11 @@ export default function App() {
   // backend cache has not warmed yet" (null) apart from "the request failed"
   // (undefined) — both are falsy. Without it a failing endpoint renders as a
   // spinner that never resolves, since the 30s refetch keeps retrying forever.
-  const { data: kiroUsage, isError: kiroUsageFailed } = useQuery<KiroCreditUsage | 'none' | 'api-key' | null>({
+  const { data: harnessUsage, isError: harnessUsageFailed } = useQuery<HarnessCreditUsage | 'none' | 'api-key' | null>({
     queryKey: ['kiro-usage'],
     queryFn: () => api.sessionsUsage().then(d => {
-      const u: KiroUsagePayload = d?.usage || {}
-      // Kiro credit plan (internal) — the only usage this pill surfaces.
+      const u: HarnessUsagePayload = d?.usage || {}
+      // Harness credit plan (internal) — the only usage this pill surfaces.
       // Number.isFinite guards against a stray NaN ever rendering as "NaN / NaN".
       if (typeof u.credits_plan === 'number' && Number.isFinite(u.credits_plan)) {
         const limit = Math.round(u.credits_plan)
@@ -1899,7 +1899,7 @@ export default function App() {
         const parsedOverageRate = typeof u.overage_rate === 'number'
           ? u.overage_rate
           : Number.parseFloat(u.overage_rate ?? '')
-        const normalized: KiroCreditUsage = {
+        const normalized: HarnessCreditUsage = {
           used,
           limit,
           overage,
@@ -1928,15 +1928,15 @@ export default function App() {
   // Auto-close the details modal if usage resolves to unavailable — the pill
   // hides in that case, so a modal opened during loading would otherwise be stuck.
   useEffect(() => {
-    if (kiroUsage === 'none') setKiroUsageOpen(false)
-  }, [kiroUsage])
+    if (harnessUsage === 'none') setHarnessUsageOpen(false)
+  }, [harnessUsage])
   // ONE derivation feeds both the capsule segment and the account modal, so the
   // drill-in can never report a different state from the pill that opened it —
   // the modal spinning on "checking account" behind a pill that already says
   // "unavailable" is the same falsy-collapse defect one level down.
-  const kiroUsageState: KiroAccountUsage = kiroUsageFailed && !kiroUsage
+  const harnessUsageState: HarnessAccountUsage = harnessUsageFailed && !harnessUsage
     ? 'failed'
-    : (kiroUsage ?? null)
+    : (harnessUsage ?? null)
   const [metricsOpen, setMetricsOpen] = useState(() => localStorage.getItem('mc-topbar-metrics') === '1')
   // Readout capsule collapse: clicking the connection dot folds the capsule
   // down to just the dot; clicking again restores the full readout.
@@ -2649,11 +2649,11 @@ export default function App() {
                 <span className={dskValid ? metricColor(dskPct) : 'text-muted'}>{i18nT('app.dsk')} {dskValid ? fmtPercent(dskPct) : '\u2014'}</span>
               </span>)
             }
-            // Usage segment — Kiro credit plan from Junction's own usage
+            // Usage segment — Harness credit plan from Junction's own usage
             // cache. Spinner while the cache warms, a dash when the fetch
             // failed, hidden when the provider has no credit plan at all.
-            if (kiroUsageState !== 'none') {
-              if (kiroUsageState === 'failed') {
+            if (harnessUsageState !== 'none') {
+              if (harnessUsageState === 'failed') {
                 // Failed with nothing cached to fall back on. A dash says that;
                 // a spinner would claim a fetch is still in flight. A failure
                 // that arrives while a prior value is held keeps that value —
@@ -2662,28 +2662,28 @@ export default function App() {
                 // The dash renders on mobile too, where the reading and the
                 // spinner are both dropped: without it the failed and warming
                 // states are one coin glyph apart in opacity alone.
-                segments.push(<button key="usage" className={`${seg} text-muted opacity-60`} onClick={() => setKiroUsageOpen(true)} title={i18nT('app.kiro_credit_usage_unavailable')} aria-label={i18nT('app.kiro_credit_usage_unavailable')}><Coins size={12} /> <span className="font-mono text-[11px] tabular-nums">—</span></button>)
-              } else if (kiroUsageState === 'api-key') {
+                segments.push(<button key="usage" className={`${seg} text-muted opacity-60`} onClick={() => setHarnessUsageOpen(true)} title={i18nT('app.harness_credit_usage_unavailable')} aria-label={i18nT('app.harness_credit_usage_unavailable')}><Coins size={12} /> <span className="font-mono text-[11px] tabular-nums">—</span></button>)
+              } else if (harnessUsageState === 'api-key') {
                 // API-key auth: the usage API needs an SSO/OIDC token this
                 // account type never has, so this is a PERMANENT state, not a
                 // failure. Same terminal dash as 'failed' (nothing is in
                 // flight), but the label says why, and clicking through opens
                 // the modal's fuller explanation.
-                segments.push(<button key="usage" className={`${seg} text-muted opacity-60`} onClick={() => setKiroUsageOpen(true)} title={i18nT('app.kiro_credit_usage_api_key')} aria-label={i18nT('app.kiro_credit_usage_api_key')}><Coins size={12} /> <span className="font-mono text-[11px] tabular-nums">—</span></button>)
-              } else if (!kiroUsageState) {
-                segments.push(<button key="usage" className={`${seg} text-muted`} onClick={() => setKiroUsageOpen(true)} title={i18nT('app.kiro_credit_usage_checking')} aria-label={i18nT('app.kiro_credit_usage_checking_2')}><Coins size={12} /> {!isMobile && <Loader2 size={11} className="animate-spin" />}</button>)
+                segments.push(<button key="usage" className={`${seg} text-muted opacity-60`} onClick={() => setHarnessUsageOpen(true)} title={i18nT('app.harness_credit_usage_api_key')} aria-label={i18nT('app.harness_credit_usage_api_key')}><Coins size={12} /> <span className="font-mono text-[11px] tabular-nums">—</span></button>)
+              } else if (!harnessUsageState) {
+                segments.push(<button key="usage" className={`${seg} text-muted`} onClick={() => setHarnessUsageOpen(true)} title={i18nT('app.harness_credit_usage_checking')} aria-label={i18nT('app.harness_credit_usage_checking_2')}><Coins size={12} /> {!isMobile && <Loader2 size={11} className="animate-spin" />}</button>)
               } else {
                 // Pool every bonus grant into the compact readout. Bonus is
                 // drawn down before the plan, so excluding it looks like a
                 // frozen counter while promotional credits are active.
-                const bonusUsed = kiroUsageState.bonusCredits.reduce((sum, grant) => sum + grant.used, 0)
-                const bonusLimit = kiroUsageState.bonusCredits.reduce((sum, grant) => sum + grant.total, 0)
-                const totalUsed = kiroUsageState.used + bonusUsed
-                const totalLimit = kiroUsageState.limit + bonusLimit
+                const bonusUsed = harnessUsageState.bonusCredits.reduce((sum, grant) => sum + grant.used, 0)
+                const bonusLimit = harnessUsageState.bonusCredits.reduce((sum, grant) => sum + grant.total, 0)
+                const totalUsed = harnessUsageState.used + bonusUsed
+                const totalLimit = harnessUsageState.limit + bonusLimit
                 const usedStr = fmtCompact(totalUsed)
                 const limitStr = fmtCompact(totalLimit)
-                const title = i18nT('components.kiroAccountModal.kiro_credit_usage')
-                segments.push(<button key="usage" className={kiroUsageState.stale ? `${seg} opacity-60` : seg} onClick={() => setKiroUsageOpen(true)} title={title} aria-label={title}>
+                const title = i18nT('components.harnessAccountModal.harness_credit_usage')
+                segments.push(<button key="usage" className={harnessUsageState.stale ? `${seg} opacity-60` : seg} onClick={() => setHarnessUsageOpen(true)} title={title} aria-label={title}>
                   <Coins size={12} /> {!isMobile && <span className="tb-drop-usage font-mono text-[11px] whitespace-nowrap tabular-nums">{usedStr}<span className="text-muted">/{limitStr}</span></span>}
                 </button>)
               }
@@ -3443,7 +3443,7 @@ export default function App() {
     )}
     </WsContext.Provider>
     {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
-    <KiroAccountModal open={kiroUsageOpen} onClose={() => setKiroUsageOpen(false)} usage={kiroUsageState} />
+    <HarnessAccountModal open={harnessUsageOpen} onClose={() => setHarnessUsageOpen(false)} usage={harnessUsageState} />
     <QuickSearchSurface
       owners={slotOwners}
       open={commandPalette.open}

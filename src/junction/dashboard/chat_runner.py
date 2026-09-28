@@ -2376,7 +2376,7 @@ async def _retire_sessions_on_identity_change(state: Any) -> None:
     believes they left.
 
     This does NOT gate the send. A stale latch must never block a turn (see
-    ``dashboard/kiro_readiness.py``), and nothing here can: the check retires an
+    ``dashboard/harness_readiness.py``), and nothing here can: the check retires an
     invalidated child and lets the send proceed on a fresh one, which is a
     process recycle rather than a readiness verdict. It stays off the spawn path
     too -- the trigger is a local database read, briefly cached, not a ``whoami``.
@@ -2385,7 +2385,7 @@ async def _retire_sessions_on_identity_change(state: Any) -> None:
     outcome than the staleness it exists to correct.
     """
 
-    service = getattr(state, "kiro_prerequisite_service", None)
+    service = getattr(state, "harness_prerequisite_service", None)
     sessions = getattr(state, "sessions", None)
     if service is None or sessions is None:
         return
@@ -2442,7 +2442,7 @@ def _mark_kiro_signed_out(state: Any) -> None:
     with no timer re-probe. Best-effort: never disrupt the turn's teardown.
     """
 
-    service = getattr(state, "kiro_prerequisite_service", None)
+    service = getattr(state, "harness_prerequisite_service", None)
     if service is None:
         return
     try:

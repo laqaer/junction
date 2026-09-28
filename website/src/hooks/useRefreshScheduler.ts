@@ -115,7 +115,7 @@ export function useRefreshScheduler(opts: UseRefreshSchedulerOptions = {}): void
       // the rotated value automatically.
       backoffIdxRef.current = 0
       void queryClient.invalidateQueries({ queryKey: ['auth-me'] })
-      void queryClient.invalidateQueries({ queryKey: ['kiro-prerequisite'] })
+      void queryClient.invalidateQueries({ queryKey: ['harness-prerequisite'] })
     },
     onError: (err: RefreshError) => {
       if (stoppedRef.current) return

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, Coins, ExternalLink, Eye, EyeOff, Gift, Loader2, UserRound } from 'lucide-react'
 
-import type { KiroBonusCreditGrant, KiroCreditUsage } from '../api/client'
+import type { HarnessBonusCreditGrant, HarnessCreditUsage } from '../api/client'
 import { fmtCurrency, fmtDateFields, fmtNumber, fmtPercent } from '../i18n/format'
 import { i18nT } from '../i18n/t'
 import { safeGetItem, safeSetItem } from '../utils/safeStorage'
@@ -10,7 +10,7 @@ import Modal from './Modal'
 
 // The usage view model is owned by `api/client.ts` next to the wire payload it
 // is normalized from, so this panel and the credits pill cannot drift apart.
-export type { KiroBonusCreditGrant, KiroCreditUsage }
+export type { HarnessBonusCreditGrant, HarnessCreditUsage }
 
 /**
  * What the modal can be handed: a reading, `null` while the gateway's usage
@@ -21,20 +21,20 @@ export type { KiroBonusCreditGrant, KiroCreditUsage }
  * value that means "still loading" — the others have nothing more to wait for,
  * so spinning on them would repeat the defect this distinction exists to remove.
  */
-export type KiroAccountUsage = KiroCreditUsage | null | 'none' | 'failed' | 'api-key'
+export type HarnessAccountUsage = HarnessCreditUsage | null | 'none' | 'failed' | 'api-key'
 
 /** True only for an actual reading, so the sentinels cannot reach a field access. */
-const isUsageReading = (usage: KiroAccountUsage): usage is KiroCreditUsage =>
+const isUsageReading = (usage: HarnessAccountUsage): usage is HarnessCreditUsage =>
   typeof usage === 'object' && usage !== null
 
-interface KiroAccountModalProps {
+interface HarnessAccountModalProps {
   open: boolean
   onClose: () => void
-  usage: KiroAccountUsage
+  usage: HarnessAccountUsage
 }
 
-const KIRO_ACCOUNT_URL = 'https://app.kiro.dev/settings/account'
-const KIRO_ACCOUNT_EMAIL_HIDDEN_KEY = 'junction:account-email-hidden'
+const HARNESS_ACCOUNT_URL = 'https://app.kiro.dev/settings/account'
+const HARNESS_ACCOUNT_EMAIL_HIDDEN_KEY = 'junction:account-email-hidden'
 
 function formatResetDate(value: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
@@ -97,14 +97,14 @@ function accountProviderLabel(accountType?: string, startUrl?: string): string {
   return [accountKind, issuerHost].filter(Boolean).join(' · ')
 }
 
-function BonusCredits({ grants }: { grants: KiroBonusCreditGrant[] }) {
+function BonusCredits({ grants }: { grants: HarnessBonusCreditGrant[] }) {
   if (grants.length === 0) return null
 
   return (
-    <section className="rounded-lg border border-border" aria-labelledby="kiro-bonus-credits-title">
+    <section className="rounded-lg border border-border" aria-labelledby="harness-bonus-credits-title">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5 text-[12px] font-medium text-text">
         <Gift className="lucide-inline text-accent" />
-        <span id="kiro-bonus-credits-title">{i18nT('app.bonus_credits')}</span>
+        <span id="harness-bonus-credits-title">{i18nT('app.bonus_credits')}</span>
       </div>
       <div className="divide-y divide-border px-3">
         {grants.map((grant, index) => {
@@ -116,21 +116,21 @@ function BonusCredits({ grants }: { grants: KiroBonusCreditGrant[] }) {
                   {grant.name}
                 </span>
                 <span className="shrink-0 text-[12px] font-semibold text-text">
-                  {i18nT('components.kiroAccountModal.remaining_credit_balance', {
+                  {i18nT('components.harnessAccountModal.remaining_credit_balance', {
                     count: formatCredits(remaining),
                   })}
                 </span>
               </div>
               <div className="mt-1 flex items-center justify-between gap-4 text-[11px] text-muted">
                 <span>
-                  {i18nT('components.kiroAccountModal.used_credits', {
+                  {i18nT('components.harnessAccountModal.used_credits', {
                     used: formatCredits(grant.used),
                     total: formatCredits(grant.total),
                   })}
                 </span>
                 {grant.daysLeft != null && (
                   <span>
-                    {i18nT('components.kiroAccountModal.days_until_expiration', {
+                    {i18nT('components.harnessAccountModal.days_until_expiration', {
                       count: fmtNumber(grant.daysLeft),
                     })}
                   </span>
@@ -144,15 +144,15 @@ function BonusCredits({ grants }: { grants: KiroBonusCreditGrant[] }) {
   )
 }
 
-function AccountIdentity({ usage }: { usage: KiroAccountUsage }) {
+function AccountIdentity({ usage }: { usage: HarnessAccountUsage }) {
   const [emailHidden, setEmailHidden] = useState(
-    () => safeGetItem(KIRO_ACCOUNT_EMAIL_HIDDEN_KEY) !== '0',
+    () => safeGetItem(HARNESS_ACCOUNT_EMAIL_HIDDEN_KEY) !== '0',
   )
 
   const toggleEmailVisibility = () => {
     setEmailHidden(hidden => {
       const next = !hidden
-      safeSetItem(KIRO_ACCOUNT_EMAIL_HIDDEN_KEY, next ? '1' : '0')
+      safeSetItem(HARNESS_ACCOUNT_EMAIL_HIDDEN_KEY, next ? '1' : '0')
       return next
     })
   }
@@ -178,11 +178,11 @@ function AccountIdentity({ usage }: { usage: KiroAccountUsage }) {
       <div className="mt-3 min-w-0 max-w-full">
         {usage === null ? (
           <div className="flex items-center justify-center gap-2 text-[13px] text-muted">
-            <Loader2 className="lucide-inline animate-spin" /> {i18nT('components.kiroAccountModal.checking_account')}
+            <Loader2 className="lucide-inline animate-spin" /> {i18nT('components.harnessAccountModal.checking_account')}
           </div>
         ) : !isUsageReading(usage) || !identity ? (
           <div className="flex items-center justify-center gap-2 text-[13px] text-muted">
-            <AlertCircle className="lucide-inline" /> {i18nT('components.kiroAccountModal.account_details_unavailable')}
+            <AlertCircle className="lucide-inline" /> {i18nT('components.harnessAccountModal.account_details_unavailable')}
           </div>
         ) : (
           <>
@@ -197,8 +197,8 @@ function AccountIdentity({ usage }: { usage: KiroAccountUsage }) {
                 <Clickable
                   onClick={toggleEmailVisibility}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted transition-colors hover:border-accent/35 hover:bg-accent/10 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                  aria-label={i18nT(emailHidden ? 'components.kiroAccountModal.show_email' : 'components.kiroAccountModal.hide_email')}
-                  title={i18nT(emailHidden ? 'components.kiroAccountModal.show_email' : 'components.kiroAccountModal.hide_email')}
+                  aria-label={i18nT(emailHidden ? 'components.harnessAccountModal.show_email' : 'components.harnessAccountModal.hide_email')}
+                  title={i18nT(emailHidden ? 'components.harnessAccountModal.show_email' : 'components.harnessAccountModal.hide_email')}
                 >
                   {emailHidden ? <Eye className="lucide-inline" /> : <EyeOff className="lucide-inline" />}
                 </Clickable>
@@ -218,7 +218,7 @@ function AccountIdentity({ usage }: { usage: KiroAccountUsage }) {
 
 function UsageSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-label={i18nT('components.kiroAccountModal.checking_credit_usage')}>
+    <div className="flex flex-col gap-3" aria-label={i18nT('components.harnessAccountModal.checking_credit_usage')}>
       <div className="skeleton h-7 w-48 rounded-md" />
       <div className="skeleton h-2 w-full rounded-full" />
       <div className="skeleton h-20 w-full rounded-lg" />
@@ -226,7 +226,7 @@ function UsageSkeleton() {
   )
 }
 
-function CreditUsage({ usage }: { usage: KiroAccountUsage }) {
+function CreditUsage({ usage }: { usage: HarnessAccountUsage }) {
   // Only a cache that has not warmed yet is still loading. A failed fetch and an
   // account with no plan both have nothing pending, so they get the static
   // notice rather than a skeleton that never resolves.
@@ -236,8 +236,8 @@ function CreditUsage({ usage }: { usage: KiroAccountUsage }) {
       <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-elevated/40 p-3.5 text-[13px] text-muted">
         <AlertCircle className="lucide-inline shrink-0" />{' '}
         {i18nT(usage === 'api-key'
-          ? 'components.kiroAccountModal.credit_usage_api_key_auth'
-          : 'components.kiroAccountModal.credit_usage_unavailable')}
+          ? 'components.harnessAccountModal.credit_usage_api_key_auth'
+          : 'components.harnessAccountModal.credit_usage_unavailable')}
       </div>
     )
   }
@@ -259,7 +259,7 @@ function CreditUsage({ usage }: { usage: KiroAccountUsage }) {
         </div>
         <div
           role="progressbar"
-          aria-label={i18nT('components.kiroAccountModal.kiro_credit_usage')}
+          aria-label={i18nT('components.harnessAccountModal.harness_credit_usage')}
           aria-valuemin={0}
           aria-valuemax={Math.max(usage.limit, 0)}
           aria-valuenow={progressNow}
@@ -272,7 +272,7 @@ function CreditUsage({ usage }: { usage: KiroAccountUsage }) {
         </div>
         <div className="mt-2 flex items-center justify-between gap-4 text-[12px] text-muted">
           <span>
-            {i18nT('components.kiroAccountModal.remaining_credit_balance', {
+            {i18nT('components.harnessAccountModal.remaining_credit_balance', {
               count: fmtNumber(remaining),
             })}
           </span>
@@ -284,39 +284,39 @@ function CreditUsage({ usage }: { usage: KiroAccountUsage }) {
         {usage.overageRate != null && (
           <DetailRow
             label={i18nT('app.overage_rate')}
-            value={i18nT('components.kiroAccountModal.overage_rate_value', {
+            value={i18nT('components.harnessAccountModal.overage_rate_value', {
               rate: fmtCurrency(usage.overageRate),
             })}
           />
         )}
         {usage.costUsd != null && (
           <DetailRow
-            label={i18nT('components.kiroAccountModal.estimated_overage_cost')}
+            label={i18nT('components.harnessAccountModal.estimated_overage_cost')}
             value={fmtCurrency(usage.costUsd)}
           />
         )}
       </div>
       {usage.bonusCredits && <BonusCredits grants={usage.bonusCredits} />}
       <p className="text-[11px] leading-relaxed text-muted">
-        {i18nT('components.kiroAccountModal.usage_scope')}
+        {i18nT('components.harnessAccountModal.usage_scope')}
       </p>
     </div>
   )
 }
 
-export default function KiroAccountModal({ open, onClose, usage }: KiroAccountModalProps) {
+export default function HarnessAccountModal({ open, onClose, usage }: HarnessAccountModalProps) {
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={<span className="flex items-center gap-2"><Coins className="lucide-inline" /> {i18nT('components.kiroAccountModal.kiro_account')}</span>}
+      title={<span className="flex items-center gap-2"><Coins className="lucide-inline" /> {i18nT('components.harnessAccountModal.harness_account')}</span>}
       maxWidth={460}
     >
       <div className="flex flex-col gap-4">
         <AccountIdentity usage={usage} />
         <CreditUsage usage={usage} />
         <a
-          href={KIRO_ACCOUNT_URL}
+          href={HARNESS_ACCOUNT_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 self-start text-[12px] text-accent hover:underline"

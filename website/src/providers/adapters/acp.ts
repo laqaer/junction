@@ -108,7 +108,7 @@ function writeCachedModels(models: ModelInfo[]): void {
   }
 }
 
-/** Raw daily-usage entry from /api/usage/kiro. */
+/** Raw daily-usage entry from /api/usage/harness. */
 interface RawDailyHistory {
   date: string
   sessions: number
@@ -253,7 +253,7 @@ export class AcpAdapter implements ProviderAdapter {
   }
 
   async fetchUsage(): Promise<NormalizedUsage> {
-    const data = await api.kiroUsage()
+    const data = await api.harnessUsage()
     const s = data.sessions
     const b = data.billing || {}
     return {

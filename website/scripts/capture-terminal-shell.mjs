@@ -68,7 +68,7 @@ async function main() {
         dashboard: { terminal: { enabled: true, shell: scene.shell } },
       })
     }
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'linux', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

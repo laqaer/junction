@@ -103,7 +103,7 @@ async function main() {
           await json(route, { ok: true })
           return true
         }
-        if (path === '/api/kiro-prerequisite') {
+        if (path === '/api/harness-prerequisite') {
           // Same shape as the shared stub's, with the platform under test.
           await json(route, {
             platform: c.platform, installed: true, authenticated: true, ready: true,

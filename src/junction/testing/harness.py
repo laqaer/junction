@@ -47,7 +47,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any, Callable, Iterator, Optional
 
-from junction.kiro_prerequisite import FAKE_ACP_TEST_MODE_ENV
+from junction.harness_prerequisite import FAKE_ACP_TEST_MODE_ENV
 
 _LOGGER = logging.getLogger(__name__)
 

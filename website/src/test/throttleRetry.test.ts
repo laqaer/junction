@@ -64,7 +64,7 @@ describe('j helper 429 mapping', () => {
       '{"message":"Rate exceeded","throttlingReasons":null}',
       { status: 429 },
     )))
-    const err = await api.kiroUsage().catch((e: unknown) => e)
+    const err = await api.harnessUsage().catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(429)
     expect((err as ApiError).message).toContain('Rate limited by the tunnel edge')
@@ -76,7 +76,7 @@ describe('j helper 429 mapping', () => {
       '{"error": "boom"}',
       { status: 500 },
     )))
-    const err = await api.kiroUsage().catch((e: unknown) => e)
+    const err = await api.harnessUsage().catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(500)
     expect((err as ApiError).message).toBe('boom')
@@ -87,7 +87,7 @@ describe('j helper 429 mapping', () => {
       'plain boom',
       { status: 500 },
     )))
-    const err = await api.kiroUsage().catch((e: unknown) => e)
+    const err = await api.harnessUsage().catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(500)
     expect((err as ApiError).message).toBe('plain boom')

@@ -72,7 +72,7 @@ const unmatched = new Set()
 await page.route('**/api/**', async route => {
   const path = new URL(route.request().url()).pathname
   if (path === '/api/auth/me') return json(route, { user: 'owner', app: '' })
-  if (path === '/api/kiro-prerequisite') return json(route, {
+  if (path === '/api/harness-prerequisite') return json(route, {
     platform: 'gateway', installed: true, authenticated: true, ready: true,
     initial_setup_complete: true, can_auto_install: false, can_login: true,
     repair_required: false, docs_url: '', setup_allowed: false,

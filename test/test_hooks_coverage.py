@@ -752,12 +752,12 @@ class TestRegisterInternalReadPath:
 
     def test_repointing_an_existing_id_refused(self, restore_internal_allowlist):
         with pytest.raises(ValueError, match="refusing to repoint"):
-            register_internal_read_path("kiro_usage_api.sso_token_cli", ".aws/other.json")
+            register_internal_read_path("harness_usage_api.sso_token_cli", ".aws/other.json")
 
     def test_same_id_same_path_is_idempotent(self, restore_internal_allowlist):
-        existing = hooks_mod._INTERNAL_READ_ALLOWLIST["kiro_usage_api.sso_token_cli"]
-        register_internal_read_path("kiro_usage_api.sso_token_cli", existing)
-        assert hooks_mod._INTERNAL_READ_ALLOWLIST["kiro_usage_api.sso_token_cli"] == existing
+        existing = hooks_mod._INTERNAL_READ_ALLOWLIST["harness_usage_api.sso_token_cli"]
+        register_internal_read_path("harness_usage_api.sso_token_cli", existing)
+        assert hooks_mod._INTERNAL_READ_ALLOWLIST["harness_usage_api.sso_token_cli"] == existing
 
     @pytest.mark.parametrize(
         "rel",

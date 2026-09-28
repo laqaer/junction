@@ -3,7 +3,7 @@
  *
  * WHY ISOLATED: reaching /settings?tab=shortcuts (or the Alt+K modal) through
  * the full SPA needs a live gateway plus a dashboard credential — without one
- * the shell renders the Kiro CLI prerequisite gate instead. This mounts the
+ * the shell renders the CLI prerequisite gate instead. This mounts the
  * REAL ShortcutsPanel / ShortcutsModal against the REAL stylesheet and theme
  * tokens. Both surfaces read only localStorage, so no API seeding is needed.
  *

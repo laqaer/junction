@@ -156,7 +156,7 @@ const REGISTRY_APPS = [
   },
   {
     name: 'secretary', displayName: 'Secretary', author: 'zezhexu',
-    description: 'Slack inbox manager.', version: '1.1.0', _registry: 'kirodotdev-labs',
+    description: 'Slack inbox manager.', version: '1.1.0', _registry: 'laqaer-labs',
     tags: ['slack'], installed: true, updateAvailable: true, provenance: 'external',
     repo: 'https://github.com/z/secretary',
   },
@@ -186,7 +186,7 @@ beforeEach(() => {
   listApps.mockResolvedValue([BUILTIN_OFF, SECRETARY])
   listRegistry.mockResolvedValue({ apps: [...REGISTRY_APPS, builtinServerRow('pets', 'Pets')] })
   listRegistries.mockResolvedValue({
-    registries: [{ name: 'kirodotdev-labs', repo: 'https://github.com/kirodotdev-labs/registry', branch: 'main' }],
+    registries: [{ name: 'laqaer-labs', repo: 'https://github.com/laqaer-labs/registry', branch: 'main' }],
   })
   enableApp.mockResolvedValue({ ok: true })
   disableApp.mockResolvedValue({ ok: true })
@@ -758,7 +758,7 @@ describe('AppsPage — sources rail', () => {
     const rail = screen.getByText('SOURCES').parentElement as HTMLElement
     // Configured registry keeps its row at zero; the stale tag gets its own.
     expect(within(rail).getByText('Built-in · junction')).toBeInTheDocument()
-    expect(within(rail).getByText('kirodotdev-labs')).toBeInTheDocument()
+    expect(within(rail).getByText('laqaer-labs')).toBeInTheDocument()
     expect(within(rail).getByText('ghost-registry')).toBeInTheDocument()
     expect(within(rail).getByText('Junction registry')).toBeInTheDocument()
     expect(within(rail).getByText('0 apps')).toBeInTheDocument()

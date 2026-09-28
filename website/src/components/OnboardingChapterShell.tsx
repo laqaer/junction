@@ -43,7 +43,7 @@ function RouteLockup() {
 // Factored out so the persistent HOST and the standalone shell render the exact
 // same aside; when it lives in the host it is mounted ONCE and only its copy
 // text changes between flows, so the lockup never re-runs its entrance.
-// Exported so the first-run CLI setup gate (KiroPrerequisiteGate) renders the SAME
+// Exported so the first-run CLI setup gate (HarnessPrerequisiteGate) renders the SAME
 // panel — identical size, identical route positions — instead of a look-alike
 // copy that drifts.
 export function ShellAside({ copy }: { copy: ShellAsideCopy }) {
@@ -71,7 +71,7 @@ export function ShellAside({ copy }: { copy: ShellAsideCopy }) {
 
 // Shared class strings so the host-owned <section> slot and the standalone
 // shell's <section> are byte-identical (same flex layout / min-heights).
-// Exported for the Kiro CLI setup gate, which composes the same three pieces
+// Exported for the CLI setup gate, which composes the same three pieces
 // (scrim + panel + section) around its own non-chapter content.
 export const SECTION_CLASS =
   'flex min-h-[calc(100vh-248px)] min-w-0 flex-1 flex-col bg-card sm:min-h-0'

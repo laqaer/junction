@@ -5513,7 +5513,7 @@ class TestWindowsPathShapes:
 
     def test_localappdata_alias_of_fenced_store_is_blocked(self) -> None:
         # %LOCALAPPDATA% points INTO AppData\Local -- where CURRENT kiro-cli
-        # keeps its store, now a trust anchor in kiro_usage_api._CLI_SQLITE_DBS
+        # keeps its store, now a trust anchor in harness_usage_api._CLI_SQLITE_DBS
         # -- so this spelling names the fenced store without the AppData\Local
         # text the home-anchored branch matches on. Without its own alias
         # branch, a shell command could WRITE the very file whose

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   cli-mode.css — Kiro CLI–style chat surface (React build)
+   cli-mode.css — CLI–style chat surface (React build)
 
    Activated via <html data-ui="cli">. Orthogonal to data-theme (palette) and
    data-mode (light/dark hint, owned by the theme system).
@@ -90,7 +90,7 @@
 }
 
 /* The user-message card chrome: drop bg, border, rounding. Keep a faint
-   background on the text only — Kiro CLI's "the words look slightly
+   background on the text only — CLI's "the words look slightly
    highlighted" effect. */
 [data-ui="cli"] [style*="--mc-content-width"] [data-role="user"] .msg-content {
   background: var(--bg-elevated) !important;

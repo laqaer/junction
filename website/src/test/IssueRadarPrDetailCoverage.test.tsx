@@ -76,14 +76,14 @@ vi.mock('../apps/issue-radar/components/AiSummaryCard', () => ({
 
 const PrDetail = (await import('../apps/issue-radar/components/PrDetail')).default
 
-const REF = { owner: 'kirodotdev', repo: 'Kiro' }
-const SCOPE = 'github:github.com:kirodotdev/Kiro'
-const OTHER_SCOPE = 'github:github.com:kirodotdev/Other'
+const REF = { owner: 'laqaer', repo: 'junction' }
+const SCOPE = 'github:github.com:laqaer/junction'
+const OTHER_SCOPE = 'github:github.com:laqaer/Other'
 
 const ROW: PullRequest = {
   number: 7,
   title: 'Row title',
-  url: 'https://github.com/kirodotdev/Kiro/pull/7',
+  url: 'https://github.com/laqaer/junction/pull/7',
   state: 'open',
   draft: false,
   labels: ['from-row'],
@@ -102,7 +102,7 @@ function detailData(over: Partial<PrDetailData> = {}): PrDetailData {
     state: 'open',
     draft: false,
     merged: false,
-    url: 'https://github.com/kirodotdev/Kiro/pull/7#detail',
+    url: 'https://github.com/laqaer/junction/pull/7#detail',
     author: 'alice',
     author_association: 'MEMBER',
     created_at: '2026-07-01T00:00:00Z',
@@ -148,7 +148,7 @@ function check(over: Partial<PrCheck> = {}): PrCheck {
     bucket: 'success',
     status: 'completed',
     conclusion: 'success',
-    url: 'https://github.com/kirodotdev/Kiro/runs/1',
+    url: 'https://github.com/laqaer/junction/runs/1',
     summary: 'all green',
     app: 'GitHub Actions',
     started_at: '2026-07-02T00:00:00Z',
@@ -235,7 +235,7 @@ describe('PrDetail — header and first paint', () => {
     const h = header()
     // The #number links out to the provider, using the detail URL when it lands.
     expect(within(h).getByRole('link', { name: '#7' }).getAttribute('href'))
-      .toBe('https://github.com/kirodotdev/Kiro/pull/7#detail')
+      .toBe('https://github.com/laqaer/junction/pull/7#detail')
     expect(within(h).getByText('Open')).toBeTruthy()
     expect(within(titleBlock()).getByText('alice')).toBeTruthy()
     // Admin, from the authoritative member roster rather than author_association.
@@ -251,7 +251,7 @@ describe('PrDetail — header and first paint', () => {
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Row title')
     expect(within(header()).getByRole('link', { name: '#7' }).getAttribute('href'))
-      .toBe('https://github.com/kirodotdev/Kiro/pull/7')
+      .toBe('https://github.com/laqaer/junction/pull/7')
 
     release(response())
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Detail title'))
@@ -536,7 +536,7 @@ describe('PrDetail — refresh, copy, and the AI summary', () => {
 
     await openOverflow()
     await userEvent.click(screen.getByRole('menuitem', { name: /copy link/i }))
-    expect(writeText).toHaveBeenCalledWith('https://github.com/kirodotdev/Kiro/pull/7#detail')
+    expect(writeText).toHaveBeenCalledWith('https://github.com/laqaer/junction/pull/7#detail')
     // The item stays put and relabels — a select that closed the menu would take
     // the confirmation off screen the instant it was earned.
     const copied = await screen.findByRole('menuitem', { name: 'Link copied' })
@@ -562,7 +562,7 @@ describe('PrDetail — refresh, copy, and the AI summary', () => {
     // changes carries a URL this row no longer points at.
     view.rerender(
       <QueryClientProvider client={view.qc}>
-        <PrDetail pull={{ ...ROW, number: 8, url: 'https://github.com/kirodotdev/Kiro/pull/8' }} />
+        <PrDetail pull={{ ...ROW, number: 8, url: 'https://github.com/laqaer/junction/pull/8' }} />
       </QueryClientProvider>,
     )
     await waitFor(() => expect(api.pullDetail).toHaveBeenCalledTimes(2))

@@ -24,7 +24,7 @@ from aiohttp import web
 
 from junction.context import _neutralize_structural_markers
 from junction.dashboard.chat_runner import _run_chat
-from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+from junction.dashboard.harness_readiness import reject_if_harness_unverified
 from junction.dashboard.state import DashboardState, _normalize_slot_key
 from junction.dashboard.turn_dispatch import chat_turn_timeout_secs
 from junction.security import redact_credentials, redact_exfiltration_urls
@@ -134,14 +134,14 @@ async def api_completions(request: web.Request) -> web.StreamResponse:
     # HTTP 200 with empty content — an SDK client cannot tell that apart from a
     # model that legitimately said nothing. Fail closed until this endpoint
     # translates AcpAuthRequired into an OpenAI-shaped error.
-    blocked = await reject_if_kiro_unverified(request)
+    blocked = await reject_if_harness_unverified(request)
     if blocked is not None:
         return web.json_response(
             {
                 "error": {
-                    "message": "Kiro CLI setup or sign-in is required before starting a session.",
+                    "message": "Harness setup or sign-in is required before starting a session.",
                     "type": "service_unavailable_error",
-                    "code": "kiro_prerequisite_required",
+                    "code": "harness_prerequisite_required",
                 }
             },
             status=503,

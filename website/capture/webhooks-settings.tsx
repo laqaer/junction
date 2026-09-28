@@ -2,7 +2,7 @@
  * Isolated capture entry for the Settings → Webhooks panel.
  *
  * WHY ISOLATED: reaching /settings?tab=webhooks through the full SPA needs a live
- * gateway plus a dashboard credential — without one the shell renders the Kiro CLI
+ * gateway plus a dashboard credential — without one the shell renders the CLI
  * prerequisite gate instead of Settings, which is worse evidence than none. This
  * mounts the REAL WebhooksPanel against the REAL stylesheet and theme tokens, with
  * a server snapshot seeded into the same ['webhooks', 'settings-summary'] query key

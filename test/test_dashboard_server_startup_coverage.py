@@ -201,7 +201,7 @@ def _neutralise_outside_process_work(monkeypatch) -> dict[str, Any]:
     effect AUTOSDE ``no-test-side-effects`` is blocking on.
     """
     import junction.apps.dev_mode as dev_mode
-    import junction.kiro_prerequisite as kiro_prereq
+    import junction.harness_prerequisite as kiro_prereq
 
     spies: dict[str, Any] = {
         # Spawns a real backend process per enabled app.
@@ -220,8 +220,8 @@ def _neutralise_outside_process_work(monkeypatch) -> dict[str, Any]:
     # Probes Kiro readiness by spawning sandboxed CLI subprocesses.
     prereq = MagicMock()
     prereq.close = AsyncMock()
-    monkeypatch.setattr(kiro_prereq, "KiroPrerequisiteService", MagicMock(return_value=prereq))
-    spies["kiro_prerequisite"] = prereq
+    monkeypatch.setattr(kiro_prereq, "HarnessPrerequisiteService", MagicMock(return_value=prereq))
+    spies["harness_prerequisite"] = prereq
 
     # A filesystem watcher on the apps tree.
     monkeypatch.setattr(dev_mode, "init_dev_mode_watcher", AsyncMock())
@@ -430,7 +430,7 @@ class TestStartDashboardWiring:
             "_prevent_sleep_shutdown",
             "_status_sink_shutdown",
             "_contrib_shutdown",
-            "_kiro_prerequisite_shutdown",
+            "_harness_prerequisite_shutdown",
             "_watchdog_shutdown",
             "_unlink_unix_socket",
         )

@@ -1,4 +1,4 @@
-"""Tests for junction.dashboard.handlers.kiro_usage_api — the direct RTS
+"""Tests for junction.dashboard.handlers.harness_usage_api — the direct RTS
 GetUsageLimits client that surfaces real Kiro credit usage/overage.
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import junction.dashboard.handlers.kiro_usage_api as api
+import junction.dashboard.handlers.harness_usage_api as api
 
 
 def _resp(status: int, body: object) -> MagicMock:
@@ -219,7 +219,7 @@ class TestLoadBearerToken:
 
         def fake_read(read_id):
             return (json.dumps({"accessToken": "tok-abc", "expiresAt": future}).encode()
-                    if read_id == "kiro_usage_api.sso_token_cli" else None)
+                    if read_id == "harness_usage_api.sso_token_cli" else None)
         with patch("junction.hooks.safe_read_file_internal", side_effect=fake_read), \
              patch.object(api, "_CLI_SQLITE_DBS", ()), \
              patch.object(api, "_OTHER_SQLITE_DBS", ()):
@@ -319,7 +319,7 @@ class TestLoadBearerToken:
         # bypass of the SEL-audit surface, and callers fail closed on it.
         from junction import hooks
         assert hooks.emit_internal_read_audit("rogue.read_id", "success") is False
-        assert "kiro_usage_api.sqlite_token" in hooks._AUDIT_ONLY_READ_IDS
+        assert "harness_usage_api.sqlite_token" in hooks._AUDIT_ONLY_READ_IDS
 
     def test_sqlite_oserror_fails_closed(self, tmp_path):
         # An OSError from db.exists() (e.g. permission-denied parent dir) is not

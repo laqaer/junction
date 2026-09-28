@@ -320,8 +320,8 @@ class TestChatSlotContinue:
         install reports ``AcpAuthRequired`` in the transcript. The gate that used
         to sit here authorized on a re-probe of ``kiro-cli`` whose TIMEOUT reads as
         signed-out, so on a host with a slow probe every press answered 503
-        ``kiro_prerequisite_required`` while typing the same request by hand
-        worked. The service is wired both ways ``kiro_readiness._service`` resolves
+        ``harness_prerequisite_required`` while typing the same request by hand
+        worked. The service is wired both ways ``harness_readiness._service`` resolves
         it, so re-adding the gate fails here rather than in production.
         """
         service = MagicMock()
@@ -330,9 +330,9 @@ class TestChatSlotContinue:
         slot = _ChatSlot("s")
         slot.append("user", "do the thing", "msg msg-u")
         state = _mock_state(slot)
-        state.kiro_prerequisite_service = service
+        state.harness_prerequisite_service = service
         app = _make_app(state)
-        app["kiro_prerequisite_service"] = service
+        app["harness_prerequisite_service"] = service
         async with TestClient(TestServer(app)) as client:
             resp = await client.post("/api/chat/slots/s/continue")
             assert resp.status == 200, await resp.text()

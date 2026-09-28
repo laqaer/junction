@@ -2607,7 +2607,7 @@ def safe_read_prefix(raw: str, n: int) -> bytes | None:
 # so agent file tools cannot reach them. This is the sanctioned fixed-path
 # internal case the rule exempts, not a weakening of the keystone.
 _INTERNAL_READ_ALLOWLIST: dict[str, str] = {
-    # ``junction.dashboard.handlers.kiro_usage_api`` reads the kiro-cli SSO
+    # ``junction.dashboard.handlers.harness_usage_api`` reads the kiro-cli SSO
     # access token to authenticate a single ``GetUsageLimits`` call to the
     # hardcoded CodeWhisperer RTS endpoint
     # (``codewhisperer.us-east-1.amazonaws.com``) that powers the dashboard
@@ -2620,8 +2620,8 @@ _INTERNAL_READ_ALLOWLIST: dict[str, str] = {
     # any agent loop. (On Linux the live token lives in the kiro-cli SQLite
     # store, which is not a sensitive path; these JSON entries cover the IDE /
     # older kiro-cli cache layout.)
-    "kiro_usage_api.sso_token_cli": ".aws/sso/cache/kiro-auth-token-cli.json",
-    "kiro_usage_api.sso_token_ide": ".aws/sso/cache/kiro-auth-token.json",
+    "harness_usage_api.sso_token_cli": ".aws/sso/cache/kiro-auth-token-cli.json",
+    "harness_usage_api.sso_token_ide": ".aws/sso/cache/kiro-auth-token.json",
 }
 
 
@@ -2643,7 +2643,7 @@ def register_internal_read_path(read_id: str, rel_path: str) -> None:
 
     * ``read_id`` must be a non-empty string; re-registering an existing key with
       a DIFFERENT path raises (a companion cannot silently repoint a core entry
-      such as ``kiro_usage_api.sso_token_cli`` at an attacker file).  Re-
+      such as ``harness_usage_api.sso_token_cli`` at an attacker file).  Re-
       registering the same key with the same path is idempotent.
     * ``rel_path`` must be a relative path with no ``..`` component and no
       absolute/anchor part, so the resolved target can only ever live under
@@ -2828,11 +2828,11 @@ def _emit_internal_read_audit(read_id: str, outcome: str) -> bool:
 # ``_INTERNAL_READ_ALLOWLIST``.
 _AUDIT_ONLY_READ_IDS: dict[str, str] = {
     # kiro-cli / amazon-q SQLite auth stores: live SSO bearer token on Linux.
-    # Read read-only by ``junction.dashboard.handlers.kiro_usage_api`` for the
-    # single hardcoded GetUsageLimits call (see the kiro_usage_api.sso_token_*
+    # Read read-only by ``junction.dashboard.handlers.harness_usage_api`` for the
+    # single hardcoded GetUsageLimits call (see the harness_usage_api.sso_token_*
     # justification in _INTERNAL_READ_ALLOWLIST -- identical posture, different
     # storage layout).
-    "kiro_usage_api.sqlite_token": ".local/share/{kiro-cli,amazon-q}/data.sqlite3",
+    "harness_usage_api.sqlite_token": ".local/share/{kiro-cli,amazon-q}/data.sqlite3",
     # Same store, read by ``junction.kiro_cli.signed_in_via_idc`` to answer one
     # question for the enterprise MCP-governance diagnostic: did this identity come
     # from Identity Center? Only the two non-secret ``auth.idc.*`` marker rows are
@@ -2840,7 +2840,7 @@ _AUDIT_ONLY_READ_IDS: dict[str, str] = {
     # no value is returned. The audit is owed regardless, because the file holds
     # live credential material whatever this reader touches.
     "kiro_cli.idc_identity_probe": ".local/share/kiro-cli/data.sqlite3",
-    # Same store, read by ``junction.kiro_prerequisite.identity_fingerprint`` to
+    # Same store, read by ``junction.harness_prerequisite.identity_fingerprint`` to
     # answer one question on the turn path: does the account signed in NOW differ
     # from the one the running kiro-cli children loaded? Only stable account
     # claims participate (start_url, region, oauth_flow, scopes, client_id) plus
@@ -2850,7 +2850,7 @@ _AUDIT_ONLY_READ_IDS: dict[str, str] = {
     # by an ALLOWLIST, so a field added to the blob later cannot join by default.
     # Audited on the observation a caller acts on rather than per poll -- the
     # reader holds a short cache -- for the same reason as the mint entry below.
-    "kiro_prerequisite.identity_fingerprint": ".local/share/kiro-cli/data.sqlite3",
+    "harness_prerequisite.identity_fingerprint": ".local/share/kiro-cli/data.sqlite3",
     # Class 2. kiro-cli's MCP OAuth artifact cache under ``~/.aws/sso/cache``.
     # ``junction.mcp_grant.grant_present`` STATS the paired
     # ``<sha256(mcp_url)>.token.json`` / ``.registration.json`` artifacts to learn

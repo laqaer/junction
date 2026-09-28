@@ -133,7 +133,7 @@ try {
 
     const body = await page.locator('body').innerText()
     const expect = (cond, msg) => { if (!cond) failures.push(`[${label}] ${msg}`) }
-    expect(/Indexing uses Kiro requests/.test(body), 'standing cost notice missing')
+    expect(/Indexing uses agent requests/.test(body), 'standing cost notice missing')
     // The gradual-charge caveat must be visible text, not a title attribute.
     expect(/spread out over time/.test(body), 'gradual-charge caveat not in visible copy')
     // 300 done + 18 skipped resolved; the 2 failures are the remaining gap.
@@ -141,11 +141,11 @@ try {
     expect(/2 failed/.test(body), 'failure count missing')
     // Two significant figures, not the raw 11,460 -- the estimate must not render a
     // precision the leading ~ disclaims.
-    expect(/~11K Kiro requests left/.test(body), 'rounded remaining figure missing')
+    expect(/~11K agent requests left/.test(body), 'rounded remaining figure missing')
     expect(!/11,460/.test(body), 'raw unrounded estimate still rendered')
     expect(/84\/84 files indexed/.test(body), 'finished source progress missing')
     // Exactly one source is still outstanding, so exactly one remaining figure.
-    expect((body.match(/Kiro requests left/g) || []).length === 1,
+    expect((body.match(/agent requests left/g) || []).length === 1,
       'remaining figure shown for a source with nothing outstanding')
 
     // The figures widen an already-crowded meta row, so assert geometry rather than

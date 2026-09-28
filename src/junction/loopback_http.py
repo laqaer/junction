@@ -20,7 +20,7 @@ Two things that look like fixes and are not:
   of the two: it looks like coverage.
 
 Redirects are refused for the same reason the external bearer-token path in
-``dashboard/handlers/kiro_usage_api.py`` refuses them -- a 3xx from the gateway
+``dashboard/handlers/harness_usage_api.py`` refuses them -- a 3xx from the gateway
 would replay the secret to whatever host ``Location`` names.
 
 This module is a **stdlib-only leaf** and must stay one: it imports only
@@ -60,7 +60,7 @@ def build_loopback_opener() -> urllib.request.OpenerDirector:
     displaces one of its default handlers only when a supplied handler
     *subclasses* that default, and an empty ``ProxyHandler`` registers no
     ``<scheme>_open`` method at all -- so omitting it leaves the env-derived
-    proxy live. This is exactly why ``kiro_usage_api._build_opener`` still
+    proxy live. This is exactly why ``harness_usage_api._build_opener`` still
     proxies (correctly, for its external target) despite looking similar.
     """
     return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())

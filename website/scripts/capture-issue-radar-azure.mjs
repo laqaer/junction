@@ -48,7 +48,7 @@ const json = (route, body, status = 200) =>
 // `owner` carries {organization}/{project} and `repo` is the git repository —
 // the same overloading GitLab already applies to nested group paths.
 const AZ = { owner: 'contoso/Widgets', repo: 'widget-service', provider: 'azure', host: 'dev.azure.com' }
-const GH = { owner: 'kirodotdev', repo: 'Kiro', provider: 'github', host: 'github.com' }
+const GH = { owner: 'laqaer', repo: 'junction', provider: 'github', host: 'github.com' }
 
 // push/triage false is what azure_client._permissions returns, so the rail's
 // read-only tag is part of the frame rather than an accident of the fixture.
@@ -112,7 +112,7 @@ await page.route('**/api/**', async route => {
   const isAz = ref === AZ
   // ── boot endpoints ──
   if (path === '/api/auth/me') return json(route, { user: 'owner', app: '' })
-  if (path === '/api/kiro-prerequisite') return json(route, { platform: 'gateway', installed: true, authenticated: true, ready: true, initial_setup_complete: true, can_auto_install: false, can_login: true, repair_required: false, docs_url: '', setup_allowed: false, operation: { status: 'idle', message: '' } })
+  if (path === '/api/harness-prerequisite') return json(route, { platform: 'gateway', installed: true, authenticated: true, ready: true, initial_setup_complete: true, can_auto_install: false, can_login: true, repair_required: false, docs_url: '', setup_allowed: false, operation: { status: 'idle', message: '' } })
   if (path === '/api/themes') return json(route, { themes: [], installed: [] })
   if (path === '/api/theme/boot') return json(route, { mode: 'light', theme: '' })
   if (path === '/api/dashboard/branding') return json(route, { bot_name: 'Junction', avatar: '' })

@@ -118,7 +118,7 @@ async function main() {
     // The prerequisite gate wraps the whole shell and reads
     // `status.operation.status`, so the array catch-all below crashes it and
     // nothing renders at all. Answer "ready, idle".
-    if (path.startsWith('/api/kiro-prerequisite')) {
+    if (path.startsWith('/api/harness-prerequisite')) {
       return json(route, {
         platform: 'linux', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

@@ -133,7 +133,7 @@ describe('McpTab needs_auth status', () => {
     // Says who holds the token and that a working server is still working —
     // the two facts that make the badge honest instead of alarming.
     expect(hint).toContain('atlassian')
-    expect(hint).toContain('Kiro CLI')
+    expect(hint).toContain('CLI')
     expect(hint).toMatch(/cannot see the authorization/)
   })
 
@@ -197,7 +197,7 @@ describe('McpTab needs_auth status', () => {
   })
 
   /**
-   * The sign-in prompt is raised by Kiro CLI while a session brings its MCP
+   * The sign-in prompt is raised by CLI while a session brings its MCP
    * servers up, which happens on a turn. Nothing the dashboard can call from
    * this panel starts that, so the row states where the sign-in happens rather
    * than offering a control that cannot perform it.

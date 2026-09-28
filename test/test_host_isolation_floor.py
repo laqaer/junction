@@ -440,10 +440,10 @@ class TestTheSharedKiroPathRatchet:
         # comment records that an entry either equals the home-anchored path inside
         # `_SENSITIVE_HOME_DIRS`' fence or falls outside it and must not be trusted --
         # so a redirected value would manufacture a forgeable "trusted" path. They are
-        # only ever READ, and `test_kiro_usage_api.py` stubs the tuples per test, which
+        # only ever READ, and `test_harness_usage_api.py` stubs the tuples per test, which
         # is the right seam: stub the READER, never move the anchor.
-        ("junction/dashboard/handlers/kiro_usage_api.py", "_CLI_SQLITE_DBS"): "security anchor: must name the REAL home",
-        ("junction/dashboard/handlers/kiro_usage_api.py", "_OTHER_SQLITE_DBS"): "security anchor: must name the REAL home",
+        ("junction/dashboard/handlers/harness_usage_api.py", "_CLI_SQLITE_DBS"): "security anchor: must name the REAL home",
+        ("junction/dashboard/handlers/harness_usage_api.py", "_OTHER_SQLITE_DBS"): "security anchor: must name the REAL home",
         # An ALLOW-LIST root, so the same rule applies from the other direction: the
         # file browser's first permitted root is the operator's real home BY DESIGN,
         # since that is the directory the user is entitled to browse. Redirecting it

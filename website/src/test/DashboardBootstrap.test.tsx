@@ -10,7 +10,7 @@ vi.mock('../hooks/useRefreshScheduler', () => ({
   useRefreshScheduler: () => refreshScheduler(),
 }))
 
-vi.mock('../components/KiroPrerequisiteGate', () => ({
+vi.mock('../components/HarnessPrerequisiteGate', () => ({
   default: () => <div>Setup gate</div>,
 }))
 

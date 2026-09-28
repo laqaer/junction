@@ -4802,7 +4802,7 @@ _SENSITIVE_HOME_DIRS: list[str] = [
     # jar) open it directly + SEL-audited, not through this shared gate.
     ".midway",
     # kiro-cli / amazon-q auth stores hold the live SSO bearer token, read by
-    # the dashboard credit pill via the audited kiro_usage_api._token_from_sqlite
+    # the dashboard credit pill via the audited harness_usage_api._token_from_sqlite
     # helper. Classify the WHOLE data directories (not just data.sqlite3) so the
     # WAL/SHM/journal sidecars — which can hold the same credential bytes — are
     # covered too. Agent file tools must not read them through the shared gate.
@@ -5581,7 +5581,7 @@ def _build_sensitive_regex() -> re.Pattern[str]:
     # fenced store without the ``AppData\Local`` text the home-anchored branch
     # requires. Without this branch the shell tier would not cover the very
     # spelling that names the CURRENT kiro-cli store on Windows, while the
-    # tuple in ``kiro_usage_api._CLI_SQLITE_DBS`` treats that store as a trust
+    # tuple in ``harness_usage_api._CLI_SQLITE_DBS`` treats that store as a trust
     # anchor — the fence the trust claim rests on must hold at this tier too.
     localappdata_var = (
         r"(?:%LOCALAPPDATA(?::[^%\s]*)?%"

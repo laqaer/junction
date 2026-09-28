@@ -1,5 +1,5 @@
 /**
- * Screenshot harness for the top-bar Kiro credit segment's three states.
+ * Screenshot harness for the top-bar Harness credit segment's three states.
  *
  * Runs a REAL built SPA behind the shared gateway-free static server + API stub,
  * so the segment renders exactly as it does in production with only the network

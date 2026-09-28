@@ -2760,19 +2760,19 @@ async def start_dashboard(
     # ``setup_tunnel`` assigns it further below, and this is still well before
     # ``runner.setup()`` freezes the signal lists. See ``_wire_tunnel_shutdown``.
     _wire_tunnel_shutdown(app, state)
-    from junction.kiro_prerequisite import KiroPrerequisiteService
+    from junction.harness_prerequisite import HarnessPrerequisiteService
 
-    app["kiro_prerequisite_service"] = await asyncio.to_thread(
-        KiroPrerequisiteService,
+    app["harness_prerequisite_service"] = await asyncio.to_thread(
+        HarnessPrerequisiteService,
         assume_ready=assume_kiro_ready,
     )
-    state.kiro_prerequisite_service = app["kiro_prerequisite_service"]
+    state.harness_prerequisite_service = app["harness_prerequisite_service"]
     # Probe Kiro readiness during boot rather than on the dashboard's first
     # status request: the cold probe spawns sandboxed CLI subprocesses and can
     # take seconds, which is what made the first-run setup chrome visible to
     # returning users. Fire-and-forget — a warm-up is never a boot dependency,
     # and the task is cancelled by the service's shutdown hook.
-    app["kiro_prerequisite_service"].warm_up()
+    app["harness_prerequisite_service"].warm_up()
     state.load_folders()
     # Off-loop: a large cron_folders.json would otherwise block the event
     # loop with synchronous file I/O + JSON parsing during startup.
@@ -3223,10 +3223,10 @@ async def start_dashboard(
     # created after runner.setup by _arm_prevent_sleep_poll and released here.
     _register_prevent_sleep_shutdown(app, state)
 
-    async def _kiro_prerequisite_shutdown(app_: web.Application) -> None:
-        await app_["kiro_prerequisite_service"].close()
+    async def _harness_prerequisite_shutdown(app_: web.Application) -> None:
+        await app_["harness_prerequisite_service"].close()
 
-    app.on_cleanup.append(_kiro_prerequisite_shutdown)
+    app.on_cleanup.append(_harness_prerequisite_shutdown)
 
     # ── Instances (multi-instance management) ────────────────────────────────
     # Register the opt-in instances startup/cleanup hooks HERE, before
@@ -3750,19 +3750,19 @@ async def start_api_server(
     from junction.slack.handler import load_voice_reply_config
 
     await asyncio.to_thread(load_voice_reply_config)
-    from junction.kiro_prerequisite import KiroPrerequisiteService
+    from junction.harness_prerequisite import HarnessPrerequisiteService
 
-    app["kiro_prerequisite_service"] = await asyncio.to_thread(
-        KiroPrerequisiteService,
+    app["harness_prerequisite_service"] = await asyncio.to_thread(
+        HarnessPrerequisiteService,
         assume_ready=assume_kiro_ready,
     )
-    state.kiro_prerequisite_service = app["kiro_prerequisite_service"]
+    state.harness_prerequisite_service = app["harness_prerequisite_service"]
     # Probe Kiro readiness during boot rather than on the dashboard's first
     # status request: the cold probe spawns sandboxed CLI subprocesses and can
     # take seconds, which is what made the first-run setup chrome visible to
     # returning users. Fire-and-forget — a warm-up is never a boot dependency,
     # and the task is cancelled by the service's shutdown hook.
-    app["kiro_prerequisite_service"].warm_up()
+    app["harness_prerequisite_service"].warm_up()
     state.load_folders()
     # Off-loop: a large cron_folders.json would otherwise block the event
     # loop with synchronous file I/O + JSON parsing during startup.
@@ -3895,10 +3895,10 @@ async def start_api_server(
     # the deploy_artifact MCP tool 404s in Slack-only/headless mode.
     _register_deploy_routes(app)
 
-    async def _kiro_prerequisite_shutdown(app_: web.Application) -> None:
-        await app_["kiro_prerequisite_service"].close()
+    async def _harness_prerequisite_shutdown(app_: web.Application) -> None:
+        await app_["harness_prerequisite_service"].close()
 
-    app.on_cleanup.append(_kiro_prerequisite_shutdown)
+    app.on_cleanup.append(_harness_prerequisite_shutdown)
 
     # Prevent-sleep shutdown hook — registered before runner.setup freezes the
     # signal lists; the poll itself is armed after the port binds (below). This

@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from junction.dashboard.openai_compat import _flatten_messages, _make_id, api_completions
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 
-class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
+class _ReadyHarnessPrerequisiteService(HarnessPrerequisiteService):
     async def session_ready(self) -> bool:
         return True
 
@@ -22,7 +22,7 @@ class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
         return True
 
 
-_READY_KIRO_PREREQUISITE = object.__new__(_ReadyKiroPrerequisiteService)
+_READY_KIRO_PREREQUISITE = object.__new__(_ReadyHarnessPrerequisiteService)
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ def _make_request(body: dict, state, app: str = ""):
     request.json = AsyncMock(return_value=body)
     request.app = {
         "state": state,
-        "kiro_prerequisite_service": _READY_KIRO_PREREQUISITE,
+        "harness_prerequisite_service": _READY_KIRO_PREREQUISITE,
     }
     request.get = MagicMock(side_effect=lambda k, d="": app if k == "app" else d)
     request.remote = "127.0.0.1"
@@ -156,7 +156,7 @@ class TestApiCompletionsBlocking:
             {"model": "kiro", "messages": [{"role": "user", "content": "hello"}]},
             state,
         )
-        service = KiroPrerequisiteService(
+        service = HarnessPrerequisiteService(
             platform_name="linux",
             environ={"HOME": str(tmp_path), "PATH": ""},
             home=tmp_path,
@@ -164,13 +164,13 @@ class TestApiCompletionsBlocking:
         )
         service._has_probed = True
         assert await service.session_ready() is False
-        request.app["kiro_prerequisite_service"] = service
+        request.app["harness_prerequisite_service"] = service
 
         response = await api_completions(request)
         body = json.loads(response.text)
 
         assert response.status == 503
-        assert body["error"]["code"] == "kiro_prerequisite_required"
+        assert body["error"]["code"] == "harness_prerequisite_required"
         assert body["error"]["type"] == "service_unavailable_error"
         assert isinstance(body["error"]["message"], str)
 
@@ -215,7 +215,7 @@ class TestApiCompletionsBlocking:
         request.json = AsyncMock(side_effect=ValueError("bad json"))
         request.app = {
             "state": state,
-            "kiro_prerequisite_service": _READY_KIRO_PREREQUISITE,
+            "harness_prerequisite_service": _READY_KIRO_PREREQUISITE,
         }
 
         resp = await api_completions(request)

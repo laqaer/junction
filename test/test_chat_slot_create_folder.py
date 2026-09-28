@@ -27,7 +27,7 @@ from aiohttp.test_utils import TestClient, TestServer
 # Bare import, like every sibling test module: `test/` is not a package, and
 # `test` is a CPython STDLIB package name — `from test.chat_test_helpers import`
 # resolves to the stdlib `test` and fails with ModuleNotFoundError on CI.
-from chat_test_helpers import _make_ready_kiro_prerequisite
+from chat_test_helpers import _make_ready_harness_prerequisite
 
 from junction.dashboard.state import _SLOTS_BROADCAST_INTERVAL_S, DashboardState
 from junction.history import ConversationLog
@@ -47,7 +47,7 @@ def _make_state(tmp_path):
         start_time=0.0,
         conversation_log=ConversationLog(base_dir=tmp_path),
     )
-    state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+    state.harness_prerequisite_service = _make_ready_harness_prerequisite()
     state._folders.append({"id": FOLDER_ID, "name": "Design Review", "order": 0})
     return state
 

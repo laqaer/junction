@@ -949,7 +949,7 @@ class TestOriginPersistence:
     def _state(tmp_path):
         from unittest.mock import AsyncMock
 
-        from chat_test_helpers import _make_ready_kiro_prerequisite
+        from chat_test_helpers import _make_ready_harness_prerequisite
 
         from junction.dashboard.state import DashboardState
         from junction.history import ConversationLog
@@ -967,7 +967,7 @@ class TestOriginPersistence:
             start_time=0.0,
             conversation_log=ConversationLog(base_dir=tmp_path),
         )
-        state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+        state.harness_prerequisite_service = _make_ready_harness_prerequisite()
         return state
 
     def test_slot_has_origin_attribute(self):
@@ -2876,7 +2876,7 @@ class TestApprovalResolvedCarriesSlot:
     def _state():
         from unittest.mock import AsyncMock
 
-        from chat_test_helpers import _make_ready_kiro_prerequisite
+        from chat_test_helpers import _make_ready_harness_prerequisite
 
         from junction.dashboard.state import DashboardState
 
@@ -2892,7 +2892,7 @@ class TestApprovalResolvedCarriesSlot:
             start_time=0.0,
             conversation_log=MagicMock(),
         )
-        state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+        state.harness_prerequisite_service = _make_ready_harness_prerequisite()
         return state
 
     def test_slot_level_resolution_carries_owning_slot(self):

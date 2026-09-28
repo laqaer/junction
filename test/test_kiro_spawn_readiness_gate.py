@@ -10,7 +10,7 @@ and an unusable dashboard.
 These tests pin the fix: both handlers consult the prerequisite readiness latch
 BEFORE resolving or spawning the binary, and return the shared 503 instead.
 
-The signed-out cases drive the REAL ``reject_if_kiro_unverified`` (never a
+The signed-out cases drive the REAL ``reject_if_harness_unverified`` (never a
 stubbed guard) and pin binary resolution to a fixed path, so a deleted or
 relocated gate must reach ``create_subprocess_exec`` — on a CI runner with no
 kiro-cli installed as much as on a developer machine that has one.
@@ -28,11 +28,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from chat_test_helpers import _make_ready_kiro_prerequisite
+from chat_test_helpers import _make_ready_harness_prerequisite
 
-from junction.dashboard import kiro_readiness
+from junction.dashboard import harness_readiness
 from junction.dashboard.handlers import agents, sessions
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 _RESOLVE_TARGET = "junction.acp.client._resolve_kiro_bin_for_spawn"
 _FAKE_KIRO_BIN = "/usr/bin/kiro-cli"
@@ -47,12 +47,12 @@ def _reset_refusal_warning():
     would see its refusal demoted to DEBUG, and the WARNING assertions would be
     passing or failing on test ORDER rather than on behaviour.
     """
-    kiro_readiness._clear_refusal_warning()
+    harness_readiness._clear_refusal_warning()
     yield
-    kiro_readiness._clear_refusal_warning()
+    harness_readiness._clear_refusal_warning()
 
 
-class _SignedOutKiroPrerequisiteService(KiroPrerequisiteService):
+class _SignedOutHarnessPrerequisiteService(HarnessPrerequisiteService):
     """Not-ready latch: the guard's ``isinstance`` check must still accept it."""
 
     async def session_ready(self) -> bool:
@@ -65,17 +65,17 @@ class _SignedOutKiroPrerequisiteService(KiroPrerequisiteService):
         return False
 
 
-def _make_signed_out_kiro_prerequisite() -> KiroPrerequisiteService:
+def _make_signed_out_harness_prerequisite() -> HarnessPrerequisiteService:
     """Return a filesystem-free NOT-ready prerequisite service."""
 
-    return object.__new__(_SignedOutKiroPrerequisiteService)
+    return object.__new__(_SignedOutHarnessPrerequisiteService)
 
 
-def _request(service: KiroPrerequisiteService) -> MagicMock:
+def _request(service: HarnessPrerequisiteService) -> MagicMock:
     """A request whose app carries *service* as the prerequisite latch.
 
-    ``reject_if_kiro_unverified`` reads ``app["kiro_prerequisite_service"]`` and
-    falls back to ``app["state"].kiro_prerequisite_service``; both are wired so
+    ``reject_if_harness_unverified`` reads ``app["harness_prerequisite_service"]`` and
+    falls back to ``app["state"].harness_prerequisite_service``; both are wired so
     the real guard runs either way. ``state`` also carries the background-task
     set ``api_sessions_usage`` uses, so a removed gate reaches the scheduling
     line instead of dying on an unrelated AttributeError.
@@ -83,9 +83,9 @@ def _request(service: KiroPrerequisiteService) -> MagicMock:
 
     tasks: set[object] = set()
     app: dict[str, object] = {
-        "kiro_prerequisite_service": service,
+        "harness_prerequisite_service": service,
         "state": SimpleNamespace(
-            kiro_prerequisite_service=service,
+            harness_prerequisite_service=service,
             _background_tasks=tasks,
         ),
     }
@@ -96,7 +96,7 @@ def _request(service: KiroPrerequisiteService) -> MagicMock:
 
 @pytest.mark.asyncio
 async def test_api_models_does_not_spawn_while_signed_out() -> None:
-    request = _request(_make_signed_out_kiro_prerequisite())
+    request = _request(_make_signed_out_harness_prerequisite())
     with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)) as resolve:
         with patch("asyncio.create_subprocess_exec", AsyncMock()) as spawn:
             resp = await agents.api_models(request)
@@ -107,7 +107,7 @@ async def test_api_models_does_not_spawn_while_signed_out() -> None:
     # so only ``assert_not_called`` proves the spawn was never reached.
     spawn.assert_not_called()
     assert resp.status == 503
-    assert json.loads(resp.body)["code"] == "kiro_prerequisite_required"
+    assert json.loads(resp.body)["code"] == "harness_prerequisite_required"
 
 
 @pytest.mark.asyncio
@@ -116,7 +116,7 @@ async def test_api_sessions_usage_does_not_schedule_fetch_while_signed_out(
 ) -> None:
     # Force the refresh branch live so a removed gate really schedules a fetch.
     monkeypatch.setattr(sessions, "_usage_cache_ts", 0.0)
-    request = _request(_make_signed_out_kiro_prerequisite())
+    request = _request(_make_signed_out_harness_prerequisite())
     with patch.object(sessions, "_fetch_usage_bg", AsyncMock()) as fetch:
         resp = await sessions.api_sessions_usage(request)
 
@@ -125,13 +125,13 @@ async def test_api_sessions_usage_does_not_schedule_fetch_while_signed_out(
     # even if the gate were moved below the scheduling line.
     fetch.assert_not_called()
     assert resp.status == 503
-    assert json.loads(resp.body)["code"] == "kiro_prerequisite_required"
+    assert json.loads(resp.body)["code"] == "harness_prerequisite_required"
 
 
 @pytest.mark.asyncio
 async def test_api_models_still_reaches_spawn_path_when_ready() -> None:
     """The gate must be a pure add — a ready gateway keeps its existing behavior."""
-    request = _request(_make_ready_kiro_prerequisite())
+    request = _request(_make_ready_harness_prerequisite())
     with patch(_RESOLVE_TARGET, AsyncMock(return_value="")) as resolve:
         resp = await agents.api_models(request)
 
@@ -153,10 +153,10 @@ async def test_refused_call_is_visible_in_the_log(
     healthy. When the gate refused silently that conclusion was exactly inverted,
     and it cost hours of misdiagnosis. An absent log line gets read as evidence.
     """
-    request = _request(_make_signed_out_kiro_prerequisite())
+    request = _request(_make_signed_out_harness_prerequisite())
     request.path = "/api/models"
 
-    with caplog.at_level("WARNING", logger="junction.dashboard.kiro_readiness"):
+    with caplog.at_level("WARNING", logger="junction.dashboard.harness_readiness"):
         with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
             resp = await agents.api_models(request)
 
@@ -164,34 +164,34 @@ async def test_refused_call_is_visible_in_the_log(
     refusals = [
         r
         for r in caplog.records
-        if r.name == "junction.dashboard.kiro_readiness" and r.levelname == "WARNING"
+        if r.name == "junction.dashboard.harness_readiness" and r.levelname == "WARNING"
     ]
     assert refusals, "the readiness gate refused a call without logging anything"
     message = refusals[0].getMessage()
     # The endpoint has to be IN the line: a grep for the path is how the reader
     # arrives, and a line that omits it does not answer the question they asked.
     assert "/api/models" in message
-    assert "kiro_prerequisite_required" in message
+    assert "harness_prerequisite_required" in message
 
 
 @pytest.mark.asyncio
 async def test_the_refusal_log_cannot_break_the_fail_closed_path() -> None:
     """The diagnostic must not add a failure mode to the branch it reports on.
 
-    ``reject_if_kiro_unverified`` is the fail-CLOSED gate, so anything on that
+    ``reject_if_harness_unverified`` is the fail-CLOSED gate, so anything on that
     branch has to survive a caller that is only request-LIKE — which is what
     ``test_missing_route_prerequisite_wiring_fails_closed`` exercises. Reading
     ``.path`` directly raises for such a caller and converts a correct 503 into a
     500. A silent refusal is the defect this logging removes; an exception here is
     worse than the silence it replaced.
     """
-    request = SimpleNamespace(app={"kiro_prerequisite_service": None})
+    request = SimpleNamespace(app={"harness_prerequisite_service": None})
 
-    resp = await kiro_readiness.reject_if_kiro_unverified(request)  # type: ignore[arg-type]
+    resp = await harness_readiness.reject_if_harness_unverified(request)  # type: ignore[arg-type]
 
     assert resp is not None
     assert resp.status == 503
-    assert json.loads(resp.body)["code"] == "kiro_prerequisite_required"
+    assert json.loads(resp.body)["code"] == "harness_prerequisite_required"
 
 
 @pytest.mark.asyncio
@@ -202,13 +202,13 @@ async def test_a_non_str_path_does_not_reach_the_formatter() -> None:
     and is the wrong type, which a plain regex substitution would raise on. Both
     have to degrade, because both are on the fail-closed branch.
     """
-    request = _request(_make_signed_out_kiro_prerequisite())  # MagicMock: .path is a mock
+    request = _request(_make_signed_out_harness_prerequisite())  # MagicMock: .path is a mock
 
     with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
         resp = await agents.api_models(request)
 
     assert resp.status == 503
-    assert kiro_readiness._log_safe_path(request) == "<unknown path>"
+    assert harness_readiness._log_safe_path(request) == "<unknown path>"
 
 
 @pytest.mark.asyncio
@@ -228,15 +228,15 @@ async def test_a_newline_in_the_path_cannot_forge_a_log_line(
     catching.
     """
     forged = "/api/chat/slots/a\nWARNING forged line/regenerate"
-    request = _request(_make_signed_out_kiro_prerequisite())
+    request = _request(_make_signed_out_harness_prerequisite())
     request.path = forged
 
-    with caplog.at_level("WARNING", logger="junction.dashboard.kiro_readiness"):
+    with caplog.at_level("WARNING", logger="junction.dashboard.harness_readiness"):
         with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
             resp = await agents.api_models(request)
 
     assert resp.status == 503
-    records = [r for r in caplog.records if r.name == "junction.dashboard.kiro_readiness"]
+    records = [r for r in caplog.records if r.name == "junction.dashboard.harness_readiness"]
     assert records, "the gate refused without logging anything"
     message = records[0].getMessage()
     # ``splitlines`` is the property that matters, not an absence of two literals:
@@ -269,15 +269,15 @@ async def test_unicode_line_separators_cannot_forge_a_log_line(
     re-splits the log does see a forged line. A guard scoped to C0+DEL let every
     one of them through.
     """
-    request = _request(_make_signed_out_kiro_prerequisite())
+    request = _request(_make_signed_out_harness_prerequisite())
     request.path = f"/api/chat/slots/a{encoded}WARNING forged/regenerate"
 
-    with caplog.at_level("WARNING", logger="junction.dashboard.kiro_readiness"):
+    with caplog.at_level("WARNING", logger="junction.dashboard.harness_readiness"):
         with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
             resp = await agents.api_models(request)
 
     assert resp.status == 503
-    records = [r for r in caplog.records if r.name == "junction.dashboard.kiro_readiness"]
+    records = [r for r in caplog.records if r.name == "junction.dashboard.harness_readiness"]
     assert records, "the gate refused without logging anything"
     message = records[0].getMessage()
     assert len(message.splitlines()) == 1
@@ -290,7 +290,7 @@ def test_every_control_byte_is_neutralised_not_just_crlf() -> None:
     An ESC byte reaching a terminal that is tailing the log is the same defect
     wearing different clothes.
     """
-    rendered = kiro_readiness._log_safe_path(SimpleNamespace(path="/api/a\x1b[2Kb\x00c\x7fd"))
+    rendered = harness_readiness._log_safe_path(SimpleNamespace(path="/api/a\x1b[2Kb\x00c\x7fd"))
 
     assert rendered == "'/api/a\\x1b[2Kb\\x00c\\x7fd'"
 
@@ -304,7 +304,7 @@ def test_invisible_formatting_characters_are_neutralised() -> None:
     would miss both — which is why the class is the ``Cf`` CATEGORY rather than a
     list of the characters someone happened to think of.
     """
-    rendered = kiro_readiness._log_safe_path(SimpleNamespace(path="/api/a\u202eb\u200bc"))
+    rendered = harness_readiness._log_safe_path(SimpleNamespace(path="/api/a\u202eb\u200bc"))
 
     assert rendered == "'/api/a\\u202eb\\u200bc'"
 
@@ -318,7 +318,7 @@ def test_categories_a_hand_written_set_would_miss() -> None:
     ``Cn``. ``str.isprintable()`` rejects the lot, so ``repr`` covers them without
     anyone having to remember to extend a list.
     """
-    rendered = kiro_readiness._log_safe_path(
+    rendered = harness_readiness._log_safe_path(
         SimpleNamespace(path="/api/a\u00a0b\u3000c\ue000d\u0378e")
     )
 
@@ -334,7 +334,7 @@ def test_a_lone_surrogate_still_produces_an_encodable_line() -> None:
     "the log must not lie about what happened" must not be able to delete the
     record.
     """
-    rendered = kiro_readiness._log_safe_path(SimpleNamespace(path="/api/a\ud800b"))
+    rendered = harness_readiness._log_safe_path(SimpleNamespace(path="/api/a\ud800b"))
 
     assert rendered.encode("utf-8")
     assert "\\ud800" in rendered
@@ -347,7 +347,7 @@ def test_visible_non_ascii_is_left_alone() -> None:
     would make a legitimate path unreadable for exactly the operators who most need
     to read it.
     """
-    rendered = kiro_readiness._log_safe_path(SimpleNamespace(path="/api/文档/café"))
+    rendered = harness_readiness._log_safe_path(SimpleNamespace(path="/api/文档/café"))
 
     assert rendered == "'/api/文档/café'"
 
@@ -363,12 +363,12 @@ async def test_a_polled_outage_warns_once_not_once_per_request() -> None:
     which churns the whole ring every ~1.8 hours and evicts the diagnostics an
     operator opened the log to read.
     """
-    request = _request(_make_signed_out_kiro_prerequisite())
+    request = _request(_make_signed_out_harness_prerequisite())
     request.path = "/api/models"
 
     with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
-        with patch.object(kiro_readiness.logger, "warning") as warn:
-            with patch.object(kiro_readiness.logger, "debug") as dbg:
+        with patch.object(harness_readiness.logger, "warning") as warn:
+            with patch.object(harness_readiness.logger, "debug") as dbg:
                 for _ in range(25):
                     resp = await agents.api_models(request)
 
@@ -388,18 +388,18 @@ async def test_a_later_outage_warns_again_after_recovery() -> None:
     original defect back in a subtler form. This is why
     ``mcp_discovery._clear_unresolvable`` exists next to its warn-once.
     """
-    signed_out = _request(_make_signed_out_kiro_prerequisite())
+    signed_out = _request(_make_signed_out_harness_prerequisite())
     signed_out.path = "/api/models"
-    ready = _request(_make_ready_kiro_prerequisite())
+    ready = _request(_make_ready_harness_prerequisite())
     ready.path = "/api/models"
 
     with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
-        with patch.object(kiro_readiness.logger, "warning") as warn:
+        with patch.object(harness_readiness.logger, "warning") as warn:
             await agents.api_models(signed_out)  # outage 1 -> WARNING
             await agents.api_models(signed_out)  # same outage -> DEBUG
             assert warn.call_count == 1
 
-            await kiro_readiness.reject_if_kiro_unverified(ready)  # recovered
+            await harness_readiness.reject_if_harness_unverified(ready)  # recovered
             await agents.api_models(signed_out)  # outage 2 -> WARNING again
 
     assert warn.call_count == 2
@@ -419,17 +419,17 @@ async def test_an_unobserved_recovery_does_not_silence_the_next_outage(
     ``_REFUSAL_REWARN_SECS`` an ongoing or fresh refusal speaks up regardless.
     """
     fake_now = [1000.0]
-    monkeypatch.setattr(kiro_readiness, "_clock", lambda: fake_now[0])
-    request = _request(_make_signed_out_kiro_prerequisite())
+    monkeypatch.setattr(harness_readiness, "_clock", lambda: fake_now[0])
+    request = _request(_make_signed_out_harness_prerequisite())
     request.path = "/api/models"
 
     with patch(_RESOLVE_TARGET, AsyncMock(return_value=_FAKE_KIRO_BIN)):
-        with patch.object(kiro_readiness.logger, "warning") as warn:
+        with patch.object(harness_readiness.logger, "warning") as warn:
             await agents.api_models(request)  # outage 1 -> WARNING
             assert warn.call_count == 1
 
             # Still inside the floor: quiet, so the ring is not churned.
-            fake_now[0] += kiro_readiness._REFUSAL_REWARN_SECS - 1
+            fake_now[0] += harness_readiness._REFUSAL_REWARN_SECS - 1
             await agents.api_models(request)
             assert warn.call_count == 1
 
@@ -443,11 +443,11 @@ async def test_an_unobserved_recovery_does_not_silence_the_next_outage(
 @pytest.mark.asyncio
 async def test_a_ready_gateway_logs_no_refusal() -> None:
     """No line on the authorized path: the log must stay a signal, not a heartbeat."""
-    request = _request(_make_ready_kiro_prerequisite())
+    request = _request(_make_ready_harness_prerequisite())
     request.path = "/api/models"
 
     with patch(_RESOLVE_TARGET, AsyncMock(return_value="")):
-        with patch.object(kiro_readiness.logger, "warning") as warn:
+        with patch.object(harness_readiness.logger, "warning") as warn:
             await agents.api_models(request)
 
     warn.assert_not_called()

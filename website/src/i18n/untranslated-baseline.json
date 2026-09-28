@@ -326,7 +326,7 @@
       "prose": 2,
       "template": 9
     },
-    "components/KiroPrerequisiteGate.tsx": {
+    "components/HarnessPrerequisiteGate.tsx": {
       "total": 1,
       "template": 1
     },

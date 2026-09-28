@@ -94,7 +94,7 @@ This repo is a public OSS tree. Never re-add:
   `_is_claude` seam in `acp/client.py` so an internal companion can re-register
   Claude Code; do NOT re-add the public registration glue. A harness added at
   `agent.acp_backend` is a different question and is governed by
-  [Harness parity](#harness-parity-kiro-is-first-class-the-rest-are-adapted) —
+  [Harness parity](#harness-parity-user-selected-engines-positive-identity) —
   adapted, never a second `agent.provider` value.
 - **OSS-flipped defaults:** always-on in-process embeddings, Piper TTS by default,
   a default-open Slack enterprise gate, lazy STT extras.
@@ -172,41 +172,42 @@ Never hardcode a model id (`claude-*`, `opus*`, `sonnet*`, `haiku*`, `gpt-*`,
 `code-review.yml` fails on a newly added hardcoded model literal outside
 `model_registry*`, the config schema, and tests.
 
-## Harness parity: Kiro is first-class, the rest are adapted
+## Harness parity: user-selected engines, positive identity
 
-Never express "this is the Kiro harness" as the ABSENCE of another harness. Junction
-drives one first-class harness — `kiro-cli` (`ACP_BACKEND_KIRO`, spelled
-`""`) — and adapts the others (the dormant `ACP_BACKEND_CLAUDE` seam, KAS, and
-any bring-your-own harness). A negative test like `not is_claude_backend` reads
-correctly with two harnesses and then silently hands the third a capability, a
-sandbox waiver, or a session label nobody granted it — and it fails toward the
-permissive answer, so nothing goes red until an operator who never opted into
-that harness pays for it.
+Never express "this is the Kiro harness" as the ABSENCE of another harness.
+Junction supports user-selected ACP engines and optional vendor adapters;
+`agent.acp_backend` defaults to `auto` (the first installed spec-family runtime)
+with `kiro-cli` selectable and optional like any other. A negative test like
+`not is_claude_backend` reads correctly with two engines and then silently hands
+a third a capability, a sandbox waiver, or a session label nobody granted it —
+and it fails toward the permissive answer, so nothing goes red until an operator
+who never selected that engine pays for it.
 
-- **An added harness ADAPTS, it does not widen.** It may only fit itself to the
-  seams the Kiro harness already runs through: no new conditional, required
-  argument, awaited step, or failure mode on the Kiro path, and no collapsing a
-  per-harness literal (spawn argv, `PROTOCOL_VERSION`, client capabilities) into
-  one form every harness accepts. A harness that cannot land without changing the
-  Kiro path does not land yet.
+- **An added engine ADAPTS; it does not capture or constrain the others.** It
+  may not impose an adapter-specific requirement, failure mode, or widened grant
+  on the engines it did not come from — no adapter-shaped conditional, required
+  argument, or awaited step on the shared (`auto`) path, and no collapsing a
+  per-engine literal (spawn argv, `PROTOCOL_VERSION`, client capabilities) into
+  one form every engine accepts. Shared code may still evolve for everyone's
+  benefit; what it must not do is degrade one engine to make a new one fit.
 - **Identity is positive.** `is_kiro_backend` / `== ACP_BACKEND_KIRO`, or
   membership in a named `ACP_BACKENDS_*` set in `acp/types.py`. Never a bare
   string literal, an inequality, or a negation.
 - **Capabilities are opt-in membership sets** (`ACP_BACKENDS_SESSION_SHARING`,
-  `ACP_BACKENDS_STEER`, `ACP_BACKENDS_INTERNAL_SANDBOX`), and every harness's
+  `ACP_BACKENDS_STEER`, `ACP_BACKENDS_INTERNAL_SANDBOX`), and every engine's
   membership is an explicit decision. `is_kiro_cli` is the one that fails OPEN:
   it makes `sandbox.wrap_argv` SKIP Junction's own seatbelt in favour of the
-  harness's internal sandbox, so granting it to a harness without one leaves the
+  harness's internal sandbox, so granting it to an engine without one leaves the
   agent process unconfined.
-- **Kiro is the floor.** `agent.acp_backend` defaults to `ACP_BACKEND_KIRO` and
-  it is in `ACP_BACKENDS_SELECTABLE` unconditionally; an unusable persisted value
-  degrades there with a logged reason (`_normalize_acp_backend`) instead of
-  raising. A harness is selected at `acp_backend` — `agent.provider` stays
-  `enum=["acp"]`.
+- **Auto is the default; engines are user-selected.** `agent.acp_backend`
+  defaults to `ACP_BACKEND_AUTO`; `kiro-cli` stays selectable and optional, and
+  an unusable persisted value degrades to `auto` with a logged reason
+  (`_normalize_acp_backend`) instead of raising. An engine is selected at
+  `acp_backend` — `agent.provider` stays `enum=["acp"]`.
 - **Registration is additive at the seam** — `platform/interfaces.py`'s
   `ProviderRegistry`, a v1 addition with no `CONTRACT_VERSION` bump. A new
   provider capability lands on the `LLMProvider` ABC with a safe default, never
-  as a `hasattr` probe on the Kiro path.
+  as a `hasattr` probe on the default path.
 - Invariant ids, and the test pinning each, are in
   [harness-parity](docs/system-specs/modules/harness-parity.md). Cite them bare
   (`H7`) in code comments and review findings.

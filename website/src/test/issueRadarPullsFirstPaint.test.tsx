@@ -31,7 +31,7 @@ vi.mock('../apps/issue-radar/api', async (importOriginal) => ({
   },
 }))
 
-const REPO = { owner: 'kirodotdev', repo: 'Kiro' }
+const REPO = { owner: 'laqaer', repo: 'junction' }
 
 function State() {
   const { pulls: rows, pullsLoading, pullsPartial, openPulls, setPrStateFilter } = useIssueRadar()
@@ -54,7 +54,7 @@ function renderProvider(seed?: unknown) {
   // key also carries the fetch state ('open').
   if (seed !== undefined) {
     client.setQueryData(
-      ['issue-radar', 'pulls', 'github:github.com:kirodotdev/Kiro', 'open'], seed,
+      ['issue-radar', 'pulls', 'github:github.com:laqaer/junction', 'open'], seed,
     )
   }
   render(

@@ -99,7 +99,7 @@
     "dashboard/handlers/files.py": {
       "missing_code": 104
     },
-    "dashboard/handlers/kiro_prerequisite.py": {
+    "dashboard/handlers/harness_prerequisite.py": {
       "missing_code": 1
     },
     "dashboard/handlers/knowledge.py": {
@@ -195,7 +195,7 @@
     "dashboard/handlers_project.py": {
       "missing_code": 1
     },
-    "dashboard/kiro_readiness.py": {
+    "dashboard/harness_readiness.py": {
       "opaque_body": 1
     },
     "dashboard/openai_compat.py": {

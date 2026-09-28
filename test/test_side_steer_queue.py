@@ -37,21 +37,21 @@ from junction.dashboard.handlers.side import (
 )
 from junction.dashboard.side_state import MAX_SIDE_QUEUE, SideState
 from junction.dashboard.ws import broadcast_side_queue, broadcast_side_result
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 
 
-class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
+class _ReadyHarnessPrerequisiteService(HarnessPrerequisiteService):
     async def session_ready(self) -> bool:
         return True
 
 
-_READY_KIRO_PREREQUISITE = object.__new__(_ReadyKiroPrerequisiteService)
+_READY_KIRO_PREREQUISITE = object.__new__(_ReadyHarnessPrerequisiteService)
 
 
 def _make_side_app(state) -> web.Application:
     app = web.Application()
     app["state"] = state
-    app["kiro_prerequisite_service"] = _READY_KIRO_PREREQUISITE
+    app["harness_prerequisite_service"] = _READY_KIRO_PREREQUISITE
     app.router.add_post("/api/chat/slots/{slot}/side/open", api_side_open)
     app.router.add_post("/api/chat/slots/{slot}/side/turn", api_side_turn)
     app.router.add_post("/api/chat/slots/{slot}/side/close", api_side_close)

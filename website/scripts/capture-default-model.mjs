@@ -103,7 +103,7 @@ async function main() {
     if (path === '/api/models') return json(route, MODELS)
     // The app shell mounts behind this gate and reads status.operation.status —
     // the generic object stub crashes it, blanking the whole page.
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'linux', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

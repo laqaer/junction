@@ -4759,7 +4759,7 @@ class DashboardState:
         # Wired by server.py after the gateway-owned prerequisite service is
         # constructed. The central chat runner reads this latch so every turn
         # entry path is protected, including task/workflow continuations.
-        self.kiro_prerequisite_service: Any = None
+        self.harness_prerequisite_service: Any = None
         self.subagents = subagents
         # Multitask Mode control plane; attached by the gateway after
         # SubagentManager construction (None = multitask mode unavailable).

@@ -104,7 +104,7 @@ describe('FolderPanel', () => {
     const { queryClient } = renderWithProviders(
       <FolderPanel path="/Users/me/ws" onClose={vi.fn()} />,
     )
-    act(() => { queryClient.setQueryData(['kiro-prerequisite'], { platform }) })
+    act(() => { queryClient.setQueryData(['harness-prerequisite'], { platform }) })
     const button = await waitFor(() => screen.getByLabelText(label))
     // Both channels, because the button is icon-only: a tooltip alone leaves a
     // screen-reader user with nothing, and an aria-label alone leaves a pointer

@@ -1293,7 +1293,7 @@ NON_EGRESS_REDACTION_MODULES: frozenset[str] = frozenset(
         "apps/install_receipt.py",
         "cron_script.py",
         "eval/runner.py",
-        "kiro_prerequisite.py",
+        "harness_prerequisite.py",
         "instances/ssh_tunnel_manager.py",
         "instances/token_mint.py",
         "instances/ssm_token_mint.py",

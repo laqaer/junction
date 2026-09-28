@@ -94,7 +94,7 @@ async function main() {
     if (path.startsWith('/api/chat/slots/')) return json(route, detail)
     // Prerequisite gate: must be fully ready or the app renders the setup
     // chapter instead of the chat (reads .operation.status — shape matters).
-    if (path === '/api/kiro-prerequisite') {
+    if (path === '/api/harness-prerequisite') {
       return json(route, {
         platform: 'linux', installed: true, authenticated: true, ready: true,
         initial_setup_complete: true, can_auto_install: false, can_login: false,

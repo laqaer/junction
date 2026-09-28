@@ -53,11 +53,11 @@ _CACHE_TTL = 120  # 2 min
 _CACHE_LOCK = LoopBoundLock()
 
 # Cache for the raw _parse_sessions() result, used by api_usage's
-# claude_code/bedrock branch (api_kiro_usage has its own _CACHE of the full
+# claude_code/bedrock branch (api_harness_usage has its own _CACHE of the full
 # response). _parse_sessions does a full iterdir + per-file stat + line-by-line
 # json.loads of every in-window shard, so it is both TTL-cached (120s) and run
 # off the event loop. _SESSIONS_CACHE_LOCK collapses concurrent cold-cache
-# requests into a single parse (mirrors api_kiro_usage's _CACHE_LOCK).
+# requests into a single parse (mirrors api_harness_usage's _CACHE_LOCK).
 # None = unpopulated. A sentinel (not truthiness) so a valid-but-empty parse
 # result ({}) is still cached and served from the fast path, rather than
 # re-parsing on every call.
@@ -1804,7 +1804,7 @@ async def _cached_parse_sessions() -> dict:
     """
     global _SESSIONS_CACHE, _SESSIONS_CACHE_TS
     now = time.time()
-    # Fast path — lock-free read (double-checked locking, like api_kiro_usage).
+    # Fast path — lock-free read (double-checked locking, like api_harness_usage).
     # `is not None` (not truthiness) so a valid-but-empty {} parse is still a hit.
     if now - _SESSIONS_CACHE_TS < _CACHE_TTL and _SESSIONS_CACHE is not None:
         return _SESSIONS_CACHE
@@ -1835,8 +1835,8 @@ def get_usage_cache() -> dict:
         return {}
 
 
-async def api_kiro_usage(request: web.Request) -> web.Response:
-    """GET /api/usage/kiro — local session analytics + cached billing."""
+async def api_harness_usage(request: web.Request) -> web.Response:
+    """GET /api/usage/harness — local session analytics + cached billing."""
     global _CACHE, _CACHE_TS
     now = time.time()
 
@@ -1892,4 +1892,4 @@ async def api_kiro_usage(request: web.Request) -> web.Response:
 
 async def api_usage(request: web.Request) -> web.Response:
     """GET /api/usage — usage stats for the kiro-cli (KiroACP) provider."""
-    return await api_kiro_usage(request)
+    return await api_harness_usage(request)

@@ -10,7 +10,7 @@ from aiohttp import web
 
 from junction.dashboard.state import DashboardState
 from junction.history import ConversationLog
-from junction.kiro_prerequisite import KiroPrerequisiteService
+from junction.harness_prerequisite import HarnessPrerequisiteService
 from junction.messaging.link import ChannelLink
 
 #: Draining is a LOOP because a drained task may register another -- not because any
@@ -76,7 +76,7 @@ async def drain_background_tasks(state) -> None:
     )
 
 
-class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
+class _ReadyHarnessPrerequisiteService(HarnessPrerequisiteService):
     async def session_ready(self) -> bool:
         return True
 
@@ -87,10 +87,10 @@ class _ReadyKiroPrerequisiteService(KiroPrerequisiteService):
         return True
 
 
-_READY_KIRO_PREREQUISITE = object.__new__(_ReadyKiroPrerequisiteService)
+_READY_KIRO_PREREQUISITE = object.__new__(_ReadyHarnessPrerequisiteService)
 
 
-def _make_ready_kiro_prerequisite() -> KiroPrerequisiteService:
+def _make_ready_harness_prerequisite() -> HarnessPrerequisiteService:
     """Return a filesystem-free ready prerequisite for embedded test apps."""
 
     return _READY_KIRO_PREREQUISITE
@@ -160,7 +160,7 @@ def _make_state(tmp_path, **kwargs):
         conversation_log=ConversationLog(base_dir=tmp_path),
         **kwargs,
     )
-    state.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+    state.harness_prerequisite_service = _make_ready_harness_prerequisite()
     return state
 
 

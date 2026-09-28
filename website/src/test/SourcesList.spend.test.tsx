@@ -1,7 +1,7 @@
 /**
  * Ongoing indexing-cost visibility on the knowledge sources list.
  *
- * A watched folder keeps spending Kiro requests at idle, and the add-time estimate
+ * A watched folder keeps spending agent requests at idle, and the add-time estimate
  * is gone the moment the dialog closes. These tests pin the two things that make
  * the ongoing cost legible on the list itself: the per-source remaining figure,
  * and the standing notice that indexing costs anything at all.
@@ -48,7 +48,7 @@ beforeEach(() => {
 })
 
 describe('SourcesList — per-source spend visibility', () => {
-  it('shows indexing progress and the Kiro requests still owed, rounded', async () => {
+  it('shows indexing progress and the agent requests still owed, rounded', async () => {
     renderList([{
       id: 's1', name: 'Notes', source_type: 'local_folder', uri: '/tmp/notes',
       sync_status: 'active', item_count: 12,
@@ -62,7 +62,7 @@ describe('SourcesList — per-source spend visibility', () => {
     // Two significant figures, not the raw 11,460: the figure is an estimate, so
     // the rendered precision must not outrun the leading ~. The scale word is
     // locale-dependent (K in en, 万 in ja), hence the unit comes from the label.
-    expect(screen.getByText('~11K Kiro requests to finish')).toBeTruthy()
+    expect(screen.getByText('~11K agent requests to finish')).toBeTruthy()
   })
 
   it('names the same billing unit in the row and its tooltip', async () => {
@@ -76,8 +76,8 @@ describe('SourcesList — per-source spend visibility', () => {
         estimated_llm_calls_remaining: 11460,
       }),
     }])
-    const row = await screen.findByText('~11K Kiro requests to finish')
-    expect(row.getAttribute('title')).toContain('Kiro requests')
+    const row = await screen.findByText('~11K agent requests to finish')
+    expect(row.getAttribute('title')).toContain('agent requests')
     // Engine vocabulary a user cannot act on.
     expect(row.getAttribute('title')).not.toMatch(/sweep/i)
   })
@@ -128,7 +128,7 @@ describe('SourcesList — per-source spend visibility', () => {
     // A title attribute is invisible to touch and keyboard users, so the fact that
     // the charge accrues over time has to live in visible text.
     renderList([])
-    const notice = await screen.findByText(/Indexing uses Kiro requests/)
+    const notice = await screen.findByText(/Indexing uses agent requests/)
     expect(notice.textContent).toMatch(/spread out over time/)
   })
 
@@ -142,7 +142,7 @@ describe('SourcesList — per-source spend visibility', () => {
     }])
     await screen.findByText('Notes')
     expect(screen.getByText('40/40 files indexed')).toBeTruthy()
-    expect(screen.queryByText(/Kiro requests to finish/)).toBeNull()
+    expect(screen.queryByText(/agent requests to finish/)).toBeNull()
   })
 
   it('renders nothing extra for a source with no queued work', async () => {
@@ -152,7 +152,7 @@ describe('SourcesList — per-source spend visibility', () => {
     }])
     await screen.findByText('doc.md')
     expect(screen.queryByText(/files indexed/)).toBeNull()
-    expect(screen.queryByText(/Kiro requests to finish/)).toBeNull()
+    expect(screen.queryByText(/agent requests to finish/)).toBeNull()
   })
 
   it('survives a source the API sent without a spend block', async () => {
@@ -170,14 +170,14 @@ describe('SourcesList — per-source spend visibility', () => {
     // The notice is the only warning a user who inherited a configured folder ever
     // gets -- they never open the add-source dialog that carries the up-front estimate.
     renderList([])
-    expect(await screen.findByText(/Indexing uses Kiro requests/)).toBeTruthy()
+    expect(await screen.findByText(/Indexing uses agent requests/)).toBeTruthy()
   })
 
   it('keeps the cost notice to a single sentence', async () => {
     // The banner sits above the list on every visit; two sentences of standing
     // caveat is banner blindness fuel. One sentence, every fact retained.
     renderList([])
-    const notice = await screen.findByText(/Indexing uses Kiro requests/)
+    const notice = await screen.findByText(/Indexing uses agent requests/)
     const text = (notice.textContent ?? '').trim()
     expect(text.endsWith('.')).toBe(true)
     expect((text.match(/\./g) ?? []).length).toBe(1)

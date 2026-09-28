@@ -19,7 +19,7 @@ from junction.dashboard.handlers.usage import (
     _cached_parse_sessions,
     _parse_sessions,
     _parse_token_history,
-    api_kiro_usage,
+    api_harness_usage,
     get_usage_cache,
     persist_token_record,
     persist_token_record_async,
@@ -275,7 +275,7 @@ class TestGetUsageCache:
             assert get_usage_cache() == {}
 
 
-# ── api_kiro_usage ───────────────────────────────────────────────────────
+# ── api_harness_usage ───────────────────────────────────────────────────────
 
 
 class TestApiKiroUsage:
@@ -292,9 +292,9 @@ class TestApiKiroUsage:
         usage_mod._CACHE = {"cached": True}
         usage_mod._CACHE_TS = time.time()
         app = web.Application()
-        app.router.add_get("/api/usage/kiro", api_kiro_usage)
+        app.router.add_get("/api/usage/harness", api_harness_usage)
         async with TestClient(TestServer(app)) as client:
-            resp = await client.get("/api/usage/kiro")
+            resp = await client.get("/api/usage/harness")
             assert resp.status == 200
             data = await resp.json()
             assert data == {"cached": True}
@@ -320,9 +320,9 @@ class TestApiKiroUsage:
             },
         ):
             app = web.Application()
-            app.router.add_get("/api/usage/kiro", api_kiro_usage)
+            app.router.add_get("/api/usage/harness", api_harness_usage)
             async with TestClient(TestServer(app)) as client:
-                resp = await client.get("/api/usage/kiro")
+                resp = await client.get("/api/usage/harness")
                 assert resp.status == 200
                 data = await resp.json()
                 assert "sessions" in data
@@ -336,9 +336,9 @@ class TestApiKiroUsage:
             usage_mod, "get_usage_cache", return_value={}
         ):
             app = web.Application()
-            app.router.add_get("/api/usage/kiro", api_kiro_usage)
+            app.router.add_get("/api/usage/harness", api_harness_usage)
             async with TestClient(TestServer(app)) as client:
-                resp = await client.get("/api/usage/kiro")
+                resp = await client.get("/api/usage/harness")
                 data = await resp.json()
                 assert "error" in data
                 # Cache should NOT be set
@@ -356,9 +356,9 @@ class TestApiKiroUsage:
              patch.object(usage_mod, "validate_file_path", return_value=str(f)), \
              patch.object(usage_mod, "get_usage_cache", return_value={"available": False}):
             app = web.Application()
-            app.router.add_get("/api/usage/kiro", api_kiro_usage)
+            app.router.add_get("/api/usage/harness", api_harness_usage)
             async with TestClient(TestServer(app)) as client:
-                resp = await client.get("/api/usage/kiro")
+                resp = await client.get("/api/usage/harness")
                 data = await resp.json()
                 assert data["billing"] == {}
 

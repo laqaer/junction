@@ -91,7 +91,7 @@ function pr(over: Partial<PullRequest> = {}): PullRequest {
   return {
     number: 7,
     title: 'Row title',
-    url: 'https://github.com/kirodotdev/Kiro/pull/7',
+    url: 'https://github.com/laqaer/junction/pull/7',
     state: 'open',
     draft: false,
     labels: [],
@@ -117,7 +117,7 @@ function setCtx(rows: PullRequest[], over: Record<string, unknown> = {}) {
     pullsUpdatedAt: Date.now(),
     prPersonFilterActive: false,
     prSearchTruncatedAt: null,
-    active: { owner: 'kirodotdev', repo: 'Kiro' },
+    active: { owner: 'laqaer', repo: 'junction' },
     canWrite: false,
     checkedPulls: new Set<number>(),
     ...spies,

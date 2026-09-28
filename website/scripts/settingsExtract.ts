@@ -79,7 +79,7 @@ export function __resetCatalogCache(): void {
 
 /** Panel file → tab key mapping (derived from SettingsPage.tsx switch).
  *  Only panels that actually render inside a Settings tab are mapped — the
- *  fork is KiroACP-only and de-Amazoned, so upstream's Provider / Secretary /
+ *  fork is ACP-only and de-Amazoned, so upstream's Provider / Secretary /
  *  Sync / TaskKeeper panels are absent, and SharedMcpGatewayToggle /
  *  McpPoolableServers live on the standalone Developer page (not a Settings
  *  tab), so they are intentionally excluded to avoid dead deep-links.

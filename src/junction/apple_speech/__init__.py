@@ -396,7 +396,7 @@ async def _sandboxed_off_loop(argv: list[str]) -> tuple[list[str], dict[str, str
     and no session field can ever reach the cleanup path. Shielding the hop
     keeps the worker's result recoverable: on cancellation, wait for it to
     settle, drop the launcher it made, then re-raise. Same shape as
-    ``kiro_prerequisite``'s sandboxed-spawn preparation.
+    ``harness_prerequisite``'s sandboxed-spawn preparation.
 
     ``SandboxUnavailableError`` still propagates to the caller unchanged — the
     shield only intercepts cancellation, and that raise carries no tuple and

@@ -15,7 +15,7 @@ request server-to-server, where browser CORS does not apply at all.
 
 Both the Aperture endpoint and the form namespace (category/name/version) are
 hardcoded here, never accepted from the request — the client only ever
-supplies the answer content. Following the ``kiro_usage_api.py`` sibling's full
+supplies the answer content. Following the ``harness_usage_api.py`` sibling's full
 acceptance criteria, the two outbound calls also disable redirects
 (``allow_redirects=False``) so the body and identity can never be replayed to a
 redirected host, and read the response through a byte cap so a hostile or
@@ -75,7 +75,7 @@ _SERVICE_ID = "Junction"  # brand-ok: literal Aperture portal identifier
 
 _REQUEST_TIMEOUT_SECONDS = 10
 
-# Cap on the Aperture response body we read, mirroring kiro_usage_api.py's
+# Cap on the Aperture response body we read, mirroring harness_usage_api.py's
 # `_MAX_RESP_BYTES`. With redirects disabled the destination is fixed, but a
 # hostile or misconfigured endpoint could still stream an unbounded body; the
 # cap bounds what one request can buffer on the event loop.
@@ -128,7 +128,7 @@ def _require_dashboard_user(request: web.Request, tool: str = "feedback") -> web
     """403 unless this is a real dashboard user's request, else ``None``.
 
     Deny-by-default on the app claim, matching the ``request["app"] == ""``
-    convention used by ``deny_non_dashboard_caller`` / ``kiro_prerequisite`` /
+    convention used by ``deny_non_dashboard_caller`` / ``harness_prerequisite`` /
     ``chat_handlers``: the auth middleware sets ``request["app"]`` on every
     authenticated path (``""`` for a dashboard user, the app name for an app
     token), so an ABSENT key means the middleware did not run and must be

@@ -498,7 +498,7 @@ export default function OnboardingFlow({
         eyebrow={i18nT('components.onboardingFlow.customize_step', { n: 1, total: 2 })}
         ariaLabel={i18nT('components.onboardingFlow.customize_junction')}
         panelHeadline={i18nT('components.onboardingFlow.make_it_yours')}
-        panelBody={i18nT('components.onboardingFlow.set_your_look_and_tell_kiro_about_you_so_respons')}
+        panelBody={i18nT('components.onboardingFlow.set_your_look_and_tell_harness_about_you_so_respons')}
         panelFootnote={i18nT('components.onboardingFlow.change_anything_later_in_settings')}
         header={
           <div className="mt-6">
@@ -574,15 +574,15 @@ export default function OnboardingFlow({
         eyebrow={i18nT('components.onboardingFlow.customize_step', { n: 2, total: 2 })}
         ariaLabel={i18nT('components.onboardingFlow.customize_junction')}
         panelHeadline={i18nT('components.onboardingFlow.make_it_yours')}
-        panelBody={i18nT('components.onboardingFlow.set_your_look_and_tell_kiro_about_you_so_respons')}
+        panelBody={i18nT('components.onboardingFlow.set_your_look_and_tell_harness_about_you_so_respons')}
         panelFootnote={i18nT('components.onboardingFlow.change_anything_later_in_settings')}
         header={
           <div className="mt-6">
             <h1 tabIndex={-1} className="text-2xl font-semibold text-text-strong outline-none">
-              {i18nT('components.onboardingFlow.tell_kiro_about_you')}
+              {i18nT('components.onboardingFlow.tell_harness_about_you')}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              {i18nT('components.onboardingFlow.answers_set_how_kiro_explains_things_plain_langu')}
+              {i18nT('components.onboardingFlow.answers_set_how_harness_explains_things_plain_langu')}
             </p>
           </div>
         }

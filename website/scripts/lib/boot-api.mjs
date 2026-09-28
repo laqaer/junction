@@ -39,7 +39,7 @@ export function handleBootRoute(route, path, { project, theme = 'dark', fixedApi
   // The setup gate runs BEFORE the app shell: an array-shaped stub makes it read
   // `.operation.status` off undefined and the whole shell error-boundaries out
   // with nothing rendered.
-  if (path.startsWith('/api/kiro-prerequisite')) {
+  if (path.startsWith('/api/harness-prerequisite')) {
     return json(route, {
       platform: 'linux', installed: true, authenticated: true, ready: true,
       initial_setup_complete: true, can_auto_install: false, can_login: false,

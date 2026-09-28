@@ -1848,7 +1848,7 @@ Examples:
         "--no-browser", action="store_true", help="Print the device URL but don't open a browser"
     )
     _c_logout = cloud_sub.add_parser(
-        "logout", help="Sign kiro-cli out on the instance (to switch Kiro account)"
+        "logout", help="Sign kiro-cli out on the instance (to switch accounts)"
     )
     _cloud_common(_c_logout)
     _c_stop = cloud_sub.add_parser("stop", help="Stop the instance (pause billing)")
@@ -2182,7 +2182,7 @@ Examples:
     agent_sub.add_parser("list", help="List Junction agents")
     agent_create = agent_sub.add_parser("create", help="Create a Junction agent")
     agent_create.add_argument("--name", required=True, help="Agent name")
-    agent_create.add_argument("--kiro-agent", default="junction", help="Kiro agent name")
+    agent_create.add_argument("--kiro-agent", default="junction", help="Harness agent name")
     agent_create.add_argument("--workspace", default="default", help="Workspace name")
     agent_create.add_argument("--memory-store", default="default", help="Memory store name")
     agent_update = agent_sub.add_parser("update", help="Update a Junction agent")
@@ -2326,7 +2326,7 @@ The dashboard port is set with the JUNCTION_PORT env var, not a config key.
     # provider factory can launch it, preserving the same process-start trust
     # boundary as the gateway.
     if args.command in _JAILED_COMMANDS:
-        from junction.kiro_prerequisite import register_process_start_override_attestation
+        from junction.harness_prerequisite import register_process_start_override_attestation
 
         register_process_start_override_attestation()
 

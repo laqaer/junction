@@ -139,7 +139,7 @@ class TestPublishingIsNarrowingOnly:
     """A person's call must leave the claim ABSENT, not empty.
 
     ``handlers/source_providers`` (``"app" not in request or request["app"] != ""``)
-    and ``handlers/kiro_prerequisite`` treat a PRESENT empty claim as positive
+    and ``handlers/harness_prerequisite`` treat a PRESENT empty claim as positive
     proof of the dashboard user, and today refuse this transport because the key
     is missing. Writing ``""`` here would silently convert those refusals into
     admissions -- a widening hidden inside a narrowing fix.

@@ -228,7 +228,7 @@ describe('linkifyIssueRefs', () => {
 
   it('treats an all-digit run as a reference even when it could be a hex colour', () => {
     // GitHub linkifies `#123456` in a body too, and a repo with six-figure issue
-    // numbers is real (kirodotdev/Kiro is past 10k), so length cannot decide.
+    // numbers is real (laqaer/junction is past 10k), so length cannot decide.
     // A colour written the way people actually write one (`#1a2b3c`, or in code
     // ticks) is unaffected.
     expect(linkifyIssueRefs('colour #1a2b3c here', gh(O, R))).toBe('colour #1a2b3c here')

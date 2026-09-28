@@ -7,7 +7,7 @@
  *   progress/failed/stuck states it mounts
  * - the header capsule's resource-posture segment and the system-metrics
  *   segment's error / no-totals branches
- * - the Kiro credits modal with a bonus pool and a signed-in identity
+ * - the Harness credits modal with a bonus pool and a signed-in identity
  * - the notification popover's pointer-outside and route-change dismissals
  * - developer mode and the Electron native-menu navigation bridge
  */
@@ -304,7 +304,7 @@ describe('App — system metrics segment', () => {
   })
 })
 
-describe('App — Kiro credits modal', () => {
+describe('App — Harness credits modal', () => {
   const usageWithBonus = (startUrl: string, accountType = 'Social') => ({
     usage: {
       credits_used: 8000, credits_plan: 10000, credits_overage: 0,
@@ -320,7 +320,7 @@ describe('App — Kiro credits modal', () => {
     vi.mocked(api.sessionsUsage).mockResolvedValue(usageWithBonus('https://example.awsapps.com/start') as never)
     renderWithProviders(<App />, { route: '/chat' })
 
-    fireEvent.click(await screen.findByTitle(/Kiro credit usage/))
+    fireEvent.click(await screen.findByTitle(/Harness credit usage/))
     const dialog = await screen.findByRole('dialog')
     // Plan pool: the progressbar tracks the plan only, not bonus grants.
     expect(within(dialog).getByText('KIRO POWER')).toBeInTheDocument()
@@ -340,7 +340,7 @@ describe('App — Kiro credits modal', () => {
     vi.mocked(api.sessionsUsage).mockResolvedValue(usageWithBonus('not-a-url', 'IamIdentityCenter') as never)
     renderWithProviders(<App />, { route: '/chat' })
 
-    fireEvent.click(await screen.findByTitle(/Kiro credit usage/))
+    fireEvent.click(await screen.findByTitle(/Harness credit usage/))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Signed in with IAM Identity Center')).toBeInTheDocument()
   })

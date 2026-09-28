@@ -274,8 +274,8 @@ def _resolve_kiro_bin() -> str | None:
     if not executable:
         return executable
     # Deferred to keep the low-level resolver import graph acyclic:
-    # kiro_prerequisite imports sandbox helpers that this module also uses.
-    from junction.kiro_prerequisite import snapshot_trusted_acp_executable
+    # harness_prerequisite imports sandbox helpers that this module also uses.
+    from junction.harness_prerequisite import snapshot_trusted_acp_executable
 
     try:
         if platform_compat.IS_WINDOWS:

@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from chat_test_helpers import _make_ready_kiro_prerequisite
+from chat_test_helpers import _make_ready_harness_prerequisite
 
 from junction.dashboard.chat import _expand_prompt_mention, _run_chat
 from junction.dashboard.handlers import (
@@ -125,7 +125,7 @@ class _State:
         pass
 
     def __init__(self):
-        self.kiro_prerequisite_service = _make_ready_kiro_prerequisite()
+        self.harness_prerequisite_service = _make_ready_harness_prerequisite()
         self.sessions = type('_MockSessions', (), {
             'get_slack_link': lambda self, k: ('', ''),
             'set_slack_link': lambda self, k, t, c: None,

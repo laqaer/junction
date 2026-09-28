@@ -86,7 +86,7 @@ describe('SourcesList — mobile layout', () => {
 
   it('lets the meta/action cluster wrap at every width so it cannot leave the card', async () => {
     // The cluster holds a VARIABLE number of figures -- item count, word count,
-    // indexing progress, remaining Kiro requests -- so a nowrap floor pushes the
+    // indexing progress, remaining agent requests -- so a nowrap floor pushes the
     // trailing action button past the card border and squeezes the source name to
     // nothing at mid widths. It must be free to wrap at any width.
     renderList()
