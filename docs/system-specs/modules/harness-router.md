@@ -99,9 +99,11 @@ times are read in the host's local zone. A success clears a lane's cooldown.
 
 Some harnesses end a turn normally with the limit notice as the whole reply.
 `limit_notice_failure` treats a reply as a lane failure only when it is short
-(`LIMIT_NOTICE_MAX_CHARS`), classifies as `usage_limit` or `auth` (never
-`rate_limit`, which an ordinary answer about rate limiting mentions), and the
-turn ran no tools.
+(`LIMIT_NOTICE_MAX_CHARS`), starts with a recognizable usage-limit or auth
+notice, and the turn ran no tools. Short answers such as `Run codex login`
+or explanations of a daily limit remain successful output. The broader
+exception classifier is not applied to successful replies; `rate_limit` is
+never inferred from them.
 
 ## Dispatch
 
@@ -187,7 +189,10 @@ agent means running that agent's own login command, then probing it.
   missing adapter), `timeout`, `error`, and is persisted with a redacted,
   truncated detail and the models the harness advertised (`advertised`, its own
   ids, at most `PROBE_MODELS_MAX`) in `<data home>/routing/harnesses.json`.
-  `junction route check` and the dashboard share it.
+  `junction route check` and the dashboard share it. The complete read/merge/
+  atomic-replace transaction holds `platform_compat.file_lock` on the stable
+  sibling `harnesses.lock`, shared by all harnesses and store instances.
+  Concurrent completions retain each harness and its advertised model ids.
 - `service.check_harness` (probe now) and `service.verified_connection` (reuse a
   `connected` probe younger than `max_age_secs`, else probe) hold one lock per
   harness, so a double-clicked Check or a burst of gated requests starts one
@@ -258,5 +263,6 @@ Handlers do their file I/O off the event loop.
    swallowed; a corrupt ledger starts fresh.
 6. **No secrets at rest.** The ledger stores redacted, truncated error text.
 
-Pinned by `test/test_harness_router.py`, `test/test_harness_readiness_gate.py`, and
+Pinned by `test/test_harness_router.py`, `test/test_harness_router_notices.py`,
+`test/test_harness_probe_store.py`, `test/test_harness_readiness_gate.py`, and
 the per-harness cases in `test/test_session.py`.

@@ -197,12 +197,30 @@ def cooldown_seconds(failure: str, text: str = "", *, now: float | None = None) 
     return max(MIN_COOLDOWN_SECS, min(MAX_COOLDOWN_SECS, seconds))
 
 
-# A plan-limit notice delivered as the whole reply is short; a real answer that
-# merely discusses rate limits is not.
+# Short replies can be legitimate answers about login or quota. Only a
+# recognizable notice at the start of the whole reply can rest a lane; the
+# broader exception classifier is deliberately not used on successful output.
 LIMIT_NOTICE_MAX_CHARS = 400
-# Only these classes are trusted from reply text. A reply that says "rate
-# limit" is far more often an answer about rate limiting than a throttle.
-_NOTICE_FAILURES: frozenset[str] = frozenset({FAILURE_USAGE_LIMIT, FAILURE_AUTH})
+_NOTICE_BOUNDARY = r"(?=$|\s*[.!:;|·∙\n]|\s+(?:resets?|try again)\b)"
+_USAGE_NOTICE_RE = re.compile(
+    r"(?:you(?:['’]ve| have) (?:hit|reached) your (?:(?:daily|weekly|monthly) )?"
+    r"(?:(?:usage|plan|session|message|request|credit) )?limit"
+    r"|(?:claude(?: ai)? )?(?:usage|plan|session|message|request|credit)s? limit "
+    r"(?:has been |was )?reached"
+    r"|(?:(?:5|five)[- ]hour|weekly|daily|monthly) limit (?:reached|exceeded)"
+    r"|quota (?:exceeded|exhausted)|you exceeded your current quota"
+    r"|insufficient (?:credits|quota|balance)|out of credits|credit balance is too low)"
+    + _NOTICE_BOUNDARY,
+    re.IGNORECASE,
+)
+_AUTH_NOTICE_RE = re.compile(
+    r"(?:(?:not logged in|log ?in required|authentication (?:required|failed)"
+    r"|auth(?:entication)?_required|unauthori[sz]ed|invalid api key"
+    r"|api key (?:is )?(?:missing|invalid|not set)|no api key|login expired)"
+    + _NOTICE_BOUNDARY
+    + r"|please run /login(?: first)?[.!]?\Z)",
+    re.IGNORECASE,
+)
 
 
 class HarnessLaneFailure(RuntimeError):
@@ -219,10 +237,14 @@ def limit_notice_failure(reply: str) -> str:
 
     Some harnesses end a turn with ``end_turn`` and put "You've hit your usage
     limit" in the message instead of returning a JSON-RPC error. Callers apply
-    this only to a turn that ran no tools, so a working turn is never discarded.
+    this only to a turn that ran no tools. A short answer about login or quota
+    is not itself evidence that the harness failed.
     """
     text = (reply or "").strip()
     if not text or len(text) > LIMIT_NOTICE_MAX_CHARS:
         return ""
-    failure = classify_failure(text)
-    return failure if failure in _NOTICE_FAILURES else ""
+    if _USAGE_NOTICE_RE.match(text):
+        return FAILURE_USAGE_LIMIT
+    if _AUTH_NOTICE_RE.match(text):
+        return FAILURE_AUTH
+    return ""

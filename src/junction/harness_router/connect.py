@@ -18,6 +18,7 @@ import asyncio
 import gc
 import json
 import logging
+import os
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -52,6 +53,7 @@ STATUS_UNKNOWN = "unknown"  # never probed
 # npx-launched adapters download on first use, so the first probe is slow.
 PROBE_TIMEOUT_SECS = 120.0
 PROBES_FILENAME = "harnesses.json"
+PROBES_LOCK_FILENAME = "harnesses.lock"
 PROBE_DETAIL_MAX_CHARS = 240
 # Advertised models kept per probe: enough for a multi-provider catalog
 # (OpenCode lists every provider it is logged into, 200+), bounded so a harness
@@ -224,6 +226,7 @@ class ProbeStore:
 
     def __init__(self, directory: Path) -> None:
         self._path = directory / PROBES_FILENAME
+        self._lock_path = directory / PROBES_LOCK_FILENAME
 
     def load(self) -> dict[str, ProbeResult]:
         try:
@@ -239,12 +242,20 @@ class ProbeStore:
 
     def save(self, result: ProbeResult) -> None:
         from junction.atomic_write import atomic_write
+        from junction.platform_compat import file_lock
 
-        current = self.load()
-        current[result.harness] = result
-        payload = {k: v.to_dict() for k, v in sorted(current.items())}
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write(self._path, json.dumps(payload, separators=(",", ":")), mode=0o600)
+        # All harnesses and store instances share a stable sibling lock: locking
+        # the JSON inode would stop protecting it after atomic replacement.
+        fd = os.open(str(self._lock_path), os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            with file_lock(fd, exclusive=True):
+                current = self.load()
+                current[result.harness] = result
+                payload = {k: v.to_dict() for k, v in sorted(current.items())}
+                atomic_write(self._path, json.dumps(payload, separators=(",", ":")), mode=0o600)
+        finally:
+            os.close(fd)
 
 
 def _models_of(provider: Any) -> tuple[AdvertisedModel, ...]:
