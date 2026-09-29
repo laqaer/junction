@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────
-# Junction — public install from a local checkout.
+# Warding — public install from a local checkout.
 #
-# Builds Junction with public tooling only: python3 + pip (backend) and
+# Builds Warding with public tooling only: python3 + pip (backend) and
 # npm + vite (dashboard). scripts/get-junction.sh clones the repository
 # and then runs this file.
 #
@@ -53,7 +53,7 @@ done
 has node || die "Node.js not found. Install Node.js 22+ (24 LTS recommended, https://nodejs.org) and re-run."
 has npm  || die "npm not found. Install Node.js 22+ (24 LTS recommended, https://nodejs.org) and re-run."
 
-echo "Junction — install"
+echo "Warding — install"
 echo "  Repo:    $REPO_DIR"
 echo "  Python:  $("$_py" --version 2>&1)"
 echo "  Node:    $(node --version)"
@@ -96,7 +96,7 @@ if [ ! -d "$_venv" ] || [ ! -x "$_venv/bin/python" ]; then
     "$_py" -m venv "$_venv" || die "Failed to create venv. Try: $_py -m pip install --user virtualenv"
 fi
 
-echo "→ Installing Junction (pip)…"
+echo "→ Installing Warding (pip)…"
 "$_venv/bin/pip" install --upgrade pip setuptools wheel -q \
     || die "Failed to upgrade pip/setuptools/wheel"
 
@@ -115,7 +115,7 @@ fi
 echo "✓ Python package installed"
 echo ""
 
-# A vendor agent CLI is optional. Junction docks an ACP runtime already
+# A vendor agent CLI is optional. Warding docks an ACP runtime already
 # on PATH; this script does not install one.
 echo "→ A vendor agent CLI is optional."
 echo ""
@@ -123,20 +123,20 @@ echo ""
 # ── 3. Symlink CLI (no shell rc modification) ──
 BIN_DIR="${JUNCTION_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p "$BIN_DIR"
-ln -sfn "$_venv/bin/junction" "$BIN_DIR/junction"
+ln -sfn "$_venv/bin/warding" "$BIN_DIR/warding"
 # Silent console-script alias. Existing launchers still resolve this name.
 if [ -x "$_venv/bin/junction" ]; then
     ln -sfn "$_venv/bin/junction" "$BIN_DIR/junction"
 fi
-echo "✓ Linked junction → $BIN_DIR/junction"
+echo "✓ Linked warding → $BIN_DIR/warding"
 echo ""
 
 # ── Done ──
-echo "Junction installed."
+echo "Warding installed."
 echo ""
 echo "  Next:"
-echo "    junction setup"
-echo "    junction up"
+echo "    warding setup"
+echo "    warding up"
 echo ""
 case ":$PATH:" in
     *":$BIN_DIR:"*) ;;

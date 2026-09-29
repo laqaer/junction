@@ -454,7 +454,7 @@ describe('AppsPage — uninstall dialog', () => {
     expect(within(dialog).getByText(/the downloaded source code will be removed/)).toBeInTheDocument()
   })
 
-  it('warns about a self-managed app whose resources live outside Junction', async () => {
+  it('warns about a self-managed app whose resources live outside Warding', async () => {
     listApps.mockResolvedValue([{ ...SECRETARY, origin: 'local', resources: 'app' }])
     const dialog = await openDialog()
     expect(within(dialog).getByText(/This is a self-managed app/)).toBeInTheDocument()
@@ -760,7 +760,7 @@ describe('AppsPage — sources rail', () => {
     expect(within(rail).getByText('Built-in · junction')).toBeInTheDocument()
     expect(within(rail).getByText('kirodotdev-labs')).toBeInTheDocument()
     expect(within(rail).getByText('ghost-registry')).toBeInTheDocument()
-    expect(within(rail).getByText('Junction registry')).toBeInTheDocument()
+    expect(within(rail).getByText('Warding registry')).toBeInTheDocument()
     expect(within(rail).getByText('0 apps')).toBeInTheDocument()
   })
 })

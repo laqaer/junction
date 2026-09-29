@@ -13,6 +13,8 @@ import threading
 import time
 from typing import Optional
 
+from junction.constants import PRODUCT_NAME
+
 _ENABLE_COLOR = sys.stdout.isatty() and os.environ.get("NO_COLOR") is None
 
 
@@ -31,13 +33,12 @@ MAGENTA = _c("\033[35m")
 CYAN = _c("\033[36m")
 
 
-BANNER = f"""{BLUE}{BOLD}
-    _              _   _             ___ _             _
- _ | |_  _ _ _  __| |_(_)___ _ _    / __| |___ _  _ __| |
-| || | || | ' \\/ _|  _| / _ \\ ' \\  | (__| / _ \\ || / _` |
- \\__/ \\_,_|_||_\\__|\\__|_\\___/_||_|  \\___|_\\___/\\_,_\\__,_|
+# The cloud wizard heading. The Ward Seal is a drawn mark, not ASCII art, so
+# this is the product name with the wizard's own one-line promise under it.
+BANNER = f"""{MAGENTA}{BOLD}
+  {PRODUCT_NAME} Cloud
 {RESET}
-  {DIM}Run Junction on your own AWS account - in minutes.{RESET}
+  {DIM}Run your coding agent on your own AWS - in minutes.{RESET}
 """
 
 

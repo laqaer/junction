@@ -24,6 +24,9 @@ Homepage = "https://getjunction.dev"
 Repository = "https://github.com/laqaer/junction"
 
 [project.scripts]
+# `warding` is the primary CLI; `junction` is a silent alias of the same
+# entry point.
+warding = "junction._bootstrap:main"
 junction = "junction._bootstrap:main"
 
 [dependency-groups]

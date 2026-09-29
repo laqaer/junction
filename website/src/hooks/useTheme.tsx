@@ -341,7 +341,7 @@ export const THEME_LABEL_KEY: Record<string, string> = {
 }
 
 export const THEMES: ThemeEntry[] = [
-  { value: 'junction', label: 'Junction' },
+  { value: 'junction', label: 'Warding' },
   { value: 'emerald', label: '🌿 Emerald' },
   { value: 'monokai', label: '🎨 Monokai' },
   { value: 'solarized', label: '☀️ Solarized' },

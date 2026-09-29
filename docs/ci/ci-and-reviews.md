@@ -49,10 +49,10 @@ Out-of-band lanes that never gate a PR:
 - **Release and publish**, tag- or schedule-triggered: `release.yml`,
   `nightly.yml`, the reusable `build-wheel.yml` / `build-desktop.yml` /
   `build-windows.yml`, `sign-and-notarize.yml`, `publish-cli.yml`,
-  `publish-linux.yml`, `publish-docker.yml`, `publish-installer.yml`,
-  `pages.yml` (the marketing site in `site/`, path-scoped so it never runs for
-  backend or dashboard changes; deploys only from `main`). PR coverage for
-  that tree is `site.yml` (npm test + production build, no Pages publish).
+  `publish-linux.yml`, `publish-docker.yml`, `publish-installer.yml`. The
+  marketing site in `site/` is deployed by Vercel from its own project
+  settings, not by a workflow; PR coverage for that tree is `site.yml` (npm
+  test + production build, no deploy).
 - **Verification that is too slow or too expensive for a PR:** `ota-test.yml`
   builds two real app bundles and performs an actual update swap, because the
   Electron unit suite stops at the `autoUpdater` handoff and never proves a real

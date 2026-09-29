@@ -1,6 +1,8 @@
 # ADR 0001 — Product identity is Junction
 
-- Status: accepted
+- Status: accepted; the name is superseded by
+  [ADR 0008](0008-product-rename-warding.md) (the identifiers that stay and
+  the brand gate still hold)
 - Date: 2026-09-19
 - Execution: `bc-39bfeb15-ff12-4636-840a-217a97c555da`
 

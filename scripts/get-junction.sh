@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install Junction from this repository.
+# Install Warding from this repository.
 #
 # Clones (or fast-forwards) a checkout, then runs minimal_install.sh.
 # Does not start the server.
@@ -7,7 +7,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/laqaer/junction/main/scripts/get-junction.sh | sh
 #
 # Read this file before you run it. JUNCTION_SRC overrides the checkout.
-# JUNCTION_BIN_DIR overrides where the junction link is written.
+# JUNCTION_BIN_DIR overrides where the warding link is written.
 # --dry-run prints the plan and writes nothing.
 
 set -eu
@@ -35,7 +35,7 @@ if [ "${1:-}" = "--dry-run" ]; then
   else
     echo "dashboard=missing-node"
   fi
-  echo "next: junction setup && junction up"
+  echo "next: warding setup && warding up"
   exit 0
 fi
 

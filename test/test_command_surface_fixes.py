@@ -328,7 +328,7 @@ async def test_a_real_command_still_runs(permitted: None) -> None:
     await dispatcher.handle_message(_inbound("!help"))
 
     assert len(client.sent) == 1
-    assert "Junction" in client.sent[0]
+    assert "Warding" in client.sent[0]
     assert "isn't a command" not in client.sent[0]
 
 

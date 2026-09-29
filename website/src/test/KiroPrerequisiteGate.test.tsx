@@ -164,7 +164,7 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('sends the user to Kiro CLI setup instead of installing anything', async () => {
-    // Junction does not install Kiro CLI. A missing CLI must offer a link to
+    // Warding does not install Kiro CLI. A missing CLI must offer a link to
     // Kiro's own setup page and NO install action of any kind, so there is
     // nothing for the user to press that would download and run a script.
     vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({ platform: 'Windows' }))
@@ -218,7 +218,7 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('exposes no way to start a sign-in from the dashboard', async () => {
-    // Junction does not authenticate for the user: there is no device-flow
+    // Warding does not authenticate for the user: there is no device-flow
     // trigger, no sign-in URL, and no device code surfaced anywhere.
     vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({ installed: true }))
 
@@ -344,7 +344,7 @@ describe('KiroPrerequisiteGate', () => {
       <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
     )
 
-    expect(await screen.findByText("Junction's agent specs are not installed")).toBeInTheDocument()
+    expect(await screen.findByText("Warding's agent specs are not installed")).toBeInTheDocument()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
     // Names the actual files, so the user can see what to look for on disk.
     expect(screen.getByText(/junction\.json/)).toBeInTheDocument()
@@ -354,7 +354,7 @@ describe('KiroPrerequisiteGate', () => {
 
   it('gates on a spec that is PRESENT but which kiro-cli refuses', async () => {
     // The gap the missing-specs card cannot cover: statting the file says it is
-    // there, while kiro-cli drops it from its agent table, so Junction's agent
+    // there, while kiro-cli drops it from its agent table, so Warding's agent
     // silently becomes kiro-cli's default one with none of its MCP servers.
     vi.mocked(api.kiroPrerequisite).mockResolvedValue(status({
       installed: true,
@@ -374,7 +374,7 @@ describe('KiroPrerequisiteGate', () => {
     )
 
     expect(
-      await screen.findByText("Kiro CLI will not load Junction's agent specs"),
+      await screen.findByText("Kiro CLI will not load Warding's agent specs"),
     ).toBeInTheDocument()
     expect(screen.queryByText('Dashboard loaded')).not.toBeInTheDocument()
     // Exact match on the list entry: the reason below also contains the filename
@@ -407,7 +407,7 @@ describe('KiroPrerequisiteGate', () => {
     expect(note).toHaveTextContent('does not rewrite them')
     // The leading cause is a kiro-cli upgrade, which re-checking cannot fix, so
     // both remedies must be present as their own lines rather than buried.
-    expect(screen.getByText(/Update Junction\./)).toBeInTheDocument()
+    expect(screen.getByText(/Update Warding\./)).toBeInTheDocument()
     expect(screen.getByText(/Rewrite the specs from scratch/)).toBeInTheDocument()
     // The command must NOT come from a catalog value: a translator must not be
     // able to alter a string the user pastes into a shell.
@@ -433,10 +433,10 @@ describe('KiroPrerequisiteGate', () => {
     )
 
     expect(
-      await screen.findByText("Junction's agent specs are not installed"),
+      await screen.findByText("Warding's agent specs are not installed"),
     ).toBeInTheDocument()
     expect(
-      screen.queryByText("Kiro CLI will not load Junction's agent specs"),
+      screen.queryByText("Kiro CLI will not load Warding's agent specs"),
     ).not.toBeInTheDocument()
   })
 
@@ -613,7 +613,7 @@ describe('KiroPrerequisiteGate', () => {
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('Junction needs Kiro sign-in.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warding needs Kiro sign-in.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sign in to Kiro' })).not.toBeInTheDocument()
     expect(screen.queryByText('kiro-cli login')).not.toBeInTheDocument()
     // Nothing is paused: no gate chrome of any kind renders over the app.
@@ -668,7 +668,7 @@ describe('KiroPrerequisiteGate', () => {
   })
 
   it('mounts the dashboard immediately while the first check is pending', async () => {
-    // The pending state must not render the full-screen SETUP shell ("Junction
+    // The pending state must not render the full-screen SETUP shell ("Warding
     // is almost ready.") for the whole first round trip — that round trip
     // is slow because the gateway probe shells out to kiro-cli twice, so a
     // returning user would see the first-run setup screen flash and vanish.
@@ -687,7 +687,7 @@ describe('KiroPrerequisiteGate', () => {
 
     // No waiting screen and no setup chrome — the app itself is already up.
     expect(screen.getByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('Junction is almost ready.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warding is almost ready.')).not.toBeInTheDocument()
     expect(screen.queryByText('One quick setup')).not.toBeInTheDocument()
 
     resolveStatus(status({ installed: true, authenticated: true, ready: true }))
@@ -709,9 +709,9 @@ describe('KiroPrerequisiteGate', () => {
 
     await waitFor(() => expect(api.kiroPrerequisite).toHaveBeenCalled())
     expect(screen.getByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('Junction needs Kiro sign-in.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warding needs Kiro sign-in.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByText('Junction is almost ready.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warding is almost ready.')).not.toBeInTheDocument()
   })
 
   it('never shows setup chrome to a genuine-first-run user until confirmed', async () => {
@@ -794,7 +794,7 @@ describe('KiroPrerequisiteGate', () => {
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
-    expect(screen.queryByText('Junction is almost ready.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warding is almost ready.')).not.toBeInTheDocument()
     expect(screen.queryByText('We could not check Kiro CLI.')).not.toBeInTheDocument()
   })
 
@@ -814,7 +814,7 @@ describe('KiroPrerequisiteGate', () => {
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
     expect(screen.queryByText('Could not check Kiro CLI.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByText('Junction is almost ready.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warding is almost ready.')).not.toBeInTheDocument()
   })
 
   it('still surfaces an unusable status body to a first-run user', async () => {

@@ -2150,7 +2150,7 @@ class TestStop:
             with pytest.raises(SystemExit) as exc:
                 _stop(5476)
             assert exc.value.code == 1
-        assert "No Junction gateway" in capsys.readouterr().out
+        assert "No Warding gateway" in capsys.readouterr().out
 
     def _tool_absent(self, unpinned_at):
         # The lookup tool reads as unavailable; ``unpinned_at`` is where PATH
@@ -2224,7 +2224,7 @@ class TestStop:
             with pytest.raises(SystemExit) as exc:
                 _stop(5476)
             assert exc.value.code == 1
-        assert "No Junction gateway" in capsys.readouterr().out
+        assert "No Warding gateway" in capsys.readouterr().out
 
     def test_successful_stop(self, capsys):
         from junction.cli_server import _stop
@@ -2333,7 +2333,7 @@ class TestStop:
         mock_stop_service.assert_not_called()
         # And we should have fallen through to the kill path
         # (which exits 1 here because no listener is found on 8089).
-        assert "No Junction gateway" in capsys.readouterr().out
+        assert "No Warding gateway" in capsys.readouterr().out
 
 
 class TestWaitForPidsExit:
@@ -5680,30 +5680,26 @@ class TestTokenCommand:
 
 
 class TestBannerBranding:
-    """The ASCII banners must spell the product's real name.
+    """The banners must spell the product's real name and nothing older.
 
-    They are figlet-`small` renderings that reach users on `junction` with no
-    args, in the chat REPL, and at the top of every `junction cloud` run.
+    The CLI banner is a text banner (name + tagline): the Ward Seal is a drawn
+    mark, so there is no ASCII art to keep in sync. It reaches users on
+    `warding` with no args and in the chat REPL; the cloud wizard prints its own
+    heading composed from the same product name.
     """
 
-    def _letters(self, banner: str) -> str:
-        """Collapse the ASCII art to comparable letter-ish content."""
-        return "".join(banner.split())
-
-    def test_main_banner_is_junction(self):
+    def test_main_banner_is_warding(self):
         from junction.cli import BANNER
-        from junction.constants import PRODUCT_NAME
+        from junction.constants import PRODUCT_NAME, TAGLINE
 
-        # figlet 'small' renders "Junction" with this last letter row: the `n`
-        # (`_||_`), a single `c` (`\__|`), then the `t` (`\__|`).
-        assert " \\__/ \\_,_|_||_\\__|\\__|_\\___/_||_|" in BANNER, (
-            "banner does not render 'Junction'"
-        )
-        # A doubled `c` (`\__\__`) spells "Juncction".
-        assert "_||_\\__\\__" not in BANNER, "banner renders a doubled 'c'"
+        assert PRODUCT_NAME == "Warding"
         assert PRODUCT_NAME in BANNER
-        assert "models you want" in BANNER
-        assert "|__ ___" not in BANNER, "banner still renders 'Claw'"
+        assert TAGLINE in BANNER
+        assert "The lamp stays on. The rules stay shut." in BANNER
+        assert "Junction" not in BANNER
+        assert "models you want" not in BANNER
+        assert "control plane" not in BANNER
+        assert "Kiro" not in BANNER
         assert "👻" not in BANNER
 
     def test_banner_is_single_sourced(self):
@@ -5721,7 +5717,7 @@ class TestBannerBranding:
         assert CHAT is CANON
 
     def test_no_reinlined_banner_literal(self):
-        """Guard the fix: neither module may re-inline the art."""
+        """Guard the fix: neither module may re-inline the banner."""
         from pathlib import Path
 
         import junction.cli as cli_mod
@@ -5729,25 +5725,25 @@ class TestBannerBranding:
 
         for mod in (cli_mod, chat_mod):
             src = Path(mod.__file__).read_text(encoding="utf-8")
-            assert "BANNER = r" not in src, f"{mod.__name__} re-inlined the banner literal"
+            assert "BANNER = " not in src, f"{mod.__name__} re-inlined the banner literal"
 
-    def test_cloud_banner_is_junction_cloud(self):
+    def test_cloud_banner_is_warding_cloud(self):
         from junction.cloud.ui import BANNER
+        from junction.constants import PRODUCT_NAME
 
-        assert "_(_)___ _ _" in BANNER, "cloud banner does not render 'Junction'"
-        assert "|__ ___" not in BANNER, "cloud banner still renders 'Claw'"
-        # The 'Cloud' half must survive the edit.
-        assert "\\___/\\_,_\\__,_|" in BANNER
+        assert f"{PRODUCT_NAME} Cloud" in BANNER
+        assert "Kiro" not in BANNER
+        assert "Junction" not in BANNER
+        assert "personal AI agent" not in BANNER
 
-    def test_no_banner_spells_claw(self):
+    def test_no_older_spelling_anywhere_in_banners(self):
         from junction.cloud.ui import BANNER as CLOUD
         from junction.constants import BANNER as MAIN
 
-        CHAT = MAIN
-
-        # The 'Cl' of Claw is `/ __| |` + `(__| / _`.
-        for name, b in (("cli", MAIN), ("cli_chat", CHAT), ("cloud", CLOUD)):
+        # figlet fragments of the two names that preceded this one.
+        for name, b in (("cli", MAIN), ("cloud", CLOUD)):
             assert "(__| / _`" not in b, f"{name} banner still spells Claw"
+            assert "_(_)___ _ _" not in b, f"{name} banner still spells Junction"
 
 
 class TestChatPermissionRequest:

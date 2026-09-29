@@ -137,7 +137,7 @@ _ARCHIVE_SUFFIXES = (".whl", ".zip", ".tar.gz", ".tar.bz2", ".tar.xz", ".tgz")
 
 
 def locked_console_scripts(target_py: Path) -> list[str]:
-    """The venv's ``junction`` console scripts that cannot currently be rewritten.
+    """The venv's console scripts (``warding`` and its aliases) that cannot be rewritten.
 
     This is the probe every caller uses to decide whether a reinstall is even
     possible, so it lives beside the substitute rather than beside any one caller.
@@ -173,7 +173,14 @@ def locked_console_scripts(target_py: Path) -> list[str]:
     if sys.platform != "win32":
         return []
     locked: list[str] = []
-    for exe in sorted(Path(target_py).parent.glob("junction*.exe")):
+    # Both console scripts this package installs (primary and silent alias):
+    # the process may have been launched through either.
+    scripts = [
+        exe
+        for pattern in ("warding*.exe", "junction*.exe")
+        for exe in Path(target_py).parent.glob(pattern)
+    ]
+    for exe in sorted(scripts):
         try:
             with exe.open("r+b"):
                 pass

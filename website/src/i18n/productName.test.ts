@@ -73,12 +73,12 @@ i18next.addResource('en', 'translation', 'test.updating_product', 'Updating {{pr
 describe('productName interpolation variable', () => {
   it('defaults to the stock product name', () => {
     expect(i18next.options.interpolation?.defaultVariables).toMatchObject({
-      productName: 'Junction',
+      productName: 'Warding',
     })
   })
 
   it('renders a placeholder-bearing value identically to the old literal', () => {
-    expect(i18next.t('test.updating_product')).toBe('Updating Junction…')
+    expect(i18next.t('test.updating_product')).toBe('Updating Warding…')
   })
 
   it('lets a call-time variable win over the default', () => {
@@ -96,7 +96,7 @@ describe('productName interpolation variable', () => {
       (RUNTIME_CATALOGS as Record<string, { translation: unknown }>).en.translation,
     )
     const offenders = Object.entries(en)
-      .filter(([key, value]) => !isExempt(key) && value.includes('Junction'))
+      .filter(([key, value]) => !isExempt(key) && value.includes('Warding'))
       .map(([key]) => key)
     expect(offenders).toEqual([])
   })

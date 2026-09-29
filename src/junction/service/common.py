@@ -76,7 +76,12 @@ def launchd_live_program() -> "os.PathLike[str]":
 
 
 def which_console_script() -> str | None:
-    """PATH lookup for the Junction console script (``junction``)."""
+    """PATH lookup for the Warding console script, primary name first.
+
+    ``warding`` is the operator binary. ``junction`` is a silent alias and
+    only wins when the primary name is not on PATH, so a leftover wrapper
+    still finds a running install.
+    """
     for name in CLI_CONSOLE_STEMS:
         found = shutil.which(name)
         if found:
@@ -85,7 +90,7 @@ def which_console_script() -> str | None:
 
 
 def junction_bin() -> str:
-    """Return the resolved Junction executable path, or fall back to sys.argv[0].
+    """Return the resolved Warding executable path, or fall back to sys.argv[0].
 
     Used by both the systemd unit and the launchd plist as ``ExecStart`` /
     ``ProgramArguments``. Resolution order:
@@ -98,8 +103,9 @@ def junction_bin() -> str:
        manager has no meaningful working directory, so a relative override
        would produce an invalid ``ExecStart`` / ``ProgramArguments`` and the
        service would fail to start.
-    2. :func:`which_console_script` — ``junction`` on ``$PATH``.
-    3. ``sys.argv[0]`` — for development installs where ``junction`` isn't on
+    2. :func:`which_console_script` — ``warding`` on ``$PATH``, then the
+       ``junction`` alias.
+    3. ``sys.argv[0]`` — for development installs where neither is on
        the global PATH.
     """
     override = os.environ.get("JUNCTION_SERVICE_BIN", "").strip()

@@ -106,11 +106,11 @@ export function needsDesktopApp(app: {
   return requires && !isElectron
 }
 
-/** Shared copy so every surface says the same thing. */
 /**
  * NOT a catalog key: this module is imported by non-React code and must stay
- * free of the i18n runtime. Call sites that RENDER it use
- * `components.appstore.*.desktop_app_hint` instead; this remains the
- * machine-readable reason string for logs and non-UI callers.
+ * free of the i18n runtime. Call sites that RENDER the requirement use
+ * `components.appstore.*.desktop_app_hint` instead; this is the
+ * machine-readable reason code for logs and non-UI callers, so it names no
+ * product and carries no prose.
  */
-export const DESKTOP_APP_REQUIRED_LABEL = 'Requires the Junction desktop app'
+export const DESKTOP_APP_REQUIRED_LABEL = 'desktop_app_required'

@@ -804,14 +804,14 @@ class TestRuntimeDisplayName:
     @pytest.mark.parametrize(
         "session_key, expected_runtime",
         [
-            ("dashboard:chat-1-100", "Junction dashboard"),
-            ("dashboard_chat-1-100", "Junction dashboard"),
-            ("cron:daily", "Junction cron job"),
-            ("cron_076ab486", "Junction cron job"),
-            ("subagent:abc-123", "Junction subagent"),
-            ("taskrunner:proj:task1", "Junction task runner"),
-            ("_bg", "Junction background"),
-            ("_hb", "Junction heartbeat"),
+            ("dashboard:chat-1-100", "Warding dashboard"),
+            ("dashboard_chat-1-100", "Warding dashboard"),
+            ("cron:daily", "Warding cron job"),
+            ("cron_076ab486", "Warding cron job"),
+            ("subagent:abc-123", "Warding subagent"),
+            ("taskrunner:proj:task1", "Warding task runner"),
+            ("_bg", "Warding background"),
+            ("_hb", "Warding heartbeat"),
             ("cli_chat", "CLI terminal"),
             ("slack:1234567890.123456", "Slack"),
             ("discord:junction:direct:474737235959480320", "Discord"),
@@ -834,7 +834,7 @@ class TestRuntimeDisplayName:
         builder = ContextBuilder(memory=MemoryStore(workspace=tmp_path))
         ctx = builder.build_session_context("dashboard:chat-1", agent="gpu-comms")
         assert "[CURRENT AGENT] gpu-comms" in ctx
-        assert "[RUNTIME] Junction dashboard" in ctx
+        assert "[RUNTIME] Warding dashboard" in ctx
 
     def test_agent_identity_omitted_without_session_key(self, tmp_path):
         """build_session_context omits agent identity when session_key is None."""

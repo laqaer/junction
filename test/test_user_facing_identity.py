@@ -1,13 +1,22 @@
-"""User-facing identity is Junction, not a public fork of another product."""
+"""User-facing identity is Warding, and the README obeys the forbidden-claims list.
+
+The product name, the CLI name, the tagline and the lineage line are pinned
+here because a rename that misses one surface ships a stale name silently.
+The README assertions mirror the site's forbidden-claims list: a phrase
+another company headlines with, a claim that is not true on this tree, or a
+number nobody measured must not appear. The upstream product's retired
+identity is asserted absent from every public surface as well.
+"""
 
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
 from junction import cli_help
-from junction.constants import CLI_BIN, PRODUCT_NAME, SITE_URL
+from junction.constants import CLI_BIN, PRODUCT_NAME, SITE_URL, TAGLINE
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,87 +29,223 @@ _UPSTREAM_ORG = "kiro" + "dotdev"
 _UPSTREAM_SLUG = f"{_UPSTREAM_ORG}/{_UPSTREAM_CONCAT}"
 _UPSTREAM_DOWNLOAD_HOST = "download." + "crew" + ".kiro.dev"
 
+# Phrases the README must never carry, case-insensitive. Owned by other
+# companies as headlines, or untrue on this tree.
+_FORBIDDEN_README_PHRASES = (
+    "where coding agents meet the models you want",
+    "control plane",
+    "command center",
+    "orchestrat",
+    "autopilot",
+    "while you sleep",
+    "from anywhere",
+    "in your pocket",
+    "ai teammate",
+    "side by side",
+    "side-by-side",
+    "routes your models",
+    "route your models",
+    "model router",
+    "cheaper tokens",
+    "pip install junction",
+    "pip install warding",
+    "docker pull",
+    "works out of the box",
+    "nothing leaves your machine",
+    "unbreakable",
+    "zero-trust",
+    "certified",
+    "10x",
+    "trusted by",
+    "junction.computer",
+    "harness plane",
+    "model plane",
+    "route spend",
+)
 
-def test_readme_and_product_are_junction() -> None:
-    readme = (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    product = (_REPO_ROOT / "PRODUCT.md").read_text(encoding="utf-8")
-    assert PRODUCT_NAME == "Junction"
-    assert CLI_BIN == "junction"
+# The seal's keyhole shaft, verbatim in every surface that draws the mark.
+_SEAL_SHAFT_PATH = "M29 28h6v5h-6zM29 35.5h6v2h-6zM29 40h6v2h-6zM29 44.5h6v1.5h-6z"
+
+
+def _readme() -> str:
+    return (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def test_constants_are_warding() -> None:
+    assert PRODUCT_NAME == "Warding"
+    assert CLI_BIN == "warding"
+    assert TAGLINE == "The lamp stays on. The rules stay shut."
     assert SITE_URL == "https://getjunction.dev"
-    assert "# Junction" in product or product.startswith("# Junction")
-    assert "Where coding agents meet the models you want" in readme
-    assert "the local switch" in readme
-    assert "Harness plane" in readme
-    assert "junction up" in readme
-    assert "Daily Active Instances" in readme
+
+
+def test_readme_leads_with_warding_and_the_lineage_line() -> None:
+    readme = _readme()
+    head = readme[:1500]
+    assert "Warding" in head
+    assert "Built on Amazon's open-source Kiro agent workspace" in head
+    assert "Most of the code is theirs" in head
+    assert "Not affiliated with Amazon" in head
+    assert 'src="assets/banner.svg"' in readme
+    assert "The lamp stays on. The rules stay shut." in readme
+    assert "one harness at a time" in readme.lower()
+    # The quickstart is the source install; the CLI is warding.
+    assert "git clone https://github.com/laqaer/junction.git" in readme
+    assert "bash minimal_install.sh" in readme
+    assert "warding setup" in readme
+    assert "warding up" in readme
+    assert "scripts/get-junction.sh" in readme
+    assert "claude-agent-acp" in readme
+    assert "fetched with `npx` on first run" in readme
+    # Sections the page is built from.
+    for heading in (
+        "## Quickstart",
+        "## What it does",
+        "## The rules it can't open",
+        "## What we don't claim",
+        "## Agent Worlds",
+        "## Pricing",
+        "## Contributing",
+        "## Security",
+        "## Lineage",
+        "## License",
+    ):
+        assert heading in readme, heading
     assert "Daily Active Crews" not in readme
     assert "founding group" not in readme
     assert "Kiro sign-in" not in readme
     assert "github.com/0618.png" not in readme
-    assert 'href="https://github.com/laqaer"' in readme
     assert _UPSTREAM_PROSE not in readme
     assert _UPSTREAM_CONCAT not in readme
     assert _UPSTREAM_DOWNLOAD_HOST not in readme
+
+
+def test_readme_obeys_the_forbidden_claims_list() -> None:
+    lower = _readme().lower()
+    for phrase in _FORBIDDEN_README_PHRASES:
+        assert phrase not in lower, phrase
+    # No star, user or download counts, and no badges for them.
+    assert "img.shields.io/github/stars" not in lower
+    assert "img.shields.io/github/downloads" not in lower
+    assert re.search(r"\b\d[\d,.]*k?\+?\s+(stars|users|downloads)\b", lower) is None
+    # The four articles carry their mechanism, and the audit stance is stated.
+    assert "unaudited by a third party" in lower
+    assert "pretooluse gate" in lower
+    assert "hmac-sha256" in lower
+    assert "policy ∩ profile" in lower or "policy and the profile" in lower
+    # Honest matrices: overnight is unverified everywhere; Claude Code chat only.
+    assert "no overnight run has been verified" in lower
+    assert "typed reply" in lower
+    assert "chat only" in lower
+    # The previous name is gone from prose (the slug and paths keep it).
+    prose = re.sub(r"`[^`]*`|\([^)]*\)|https?://\S+", "", _readme())
+    assert "Junction" not in prose
+    # The upstream project is credited by its lineage line, never by its
+    # retired product name; the brand gate enforces the latter on every
+    # added line, so this test pins only the line itself.
+    assert _readme().count("Built on Amazon's open-source Kiro agent workspace") == 1
+
+
+def test_product_docs_are_warding() -> None:
+    product = (_REPO_ROOT / "PRODUCT.md").read_text(encoding="utf-8")
+    assert product.startswith("# Warding")
+    assert "The lamp stays on. The rules stay shut." in product
+    assert "Built on Amazon's open-source Kiro agent workspace" in product
     assert "this checkout forks" not in product.lower()
     assert "Apache-2.0 fork" not in product
+    lower = product.lower()
+    for phrase in ("control plane", "side by side", "routes your models", "harness plane"):
+        assert phrase not in lower, phrase
+    overlay = (_REPO_ROOT / "JUNCTION.md").read_text(encoding="utf-8")
+    assert overlay.startswith("# Warding")
+    assert "## The NO-SAY list" in overlay
+    assert "never a headline" in overlay
+    # The one data home, stated once and carried by the overlay.
+    assert "no fallback to another product's directory" in " ".join(overlay.split())
+    brief = (_REPO_ROOT / "WORKING_BRIEF.md").read_text(encoding="utf-8")
+    assert "| Product | **Warding**" in brief
+    assert "| CLI | `warding`" in brief
+    assert "## Historical" in brief
+    assert "assets/brand/build.py" in brief
+    arch = (_REPO_ROOT / "ARCHITECTURE.md").read_text(encoding="utf-8")
+    assert "one docked coding agent at a time" in arch
+    assert "The catalog forwards nothing" in arch
+    roadmap = (_REPO_ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+    assert "### M0" in roadmap and "### M5" in roadmap
+    assert re.search(r"\b20\d\d-\d\d-\d\d\b", roadmap) is None, "roadmap carries a date"
     notice = (_REPO_ROOT / "NOTICE").read_text(encoding="utf-8")
+    assert notice.lstrip().startswith("Warding")
     assert "this fork" not in notice.lower()
     assert "modified version of" not in notice
-    assert "Junction" in notice
-    assert (_REPO_ROOT / "TREE.md").is_file()
-    assert not (_REPO_ROOT / "FORK.md").exists()
     tree = (_REPO_ROOT / "TREE.md").read_text(encoding="utf-8")
-    assert tree.lstrip().startswith("# Junction")
+    assert tree.lstrip().startswith("# Warding")
     assert "this fork" not in tree.lower()
-    adr = (_REPO_ROOT / "docs/adr/0001-product-identity.md").read_text(encoding="utf-8")
-    assert "is a mature Apache-2.0 fork" not in adr
+    assert not (_REPO_ROOT / "FORK.md").exists()
+    adr = (_REPO_ROOT / "docs/adr/0008-product-rename-warding.md").read_text(encoding="utf-8")
+    assert "Status: accepted" in adr
+    assert "Supersedes" in adr
+    first_adr = (_REPO_ROOT / "docs/adr/0001-product-identity.md").read_text(encoding="utf-8")
+    assert "is a mature Apache-2.0 fork" not in first_adr
+    adr_index = (_REPO_ROOT / "docs/adr/README.md").read_text(encoding="utf-8")
+    assert "0008-product-rename-warding.md" in adr_index
+    security = (_REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert "five business days" in security
+    assert "## Scope" in security
+    assert "## Bypass reports" in security
+    assert "48 hours" not in security
 
 
-def test_cli_help_is_junction() -> None:
-    assert cli_help.TOP_USAGE.startswith("junction ")
+def test_cli_help_is_warding() -> None:
+    assert cli_help.TOP_USAGE.startswith("warding ")
     rendered = cli_help.render_epilog()
-    assert "junction up" in rendered
-    assert "junction gateway" in rendered
+    assert "warding up" in rendered
+    assert "warding gateway" in rendered
     assert "  planes" in rendered
     assert "  up" in rendered
-    assert "harness + model plane" in rendered
+    assert f"Start {PRODUCT_NAME} on loopback" in rendered
+    assert "junction up" not in rendered
+    assert "Junction" not in rendered
     assert _UPSTREAM_PROSE not in rendered
     assert f"{_UPSTREAM_CLI} gateway" not in rendered
 
 
-def test_packaged_getting_started_is_junction() -> None:
+def test_packaged_docs_lead_with_warding() -> None:
+    index = (_REPO_ROOT / "src/junction/docs/index.md").read_text(encoding="utf-8")
+    assert index.lstrip().startswith("# Warding")
+    assert "warding up" in index
+    assert "A vendor agent CLI is optional" in index
+    assert "kiro-cli is optional" not in index.split("## Core Capabilities", 1)[0]
+    readme = (_REPO_ROOT / "src/junction/docs/README.md").read_text(encoding="utf-8")
+    assert readme.lstrip().startswith("# Warding")
     gs = (_REPO_ROOT / "src/junction/docs/getting-started.md").read_text(encoding="utf-8")
     plain = gs.replace("`", "")
-    assert "Junction" in plain
     assert "vendor agent CLI is optional" in plain
     assert "kiro-cli is optional" not in plain
+    assert "scripts/get-junction.sh" in gs
+    assert "```bash\ngit clone https://github.com/laqaer/junction.git" in gs
     assert _UPSTREAM_DOWNLOAD_HOST not in gs
     assert _UPSTREAM_SLUG not in gs
-    assert "junction up" in gs
-    assert "junction gateway" in gs
 
 
-def test_public_install_guides_are_junction() -> None:
+def test_public_install_guides_point_at_this_repository() -> None:
     install = (_REPO_ROOT / "docs" / "guides" / "install.md").read_text(encoding="utf-8")
     windows = (_REPO_ROOT / "docs" / "guides" / "windows-install.md").read_text(encoding="utf-8")
     docker = (_REPO_ROOT / "docs" / "guides" / "docker.md").read_text(encoding="utf-8")
     compose = (_REPO_ROOT / "docker" / "compose.yaml").read_text(encoding="utf-8")
-    assert install.lstrip().startswith("# Installing and running Junction")
     assert _UPSTREAM_PROSE not in install
     assert _UPSTREAM_DOWNLOAD_HOST not in install
     assert f"{_UPSTREAM_CLI} gateway" not in install
     assert _UPSTREAM_SLUG not in install
-    assert "ghcr.io/kirodotdev" not in install
-    assert "junction up" in install
+    assert f"ghcr.io/{_UPSTREAM_ORG}" not in install
     assert "vendor agent CLI is optional" in install
+    assert "scripts/get-junction.sh" in install
+    assert "minimal_install.sh" in install
     assert _UPSTREAM_PROSE not in windows
     assert _UPSTREAM_DOWNLOAD_HOST not in windows
     assert f"{_UPSTREAM_CLI} gateway" not in windows
     assert "ghost family" not in windows
-    assert "junction up" in windows
-    assert "ghcr.io/kirodotdev" not in docker
+    assert f"ghcr.io/{_UPSTREAM_ORG}" not in docker
     assert "ghcr.io/laqaer/junction" in docker
-    assert "ghcr.io/kirodotdev" not in compose
+    assert f"ghcr.io/{_UPSTREAM_ORG}" not in compose
     assert "ghcr.io/laqaer/junction:stable" in compose
     assert "container_name: junction" in compose
     ec2 = (_REPO_ROOT / "src/junction/cloud/templates/junction-ec2.yaml").read_text(
@@ -108,17 +253,9 @@ def test_public_install_guides_are_junction() -> None:
     )
     assert "https://github.com/laqaer/junction.git" in ec2
     assert _UPSTREAM_SLUG not in ec2
-    assert "scripts/get-junction.sh" in install
-    assert "minimal_install.sh" in install
-    gs = (_REPO_ROOT / "src/junction/docs/getting-started.md").read_text(encoding="utf-8")
-    assert "scripts/get-junction.sh" in gs
-    assert "```bash\ngit clone https://github.com/laqaer/junction.git" in gs
-    packaged = (_REPO_ROOT / "src/junction/docs/index.md").read_text(encoding="utf-8")
-    assert "A vendor agent CLI is optional" in packaged
-    assert "kiro-cli is optional" not in packaged.split("## Core Capabilities", 1)[0]
 
 
-def test_operator_install_script_is_junction(tmp_path: Path) -> None:
+def test_operator_install_scripts_link_warding(tmp_path: Path) -> None:
     script = _REPO_ROOT / "scripts" / "get-junction.sh"
     text = script.read_text(encoding="utf-8")
     assert text.startswith("#!/bin/sh\n")
@@ -130,24 +267,30 @@ def test_operator_install_script_is_junction(tmp_path: Path) -> None:
     assert _UPSTREAM_PROSE not in text
     assert _UPSTREAM_CONCAT not in text
     assert _UPSTREAM_DOWNLOAD_HOST not in text
-    assert "kirodotdev" not in text
+    assert _UPSTREAM_ORG not in text
     minimal = (_REPO_ROOT / "minimal_install.sh").read_text(encoding="utf-8")
-    assert "Junction installed." in minimal
-    assert "junction up" in minimal
+    assert "Warding installed." in minimal
+    assert "warding setup" in minimal
+    assert "warding up" in minimal
+    assert 'ln -sfn "$_venv/bin/warding" "$BIN_DIR/warding"' in minimal
+    # The alias link is kept so existing launchers keep resolving.
+    assert 'ln -sfn "$_venv/bin/junction" "$BIN_DIR/junction"' in minimal
     assert "A vendor agent CLI is optional." in minimal
     assert "👻" not in minimal
     assert _UPSTREAM_PROSE not in minimal
     assert _UPSTREAM_CONCAT not in minimal
-    assert "kirodotdev" not in minimal
+    assert _UPSTREAM_ORG not in minimal
     assert "ollama pull" not in minimal
     checkout = (_REPO_ROOT / "install.sh").read_text(encoding="utf-8")
-    assert "Junction installed." in checkout
-    assert "junction up" in checkout
+    assert "Warding installed." in checkout
+    assert "warding setup" in checkout
+    assert "warding up" in checkout
+    assert 'ln -sf "$_venv/bin/warding" "$HOME/.local/bin/warding"' in checkout
     assert "A vendor agent CLI is optional" in checkout
     assert "👻" not in checkout
     assert "Your personal AI agent" not in checkout
     assert "kiro.dev" not in checkout
-    assert "kirodotdev" not in checkout
+    assert _UPSTREAM_ORG not in checkout
     assert f"{_UPSTREAM_CLI} gateway" not in checkout
     env = os.environ.copy()
     env["HOME"] = str(tmp_path)
@@ -165,70 +308,92 @@ def test_operator_install_script_is_junction(tmp_path: Path) -> None:
     assert "repo=https://github.com/laqaer/junction.git" in result.stdout
     assert f"dest={tmp_path / 'src'}" in result.stdout
     assert "installer=minimal_install.sh" in result.stdout
-    assert "next: junction setup && junction up" in result.stdout
+    assert "next: warding setup && warding up" in result.stdout
     assert list(tmp_path.iterdir()) == []
 
 
-def test_dashboard_and_electron_chrome_are_junction() -> None:
+def test_dashboard_and_electron_chrome_are_warding() -> None:
     index = (_REPO_ROOT / "website" / "index.html").read_text(encoding="utf-8")
     loading = (_REPO_ROOT / "website" / "electron" / "loading.html").read_text(encoding="utf-8")
-    assert "<title>Junction</title>" in index
+    manifest = (_REPO_ROOT / "website" / "public" / "manifest.json").read_text(encoding="utf-8")
+    assert "<title>Warding</title>" in index
+    assert '<link rel="icon" href="/favicon.svg" type="image/svg+xml" />' in index
+    assert "<title>Junction</title>" not in index
     assert f"<title>{_UPSTREAM_PROSE}</title>" not in index
-    assert "<title>Junction</title>" in loading
+    assert "<title>Warding</title>" in loading
     # The splash wordmark is an SVG, so its accessible name carries the product.
-    assert 'id="title" role="img" aria-label="Junction"' in loading
+    assert 'id="title" role="img" aria-label="Warding"' in loading
+    assert ">Junction</div>" not in loading
     assert f">{_UPSTREAM_PROSE}</div>" not in loading
+    # The splash draws the Ward Seal, the same geometry as the brand mark.
+    assert _SEAL_SHAFT_PATH in loading
+    assert '"name": "Warding"' in manifest
+    assert '"short_name": "Warding"' in manifest
+    i18n = (_REPO_ROOT / "website" / "src" / "i18n" / "index.ts").read_text(encoding="utf-8")
+    assert "const DEFAULT_PRODUCT_NAME = 'Warding'" in i18n
+    electron = (_REPO_ROOT / "website" / "electron" / "package.json").read_text(encoding="utf-8")
+    assert '"productName": "Warding"' in electron
+    assert '"name": "junction-desktop"' in electron
+    for name in ("favicon.svg", "logo.svg"):
+        svg = (_REPO_ROOT / "website" / "public" / name).read_text(encoding="utf-8")
+        assert 'aria-label="Warding"' in svg
 
 
-def test_agents_md_leads_with_junction() -> None:
+def test_agents_md_leads_with_warding() -> None:
     agents = (_REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
     assert agents.lstrip().startswith("# Rules")
-    assert "Junction is a local control plane" in agents
-    assert "The product is **Junction**" in agents
+    assert "this checkout is **Warding**" in agents
+    assert "The product is **Warding**" in agents
+    assert "**CLI:** `warding`" in agents
     assert "kiro-cli is REQUIRED" not in agents
     assert f"{_UPSTREAM_PROSE} is an open-source personal AI agent" not in agents
     assert "this is a public OSS fork" not in agents.lower()
 
 
-def test_github_issue_templates_are_junction() -> None:
+def test_github_issue_templates_name_the_cli() -> None:
     config = (_REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "config.yml").read_text(encoding="utf-8")
     bug = (_REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "bug_report.yml").read_text(encoding="utf-8")
     feature = (_REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "feature_request.yml").read_text(
         encoding="utf-8"
     )
-    assert _UPSTREAM_SLUG not in config
-    assert _UPSTREAM_SLUG not in bug
-    assert _UPSTREAM_SLUG not in feature
-    assert f"{_UPSTREAM_CONCAT} version" not in bug
-    assert "Junction version" in bug
-    assert "junction --version" in bug
-    assert "junction up" in bug
     docs = (_REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "documentation.yml").read_text(
         encoding="utf-8"
     )
-    assert "Junction" in docs
+    assert _UPSTREAM_SLUG not in config
+    assert _UPSTREAM_SLUG not in bug
+    assert _UPSTREAM_SLUG not in feature
     assert _UPSTREAM_SLUG not in docs
+    assert f"{_UPSTREAM_CONCAT} version" not in bug
+    assert "Warding version" in bug
+    assert "warding --version" in bug
+    assert "warding up" in bug
+    assert "Warding" in docs
     assert "Channels help" not in docs
 
 
-def test_ownership_and_banner_are_junction() -> None:
+def test_ownership_banner_and_wrappers_are_warding() -> None:
     maintainers = (_REPO_ROOT / "MAINTAINERS.md").read_text(encoding="utf-8")
     codeowners = (_REPO_ROOT / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     banner = (_REPO_ROOT / "assets" / "banner.svg").read_text(encoding="utf-8")
-    notice = (_REPO_ROOT / "NOTICE").read_text(encoding="utf-8")
+    seal = (_REPO_ROOT / "assets" / "brand" / "mark.svg").read_text(encoding="utf-8")
     assert "@laqaer" in maintainers
     assert f"{_UPSTREAM_CLI}-team" not in maintainers
     assert _UPSTREAM_SLUG not in maintainers
     assert "*                                   @laqaer" in codeowners
     assert f"{_UPSTREAM_CLI}-team" not in codeowners
-    assert 'aria-label="Junction: where coding agents meet the models you want"' in banner
-    assert "<title>Junction: " in banner
+    assert 'aria-label="Warding: The lamp stays on. The rules stay shut."' in banner
+    assert "<title>Warding: The lamp stays on. The rules stay shut.</title>" in banner
+    assert "JUNCTION" not in banner
+    assert "Kiro" not in banner
     assert _UPSTREAM_PROSE not in banner
-    assert notice.lstrip().startswith("Junction")
-    assert "this fork" not in notice.lower()
-    wrapper = (_REPO_ROOT / "bin" / "junction").read_text(encoding="utf-8")
-    junction_wrapper = (_REPO_ROOT / "bin" / "junction").read_text(encoding="utf-8")
-    assert wrapper == junction_wrapper
-    assert "Junction virtual environment not found" in wrapper
-    assert f"{_UPSTREAM_PROSE} virtual environment" not in wrapper
-    assert "# Junction CLI wrapper." in wrapper
+    assert 'aria-label="Warding"' in seal
+    assert _SEAL_SHAFT_PATH in seal
+    for name in ("junction", "warding"):
+        wrapper = (_REPO_ROOT / "bin" / name).read_text(encoding="utf-8")
+        assert "# Warding CLI wrapper." in wrapper
+        assert "Warding virtual environment not found" in wrapper
+        assert f"{_UPSTREAM_PROSE} virtual environment" not in wrapper
+        assert 'for name in "$INVOKED" warding junction; do' in wrapper
+    assert (_REPO_ROOT / "bin" / "junction").read_text(encoding="utf-8") == (
+        _REPO_ROOT / "bin" / "warding"
+    ).read_text(encoding="utf-8")

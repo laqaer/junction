@@ -2,8 +2,9 @@ name: Site
 
 # PR/main check for the public marketing site in site/. Path-scoped so it
 # never runs for backend or dashboard changes. This is a test+build gate
-# only: it does not publish GitHub Pages (that remains pages.yml on main,
-# which this bootstrap cut must not merge) and it does not deploy Vercel.
+# only: it does not deploy. The site is deployed by Vercel from its own
+# project settings; there is no GitHub Pages workflow (an Astro build uses
+# absolute asset paths, which a Pages sub-path deploy would break).
 on:
   pull_request:
     paths:

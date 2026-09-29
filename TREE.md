@@ -1,18 +1,19 @@
-# Junction
+# Warding
 
-Local control plane that docks ACP coding agents and routes their models.
-GitHub slug: `laqaer/junction`. Product identity:
-[`PRODUCT.md`](PRODUCT.md). Overlay: [`JUNCTION.md`](JUNCTION.md).
+Runs one docked ACP coding agent at a time on the operator's own machine
+and keeps a names-only model catalog beside it. GitHub slug:
+`laqaer/junction`. Product identity: [`PRODUCT.md`](PRODUCT.md). Overlay:
+[`JUNCTION.md`](JUNCTION.md).
 
 This tree does not require `kiro-cli`. Multi-ACP is already on `main`.
 
 ## Why this exists
 
-Junction is a local control plane (dashboard, CLI, messaging channels,
-cron, memory) that speaks
-[Agent Client Protocol](https://agentclientprotocol.com/) over stdio.
-`junction up` starts a loopback model catalog. The docked agent uses the
-models it already serves. Junction does not forward provider traffic.
+Warding is a gateway (dashboard, CLI, messaging channels, cron, memory)
+that speaks [Agent Client Protocol](https://agentclientprotocol.com/) over
+stdio to one docked agent. `warding up` starts a loopback model catalog
+that lists names. The docked agent uses the models it already serves.
+Warding does not forward provider traffic.
 
 Default `agent.acp_backend` is `auto`: the first installed of Cursor,
 Claude, Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid. `kiro-cli`

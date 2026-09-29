@@ -156,7 +156,7 @@ function describeIncompleteBundle(missing) {
   // minutes, so an unqualified "if this persists" reads as satisfied by two Retry
   // clicks twenty seconds apart — steering the user into the very reinstall this
   // message exists to prevent.
-  return `Junction's bundled Python runtime is still being installed — ${detail} `
+  return `Warding's bundled Python runtime is still being installed — ${detail} `
     + "not on disk yet. This can take a few minutes. Wait, then retry. If it is "
     + "still failing after five minutes, restart the app; if that does not help, "
     + "reinstall it.";

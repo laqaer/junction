@@ -167,7 +167,7 @@ class TestBrandingEndpoint:
         with patch("junction.dashboard.handlers.JunctionConfig.load", return_value=cfg):
             resp = await api_branding(req)
         body = json.loads(resp.body)
-        assert body["bot_name"] == "Junction"
+        assert body["bot_name"] == "Warding"
         assert body["avatar"] == "/logo.png"
 
     @pytest.mark.asyncio

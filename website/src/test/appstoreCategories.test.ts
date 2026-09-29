@@ -112,7 +112,7 @@ describe('provenance helpers', () => {
   it('labels built-ins, tagged registries, and core entries', () => {
     expect(sourceLabel({ origin: 'builtin' })).toBe('Built-in')
     expect(sourceLabel({ _registry: 'kirodotdev-labs' })).toBe('kirodotdev-labs')
-    expect(sourceLabel({})).toBe('Junction registry')
+    expect(sourceLabel({})).toBe('Warding registry')
   })
 
   it('verifies built-ins and junction-authored core apps only', () => {
@@ -211,7 +211,7 @@ describe('server-computed trust fields (issue #580)', () => {
 
   it('sourceLabel prefers the server provenance field', () => {
     expect(sourceLabel({ provenance: 'builtin' })).toBe('Built-in')
-    expect(sourceLabel({ provenance: 'official', origin: 'builtin' })).toBe('Junction registry')
+    expect(sourceLabel({ provenance: 'official', origin: 'builtin' })).toBe('Warding registry')
     expect(sourceLabel({ provenance: 'external', _registry: 'labs' })).toBe('labs')
   })
 
@@ -219,8 +219,8 @@ describe('server-computed trust fields (issue #580)', () => {
     // A newer client can meet an older gateway, which emits 'core' for the same
     // claim 'official' now carries. Dropping the alias would silently fall the
     // row through to the origin-based legacy arm.
-    expect(sourceLabel({ provenance: 'core', origin: 'builtin' })).toBe('Junction registry')
-    expect(sourceLabel({ provenance: 'core' })).toBe('Junction registry')
+    expect(sourceLabel({ provenance: 'core', origin: 'builtin' })).toBe('Warding registry')
+    expect(sourceLabel({ provenance: 'core' })).toBe('Warding registry')
   })
 
   it('sourceLabel keeps the _registry name even with a smuggled provenance', () => {
@@ -256,7 +256,7 @@ describe('server-computed trust fields (issue #580)', () => {
     expect(isVerified({ origin: 'builtin', author: 'x' })).toBe(true)
     expect(isVerified({ author: 'random' })).toBe(false)
     expect(sourceLabel({ origin: 'builtin' })).toBe('Built-in')
-    expect(sourceLabel({})).toBe('Junction registry')
+    expect(sourceLabel({})).toBe('Warding registry')
   })
 })
 

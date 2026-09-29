@@ -33,7 +33,7 @@ async def test_health_returns_ok_with_identity() -> None:
     body = json.loads(resp.body)
     assert body["ok"] is True
     assert body["app"] == "junction"
-    assert body["product"] == "Junction"
+    assert body["product"] == "Warding"
     assert body["version"] == __version__
 
 
@@ -70,7 +70,7 @@ async def test_direct_local_health_with_served_host_keeps_identity() -> None:
     resp = await core_mod.api_health(req)
     body = json.loads(resp.body)
     assert body["app"] == "junction"
-    assert body["product"] == "Junction"
+    assert body["product"] == "Warding"
     assert body["version"] == __version__
 
 
@@ -91,7 +91,7 @@ async def test_live_alias_returns_ok() -> None:
     body = json.loads(resp.body)
     assert body["ok"] is True
     assert body["app"] == "junction"
-    assert body["product"] == "Junction"
+    assert body["product"] == "Warding"
     assert body["version"] == __version__
 
 

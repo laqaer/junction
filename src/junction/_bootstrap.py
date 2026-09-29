@@ -9,7 +9,8 @@ repair itself. Release installs are unaffected (pip resolves
 ``pip install -e .``; this closes the git-pull gap.
 
 This module is the console-script entry point
-(``junction = junction._bootstrap:main``). It imports the real CLI and, on
+(``warding = junction._bootstrap:main``; ``junction`` is a silent alias of
+the same entry). It imports the real CLI and, on
 ``ModuleNotFoundError`` from a source checkout, installs the checkout's
 declared dependencies once and retries the import in-process. A failed import
 is side-effect-free (Python evicts the failing module from ``sys.modules``),
@@ -85,7 +86,7 @@ def _self_heal(missing: str) -> bool:
     if root is None:
         return False
     print(
-        f"junction: missing dependency {missing!r} - your checkout added "
+        f"warding: missing dependency {missing!r} - your checkout added "
         "dependencies since the last install. Installing the declared "
         "requirements to catch up...",
         file=sys.stderr,
@@ -113,9 +114,9 @@ def main() -> None:
     except ModuleNotFoundError as exc:
         if not _self_heal(exc.name or str(exc)):
             print(
-                f"junction: cannot start - {exc}.\n"
+                f"warding: cannot start - {exc}.\n"
                 "Your installed dependencies are older than your checkout. "
-                "Fix with: pip install -e <path to your Junction checkout>",
+                "Fix with: pip install -e <path to your Warding checkout>",
                 file=sys.stderr,
             )
             raise SystemExit(1) from exc
@@ -127,10 +128,10 @@ def main() -> None:
             cli_main = _import_cli()
         except ModuleNotFoundError as exc2:  # heal ran but did not cover it
             print(
-                f"junction: still failing after reinstall - {exc2}. "
+                f"warding: still failing after reinstall - {exc2}. "
                 "Check `pip install -e .` output for errors.",
                 file=sys.stderr,
             )
             raise SystemExit(1) from exc2
-        print("junction: dependencies restored.", file=sys.stderr)
+        print("warding: dependencies restored.", file=sys.stderr)
     cli_main()

@@ -276,7 +276,7 @@ describe('SettingsPanel general section', () => {
   it('offers Auto plus the real language registry, and stages the pick', async () => {
     await mount()
     const select = screen.getByRole('combobox') as HTMLSelectElement
-    // '' is "follow Junction", which is what the stored empty value means.
+    // '' is "follow Warding", which is what the stored empty value means.
     expect(select.value).toBe('')
     expect(within(select).getByRole('option', { name: 'Auto' })).toBeTruthy()
     expect(select.options.length).toBeGreaterThan(1)
@@ -992,7 +992,7 @@ describe('SettingsPanel about section', () => {
     await mount()
     openSection('About')
 
-    expect(screen.getByText(/is a desktop companion built into Junction/)).toBeTruthy()
+    expect(screen.getByText(/is a desktop companion built into Warding/)).toBeTruthy()
     const link = screen.getByRole('link', { name: 'buluoray' })
 
     fireEvent.click(link)

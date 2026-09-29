@@ -114,7 +114,7 @@ function describeGatewayFailure(failure) {
   // switch is served by a gateway, which is the thing not running. The error
   // dialog carries a button instead.
   if (failure.disabled) {
-    return `No gateway is answering on port ${failure.port}, and Junction is set `
+    return `No gateway is answering on port ${failure.port}, and Warding is set `
       + "not to start one on this machine. Start the gateway you connect to (or "
       + "the connection that reaches it) and retry, or start one here.";
   }
@@ -127,7 +127,7 @@ function describeGatewayFailure(failure) {
   if (failure.signal === "SIGKILL") {
     return "The gateway was killed on launch (SIGKILL). On macOS this usually "
       + "means Gatekeeper blocked an unsigned or quarantined executable — try: "
-      + "xattr -cr <path to Junction.app>";
+      + "xattr -cr <path to Warding.app>";
   }
   if (failure.signal) {
     return `The gateway exited on launch (signal ${failure.signal}).`;
@@ -152,7 +152,7 @@ function tailLines(text, n = 20) {
 
 /**
  * True if the log text indicates the gateway could not bind its port because
- * something already holds it (a wedged or other Junction gateway). This is a
+ * something already holds it (a wedged or other Warding gateway). This is a
  * distinct, recoverable failure from a crash: a plain retry can't help while
  * the holder is still there, but force-stopping it can. Pure (no fs/network).
  *

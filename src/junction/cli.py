@@ -1,22 +1,22 @@
-"""Junction CLI — local control plane for ACP agents and model routing.
+"""Warding CLI — runs one docked coding agent on your own machine, under policy.
 
 Commands:
-    junction chat -m "message"    Send a single message
-    junction chat                 Interactive chat mode
-    junction up                   Compose both planes and start Junction
-    junction gateway              Same server as ``up``; kept for scripts
-    junction gateway --seed NAME  Populate $JUNCTION_HOME from fixture NAME, then start the gateway
-    junction status               Show runtime stats
-    junction run TASK.md          Run an autonomous task from a spec file
-    junction update               Update Junction via git fetch + rebuild
-    junction cron list|add|remove Manage scheduled jobs
-    junction spawn run "task"     Spawn a background subagent
-    junction spawn list           List subagents
-    junction learn add|list|remove Save and manage learned corrections
-    junction setup                Interactive setup wizard
-    junction doctor               Verify setup (--quick is compose-only)
-    junction planes               Harness + model + role DAG snapshot
-    junction router status        Probe the loopback model catalog
+    warding chat -m "message"    Send a single message
+    warding chat                 Interactive chat mode
+    warding up                   Dock the agent and start Warding
+    warding gateway              Same server as ``up``; kept for scripts
+    warding gateway --seed NAME  Populate $JUNCTION_HOME from fixture NAME, then start the gateway
+    warding status               Show runtime stats
+    warding run TASK.md          Run an autonomous task from a spec file
+    warding update               Update Warding via git fetch + rebuild
+    warding cron list|add|remove Manage scheduled jobs
+    warding spawn run "task"     Spawn a background subagent
+    warding spawn list           List subagents
+    warding learn add|list|remove Save and manage learned corrections
+    warding setup                Interactive setup wizard
+    warding doctor               Verify setup (--quick is compose-only)
+    warding planes               Harness + model + role DAG snapshot
+    warding router status        Probe the loopback model catalog
 """
 
 from __future__ import annotations
@@ -51,7 +51,14 @@ from junction.config.loader import (
     build_provider_factory,
 )
 from junction.config.paths import default_home_paths
-from junction.constants import BANNER, MIN_NODE_MAJOR, env_flag_enabled
+from junction.constants import (
+    BANNER,
+    CLI_BIN,
+    MIN_NODE_MAJOR,
+    PRODUCT_NAME,
+    TAGLINE,
+    env_flag_enabled,
+)
 from junction.crash_guard import install as _install_crash_guard
 from junction.env import git_build_info
 from junction.gateway_lock import GatewayLock, GatewayLockError
@@ -964,13 +971,13 @@ def main() -> None:
             os.environ["JUNCTION_PROJECT_DIR"] = detected
 
     parser = argparse.ArgumentParser(
-        prog="junction",
-        description="Junction — local control plane for ACP agents and models",
+        prog=CLI_BIN,
+        description=f"{PRODUCT_NAME} — {TAGLINE}",
         usage=cli_help.TOP_USAGE,
         epilog=cli_help.render_epilog(),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--version", action="version", version=f"junction {__version__}")
+    parser.add_argument("--version", action="version", version=f"{CLI_BIN} {__version__}")
     parser.add_argument(
         "--verbose",
         "-v",
@@ -1013,7 +1020,7 @@ def main() -> None:
         dest="command",
         metavar="<command>",
         help=argparse.SUPPRESS,
-        prog="junction",
+        prog=CLI_BIN,
     )
 
     # Helper for commands with examples

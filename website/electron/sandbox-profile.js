@@ -1,5 +1,5 @@
 /**
- * The AppArmor grant a DIRECTLY LAUNCHED Junction needs, and why the app cannot
+ * The AppArmor grant a DIRECTLY LAUNCHED Warding needs, and why the app cannot
  * just apply it itself.
  *
  * `junction service install` installs a NAMED AppArmor profile and lets systemd

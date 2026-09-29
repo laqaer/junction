@@ -38,7 +38,7 @@ from junction.config.loader import (
     JunctionConfig,
     config_path,
 )
-from junction.constants import CLI_BIN, PRODUCT_NAME
+from junction.constants import APP_ID, PRODUCT_NAME
 from junction.context_management import RESULT_FILE_MAX_BYTES
 from junction.dashboard.origin import check_host, is_direct_local_request
 from junction.dashboard.state import DashboardState
@@ -279,7 +279,7 @@ def _liveness_payload(request: web.Request) -> dict[str, object]:
         # needs exact identity to decide whether it can reuse the shared port.
         # Anonymous non-loopback probes get only the liveness bit, avoiding an
         # exact-version fingerprint on the public probe boundary.
-        payload.update({"app": CLI_BIN, "product": PRODUCT_NAME, "version": junction.__version__})
+        payload.update({"app": APP_ID, "product": PRODUCT_NAME, "version": junction.__version__})
     return payload
 
 

@@ -40,14 +40,14 @@ const HEARTBEAT_FIELDS = [
   'first-run flag',
 ] as const
 
-const RECEIPT_DISCLOSURE = "Official app slug · per-app anonymous token (not linkable across apps) · fresh/update flag · Junction version"
+const RECEIPT_DISCLOSURE = "Official app slug · per-app anonymous token (not linkable across apps) · fresh/update flag · Warding version"
 
 const RECEIPT_FIELDS = [
   'Official app slug',
   'per-app anonymous token',
   'not linkable across apps',
   'fresh/update flag',
-  'Junction version',
+  'Warding version',
 ] as const
 
 // Fields the payload excludes. Asserted ABSENT, not just omitted from the list

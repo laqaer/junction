@@ -169,7 +169,7 @@ describe('AgentImportFlow', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(
-      screen.getByText(/existing Junction setup is never overwritten by default/i),
+      screen.getByText(/existing Warding setup is never overwritten by default/i),
     ).toBeInTheDocument()
     expect(screen.getByText(/matching items are deduplicated/i)).toBeInTheDocument()
     expect(screen.getByText(/Secrets are never imported/i)).toBeInTheDocument()

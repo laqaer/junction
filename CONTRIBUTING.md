@@ -1,6 +1,6 @@
-# Contributing to Junction
+# Contributing to Warding
 
-Thanks for your interest in contributing! Junction is an open-source project and
+Thanks for your interest in contributing! Warding is an open-source project and
 we welcome issues and pull requests.
 
 ## Reporting Bugs and Requesting Features
@@ -10,7 +10,7 @@ do, search the open issues, because the fastest resolution is often a thread tha
 already exists.
 
 For a bug, what actually helps is a way to reproduce it, the version you are on,
-your operating system, and anything unusual about how Junction is installed or
+your operating system, and anything unusual about how Warding is installed or
 where it runs. A stack trace beats a description of a stack trace. If it only
 happens on one surface, say which one, because the dashboard, the CLI, and a chat
 channel take different paths through the code.
@@ -91,7 +91,7 @@ The contributor workflow is codified as agent-loadable skills in
 - **`babysit`** — same-session monitoring loop that keeps a PR moving through
   CI and review rounds.
 
-An agent contributing to Junction loads this suite and follows the same
+An agent contributing to Warding loads this suite and follows the same
 worktree → build gate → prepare-pr → review loop human contributors use, so
 the PR process stays consistent regardless of who is writing the code. If you
 change the workflow, change it THERE — those files are the single source of
@@ -373,7 +373,7 @@ are an API (see [its README](src/junction/docs/README.md)), so renaming a file
 there is a code change, and an internal engineering note placed there ships to every
 user.
 
-## Extending Junction
+## Extending Warding
 
 - **Skills** — drop markdown files in `skills/` or `~/.junction/skills/`. See [skills/README.md](skills/README.md) for the full format reference
 - **MCP tools** — add to `mcp_core.py` or `mcp_cron.py`. Every LLM-facing command must have an MCP tool
@@ -547,7 +547,7 @@ means following it, and the file names where to report a concern.
 
 ## Licensing
 
-Junction is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for the
+Warding is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for the
 full text and [NOTICE](NOTICE) for attribution. Third-party components carry their
 own licenses, recorded in [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES).
 

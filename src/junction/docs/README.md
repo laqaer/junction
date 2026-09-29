@@ -1,4 +1,4 @@
-# Junction user documentation
+# Warding user documentation
 
 **These docs ship inside the Python package.** They are the end-user documentation:
 in-app reading, dashboard Settings links, and the feature-tips catalog all resolve
@@ -34,7 +34,7 @@ organized for someone browsing the repository.
 | [followup-suggestions.md](followup-suggestions.md) | Agent-proposed next steps above the composer. |
 | [feature-tips.md](feature-tips.md) | Personalized tips pointing at features you have not used. |
 | [deploy-web.md](deploy-web.md) | Publishing artifacts to a public HTTPS URL on your own AWS. |
-| [snapshot-and-restore.md](snapshot-and-restore.md) | Backing up and restoring Junction state. |
+| [snapshot-and-restore.md](snapshot-and-restore.md) | Backing up and restoring Warding state. |
 
 ## Channels
 

@@ -98,7 +98,7 @@ def test_cli_planes_prints_human_copy_by_default(
     args = argparse.Namespace(router_port=plane_ports.router, as_json=False)
     run_planes_command(args)
     out = capsys.readouterr().out
-    assert "Junction planes" in out
+    assert "Warding planes" in out
     assert "never paste provider keys" in out
     assert "sidecar injects" not in out
     assert "orchestration=economy" in out
@@ -113,9 +113,9 @@ def test_cli_planes_json_flag_is_machine_only(
     args = argparse.Namespace(router_port=plane_ports.router, as_json=True)
     run_planes_command(args)
     out = capsys.readouterr().out
-    assert "Junction planes" not in out
+    assert "Warding planes" not in out
     payload = json.loads(out.strip())
-    assert payload["cli"] == "junction"
+    assert payload["cli"] == "warding"
     assert "kiro_cli" not in payload["harness"]
     assert payload["roles"]["code"] == "ok"
 
@@ -179,5 +179,5 @@ def test_compose_banner_writes_the_given_stream() -> None:
     buf = io.StringIO()
     print_compose_banner(stream=buf)
     text = buf.getvalue()
-    assert "Junction compose" in text
+    assert "Warding compose" in text
     assert "vendor CLI optional" in text

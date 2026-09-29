@@ -1,117 +1,95 @@
-# Working brief — Junction bootstrap
+# Working brief — Warding
 
-This is the frozen execution contract for the Junction bootstrap cut.
-Product identity, the two-plane thesis, the authority envelope, and the
-execution id live here. Architecture detail lives in later ADRs and in
-root `ARCHITECTURE.md` once the agent OS lane lands them.
+The product identity, the thesis, and the authority envelope for agents
+working in this checkout. The execution manifest at the end is the historical
+record of the bootstrap cut that first gave this tree its own identity; it is
+kept for provenance, not as current context.
 
-## Identity (frozen)
+## Identity
 
 | Field | Value |
 |---|---|
-| Product | **Junction** |
-| CLI | `junction` |
-| Tagline | Where coding agents meet the models you want. |
-| Promise | Run Cursor, Claude, Codex, and Grok from one local dashboard, with memory and cron. `junction up` starts a loopback catalog and a role DAG. The docked agent uses models it already serves. Provider translation is not bundled. A vendor agent CLI is optional. |
-| Voice | Local-first, precise, no hype. Not another chatbot. Not a Codex clone. |
-| Visual | Paper and night: ink and a vermillion seal on paper, warm white and lamp amber on night; factory theme slug `junction`. Mark: the Ward Seal, a keyhole crossed by three ward bars with one drop of wax. Type: Fraunces (wordmark, display) + IBM Plex Sans (body, UI), bundled. Motifs: the seal and the refusal, the lit window, the three ward bars; no mascot. Brand kit: `assets/brand/build.py`. Live production: **https://getjunction.dev**. `www.getjunction.dev` redirects there. |
-| GitHub slug | `laqaer/junction`. |
-| Package / data home | `junction`, `JUNCTION_HOME`, Electron `productName` stay as implementation identifiers. |
-| Lineage | Apache-2.0 gateway + MIT-observed [Codex Router](https://github.com/duolahypercho/codex-router) model plane. Junction is the product; do not present it as a public fork. |
+| Product | **Warding** (company: Warding Labs) |
+| CLI | `warding`; `junction` is a silent alias |
+| Tagline | The lamp stays on. The rules stay shut. |
+| Promise | Warding runs the coding agent you already pay for, all night, on your own box, and asks you in chat before anything risky — under a policy it cannot read or rewrite. One harness at a time, chosen in one setting. No run cap from us; your model plan's limits still apply. Unaudited by a third party. |
+| Lineage | Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon. Credited in line one of anything long; elsewhere, the upstream project. |
+| Voice | The night watchman who is also a good notary: calm, dry, exact about time and mechanism. Clock times as nouns. The limit in the same sentence as the feature. The mechanism in every security claim. No owned phrases, no numbers we did not measure, no universal quantifiers about security, no emoji, no exclamation marks. |
+| Visual | Paper and the Ward Seal by day (bg `#F3EEE3`, ink `#1A1814`, seal `#B3301A`); the night office by night (bg `#0B0E14`, warm white `#ECE8E1`, lamp `#FFB547`, refusal `#FF7A5C`); factory theme slug `junction`. Mark: the Ward Seal, a keyhole crossed by three ward bars with one drop of wax; the seal is the only mark. Type: Fraunces (wordmark, display) + IBM Plex Sans (body, UI), bundled. Lucide icons only. Motifs: the seal and the refusal, the lit window, the three ward bars; no mascot. Brand kit: `assets/brand/build.py`. |
+| Site | https://getjunction.dev (`www` redirects there) until the owner registers the Warding domain; that host then 301s path-for-path. |
+| GitHub slug | `laqaer/junction` |
+| Package / data home | `junction`, `JUNCTION_HOME`, `~/.junction`, Electron package name `junction-desktop` stay as implementation identifiers. |
 
-Decision record: [`docs/adr/0001-product-identity.md`](docs/adr/0001-product-identity.md).
-Agent overlay: [`JUNCTION.md`](JUNCTION.md).
+Decision records: [ADR 0008](docs/adr/0008-product-rename-warding.md) (the
+name), [ADR 0001](docs/adr/0001-product-identity.md) (the previous name,
+superseded). Agent overlay: [`JUNCTION.md`](JUNCTION.md). Product:
+[`PRODUCT.md`](PRODUCT.md).
 
-## Two-plane thesis
+## Thesis
 
-Junction is a **local control plane** that docks ACP agents and shows their
-model roles. The catalog snapshot came from Codex Router. Junction is not a
-Node dump of that product, and it does not forward provider traffic.
+Warding is a governed late desk for one coding agent. The engine — dashboard,
+CLI, ten chat apps, cron, task runner, subagents, memory, OS sandbox, deny
+rules, keystone policy, HMAC-chained audit log, `POLICY ∩ PROFILE` at the
+gate, Agent Worlds — is inherited from the upstream project. What this tree
+adds is the harness registry with kiro-cli optional and last, no vendor
+account in the door, no upstream-owned endpoint in the default build, and the
+brand.
 
 ```
 Operator
-  → junction CLI / dashboard
+  → warding CLI / dashboard / chat app
     → Python gateway
-      → Harness plane (ACP runtime registry: Cursor, Claude, Codex, Grok, Pi, …)
-      → Model plane (built-in loopback catalog, typically :4202; /health and /catalog only)
-      → Memory, cron, skills
+      → the docked harness (ACP runtime registry: Claude Code, Codex, Cursor, Goose, …, kiro-cli last)
+      → the gate (keystone paths, denied commands, POLICY ∩ PROFILE, redaction, audit chain)
+      → memory, cron, task runner, subagents
+      → a model catalog on loopback (names only; /health and /catalog; completions 501)
 ```
 
-- **Harness plane** already exists on `main`: `agent.acp_backend` defaults to
-  `auto` via `src/junction/acp/runtimes.py`. Multi-ACP must not be re-landed.
-- **Model plane** is the listener `junction up` starts in
-  `src/junction/model_router/`. Completions return `501`. A translation
-  gateway on `:4200` is not bundled. If the catalog listener is down,
-  Junction still works as an ACP gateway (degraded, documented).
-- An operator may later point an agent's `openai_base_url` at a translation
-  listener they run themselves. Junction does not mint that URL and never
-  pastes provider keys into chat.
-
-Current contract: [ADR 0007](docs/adr/0007-builtin-model-catalog.md). The
-execution manifest below records the bootstrap cut. It is not the
-model-plane contract.
+- **One harness at a time.** `agent.acp_backend` defaults to `auto` via
+  `src/junction/acp/runtimes.py`. Running two harnesses side by side is not a
+  goal and must not be claimed.
+- **The catalog is names only and never a headline.** `warding up` starts
+  the listener in `src/junction/model_router/`; completions return `501`; no
+  translation gateway is bundled; if the listener is down, the gateway still
+  runs (degraded, documented). Warding never mints a provider URL and never
+  pastes provider keys into chat. Contract:
+  [ADR 0007](docs/adr/0007-builtin-model-catalog.md).
+- **Governance is the trust beat, not the headline.** The night is the story;
+  the paper-and-seal system is the look; the name is the lock.
+- **Every public claim is true today or labelled in development.** Overnight
+  runs are unverified on every harness; Claude Code is verified for chat only.
 
 ## Authority envelope
-
-Safe agent-prompts defaults for this execution:
 
 | Allowed | Blocked |
 |---|---|
 | Feature branch, commit, push | Merge to `main` |
-| Pull request | GitHub Pages on `main` |
-| GitHub issues for the epic and lanes | Paid Vercel, PyPI, Docker publish |
-| Vercel hobby deploy of `site/` (preview and production alias) | External comms (issues on other repos, emails, tweets) |
-| Attach operator-purchased domains to `junction-site` | Data deletion, irreversible migrations |
-| | GitHub repository rename (token cannot PATCH; human Settings → Rename) |
+| Pull request | Production deploy, DNS, domain purchase |
+| GitHub issues for epics and lanes | Paid services, PyPI, npm, Docker publish |
+| Vercel preview of `site/` | External comms (posts, emails, issues on other repos) |
+| Drafts labelled "for founder rewrite" | Posting under the founder's name anywhere |
+| | Data deletion, irreversible migrations |
+| | GitHub repository or org rename (owner, in Settings) |
+| | Any price, term, refund, or security-report reply |
 
-## Execution
+## Historical: the bootstrap cut
+
+The execution below first gave this tree an identity of its own (then named
+Junction). It is a record, not a plan; the current plan is
+[`ROADMAP.md`](ROADMAP.md).
 
 | Field | Value |
 |---|---|
 | Execution id | `bc-39bfeb15-ff12-4636-840a-217a97c555da` |
 | Branch | `cursor/junction-launch-55da` |
 | Base | `main` at `78424fb73` |
-| Intake | No intake issue existed at start. Open Dependabot PRs #10–#14 are unrelated. |
-| Shape | One bootstrap PR to `main`. Do not merge it in this execution. |
+| Shape | One bootstrap PR to `main` (#23), merged by a human. |
+| Surfaces | Epic https://github.com/laqaer/junction/issues/16; production site https://getjunction.dev; hobby alias https://junction-site.vercel.app. `junction.computer` was never purchased and is not a host. |
 
-## This-cut non-goals
-
-Merge; GitHub rename (token-blocked); package / data-home rename; PyPI / Docker / paid
-Vercel; vendoring Codex Router; copying tray / widget / Electron / public
-Cursor HTTPS tunnel / ACP agent bridges; reimplementing LiteLLM; storing
-provider keys in `JUNCTION_HOME` without the router's secret-entry rules;
-weakening keystone or harness-parity; restoring Channels / Board; whole-tree
-i18n rewrite; Dependabot unless it blocks the branch; `CHANGELOG.md` (written
-only at version bump).
-
-## Surfaces
-
-| Surface | URL |
-|---|---|
-| Bootstrap PR | https://github.com/laqaer/junction/pull/23 |
-| Epic | https://github.com/laqaer/junction/issues/16 |
-| Hobby **preview** (this SHA, `target` unset) | https://junction-site-drdzpa9u5-laqaers-projects.vercel.app |
-| Production site | https://getjunction.dev (live) |
-| Canonical host | https://getjunction.dev (`www` redirects here). `junction.computer` is not the host: no public DNS, and it was not purchased. |
-| Hobby default alias | https://junction-site.vercel.app |
-
-## Execution manifest
-
-Distinguish **proven** (this agent ran it) from **not_run**. Live provider
-routing and the full gateway suite were never in this cut's must-run list.
-
-| Check | Result |
-|---|---|
-| Site `npm ci` / `npm test` / `npm run build` | proven (8 vitest tests) |
-| Branding + CLI tests (`TestBannerBranding`, dashboard `bot_name`, product name, brand-name gate) | proven (114 pytest) |
-| Model-router unit tests (mocked listener up/down; secrets dropped) | proven |
-| Brand-name diff gate vs `origin/main` | proven |
-| docs-lint | proven |
-| Bootstrap PR + epic/lane issues | proven (#23, #16–#22) |
-| Site CI workflow file | proven (`.github/workflows/site.yml`; Actions in flight) |
-| Vercel hobby URL for `site/` | proven. Preview: https://junction-site-drdzpa9u5-laqaers-projects.vercel.app (`target` unset). First deploy also created https://junction-site.vercel.app — Vercel labeled that one `production` internally. No custom domain, no GitHub Pages, no spend. Not a production ship of this product. |
-| Marketing walkthrough (nav → two-plane → CLI → FAQ) | proven against local `vite preview` dump-dom and the live preview URL: Junction nav/hero, Harness + Model planes, `junction gateway`, vendor agent CLI optional, never-paste-keys on the model plane, no ghost emoji. Interactive FAQ accordion click and computerUse recording: not_run (GUI agent spend-limited). |
-| Live Codex Router against Kimi/DeepSeek | not_run (no local sidecar) |
-| Full gateway pytest / desktop | not_run |
-
-
+Execution manifest of that cut (proven = the agent ran it; not_run = it did
+not): site `npm ci` / `npm test` / `npm run build` proven; branding and CLI
+tests proven; model-router unit tests proven; brand-name diff gate proven;
+docs-lint proven; bootstrap PR and lane issues proven; site CI workflow
+proven; Vercel hobby preview proven; marketing walkthrough proven against
+`vite preview` and the live preview URL; live provider routing not_run; full
+gateway pytest and desktop not_run.

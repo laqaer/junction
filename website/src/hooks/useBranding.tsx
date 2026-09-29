@@ -3,7 +3,7 @@ import { api } from '../api/client'
 
 interface Branding { botName: string; avatar: string }
 
-const defaults: Branding = { botName: 'Junction', avatar: '/logo.png' }
+const defaults: Branding = { botName: 'Warding', avatar: '/logo.png' }
 const BrandingContext = createContext<Branding>(defaults)
 
 export function BrandingProvider({ children }: { children: ReactNode }) {

@@ -294,7 +294,7 @@ describe('SecurityPanel — denied commands', () => {
 
     // Ack the warning, then Disable → the mutation fires with enabled=false.
     fireEvent.click(
-      screen.getByLabelText("I understand this weakens Junction's protection."),
+      screen.getByLabelText("I understand this weakens Warding's protection."),
     )
     fireEvent.click(within(dialog).getByRole('button', { name: 'Disable' }))
     await waitFor(() =>
@@ -359,7 +359,7 @@ describe('SecurityPanel — denied commands', () => {
     fireEvent.click(disableAll)
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(
-      screen.getByLabelText("I understand this weakens Junction's protection."),
+      screen.getByLabelText("I understand this weakens Warding's protection."),
     )
     fireEvent.click(within(dialog).getByRole('button', { name: 'Disable' }))
     await waitFor(() => expect(api.setDeniedCommandsDisableAll).toHaveBeenCalledWith(true))
@@ -744,7 +744,7 @@ describe('SecurityPanel — governance policy viewer', () => {  beforeEach(() =>
     expect(screen.getByText(/policy fallback ceiling/)).toBeInTheDocument()
     expect(screen.getByText(/Affected: host\./)).toBeInTheDocument()
     // The remedy is only useful if it says WHERE the file is.
-    expect(screen.getByText(/profiles folder of your Junction data home/)).toBeInTheDocument()
+    expect(screen.getByText(/profiles folder of your Warding data home/)).toBeInTheDocument()
     // Causes and the restart caveat live on the demoted line, not in the body.
     expect(screen.getByText(/extends a profile that is missing/)).toBeInTheDocument()
   })

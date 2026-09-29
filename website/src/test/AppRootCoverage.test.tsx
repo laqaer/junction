@@ -187,7 +187,7 @@ describe('App — applying an update', () => {
   it('replaces the changelog with the progress overlay', async () => {
     await startUpdate()
     await waitFor(() => expect(api.applyUpdate).toHaveBeenCalled())
-    expect(await screen.findByText('Updating Junction…')).toBeInTheDocument()
+    expect(await screen.findByText('Updating Warding…')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Changelog' })).toBeNull()
     // No step reported yet: the overlay shows its neutral waiting copy.
     expect(screen.getByText('Starting update…')).toBeInTheDocument()
@@ -202,7 +202,7 @@ describe('App — applying an update', () => {
     expect(within(dialog).getByText('Update Failed')).toBeInTheDocument()
     expect(within(dialog).getByText('gateway is mid-restart')).toBeInTheDocument()
     // The overlay is not mounted: the apply never started.
-    expect(screen.queryByText('Updating Junction…')).toBeNull()
+    expect(screen.queryByText('Updating Warding…')).toBeNull()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Dismiss' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Update error' })).toBeNull())
@@ -219,7 +219,7 @@ describe('App — applying an update', () => {
 describe('App — update progress overlay', () => {
   it('marks earlier steps done and times the active one', async () => {
     const { store } = await startUpdate()
-    await screen.findByText('Updating Junction…')
+    await screen.findByText('Updating Warding…')
 
     act(() => { store.dispatch(setUpdateProgress({ step: 'building', detail: 'compiling the wheel' })) })
 

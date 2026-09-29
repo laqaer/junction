@@ -1,5 +1,5 @@
 // Helpers for Remote Tunnel mode: build the command executed on the remote
-// dev desktop over SSH to fetch a Junction dashboard token.
+// dev desktop over SSH to fetch a Warding dashboard token.
 //
 // Split out from main.js so the shell-construction logic can be unit-tested
 // without spinning up Electron.

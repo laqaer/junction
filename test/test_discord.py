@@ -2105,7 +2105,7 @@ class TestDispatcher:
     async def test_help_command(self) -> None:
         d, cli, _ = _dispatcher({"u1"})
         await d.handle_message(self._msg("!help"))
-        assert "Junction" in cli.sent[-1][0]
+        assert "Warding" in cli.sent[-1][0]
         assert "!sessions [query]" in cli.sent[-1][0]
 
     @pytest.mark.asyncio

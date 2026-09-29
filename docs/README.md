@@ -19,7 +19,7 @@ New here? Start with [guides/install.md](guides/install.md), then
 | [app-kit/](app-kit/README.md) | Building apps that run inside Junction (third-party developer docs). |
 | [design/](design/README.md) | Proposals for changes agreed before they are built. |
 | [plans/](plans/) | Dated design + implementation plans (`2026-08-25-multi-harness-design.md`). |
-| [adr/](adr/README.md) | Junction architecture decision records (identity, two planes, model catalog, security, preview, agent OS). |
+| [adr/](adr/README.md) | Warding architecture decision records (identity and the rename, the catalog beside the gateway, security, preview, agent OS). |
 | [provenance/](provenance/README.md) | Lineage of this checkout: Apache-2.0 gateway + Codex Router observation. |
 | [TASK_MAP.md](TASK_MAP.md) | Junction bootstrap epic and lane map. |
 | [system-specs/](system-specs/README.md) | Change-control contracts. The doc a code change MUST update in the same commit. |

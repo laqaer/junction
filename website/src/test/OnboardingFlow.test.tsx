@@ -34,7 +34,7 @@ const junctionConfig = vi.mocked(api.junctionConfig)
 
 const advanceToStep2 = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-  expect(screen.getByText('Tell Junction about you')).toBeInTheDocument()
+  expect(screen.getByText('Tell Warding about you')).toBeInTheDocument()
 }
 
 describe('OnboardingFlow — About You step', () => {
@@ -119,7 +119,7 @@ describe('OnboardingFlow — About You step', () => {
     fireEvent.click(screen.getByRole('button', { name: /Skip/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/Skip again/)
     expect(onComplete).not.toHaveBeenCalled()
-    expect(screen.getByText('Tell Junction about you')).toBeInTheDocument()
+    expect(screen.getByText('Tell Warding about you')).toBeInTheDocument()
     // Second Skip: explicit discard → dismissed
     fireEvent.click(screen.getByRole('button', { name: /Skip/ }))
     await waitFor(() => expect(onComplete).toHaveBeenCalled())
@@ -163,7 +163,7 @@ describe('OnboardingFlow — About You step', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     // Error surfaces, still on step 2, tour NOT shown
     expect(await screen.findByRole('alert')).toHaveTextContent(/Couldn't save/)
-    expect(screen.getByText('Tell Junction about you')).toBeInTheDocument()
+    expect(screen.getByText('Tell Warding about you')).toBeInTheDocument()
     expect(screen.queryByText('Work that runs on time')).not.toBeInTheDocument()
   })
 

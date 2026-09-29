@@ -9,7 +9,7 @@
  * support, and — on macOS — still drives Squirrel.Mac underneath, so the proven
  * atomic bundle swap is unchanged. See docs/guides/windows-install.md and issue #598.
  *
- * The ONE Junction-specific concern vs. a plain Electron app is unchanged: the
+ * The ONE Warding-specific concern vs. a plain Electron app is unchanged: the
  * bundled Python gateway is a long-running child process, so it MUST be stopped
  * gracefully BEFORE the app bundle is swapped — otherwise the swap races a live
  * child and can leave a half-replaced app. That is why autoInstallOnAppQuit is
@@ -493,7 +493,7 @@ function buildFeedBase({ base, channel, variant = "" }) {
  * user with no next step -- the card simply re-offers the same update after
  * relaunch (observed in the field on 0.1.2-nightly.20260729t073648). Reinstalling
  * over the top is the supported recovery and is non-destructive: user data lives
- * in the Junction home directory, never inside the app bundle.
+ * in the Warding home directory, never inside the app bundle.
  *
  * Computed HERE rather than in the renderer because the renderer has no
  * trustworthy platform: getInfo()'s `platform` field is a display string that
@@ -1480,10 +1480,10 @@ function initAutoUpdate(deps) {
     if (osPlatform !== "win32") return;
     try {
       new Notification({
-        title: "Installing Junction update",
+        title: "Installing Warding update",
         // Timing and automatic relaunch stay on the installer window that they
         // explain. The toast carries only the unique recovery instruction.
-        body: "If Junction doesn’t reopen after the installer finishes, open it from the Start menu.",
+        body: "If Warding doesn’t reopen after the installer finishes, open it from the Start menu.",
       }).show();
     } catch { /* notifications optional */ }
   }
@@ -1650,15 +1650,15 @@ function initAutoUpdate(deps) {
 
   async function promptInstall(versionName, notes) {
     const handoffDetail = osPlatform === "win32"
-      ? "Installing can take several minutes. Junction will close, show Windows installation progress, and reopen automatically."
-      : "Installing can take several minutes. Junction will close and reopen automatically when the update is complete.";
+      ? "Installing can take several minutes. Warding will close, show Windows installation progress, and reopen automatically."
+      : "Installing can take several minutes. Warding will close and reopen automatically when the update is complete.";
     const { response } = await dialog.showMessageBox({
       type: "info",
       buttons: ["Install Update & Restart App", "Later"],
       defaultId: 0,
       cancelId: 1,
-      title: "Junction update ready",
-      message: `Junction ${versionName || ""} is ready to install.`.trim(),
+      title: "Warding update ready",
+      message: `Warding ${versionName || ""} is ready to install.`.trim(),
       detail:
         (notes || "").slice(0, 500) +
         `\n\n${handoffDetail}`,
@@ -1670,7 +1670,7 @@ function initAutoUpdate(deps) {
       try {
         new Notification({
           title: "Update deferred",
-          body: "Junction will finish updating the next time you quit.",
+          body: "Warding will finish updating the next time you quit.",
         }).show();
       } catch { /* notifications optional */ }
     }

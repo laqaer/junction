@@ -254,34 +254,44 @@ AWS_PROFILE_CHARS = "A-Za-z0-9_.+-"
 AWS_PROFILE_NAME_PATTERN = f"^[{AWS_PROFILE_FIRST_CHARS}][{AWS_PROFILE_CHARS}]{{0,127}}\\Z"
 AWS_PROFILE_NAME_RE = re.compile(AWS_PROFILE_NAME_PATTERN)
 
-# The displayed product name. Identifiers (`junction`, `JUNCTION_HOME`)
-# keep the spelling their own system gave them; this string is the prose /
-# dashboard default.
-PRODUCT_NAME = "Junction"
+# The displayed product name. Identifiers (`junction`, `JUNCTION_HOME`,
+# `~/.junction`) keep the spelling their own system gave them; this string is
+# the prose / dashboard default.
+PRODUCT_NAME = "Warding"
 
-# User-facing CLI binary. Prints, usage, and help name `junction`.
-CLI_BIN = "junction"
-# Console-script basenames that dispatch here. PATH lookup, restart respawn, and
-# service ExecStart walk this tuple in order.
-CLI_CONSOLE_STEMS: tuple[str, ...] = (CLI_BIN,)
+# The one-line tagline printed under the wordmark. One definition so the CLI
+# banner, the setup wizard and the packaged docs cannot drift apart.
+TAGLINE = "The lamp stays on. The rules stay shut."
+
+# User-facing CLI binary. `junction` is a silent alias that dispatches to the
+# same entry point; prints, usage, and help name `warding`.
+CLI_BIN = "warding"
+# Console-script basenames that dispatch here. Primary first so PATH lookup,
+# restart respawn, and service ExecStart prefer `warding`; the alias is
+# checked so a process started through it can still be found.
+CLI_CONSOLE_STEMS: tuple[str, ...] = (CLI_BIN, "junction")
 
 # Canonical public hostname. CLI chrome and the marketing site use this.
-# www.getjunction.dev redirects here.
+# www.getjunction.dev redirects here. It stays on the getjunction.dev host
+# until the owner registers the Warding domain; that host then 301s here.
 SITE_URL = "https://getjunction.dev"
 
 # Public GitHub slug. Clone URLs and issue links use this.
 GITHUB_SLUG = "laqaer/junction"
 
-# The product wordmark, figlet `small`. ONE definition on purpose: copy-pasting
-# it into cli.py and cli_chat.py risks a rename leaving a stale product name in
-# the two most-seen surfaces (bare `junction`, the chat REPL). Import it; never
-# re-inline it. `cloud/ui.py` keeps its own art because it renders a different
-# wordmark ("Junction Cloud") with ANSI color.
-BANNER = r"""
-    _              _   _
- _ | |_  _ _ _  __| |_(_)___ _ _
-| || | || | ' \/ _|  _| / _ \ ' \
- \__/ \_,_|_||_\__|\__|_\___/_||_|
+# The gateway's machine identity, reported by /api/health so the desktop
+# shell's cross-app instance guard can recognise a same-family gateway on the
+# shared port. It is the package name and never follows the product or CLI
+# name: the guard compares it byte-for-byte.
+APP_ID = "junction"
 
-  Junction - Where coding agents meet the models you want.
+# The text banner printed by a bare `warding` and by the chat REPL. The Ward
+# Seal is a drawn mark, not ASCII art, so the banner is the name and the
+# tagline only. ONE definition on purpose: copy-pasting it into cli.py and
+# cli_chat.py risks a rename leaving a stale product name in the two most-seen
+# surfaces. Import it; never re-inline it. `cloud/ui.py` composes its own
+# heading from PRODUCT_NAME because it renders with ANSI color.
+BANNER = f"""
+  {PRODUCT_NAME}
+  {TAGLINE}
 """
