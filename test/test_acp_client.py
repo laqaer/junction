@@ -22,6 +22,7 @@ from junction.acp.client import (
     AcpClient,
     AcpError,
     AcpProcessDied,
+    AcpTurnStalled,
     _format_acp_error,
     _is_model_substitution_advisory,
     _make_unified_diff,
@@ -39,6 +40,8 @@ from junction.acp.liveness import (
 )
 from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_KIRO,
+    ACP_BACKEND_OPENCODE,
     JSONRPC_METHOD_NOT_FOUND,
     AcpPromptStats,
 )
@@ -873,14 +876,80 @@ class TestAcpClientBackendSelection:
         await _stop_stderr_drain(client)
 
     @pytest.mark.asyncio
-    async def test_spawn_claude_backend_missing_bin_raises(self, tmp_path):
+    async def test_spawn_claude_backend_missing_bin_and_npx_raises(self, tmp_path):
+        """Neither an installed adapter nor npx: the spawn fails loud, and the
+        miss is NOT cached so a later install is picked up without a restart."""
+        import junction.acp.client as _mod
+
         client = AcpClient(work_dir=tmp_path, acp_backend=ACP_BACKEND_CLAUDE)
         with (
             patch("junction.acp.client._resolve_claude_acp_bin", return_value=None),
+            patch("junction.acp.client._resolve_claude_acp_npx_argv", return_value=None),
             patch("asyncio.create_subprocess_exec", new_callable=AsyncMock),
         ):
-            with pytest.raises(AcpError, match="claude-agent-acp not found"):
+            with pytest.raises(AcpError, match="claude-agent-acp not found.*npx"):
                 await client._spawn()
+        assert _mod._claude_acp_argv_cache is _mod._UNRESOLVED
+
+    @pytest.mark.asyncio
+    async def test_spawn_claude_backend_missing_bin_falls_back_to_npx(self, tmp_path):
+        """With only ``claude`` + a Node toolchain on the host, the registry's
+        ``npx -y @agentclientprotocol/claude-agent-acp`` launcher is used."""
+        import junction.acp.client as _mod
+
+        npx_argv = ["/opt/homebrew/bin/npx", "-y", "@agentclientprotocol/claude-agent-acp@^0.60.0"]
+        client = AcpClient(work_dir=tmp_path, acp_backend=ACP_BACKEND_CLAUDE)
+        with (
+            patch("junction.acp.client._resolve_claude_acp_bin", return_value=None),
+            patch("junction.acp.client._resolve_claude_acp_npx_argv", return_value=npx_argv),
+            patch(
+                "junction.acp.client.wrap_argv",
+                side_effect=lambda argv, mode, **kwargs: (argv, None),
+            ),
+            patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec,
+            patch("junction.session._track_pid"),
+            patch("junction.session._track_session_pid"),
+        ):
+            mock_proc = MagicMock()
+            mock_proc.pid = 12345
+            mock_proc.returncode = None
+            mock_exec.return_value = mock_proc
+
+            await client._spawn()
+
+            argv = list(strip_spawn_shim(mock_exec.call_args.args))
+            assert argv == npx_argv
+        # A positive resolution is cached for later spawns.
+        assert _mod._claude_acp_argv_cache == npx_argv
+
+        await _stop_stderr_drain(client)
+
+    def test_resolve_claude_acp_npx_argv_requires_npx(self):
+        """The registry's bare ``npx`` is only usable when npx resolves on the
+        augmented PATH, and it is spawned by absolute path when it does."""
+        registry_argv = ["npx", "-y", "@agentclientprotocol/claude-agent-acp@^0.60.0"]
+        with (
+            patch("junction.acp.runtimes.resolve_spawn_argv", return_value=registry_argv),
+            patch("junction.env.find_node_tool", return_value=None),
+        ):
+            assert acp_client._resolve_claude_acp_npx_argv() is None
+        with (
+            patch("junction.acp.runtimes.resolve_spawn_argv", return_value=registry_argv),
+            patch("junction.env.find_node_tool", return_value="/usr/local/bin/npx"),
+        ):
+            assert acp_client._resolve_claude_acp_npx_argv() == [
+                "/usr/local/bin/npx",
+                "-y",
+                "@agentclientprotocol/claude-agent-acp@^0.60.0",
+            ]
+
+    def test_resolve_claude_acp_argv_prefers_installed_adapter(self):
+        with (
+            patch("junction.acp.client._resolve_claude_acp_bin", return_value=["/bin/adapter"]),
+            patch("junction.acp.client._resolve_claude_acp_npx_argv") as npx,
+        ):
+            assert acp_client._resolve_claude_acp_argv() == ["/bin/adapter"]
+            npx.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_spawn_kiro_backend_unchanged(self, tmp_path):
@@ -6067,6 +6136,161 @@ class TestPromptLoopReleasesTurnDone:
         assert result == ""
 
 
+class TestModelWaitWatchdog:
+    """A silent-retry harness that goes quiet with nothing in flight is stopped.
+
+    OpenCode retries a rate-limited model call inside the harness and sends
+    nothing over ACP, so without this watchdog the turn holds until the prompt
+    timeout. Kiro never runs it (harness parity: the Kiro path is unchanged).
+    """
+
+    @staticmethod
+    def _client(tmp_path, monkeypatch, backend=ACP_BACKEND_OPENCODE, frames=()):
+        from junction.acp import client as acp_client
+
+        monkeypatch.setattr(acp_client, "_MODEL_WAIT_STALL_TIMEOUT", 0.2)
+        monkeypatch.setattr(acp_client, "_TOOL_STALL_TIMEOUT", 60.0)
+        monkeypatch.setattr(acp_client, "_READ_TIMEOUT", 0.02)
+        client = AcpClient(acp_backend=backend, work_dir=tmp_path)
+        client._turn_done.clear()
+        client._is_process_alive = lambda: True
+        client._kill_process = AsyncMock()
+        queue = list(frames)
+
+        async def fake_read(*_args, **_kwargs):
+            return queue.pop(0) if queue else None
+
+        client._read_message = fake_read  # type: ignore[assignment]
+        return client
+
+    @staticmethod
+    def _update(kind, call_id, status=None):
+        from junction.acp.types import JsonRpcMessage
+
+        update = {"sessionUpdate": kind, "toolCallId": call_id}
+        if status:
+            update["status"] = status
+        return JsonRpcMessage(method="session/update", params={"update": update})
+
+    @staticmethod
+    async def _drain(client, timeout):
+        actions = []
+        t0 = time.monotonic()
+        async for action, _ in client._prompt_loop(req_id=1, timeout=timeout):
+            actions.append(action)
+        return actions, time.monotonic() - t0
+
+    @pytest.mark.asyncio
+    async def test_silence_with_nothing_in_flight_stops_the_turn(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path, monkeypatch)
+        t0 = time.monotonic()
+        with pytest.raises(AcpTurnStalled, match="stopped responding") as info:
+            await self._drain(client, timeout=30.0)
+        assert time.monotonic() - t0 < 5.0
+        assert info.value.transient is False
+        client._kill_process.assert_awaited_once()
+        assert client._turn_done.is_set()
+
+    @pytest.mark.asyncio
+    async def test_kiro_never_runs_it(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path, monkeypatch, backend=ACP_BACKEND_KIRO)
+        _, elapsed = await self._drain(client, timeout=0.5)
+        assert elapsed >= 0.4  # ran to its own deadline
+        client._kill_process.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_a_running_tool_keeps_it_quiet(self, tmp_path, monkeypatch):
+        client = self._client(
+            tmp_path, monkeypatch, frames=[self._update("tool_call", "t1", "in_progress")]
+        )
+        actions, elapsed = await self._drain(client, timeout=0.6)
+        assert actions == ["update"] and elapsed >= 0.5
+        client._kill_process.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_it_arms_again_once_every_tool_finishes(self, tmp_path, monkeypatch):
+        frames = [
+            self._update("tool_call", "t1", "in_progress"),
+            self._update("tool_call", "t2", "in_progress"),
+            self._update("tool_call_update", "t1", "completed"),
+            self._update("tool_call_update", "t2", "failed"),
+        ]
+        client = self._client(tmp_path, monkeypatch, frames=frames)
+        with pytest.raises(AcpTurnStalled):
+            await self._drain(client, timeout=30.0)
+        assert client._tools_in_flight == set()
+
+    @pytest.mark.asyncio
+    async def test_one_of_two_tools_finishing_is_not_a_stall(self, tmp_path, monkeypatch):
+        frames = [
+            self._update("tool_call", "t1", "in_progress"),
+            self._update("tool_call", "t2", "in_progress"),
+            self._update("tool_call_update", "t1", "completed"),
+        ]
+        client = self._client(tmp_path, monkeypatch, frames=frames)
+        _, elapsed = await self._drain(client, timeout=0.6)
+        assert elapsed >= 0.5
+        assert client._tools_in_flight == {"t2"}
+
+    @pytest.mark.asyncio
+    async def test_a_pending_approval_is_not_harness_silence(self, tmp_path, monkeypatch):
+        from junction.acp.types import JsonRpcMessage
+
+        permission = JsonRpcMessage(id=7, method="session/request_permission", params={})
+        client = self._client(tmp_path, monkeypatch, frames=[permission])
+        actions, elapsed = await self._drain(client, timeout=0.6)
+        assert actions == ["permission"] and elapsed >= 0.5
+        assert client._awaiting_answer == {7}
+        # Answering it re-arms the watchdog, timed from the answer.
+        client._note_answered(7)
+        assert client._awaiting_answer == set()
+
+    @pytest.mark.asyncio
+    async def test_stderr_chatter_does_not_hold_it_off(self, tmp_path, monkeypatch):
+        """A harness that logs its own retries to stderr is still stopped."""
+        client = self._client(tmp_path, monkeypatch)
+
+        async def chatter():
+            while True:
+                client._last_activity = time.monotonic()
+                await asyncio.sleep(0.01)
+
+        task = asyncio.create_task(chatter())
+        try:
+            with pytest.raises(AcpTurnStalled):
+                await self._drain(client, timeout=30.0)
+        finally:
+            task.cancel()
+
+    @pytest.mark.asyncio
+    async def test_consumer_time_is_not_harness_silence(self, tmp_path, monkeypatch):
+        """A consumer slow to handle a frame does not make the harness look stalled."""
+        from junction.acp.types import JsonRpcMessage
+
+        frames = [
+            JsonRpcMessage(method="session/update", params={"update": {}}),
+            JsonRpcMessage(method="session/update", params={"update": {}}),
+        ]
+        client = self._client(tmp_path, monkeypatch, frames=frames)
+        seen = []
+        handed_back = 0.0
+        with pytest.raises(AcpTurnStalled):
+            async for action, _ in client._prompt_loop(req_id=1, timeout=30.0):
+                seen.append(action)
+                await asyncio.sleep(0.3)  # longer than the stall window
+                handed_back = time.monotonic()
+        # The stall is timed from when the consumer handed control back, not
+        # from when the frame arrived: counting the 0.3s the consumer held it
+        # would fire at once.
+        assert seen == ["update", "update"]
+        assert time.monotonic() - handed_back >= 0.18
+
+    def test_router_reads_it_as_a_rate_limit(self):
+        from junction.harness_router.limits import FAILURE_RATE_LIMIT, classify_exception
+
+        assert classify_exception(AcpTurnStalled("opencode", 301.0)) == FAILURE_RATE_LIMIT
+
+
 class TestToolStallWatchdog:
     """A tool dispatched that never returns must abort the turn via the
     _TOOL_STALL_TIMEOUT watchdog, not hang to the full prompt timeout."""
@@ -7048,6 +7272,61 @@ class TestCaptureAvailableModels:
             {"models": {"availableModels": [{"value": "m1", "name": "M1"}]}}
         )
         assert c.available_models()[0]["modelId"] == "m1"
+
+    @staticmethod
+    def _config_option_response(options):
+        return {
+            "sessionId": "s",
+            "configOptions": [
+                {"id": "mode", "category": "mode", "options": [{"value": "build"}]},
+                {
+                    "id": "model",
+                    "category": "model",
+                    "type": "select",
+                    "currentValue": "opencode/big-pickle",
+                    "options": options,
+                },
+            ],
+        }
+
+    def test_spec_agent_models_from_config_options(self):
+        """OpenCode sends no ``models`` block; its picker is a config option."""
+        c = AcpClient(acp_backend=ACP_BACKEND_OPENCODE)
+        c._capture_available_models(
+            self._config_option_response(
+                [
+                    {"value": "opencode/big-pickle", "name": "Big Pickle"},
+                    {"value": "openrouter/deepseek-v4"},
+                    {"name": "no value"},
+                ]
+            )
+        )
+        assert [(m["modelId"], m["name"]) for m in c.available_models()] == [
+            ("opencode/big-pickle", "Big Pickle"),
+            ("openrouter/deepseek-v4", "openrouter/deepseek-v4"),
+        ]
+        assert c._resolved_model_id == "opencode/big-pickle"
+
+    def test_grouped_config_option_models_are_flattened(self):
+        c = AcpClient(acp_backend=ACP_BACKEND_OPENCODE)
+        c._capture_available_models(
+            self._config_option_response(
+                [
+                    {"group": "openrouter", "options": [{"value": "openrouter/a"}]},
+                    {"group": "opencode", "options": [{"value": "opencode/b"}]},
+                ]
+            )
+        )
+        assert [m["modelId"] for m in c.available_models()] == ["openrouter/a", "opencode/b"]
+
+    def test_kiro_ignores_config_option_models(self):
+        """The Kiro path reads only its ``models`` block, exactly as before."""
+        c = AcpClient(acp_backend=ACP_BACKEND_KIRO)
+        c._capture_available_models(
+            self._config_option_response([{"value": "opencode/big-pickle"}])
+        )
+        assert c.available_models() == []
+        assert c._resolved_model_id is None
 
 
 def _scripted_process(lines, *, returncode=None):

@@ -9,7 +9,7 @@ from aiohttp import web
 
 from junction.dashboard.chat_persistence import _save_slot_to_history
 from junction.dashboard.chat_runner import _run_chat
-from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+from junction.dashboard.kiro_readiness import reject_if_agent_unverified
 from junction.dashboard.state import DashboardState
 from junction.security import redact_credentials, redact_exfiltration_urls
 from junction.sel import sel
@@ -24,7 +24,7 @@ async def api_chat_slot_regenerate(request: web.Request) -> web.Response:
     # Destructive: this truncates and PERSISTS history before the background
     # turn runs, so a failed turn cannot undo it. Unlike an ordinary send, the
     # readiness latch must be honored BEFORE the mutation.
-    blocked = await reject_if_kiro_unverified(request)
+    blocked = await reject_if_agent_unverified(request)
     if blocked is not None:
         return blocked
     state: DashboardState = request.app["state"]
@@ -195,7 +195,7 @@ async def api_chat_slot_edit_resend(request: web.Request) -> web.Response:
     # Destructive: this truncates and PERSISTS history before the background
     # turn runs, so a failed turn cannot undo it. Unlike an ordinary send, the
     # readiness latch must be honored BEFORE the mutation.
-    blocked = await reject_if_kiro_unverified(request)
+    blocked = await reject_if_agent_unverified(request)
     if blocked is not None:
         return blocked
     state: DashboardState = request.app["state"]

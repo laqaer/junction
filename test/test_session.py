@@ -10,8 +10,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from junction.acp.types import AcpPromptStats
+from junction.acp.types import ACP_BACKEND_KIRO, AcpPromptStats
 from junction.config import JunctionConfig
+from junction.config.loader import DEFAULT_MODEL
 from junction.messaging.link import ChannelLink
 from junction.session import (
     _BG_BLIND_RECYCLE_PROMPTS,
@@ -942,6 +943,86 @@ class TestCancelRaceCondition:
         mgr = SessionManager(cfg, provider_factory=factory)
         await mgr.get_or_create("test-model", model="claude-sonnet")
         assert captured["model_override"] == "claude-sonnet"
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_foreign_override_gets_no_synthesized_model(self, cfg):
+        """A per-session harness override owns its own model namespace.
+
+        The cold-start resolver fills ``model_override`` from the kiro agent
+        slots when the caller passes none; doing that for a session bound to
+        another harness would hand it a kiro-spelled id as if the caller had
+        picked it (H12), and the factory cannot tell the difference.
+        """
+        captured = {}
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            captured.update(kwargs)
+            m = AsyncMock()
+            m.start = AsyncMock()
+            m.is_process_alive = lambda: True
+            m.context_usage_pct = lambda: 0.0
+            m.has_active_turn = lambda: False
+            return m
+
+        cfg.agent.model = "claude-sonnet-4.6"
+        mgr = SessionManager(cfg, provider_factory=factory)
+        await mgr.get_or_create("test-foreign", acp_backend_override="codex")
+        assert captured.get("model_override") is None
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_explicit_model_survives_a_foreign_override(self, cfg):
+        """A caller's own pick is still forwarded verbatim to another harness."""
+        captured = {}
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            captured.update(kwargs)
+            m = AsyncMock()
+            m.start = AsyncMock()
+            m.is_process_alive = lambda: True
+            m.context_usage_pct = lambda: 0.0
+            m.has_active_turn = lambda: False
+            return m
+
+        mgr = SessionManager(cfg, provider_factory=factory)
+        await mgr.get_or_create(
+            "test-foreign-explicit", model="lane-native", acp_backend_override="codex"
+        )
+        assert captured["model_override"] == "lane-native"
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_real_factory_keeps_the_kiro_global_off_a_foreign_override(self, cfg):
+        """End to end through the REAL factory: no kiro model on a codex session."""
+        captured = {}
+
+        from junction.providers.acp import AcpProvider as RealAcpProvider
+
+        class FakeAcpProvider(RealAcpProvider):
+            """A real provider instance whose start/shutdown never spawn."""
+
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                super().__init__(**kwargs)
+
+            async def start(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+        cfg.agent.model = "opus-4.8-1m"
+        with patch("junction.providers.acp.AcpProvider", FakeAcpProvider):
+            mgr = SessionManager(cfg, provider_factory=cfg.create_provider_factory())
+            provider, _, _ = await mgr.get_or_create(
+                "test-real-foreign", acp_backend_override="codex"
+            )
+        assert captured["acp_backend"] == "codex"
+        assert captured["model"] == ""
+        # The kiro-spelled global did not reach the codex session's client.
+        assert provider.client._model in ("", DEFAULT_MODEL)
         await mgr.close_all()
 
 
@@ -4297,6 +4378,13 @@ class TestGetBgSessionRecycle:
     """get_bg_session() recycles a healthy-but-stale _bg runtime only when it
     has zero active sessions."""
 
+    @pytest.fixture(autouse=True)
+    def _kiro_backend(self, cfg):
+        """These cases exercise the multiplexed kiro-cli ``AcpRuntime`` path, which
+        serves only runtime-hosted harnesses. Pin it instead of inheriting
+        ``auto``, whose answer depends on which agent CLIs the host has."""
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+
     @pytest.mark.asyncio
     async def test_recycles_stale_idle_runtime(self, cfg):
         mgr = SessionManager(cfg, provider_factory=_mock_provider_factory())
@@ -4394,6 +4482,13 @@ def _run_runtime_factory(created_runtimes: list):
 class TestOpenTaskSession:
     """The task runner shares ONE run-scoped AcpRuntime across all its steps."""
 
+    @pytest.fixture(autouse=True)
+    def _kiro_backend(self, cfg):
+        """These cases exercise the multiplexed kiro-cli ``AcpRuntime`` path, which
+        serves only runtime-hosted harnesses. Pin it instead of inheriting
+        ``auto``, whose answer depends on which agent CLIs the host has."""
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+
     @pytest.mark.asyncio
     async def test_run_shares_one_runtime_across_sessions(self, cfg):
         created: list = []
@@ -4441,6 +4536,99 @@ class TestOpenTaskSession:
         assert mgr._sessions[key].provider is provider
         mgr.release(key)
         await mgr.release_subagent_runtime(parent)
+        await mgr.close_all()
+
+
+class TestTaskRunnerOnPerProcessHarness:
+    """A harness with one process per session (Claude Code, Codex, Cursor, Grok,
+    OpenCode) cannot host a shared AcpRuntime. Its task steps must run on that
+    harness through the provider factory, never on a bare kiro-cli runtime."""
+
+    @pytest.mark.asyncio
+    async def test_steps_get_dedicated_providers_on_the_configured_harness(self, cfg):
+        cfg.agent.acp_backend = "codex"
+        built: list[dict] = []
+        base = _mock_provider_factory()
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            built.append({"key": session_key, **kwargs})
+            return base(session_key, agent, channel_id, **kwargs)
+
+        mgr = SessionManager(cfg, provider_factory=factory)
+        parent = "taskrunner:run9:runtime"
+        with patch("junction.acp.runtime.AcpRuntime") as bare_runtime:
+            p1, new1, _ = await mgr.open_task_session(parent, "taskrunner:run9:task0")
+            p2, new2, _ = await mgr.open_task_session(parent, "taskrunner:run9:task1")
+        bare_runtime.assert_not_called()
+        assert new1 is True and new2 is True and p1 is not p2
+        # One provider per step, no throwaway bootstrap provider.
+        assert [b["key"] for b in built] == ["taskrunner:run9:task0", "taskrunner:run9:task1"]
+        assert mgr._sessions["taskrunner:run9:task0"].provider is p1
+        assert parent not in mgr._subagent_runtimes
+        assert parent in mgr._dedicated_task_runs
+        mgr.release("taskrunner:run9:task0")
+        mgr.release("taskrunner:run9:task1")
+        await mgr.release_subagent_runtime(parent)
+        assert parent not in mgr._dedicated_task_runs
+        await mgr.close_all()
+
+    @pytest.mark.asyncio
+    async def test_bootstrap_that_finds_no_runtime_marks_the_run_dedicated(self, cfg):
+        # The configured harness looked runtime-hosted, but the provider the
+        # factory built has no AcpRuntime: the run falls back to dedicated
+        # providers, never to a bare kiro-cli runtime.
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+        base = _mock_provider_factory()
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            provider = base(session_key, agent, channel_id, **kwargs)
+            provider._client = None  # an AcpClient-style provider: no shared runtime
+            return provider
+
+        mgr = SessionManager(cfg, provider_factory=factory)
+        parent = "taskrunner:run10:runtime"
+        with patch("junction.acp.runtime.AcpRuntime") as bare_runtime:
+            provider, is_new, _ = await mgr.open_task_session(parent, "taskrunner:run10:task0")
+        bare_runtime.assert_not_called()
+        assert is_new is True
+        assert mgr._sessions["taskrunner:run10:task0"].provider is provider
+        assert parent in mgr._dedicated_task_runs
+        mgr.release("taskrunner:run10:task0")
+        await mgr.release_subagent_runtime(parent)
+        await mgr.close_all()
+
+
+class TestBackgroundOnConfiguredHarness:
+    """``_bg`` one-liners (titles, suggestions) run on the configured harness."""
+
+    @pytest.mark.parametrize(
+        ("backend", "multiplexed"),
+        [(ACP_BACKEND_KIRO, True), ("kas", True), ("codex", False), ("opencode", False)],
+    )
+    def test_only_runtime_hosted_harnesses_use_the_shared_bg_runtime(
+        self, cfg, backend, multiplexed
+    ):
+        cfg.agent.acp_backend = backend
+        assert SessionManager(cfg)._bg_provider_is_kiro() is multiplexed
+
+    def test_auto_resolves_to_the_installed_harness(self, cfg):
+        cfg.agent.acp_backend = "auto"
+        mgr = SessionManager(cfg)
+        with patch("junction.acp.runtimes.resolve_backend", return_value="grok") as resolve:
+            assert mgr.resolved_backend() == "grok"
+            assert mgr.resolved_backend() == "grok"
+        resolve.assert_called_once_with("auto")  # cached within the TTL
+        assert mgr._bg_provider_is_kiro() is False
+
+    @pytest.mark.asyncio
+    async def test_bg_session_on_a_per_process_harness_uses_the_provider_factory(self, cfg):
+        cfg.agent.acp_backend = "opencode"
+        mgr = SessionManager(cfg, provider_factory=_mock_provider_factory())
+        with patch("junction.acp.runtime.AcpRuntime") as bare_runtime:
+            handle = await mgr.get_bg_session()
+        bare_runtime.assert_not_called()
+        assert type(handle).__name__ == "_ProviderBgSession"
+        assert BACKGROUND_KEY in mgr._sessions
         await mgr.close_all()
 
 

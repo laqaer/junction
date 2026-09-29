@@ -14,6 +14,13 @@ model-router change. Product / architecture / roadmap overlays:
 [`ROADMAP.md`](ROADMAP.md). Package identifiers (`junction`,
 `JUNCTION_HOME`) stay as implementation spellings, not the product name.
 
+**Progress and memory:** GitHub issues own status for bugs, features, and
+stories; ADRs ([`docs/adr/`](docs/adr/README.md)) own the *why*;
+[`docs/TASK_MAP.md`](docs/TASK_MAP.md) is a dated local handoff for work in
+flight. The task map carries the session start/finish steps; the operator's
+`~/dev/memory/INDEX.md` is a reference, not authority. Record work in place —
+commit and push only when explicitly authorized.
+
 ## What this is
 
 Junction is a local control plane: dock ACP coding agents and route their
@@ -46,6 +53,7 @@ in the **same commit** when you change what it documents.
 | `computer_use/` | [computer-use](docs/system-specs/modules/computer-use.md) |
 | `acp/`, kiro-cli transport, providers | [acp-client](docs/system-specs/modules/acp-client.md) + [providers](docs/system-specs/modules/providers.md) |
 | `model_router/`, built-in catalog (no provider forwarding) | [model-router](docs/system-specs/modules/model-router.md) |
+| `harness_router/`, `routing.json`, routed `spawn_run`, `junction route` | [harness-router](docs/system-specs/modules/harness-router.md) + [harness-parity](docs/system-specs/modules/harness-parity.md) |
 | Junction overlay, product identity, two-plane thesis | [`JUNCTION.md`](JUNCTION.md) + [`WORKING_BRIEF.md`](WORKING_BRIEF.md) + [`PRODUCT.md`](PRODUCT.md) |
 | adding or adapting an agent harness (BYO, KAS, claude seam) | [harness-parity](docs/system-specs/modules/harness-parity.md) (invariants) + [harness-parity-gate](docs/ci/harness-parity-gate.md) (CI) |
 | sessions, slots, session keys, PIDs | [session](docs/system-specs/modules/session.md) + [history](docs/system-specs/modules/history.md) |

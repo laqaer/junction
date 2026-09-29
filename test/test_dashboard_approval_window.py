@@ -14,6 +14,7 @@ Three properties, one per failure mode observed in production:
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import inspect
 import logging
 import re
@@ -372,8 +373,15 @@ class TestArmTimeBudget:
     def test_absent_deadline_falls_back_to_the_ceiling_bound(self, cfg) -> None:
         """Paths that don't go through _bounded_turn must still get a window."""
         cfg(window=600, turn=7200)
-        assert td._TURN_DEADLINE.get() is None
-        assert td.tool_approval_timeout_secs() == 600.0
+
+        def check() -> None:
+            assert td._TURN_DEADLINE.get() is None
+            assert td.tool_approval_timeout_secs() == 600.0
+
+        # A fresh context, so the precondition holds by construction rather
+        # than by whatever an earlier test on this worker left in the current
+        # one (a sync test shares its context with every test before it).
+        contextvars.Context().run(check)
 
     @pytest.mark.asyncio
     async def test_bounded_turn_publishes_then_clears_the_deadline(self) -> None:
@@ -383,6 +391,10 @@ class TestArmTimeBudget:
         so a leaked spent deadline would starve every later approval dispatched
         in that same context.
         """
+        # This test's task has its own context copy: start it from "no deadline"
+        # rather than from whatever an earlier test left, so the restore below
+        # is checked against a known value.
+        td._TURN_DEADLINE.set(None)
         seen: list[float | None] = []
 
         async def _turn() -> str:
@@ -400,6 +412,8 @@ class TestArmTimeBudget:
 
     @pytest.mark.asyncio
     async def test_deadline_cleared_even_when_the_turn_raises(self) -> None:
+        td._TURN_DEADLINE.set(None)  # a known start; see the test above
+
         async def _boom() -> None:
             raise ValueError("nope")
 

@@ -520,9 +520,16 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   persists an owner-only setup-complete marker; existing installations are
   inferred only from that marker or non-empty persisted session/history
   content. Empty directories and zero-byte files created during gateway startup
-  do not bypass first-run setup. App tokens remain denied. The two
-  owner-only POST route (`repair-specs`) rewrites Junction's own agent specs and
-  returns `200`; it is the only write on this surface.
+  do not bypass first-run setup. App tokens remain denied. Two owner-only POST
+  routes write on this surface, both returning `200` with the snapshot:
+  `repair-specs` rewrites Junction's own agent specs, and
+  `complete-with-agents` writes the first-run marker (the dashboard twin of
+  `junction setup`) for an operator who docked another agent instead of
+  kiro-cli. It answers `409` `no_connected_agent` unless the harness router's
+  last probe shows at least one agent connected, and it leaves Kiro `ready`
+  untouched. The first-run screen lists those agents above the Kiro steps
+  (the compact Settings ▸ Agents & plans panel; see
+  [harness-router](harness-router.md)).
   **Probing is boot-and-explicit-action only.** The readiness probe (two
   `kiro-cli` spawns) runs ONCE per gateway, in `warm_up()` shortly after start,
   and thereafter only on an explicit user action: the gate's Refresh / Check
@@ -598,7 +605,11 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   edit-resend, rewind) have already rewritten durable history by the time a turn
   could fail; and `POST /v1/chat/completions` has no transcript, so an error card
   would surface as a successful empty completion. A missing or invalid service
-  fails closed in all three.
+  fails closed in all three. Which gate applies follows the active harness
+  (`kiro_readiness.active_backend`): only `ACP_BACKENDS_KIRO_READINESS` members
+  consult the Kiro prerequisite, and only they reach a `kiro-cli` spawn site; any
+  other agent is verified by its own connection probe (see the destructive
+  reruns below).
   **These callers authorize on a FRESH probe, not the latch**
   (`kiro_verified_ready` → `KiroPrerequisiteService.verified_ready`, re-probing
   when the latch is older than `_VERIFY_MAX_AGE_SECS` = 30s). The latch is
@@ -1089,8 +1100,15 @@ pins it.
 (`_save_slot_to_history`, `_pending_rewrite`) *before* dispatching the background
 turn, so "let the ACP attempt be the authority" does not hold for them: by the
 time the turn raises `AcpAuthRequired` the history is already rewritten and no
-error card can undo it. All three therefore call `reject_if_kiro_unverified`
-BEFORE any mutation, returning the shared `kiro_prerequisite_required` 503.
+error card can undo it. All three therefore call `reject_if_agent_unverified`
+BEFORE any mutation. While the active harness is in
+`ACP_BACKENDS_KIRO_READINESS` that is exactly `reject_if_kiro_unverified`,
+returning the shared `kiro_prerequisite_required` 503. With another agent active
+(Codex, Claude Code, OpenCode, …) it is that agent's own connection probe
+instead: a `connected` probe under 5 minutes old authorizes, otherwise it probes
+now (initialize + `session/new`, no prompt, 45s budget, one probe per agent at a
+time) and refuses with 503 `harness_not_connected` (`harness`, `status`) unless
+it connects. kiro-cli is neither required nor spawned for them.
 (`switch-variant` is exempt — it swaps an already-stored variant and starts no
 turn.)
 
@@ -1098,9 +1116,11 @@ turn.)
 no transcript the caller reads. Its collectors pick up only `chunk`/`assistant`
 roles, so the `error` card an `AcpAuthRequired` turn appends is invisible and the
 request would return **HTTP 200 with empty content** — an OpenAI SDK client
-cannot distinguish that from a model that legitimately said nothing. It returns
-the `kiro_prerequisite_required` 503 in OpenAI error shape until the endpoint
-learns to translate `AcpAuthRequired` itself.
+cannot distinguish that from a model that legitimately said nothing. It uses
+the same harness-aware gate as the reruns and returns its refusal
+(`kiro_prerequisite_required`, or `harness_not_connected` for another agent) as a
+503 in OpenAI error shape until the endpoint learns to translate
+`AcpAuthRequired` itself.
 
 **An unresolved check is never rendered as "setup required."** The cold probe
 spawns two sandboxed `kiro-cli` subprocesses (`--version`, then `whoami`), which

@@ -28,7 +28,10 @@ from junction import session_ledger
 from junction.acp.client import _resolve_kiro_bin_for_spawn
 from junction.config.paths import kiro_agents_dir
 from junction.dashboard.handlers import kiro_usage_api
-from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+from junction.dashboard.kiro_readiness import (
+    reject_if_kiro_unverified,
+    runs_on_kiro_readiness,
+)
 from junction.dashboard.session_memory import SessionMemorySampler
 from junction.dashboard.state import DashboardState
 from junction.executors import subprocess_executor
@@ -933,8 +936,27 @@ async def _fetch_usage_bg() -> None:
                 pass
 
 
+# Why the credit pill has nothing to show: the active harness is not billed in
+# Kiro credits. The dashboard hides the pill on ``available: false``.
+_USAGE_REASON_HARNESS_NOT_KIRO = "harness_not_kiro"
+
+
 async def api_sessions_usage(request: web.Request) -> web.Response:
-    """GET /api/sessions/usage — cached kiro credit usage (background refresh)."""
+    """GET /api/sessions/usage — cached kiro credit usage (background refresh).
+
+    Only a Kiro-prerequisite harness has Kiro credits. For any other active
+    agent the answer is "unavailable" without a kiro-cli spawn: the scrape would
+    open a sign-in for a CLI nobody is using, and spend credits reading it.
+    """
+    if runs_on_kiro_readiness(request):
+        return await _api_kiro_sessions_usage(request)
+    return web.json_response(
+        {"usage": {"available": False, "reason": _USAGE_REASON_HARNESS_NOT_KIRO}}
+    )
+
+
+async def _api_kiro_sessions_usage(request: web.Request) -> web.Response:
+    """Kiro credit usage, refreshed in the background from ``kiro-cli``."""
     # Same browser-storm guard as api_models: the /usage scrape shells out to
     # `kiro-cli chat --no-interactive ... /usage`, which auto-opens a browser
     # login while signed out. This endpoint is polled every 30s by the top-bar

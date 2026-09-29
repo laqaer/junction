@@ -427,7 +427,7 @@
       "sensitive": false,
       "tags": [],
       "label": "ACP Backend",
-      "help": "Which ACP agent to drive. Default 'auto' picks the first installed runtime (cursor, claude, codex, kimi, dsh, goose, grok, pi, droid). 'kiro' or '' selects kiro-cli. Spec-family values: cursor, claude, codex, dsh, pi, kimi, goose, grok, droid. 'kas' is kiro-agent.",
+      "help": "Which ACP agent to drive. Default 'auto' picks the first installed runtime (cursor, claude, codex, kimi, dsh, goose, grok, opencode, pi, droid). 'kiro' or '' selects kiro-cli. Spec-family values: cursor, claude, codex, dsh, pi, kimi, goose, grok, droid, opencode. 'kas' is kiro-agent.",
       "hasChildren": false,
       "enumValues": [
         "auto",
@@ -442,7 +442,8 @@
         "kimi",
         "goose",
         "grok",
-        "droid"
+        "droid",
+        "opencode"
       ],
       "defaultValue": "auto"
     },

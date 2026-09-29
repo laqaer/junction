@@ -261,6 +261,13 @@ describe('settings coverage gate — bare controls', () => {
  * skipped"; this pins each one so a new silent skip fails the build.
  */
 const EXPECTED_DYNAMIC_SKIPS: Record<string, { count: number; reason: string }> = {
+  'AgentsPanel.tsx': {
+    count: 1,
+    reason:
+      'NumberField forwards its label to one SettingsInput for two per-agent lane ' +
+      'controls (plan size, tasks per window); they edit routing.json lanes, not ' +
+      'config keys, so there is no single setting for search to deep-link to',
+  },
   'BotChannelPanel.tsx': {
     count: 14,
     reason:

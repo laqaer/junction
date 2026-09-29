@@ -582,6 +582,7 @@ _MIXED_INTERNAL_API_PATHS = frozenset(
         # prefix covers every /api/remote-artifacts/{provider}/... sub-route.
         "/api/remote-artifacts",
         "/api/workflows",  # DW engine: MCP tools + Workflows tab polling
+        "/api/routing",  # harness router: route_task MCP tool + dashboard status
         "/api/deploy",  # MCP deploy_artifact tool — server enforces preview-only (confirm/override_scan stripped for internal-secret callers)
         # Issue Radar investigation record — the ONE app route reachable with the
         # internal secret, for the ``issue_radar_record_investigation`` MCP tool.

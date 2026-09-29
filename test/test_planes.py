@@ -120,6 +120,22 @@ def test_cli_planes_json_flag_is_machine_only(
     assert payload["roles"]["code"] == "ok"
 
 
+@pytest.fixture
+def _closed_plane_ports(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the doctor's probes at a closed port, like the tests above.
+
+    The doctor takes no port arguments, so without this it probes the real
+    loopback defaults, and any process listening there (another test's gateway
+    bringing up the embedded catalog on 4202, a developer's own Junction) turns
+    "down" into "built-in catalog".
+    """
+    from junction.model_router.probe import _GATEWAY_PORT_ENV, _ROUTER_PORT_ENV
+
+    for name in (*_ROUTER_PORT_ENV, *_GATEWAY_PORT_ENV):
+        monkeypatch.setenv(name, "9")
+
+
+@pytest.mark.usefixtures("_closed_plane_ports")
 def test_doctor_planes_never_fails(capsys: pytest.CaptureFixture[str]) -> None:
     _doctor_planes()
     out = capsys.readouterr().out
@@ -131,6 +147,7 @@ def test_doctor_planes_never_fails(capsys: pytest.CaptureFixture[str]) -> None:
     assert "sidecar injects" not in out
 
 
+@pytest.mark.usefixtures("_closed_plane_ports")
 def test_doctor_quick_skips_the_full_probe(capsys: pytest.CaptureFixture[str]) -> None:
     _doctor(quick=True)
     out = capsys.readouterr().out

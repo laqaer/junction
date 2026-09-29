@@ -99,6 +99,8 @@ from junction import model_registry, platform_compat, shutdown_event
 from junction.acp.client import advertised_model_ids, model_is_unusable
 from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_KIRO,
+    ACP_BACKENDS_ACP_RUNTIME,
     PROVIDER_LABEL_CLAUDE,
     PROVIDER_LABEL_DEFAULT,
 )
@@ -335,10 +337,14 @@ POOL_DECISIONS: frozenset[str] = frozenset(
         "bypass_stateless",
         "bypass_cwd",
         "bypass_env",
+        "bypass_harness",
         "disabled",
         "other",
     }
 )
+
+# How long SessionManager.resolved_backend() trusts its answer for "auto".
+_BACKEND_RESOLVE_TTL_SECS = 60.0
 
 # Stateless session-key prefixes — skip resume across restarts.
 _WORKFLOW_POOL_PREFIX = "wf-pool:"
@@ -1129,6 +1135,13 @@ class SessionManager:
         # session_sharing=True. Killed when the parent session ends.
         self._subagent_runtimes: dict[str, "AcpRuntime"] = {}
         self._subagent_runtime_locks: dict[str, asyncio.Lock] = {}
+        # Task-runner runs whose harness hosts one session per process, so their
+        # steps each get a dedicated provider instead of a shared AcpRuntime.
+        # Keyed by the run's parent session key; cleared at run release.
+        self._dedicated_task_runs: set[str] = set()
+        # (configured acp_backend, resolved backend, monotonic time) for
+        # resolved_backend(); see _BACKEND_RESOLVE_TTL_SECS.
+        self._backend_resolution: tuple[str, str, float] | None = None
 
         # ── Session Watchdog ──
         # RSS recycle threshold (MiB). 0 disables (default). A non-busy session
@@ -1310,17 +1323,51 @@ class SessionManager:
 
     # ── Warm Pool ──
 
-    def _bg_provider_is_kiro(self) -> bool:
-        """True when the ``junction-lite`` ``_bg`` agent resolves to the kiro
-        (``acp``) backend — the only backend the multiplexed ``AcpRuntime``
-        supports. For non-kiro backends ``_bg`` falls back to the provider-backed
-        ``_Session`` path serialized by ``Semaphore(1)``.
+    def resolved_backend(self) -> str:
+        """The backend this gateway's sessions run on, with ``auto`` resolved.
+
+        Cached for ``_BACKEND_RESOLVE_TTL_SECS``: resolving ``auto`` walks
+        ``PATH`` for every registry harness, and the callers (background
+        one-liners, task-runner steps) are hot. A harness installed while the
+        gateway runs is picked up within the TTL. An unreadable config answers
+        ``ACP_BACKEND_KIRO``, the long-standing default of these paths.
         """
         try:
-            prov = getattr(self._cfg.agent, "provider", "acp") or "acp"
+            configured = str(getattr(self._cfg.agent, "acp_backend", ACP_BACKEND_KIRO))
         except Exception:
-            prov = "acp"
-        return prov == "acp"
+            return ACP_BACKEND_KIRO
+        cached = self._backend_resolution
+        now = time.monotonic()
+        if cached and cached[0] == configured and now - cached[2] < _BACKEND_RESOLVE_TTL_SECS:
+            return cached[1]
+        from junction.acp.runtimes import resolve_backend
+
+        try:
+            resolved = resolve_backend(configured)
+        except Exception:
+            logger.debug("backend resolution failed; assuming kiro-cli", exc_info=True)
+            resolved = ACP_BACKEND_KIRO
+        self._backend_resolution = (configured, resolved, now)
+        return resolved
+
+    def _runs_on_acp_runtime(self) -> bool:
+        """True when the configured harness is one the multiplexed ``AcpRuntime``
+        hosts (kiro-cli, KAS): one process, many sessions. Positive membership
+        (H5/H6): every other harness runs one ``AcpClient`` process per session.
+        """
+        return self.resolved_backend() in ACP_BACKENDS_ACP_RUNTIME
+
+    def _bg_provider_is_kiro(self) -> bool:
+        """True when ``_bg`` work runs on the multiplexed ``AcpRuntime``.
+
+        That runtime spawns kiro-cli, so it serves ``_bg`` only when the
+        configured harness is itself a runtime-hosted one. Any other harness
+        (Claude Code, Codex, Cursor, Grok, OpenCode, …) takes the provider-backed
+        ``_Session`` path serialized by ``Semaphore(1)``, built by the provider
+        factory and therefore running on that harness, never on a kiro-cli the
+        host may not even have.
+        """
+        return self._runs_on_acp_runtime()
 
     async def get_bg_session(self) -> "AcpSessionHandle | _ProviderBgSession":
         """Acquire a ``_bg`` session handle, dispatching by provider backend.
@@ -1513,6 +1560,7 @@ class SessionManager:
         get_subagent_runtime spawn waits for it to finish, then reaps the
         just-spawned runtime instead of leaving it orphaned with no owner.
         """
+        self._dedicated_task_runs.discard(parent_session_key)
         lock = self._subagent_runtime_locks.get(parent_session_key)
         if lock is not None:
             async with lock:
@@ -1535,7 +1583,7 @@ class SessionManager:
 
     async def _get_or_bootstrap_run_runtime(
         self, parent_session_key: str, *, agent: str | None = None, cwd: str | None = None
-    ) -> "AcpRuntime":
+    ) -> "AcpRuntime | None":
         """Get or lazily bootstrap the task-runner's run-scoped shared runtime.
 
         Unlike ``get_subagent_runtime`` (a bare ``AcpRuntime`` mirrored from a
@@ -1548,6 +1596,12 @@ class SessionManager:
         alive). Every subsequent task/decompose/review session opens its own
         ``create_session`` on this runtime; it is killed exactly once via
         ``release_subagent_runtime(parent_session_key)`` at run end/cancel.
+
+        Returns ``None`` when the configured harness cannot host a shared
+        runtime (one process per session: Claude Code, Codex, …). The run is
+        then marked dedicated and every step gets its own provider from the
+        factory, on that harness. A bare companion runtime would be kiro-cli,
+        which is not the harness the operator chose and may not be installed.
         """
         # No factory (e.g. unit tests) — fall back to a bare companion runtime.
         # Done BEFORE taking the per-parent lock: get_subagent_runtime acquires
@@ -1586,13 +1640,13 @@ class SessionManager:
                 except Exception:
                     logger.debug("run runtime bootstrap-session terminate failed", exc_info=True)
                 return runtime
-            # Non-AcpRuntime backend (e.g. Claude Code) — can't share a runtime.
+            # One process per session (Claude Code, Codex, …): nothing to share.
             try:
                 await provider.shutdown()
             except Exception:
                 logger.debug("run runtime bootstrap provider shutdown failed", exc_info=True)
-        # Fall back OUTSIDE the lock (get_subagent_runtime takes the same lock).
-        return await self.get_subagent_runtime(parent_session_key, agent=agent)
+            self._dedicated_task_runs.add(parent_session_key)
+            return None
 
     async def _reacquire_and_validate(self, key: str, sess: "_Session") -> bool:
         """Acquire ``sess``'s per-session semaphore, then re-validate under lock.
@@ -1727,7 +1781,23 @@ class SessionManager:
         # Cold path: open a fresh session on the run's shared runtime. Runtime
         # I/O (get_subagent_runtime spawn + create_session) is kept OUTSIDE the
         # global lock to avoid pinning it across subprocess/RPC work.
-        runtime = await self._get_or_bootstrap_run_runtime(parent_session_key, agent=agent, cwd=cwd)
+        #
+        # Only a runtime-hosted harness shares one (positive membership, H5/H6).
+        # Any other harness gets a dedicated provider per step, on that harness,
+        # decided up front so a run does not spawn a throwaway bootstrap process;
+        # the bootstrap's own check is the backstop. With no factory (unit tests)
+        # the shared runtime is the only path there is.
+        runtime: "AcpRuntime | None" = None
+        shares_runtime = not self._provider_factory or self._runs_on_acp_runtime()
+        if shares_runtime and parent_session_key not in self._dedicated_task_runs:
+            runtime = await self._get_or_bootstrap_run_runtime(
+                parent_session_key, agent=agent, cwd=cwd
+            )
+        if runtime is None:
+            self._dedicated_task_runs.add(parent_session_key)
+            return await self.get_or_create(
+                session_key, agent=agent, cwd=cwd, approval_policy=approval_policy
+            )
         handle = await runtime.create_session(cwd=cwd or None, agent=agent or None)
         provider = AcpSessionProvider(handle, runtime)
 
@@ -2793,7 +2863,14 @@ class SessionManager:
         # it, so deferring past that short-circuit keeps per-agent resolution
         # (which globs + reads ``~/.kiro/agents/*.json``) off the hot path for
         # already-live sessions.
-        if model is None:
+        #
+        # A per-session harness override skips this entirely: every tier
+        # ``_session_model`` would fill (the Junction agent's pin, the kiro
+        # agent's slot, the global default) is spelled for the CONFIGURED
+        # harness. Leaving ``model`` None lets the provider factory choose from
+        # the override harness's own namespace instead of handing it a
+        # kiro-spelled id the caller never picked (H12).
+        if model is None and extra_factory_kwargs.get("acp_backend_override") is None:
             # KiroACP-only: the effective model is the kiro/ACP slot.
             #
             # Precedence: the Junction agent's own model > the bound kiro
@@ -2867,6 +2944,10 @@ class SessionManager:
             pool_decision = "bypass_cwd"
         elif extra_env:
             pool_decision = "bypass_env"
+        elif extra_factory_kwargs.get("acp_backend_override") is not None:
+            # Pooled processes run the configured backend; a claim only re-keys
+            # and re-models them, so a per-session harness needs its own spawn.
+            pool_decision = "bypass_harness"
         else:
             pool_decision = ""
         pooled = None if pool_decision else await self._drain_and_claim(agent)

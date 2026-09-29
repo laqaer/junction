@@ -411,6 +411,35 @@ shipped snapshot. The POST is HTTP 501 with
 `{"ok":false,"code":"model_router_no_forward"}`. A busy `4202` is left
 alone; probe whatever already owns it instead of starting a second listener.
 
+### Route work across your subscriptions
+
+Junction can send each task to whichever coding agent you already pay for is
+best placed to do it: Claude Code, Codex (ChatGPT), Cursor, Grok Build, and
+OpenCode (OpenRouter and any other provider it logs into). Each agent keeps its
+own login; Junction never sees a key. kiro-cli is optional.
+
+1. `junction up` and open the dashboard. On first run, the setup screen lists
+   your agents; after that they live in **Settings ▸ Agents & plans**.
+2. For each agent: **Install** (if it is missing), then **Sign in**. Both run
+   the agent's own command in the dashboard terminal: `claude auth login`,
+   `codex login`, `cursor-agent login`, `grok login`, `opencode auth login`
+   (choose OpenRouter there). Then **Check**: the agent is started once, with
+   no prompt, and shows **Connected** or what it still needs.
+3. On first run, **Continue with these agents** opens the dashboard once any
+   agent is connected.
+4. Per agent, set **Billing**, **Plan size** (relative size of the plan), and
+   **Tasks per window** if you know the plan's limit. **Who gets what** shows
+   where each kind of work goes right now.
+
+The same from a terminal: `junction route check`, `junction route`, and
+`junction route run -k review "review the diff on this branch"`. Ask the
+dashboard agent to fan a plan out and it calls `spawn_run` with
+`harness="route"` and a `kind` per step. Work that hits a usage limit before
+doing anything moves to the next agent on its own.
+
+How lanes are scored and when work fails over:
+[harness-router](../system-specs/modules/harness-router.md).
+
 ### What `junction setup` asks
 
 The wizard installs the agent config, then walks through the workspace

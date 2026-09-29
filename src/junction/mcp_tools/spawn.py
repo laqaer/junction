@@ -28,6 +28,7 @@ from junction import mcp_core
 from junction.config.loader import JunctionConfig
 from junction.context_management import COMPLETION_KEEP_DEFAULT_CHARS
 from junction.effort import model_supports_effort
+from junction.harness_router.kinds import KIND_DESCRIPTIONS, TASK_KINDS
 from junction.mcp_shared import ToolCancelled, is_tool_cancelled
 from junction.platform import redact_via_context as redact
 from junction.security import redact_credentials, redact_exfiltration_urls
@@ -254,6 +255,42 @@ def schemas() -> list[dict[str, Any]]:
                             "several hours upfront. Use for a run you know is "
                             "a long-lived delegation workstream."
                         ),
+                    },
+                    "harness": {
+                        "type": "string",
+                        "description": (
+                            "Which coding-agent harness runs the subagent(s). 'route' "
+                            "lets Junction's harness router pick by task kind and "
+                            "remaining subscription quota, and fail over to another "
+                            "harness if one hits a usage limit before doing any work. "
+                            "A harness name ('claude', 'codex', 'cursor', 'grok', "
+                            "'opencode', …) or a routing lane id pins one. Omit to run "
+                            "on the configured default harness. Call route_task first "
+                            "to see the lanes and what the router would pick."
+                        ),
+                    },
+                    "harnesses": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Per-task harness, one per entry in 'tasks' (same values "
+                            "as 'harness'). Use to fan steps of one plan out to "
+                            "different subscriptions."
+                        ),
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": list(TASK_KINDS),
+                        "description": (
+                            "What kind of work this is, for harness='route': "
+                            + "; ".join(f"{k} = {v}" for k, v in KIND_DESCRIPTIONS.items())
+                            + ". Default: implement."
+                        ),
+                    },
+                    "kinds": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": list(TASK_KINDS)},
+                        "description": "Per-task kind, one per entry in 'tasks'.",
                     },
                     **_context_group_props,
                 },
@@ -514,10 +551,22 @@ def spawn_run(name: str, args: dict[str, Any]) -> str:
     inc_project = args.get("include_project", True) is not False
     if agents_list and len(agents_list) != len(task_list):
         return f"Error: agents length ({len(agents_list)}) must match tasks length ({len(task_list)})"
+    harness = args.get("harness") or ""
+    harness_list = args.get("harnesses") or []
+    kind = args.get("kind") or ""
+    kind_list = args.get("kinds") or []
+    if harness_list and len(harness_list) != len(task_list):
+        return (
+            f"Error: harnesses length ({len(harness_list)}) must match tasks length "
+            f"({len(task_list)})"
+        )
+    if kind_list and len(kind_list) != len(task_list):
+        return f"Error: kinds length ({len(kind_list)}) must match tasks length ({len(task_list)})"
 
     agent_ids: list[str] = []
     agent_names: list[str] = []
     agent_tasks: list[str] = []
+    agent_routes: list[str] = []
     errors: list[str] = []
     transport_errors: list[str] = []
     # Forward this session's own approval_mode (set as an env var at
@@ -595,6 +644,12 @@ def spawn_run(name: str, args: dict[str, Any]) -> str:
             body["include_project"] = False
         if approval_mode:
             body["approval_mode"] = approval_mode
+        h = harness_list[i] if harness_list else harness
+        if h:
+            body["harness"] = h
+        k = kind_list[i] if kind_list else kind
+        if k:
+            body["kind"] = k
         d = mcp_core._post("/api/spawn", body)
         if d.get("error"):
             error_line = f"{t[:60]}: {d['error']}"
@@ -623,6 +678,13 @@ def spawn_run(name: str, args: dict[str, Any]) -> str:
         agent_ids.append(d.get("id", "?"))
         agent_names.append(a)
         agent_tasks.append(t)
+        route = d.get("route") if isinstance(d.get("route"), dict) else {}
+        agent_routes.append(
+            f"{route.get('harness', '')}/{route.get('lane', '')}"
+            + (f" ({route.get('kind')})" if route.get("routed") else "")
+            if route
+            else ""
+        )
 
     spawn_lines: list[str] = []
     # Best-effort effort-capability report (never a rejection — gated on
@@ -663,8 +725,10 @@ def spawn_run(name: str, args: dict[str, Any]) -> str:
             spawn_lines.append(
                 f"Spawned {len(agent_ids)} subagent(s). Monitor results via polling:"
             )
-        for aid, a, t in zip(agent_ids, agent_names, agent_tasks):
+        for aid, a, t, r in zip(agent_ids, agent_names, agent_tasks, agent_routes):
             label = f"{aid} ({a})" if a else aid
+            if r:
+                label += f" on {r}"
             spawn_lines.append(f"  {label}: {t[:80]}")
         if keep:
             spawn_lines.append(

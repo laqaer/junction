@@ -56,6 +56,11 @@ from junction.context_management import (
     evict_completed_agents,
 )
 from junction.executors import maintenance_executor, subprocess_executor
+from junction.harness_router.limits import (
+    LANE_FAILURES,
+    HarnessLaneFailure,
+    limit_notice_failure,
+)
 from junction.hooks import (
     HOOK_EVENT_POST_TOOL_USE,
     TOOL_AUTO_APPROVE,
@@ -1252,6 +1257,20 @@ class SubagentInfo:
     # Wins over the ``role_efforts['subagent']`` pin; ``""`` defers to it.
     # Like ``model``, a non-empty value forces the dedicated-process path.
     reasoning_effort: str = ""
+    # Harness this run executes on, by its operator-facing name ("codex",
+    # "claude", "kiro", …). "" runs on the configured agent.acp_backend. Set by
+    # spawn_run's ``harness`` (explicit, or chosen by the harness router). Like
+    # ``model``, a non-empty value forces the dedicated-process path, since the
+    # parent's shared runtime is a different harness.
+    harness: str = ""
+    # Harness-router lane the run is accounted to ("" when not accounted).
+    lane: str = ""
+    # Task kind the router scored with; a failover re-routes with the same kind.
+    route_kind: str = ""
+    # True only when the ROUTER chose the lane. That is what permits failover to
+    # another lane after a usage limit; an explicit harness pin never moves.
+    routed: bool = False
+    _lanes_tried: list[str] = field(default_factory=list)
     allowed_tools: list[str] = field(default_factory=list)
     bare: bool = False
     # Continuable conversations (spawn_run keep=True / spawn_continue):
@@ -3139,6 +3158,10 @@ class SubagentManager:
         include_memory: bool = True,
         include_lessons: bool = True,
         include_project: bool = True,
+        harness: str = "",
+        lane: str = "",
+        route_kind: str = "",
+        routed: bool = False,
         _agent_prevalidated: bool = False,
         _from_queue: bool = False,
         _preassigned_id: str = "",
@@ -3183,6 +3206,14 @@ class SubagentManager:
                 set session-level auto-approve.  Only honored from
                 authenticated internal callers (X-Internal-Secret).
             silent (bool): Suppress completion notifications.
+            harness (str): Harness to run on (operator-facing name, e.g.
+                ``codex``); ``""`` uses ``agent.acp_backend``. Resolve it
+                with the harness router first; this method does not validate
+                that the harness is installed (spawn fails loudly if not).
+            lane (str): Harness-router lane to account the run to.
+            route_kind (str): Task kind the router used for this run.
+            routed (bool): The router chose *lane*, so the run may fail over
+                to another lane after a usage limit before any activity.
 
         Returns:
             SubagentInfo | None: Agent metadata, or None if at capacity.
@@ -3444,6 +3475,10 @@ class SubagentManager:
                     "include_memory": include_memory,
                     "include_lessons": include_lessons,
                     "include_project": include_project,
+                    "harness": harness,
+                    "lane": lane,
+                    "route_kind": route_kind,
+                    "routed": routed,
                     "_agent_prevalidated": _agent_prevalidated,
                     "_preassigned_id": agent_id,
                 }
@@ -3478,6 +3513,10 @@ class SubagentManager:
                 include_memory=include_memory,
                 include_lessons=include_lessons,
                 include_project=include_project,
+                harness=harness,
+                lane=lane,
+                route_kind=route_kind,
+                routed=routed,
             )
             return info
 
@@ -3529,6 +3568,10 @@ class SubagentManager:
             include_memory=include_memory,
             include_lessons=include_lessons,
             include_project=include_project,
+            harness=harness,
+            lane=lane,
+            route_kind=route_kind,
+            routed=routed,
         )
         info._raw_task = task  # unredacted prompt for kiro-cli execution
         self._agents[agent_id] = info
@@ -3940,6 +3983,10 @@ class SubagentManager:
         # network mount takes to answer. Async callers resolve it off-loop instead:
         # Multitask Mode passes its slot project, and `recorded_cwd()` gives the
         # others the run's own recorded path to hand back in.
+        # The conversation lives in the harness that ran it; continue there,
+        # accounted to the same lane (read from the run's own state.json, which
+        # lives under the data home, not on the recorded project mount).
+        prior = read_state(conv_id) or {}
         return self.spawn(
             task,
             _preassigned_id=_preassigned_id,
@@ -3953,6 +4000,8 @@ class SubagentManager:
             include_memory=inc_memory,
             include_lessons=inc_lessons,
             include_project=inc_project,
+            harness=str(prior.get("harness") or ""),
+            lane=str(prior.get("lane") or ""),
         )
 
     def recorded_cwd(self, conv_id: str) -> str:
@@ -4923,12 +4972,90 @@ class SubagentManager:
             except Exception:
                 logger.exception("Subagent %s: reset failed", info.id)
 
+    async def _run_accounted(self, info: SubagentInfo, session_key: str) -> None:
+        """Run ``_run_inner``, accounting to the harness router and failing over.
+
+        A run with no lane passes straight through. An accounted run records a
+        dispatch and its outcome in the routing ledger, so a usage limit rests
+        that lane for every later decision. A ROUTED run that fails at the lane
+        level (usage or rate limit, login, missing harness) before any tool ran
+        moves to the next eligible lane, up to ``max_failover`` hops. A
+        continuation stays put: its conversation lives in one harness.
+        """
+        if not info.lane:
+            await self._run_inner(info, session_key)
+            return
+        from junction.harness_router.service import get_router
+
+        router = get_router()
+        while True:
+            info._lanes_tried.append(info.lane)
+            await asyncio.to_thread(router.record_dispatch, info.lane, info.route_kind)
+            try:
+                await self._run_inner(info, session_key)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                failure = await asyncio.to_thread(router.record_failure, info.lane, exc=exc)
+                target = await self._failover_lane(info, failure, router)
+                if target is None:
+                    raise
+                previous = info.lane
+                await self._teardown_run_session(info, session_key)
+                info.harness = target.harness
+                info.lane = target.id
+                info.model = target.model
+                info.resolved_model = ""
+                info.streaming_text = ""
+                logger.warning(
+                    "Subagent %s: lane %s failed (%s); failing over to %s",
+                    info.id,
+                    previous,
+                    failure,
+                    target.id,
+                )
+                await self._fire_event(
+                    "subagent_retrying",
+                    info,
+                    {"lane": target.id, "harness": target.harness, "failed_lane": previous},
+                )
+                try:
+                    sel().log_api_access(
+                        caller=info.parent_session_key or f"subagent:{info.id}",
+                        operation="subagent.harness_failover",
+                        outcome="retrying",
+                        source="subagent",
+                        resources=(
+                            f"subagent_id={info.id},from={previous},to={target.id},"
+                            f"failure={failure}"
+                        ),
+                    )
+                except Exception:
+                    logger.debug("SEL audit for harness failover failed", exc_info=True)
+                continue
+            if info.error:
+                await asyncio.to_thread(router.record_failure, info.lane, text=info.error)
+            else:
+                await asyncio.to_thread(router.record_success, info.lane)
+            return
+
+    async def _failover_lane(self, info: SubagentInfo, failure: str, router: Any) -> Any:
+        """Next lane for a routed run after *failure*, or ``None`` to surface it."""
+        if not info.routed or failure not in LANE_FAILURES:
+            return None
+        if info.conversation_key or info.tool_count > 0 or info.user_stopped:
+            return None
+        settings = await asyncio.to_thread(router.settings)
+        if len(info._lanes_tried) > settings.max_failover:
+            return None
+        return await asyncio.to_thread(router.next_lane, info.route_kind, info._lanes_tried)
+
     async def _run(self, info: SubagentInfo) -> None:
         """Execute a subagent task in its own session."""
         session_key = info.conversation_key or f"subagent:{info.id}"
         try:
             await asyncio.wait_for(
-                self._run_inner(info, session_key), timeout=self._default_timeout
+                self._run_accounted(info, session_key), timeout=self._default_timeout
             )
         except asyncio.TimeoutError:
             if not info.reaped:
@@ -5432,7 +5559,10 @@ class SubagentManager:
         # configured sub-agent role model (agent.role_models['subagent']). When
         # that role is unpinned the helper returns "" so we omit the kwarg and
         # keep deferring to the provider's configured default, exactly as before.
-        eff_model = info.model or _subagent_default_model()
+        # The subagent role pin is spelled for the configured harness; a run on
+        # another harness takes only its own (per-spawn or lane) model, never an
+        # id from a foreign namespace (H12).
+        eff_model = info.model or ("" if info.harness else _subagent_default_model())
         # Record the EFFECTIVE pin (per-spawn OR the role_models['subagent']
         # config pin) as the requested side of the downgrade comparison — keying
         # off the bare per-spawn ``model`` would miss a config-pinned run served a
@@ -5452,6 +5582,8 @@ class SubagentManager:
             extra_kwargs["allowed_tools"] = info.allowed_tools
         if info.cwd:
             extra_kwargs["cwd"] = info.cwd
+        if info.harness:
+            extra_kwargs["acp_backend_override"] = info.harness
 
         # ── Session sharing: reuse parent's shared AcpRuntime ──
         # When enabled and eligible, subagents get a session on the parent's
@@ -5476,7 +5608,7 @@ class SubagentManager:
         # dedicated process path so the override in extra_kwargs actually reaches
         # get_or_create -> the provider factory; otherwise a configured sub-agent
         # model/effort would silently no-op on the default (session-sharing) path.
-        if eff_model or eff_effort:
+        if eff_model or eff_effort or info.harness:
             use_session_sharing = False
         if use_session_sharing:
             try:
@@ -5666,6 +5798,10 @@ class SubagentManager:
                 # for keep runs (restart-safe — read from disk, not memory).
                 "keep": info.keep,
                 "conversation_key": session_key if info.keep else "",
+                # A continuation must run on the harness that holds the
+                # conversation, so the harness and lane outlive this process.
+                "harness": info.harness,
+                "lane": info.lane,
             }
             # Store CWD for CC cleanup (needed to derive project-key path).
             # info.cwd is only set when a caller passes an explicit cwd
@@ -6251,6 +6387,14 @@ class SubagentManager:
                 break
 
         # Strip [OPTIONS: ...] tags and redact sensitive content
+        # A subscription harness can end a turn normally with its plan-limit or
+        # login notice as the whole reply. On an accounted run that did no work,
+        # that reply is a lane failure, not a result: raise so the router rests
+        # the lane (and, for a routed run, moves the task to another one).
+        if info.lane and info.tool_count == 0:
+            _notice = limit_notice_failure(result_text)
+            if _notice:
+                raise HarnessLaneFailure(_notice, result_text)
         cleaned, _ = extract_options(result_text) if result_text else (result_text, [])
         if cleaned:
             from junction.security import (

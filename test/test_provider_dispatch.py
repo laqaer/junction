@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+from junction.acp.types import ACP_BACKEND_KIRO
 from junction.config.loader import DEFAULT_MODEL, JunctionConfig
 
 
@@ -24,7 +25,12 @@ class TestAcpPerAgentModel:
         # Junction is KiroACP-only, so the factory is always acp; a plain
         # instance keeps construction side-effect-free (AcpProvider.__init__
         # builds an AcpClient without spawning kiro-cli).
-        return JunctionConfig()
+        # Pin the harness: this class is about the KIRO agent-model slots, and
+        # the default ``auto`` resolves to whatever harness the machine has
+        # installed, which a kiro-spelled pin must not be sent to (H12).
+        cfg = JunctionConfig()
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+        return cfg
 
     def test_custom_agent_threads_its_declared_model(self):
         cfg = self._acp_cfg()
