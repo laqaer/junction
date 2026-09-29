@@ -38,9 +38,6 @@ name: OTA Update Test (macOS)
 on:
   workflow_dispatch:
   workflow_call:
-  schedule:
-    # Nightly, offset from the release nightly so they do not contend.
-    - cron: "40 8 * * *"
 
 permissions:
   contents: read
