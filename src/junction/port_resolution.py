@@ -462,6 +462,18 @@ def _args_look_like_junction(args: str) -> bool:
         tokens = args.split()
 
     program_index = _program_index(tokens)
+    # On Windows the venv ``junction.exe`` launcher re-execs the interpreter with
+    # the script path as its first argument (``python.exe ...\Scripts\junction.exe
+    # gateway``), so the console script sits one slot after the program. Only that
+    # slot is promoted: an interpreter running some other script whose arguments
+    # merely spell the name (``python tool.py junction gateway``) stays unmatched.
+    script_index = program_index
+    if (
+        program_index + 1 < len(tokens)
+        and _basename_stem(tokens[program_index]).lower().startswith("python")
+        and _basename_stem(tokens[program_index + 1]) in CLI_CONSOLE_STEMS
+    ):
+        script_index = program_index + 1
     for index, token in enumerate(tokens):
         # --- Module form: "<python> -m junction <subcmd>" / "-m junction.<subcmd>"
         if token == "-m" and index + 1 < len(tokens):
@@ -497,7 +509,7 @@ def _args_look_like_junction(args: str) -> bool:
         # --- Console-script form: the executable is the junction console script.
         # A later argument with the same spelling is not the program.
         if (
-            index == program_index
+            index == script_index
             and _basename_stem(token) in CLI_CONSOLE_STEMS
             and index + 1 < len(tokens)
             and tokens[index + 1] in _JUNCTION_SERVER_SUBCOMMANDS

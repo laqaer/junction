@@ -28,6 +28,7 @@ from junction.acp.types import (
     ACP_BACKENDS_SELECTABLE,
     ACP_BACKENDS_SPEC_FAMILY,
 )
+from junction.platform_compat import IS_WINDOWS
 
 
 def _which_for(installed: dict[str, str]):
@@ -35,6 +36,21 @@ def _which_for(installed: dict[str, str]):
         return installed.get(name)
 
     return which
+
+
+def _kiro_binary(tmp_path: Path, *, runnable: bool) -> Path:
+    """A ``JUNCTION_KIRO_BIN`` target that is, or is not, runnable on this host.
+
+    Windows has no execute bit, so runnability there is the extension
+    (``platform_compat.is_executable_file``) and a mode change means nothing.
+    """
+    if IS_WINDOWS:
+        binary = tmp_path / ("kiro-cli.exe" if runnable else "kiro-cli.txt")
+    else:
+        binary = tmp_path / "kiro-cli"
+    binary.write_text("#!/bin/sh\n", encoding="utf-8")
+    binary.chmod(0o755 if runnable else 0o644)
+    return binary
 
 
 class TestBuiltinSpecs:
@@ -147,6 +163,31 @@ class TestSelectRuntime:
         with pytest.raises(RuntimeNotFoundError, match="No ACP runtime found"):
             select_runtime(
                 ACP_BACKEND_AUTO, which=_which_for({}), allow_kiro=True, home=tmp_path, env={}
+            )
+
+    def test_auto_finds_kiro_through_the_explicit_override(self, tmp_path: Path):
+        # The spawn path resolves JUNCTION_KIRO_BIN before PATH, so an override
+        # off PATH must count as installed, or auto finds no runtime at all.
+        binary = _kiro_binary(tmp_path, runnable=True)
+        env = {"JUNCTION_KIRO_BIN": str(binary)}
+        spec = select_runtime(
+            ACP_BACKEND_AUTO, which=_which_for({}), allow_kiro=True, home=tmp_path, env=env
+        )
+        assert spec.id == ACP_BACKEND_KIRO
+
+    @pytest.mark.parametrize("executable", [False, None])
+    def test_a_missing_or_non_executable_override_is_not_installed(
+        self, tmp_path: Path, executable
+    ):
+        binary = (
+            tmp_path / "kiro-cli"
+            if executable is None
+            else _kiro_binary(tmp_path, runnable=executable)
+        )
+        env = {"JUNCTION_KIRO_BIN": str(binary)}
+        with pytest.raises(RuntimeNotFoundError, match="No ACP runtime found"):
+            select_runtime(
+                ACP_BACKEND_AUTO, which=_which_for({}), allow_kiro=True, home=tmp_path, env=env
             )
 
     def test_explicit_cursor_raises_if_missing(self):

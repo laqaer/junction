@@ -4237,7 +4237,7 @@
         "no_matches_for_query": "No matches for “{{query}}”."
       },
       "slackPanel": {
-        "create_the_slack_app_from_the_manifest": "Create the Slack app from the pre-filled manifest below (Socket Mode and permissions\n            included, named Junction-{{alias}}). Install it to your\n            workspace, then paste the bot token and app-level token here.",
+        "create_the_slack_app_from_the_manifest": "Create the Slack app from the pre-filled manifest below (Socket Mode and permissions\n            included, named {{productName}}-{{alias}}). Install it to your\n            workspace, then paste the bot token and app-level token here.",
         "connected": "Connected",
         "copy_manifest_yaml": "Copy manifest YAML",
         "needs_setup": "Needs setup",

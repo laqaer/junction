@@ -5,8 +5,9 @@ Junction's harness plane treats ACP as a family of stdio JSON-RPC agents
 Droid, …).
 ``kiro-cli`` is one selectable backend, last in auto preference, and optional.
 
-This module is stdlib-only besides ``junction.acp.types`` so tests can
-exercise it without spawning a gateway.
+This module imports nothing beyond the stdlib, ``junction.acp.types`` and
+``junction.platform_compat``, so tests can exercise it without spawning a
+gateway.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from junction import platform_compat
 from junction.acp.types import (
     ACP_BACKEND_AUTO,
     ACP_BACKEND_CLAUDE,
@@ -218,6 +220,16 @@ def runtime_available(
         return bool(environ.get("PI_ACP") or find("pi") or find("pi-acp"))
     if spec.id == ACP_BACKEND_CODEX:
         return bool(find("codex") and (find("npx") or find("codex-acp")))
+    if spec.id == ACP_BACKEND_KIRO:
+        # kiro-cli's spawn path tries ``JUNCTION_KIRO_BIN`` before ``PATH``
+        # (``kiro_cli.resolve_kiro_cli``), so an explicit override counts as
+        # installed here too. Otherwise ``auto`` skips a kiro-cli the operator
+        # pointed at directly, and finds no runtime at all when it is the only one.
+        # The runnable test is the spawn path's own: Windows has no execute bit,
+        # so ``os.access(X_OK)`` there accepts any existing file.
+        override = environ.get("JUNCTION_KIRO_BIN", "")
+        if override and platform_compat.is_executable_file(override):
+            return True
     return all(find(name) for name in spec.needs) if spec.needs else bool(find(spec.argv[0]))
 
 
