@@ -40,59 +40,91 @@
 
 ## Quick start
 
-On macOS and Linux, one command clones this repository, builds the dashboard
-(Python 3.10+ and Node.js 22+), and links `junction`. Read
-[`scripts/get-junction.sh`](scripts/get-junction.sh) before you run it.
-A vendor agent CLI is optional. The gateway docks whichever ACP runtime is
-installed (`agent.acp_backend` defaults to `auto`).
+Junction is a **source-only local beta**: it builds and runs on one machine you
+control. Install this beta from source, not a packaged desktop download.
+It does not install a hosted service.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/laqaer/junction/main/scripts/get-junction.sh | sh
-junction setup
-junction up
-```
+Requirements: **Python 3.10+**, **Node.js 22+** with npm, and **git**. macOS and
+Linux follow the steps below; Windows uses the
+[Windows guide](docs/guides/windows-install.md).
 
-The script tracks the default branch. It does not start the server. Windows,
-and anyone working in a checkout, follows the source steps below.
+This is a **preview of `main`, not a released version**. A maintainer's local
+preview can contain fixes that have not reached `main`; check the
+[open pull requests](https://github.com/laqaer/junction/pulls) before assuming
+a reported fix is included. This exact source tree has not been verified by a
+clean-machine beta install.
+
+Everything assumes **one operator on one machine**: `localhost` is your own
+computer, `~/.junction` is yours alone, and you install and sign in to the agent
+harness yourself. There is no signup, no shared multi-tenant server, and no
+Junction-operated control plane.
 
 ### Install from source
 
-After a source install the dashboard is on loopback.
+From a clean checkout the dashboard ends up on loopback at
+<http://localhost:5476>:
 
 ```bash
 git clone https://github.com/laqaer/junction.git
 cd junction
-bash minimal_install.sh
-junction setup
-junction up
+bash minimal_install.sh   # builds into ./.venv, links junction into ~/.local/bin
+source .venv/bin/activate
+junction setup            # first-run config; data home is ~/.junction
+junction up               # catalog + dashboard, foreground
 ```
 
-`junction up` starts the built-in model catalog on loopback, then serves
-the dashboard. `junction planes` shows both rails and the role DAG.
-`junction router catalog` and `junction router plan` are the detail views.
-Provider translation is not bundled. Never paste provider keys into chat.
+Activating the virtual environment makes `junction` available even when
+`~/.local/bin` is not on your `PATH`.
 
-Desktop packages are a later cut.
+`junction up` keeps running in that terminal. To open the dashboard from a
+second terminal, mint a link:
+
+```bash
+cd /path/to/junction      # replace with your checkout directory
+source .venv/bin/activate
+junction token --port 5476
+```
+
+That prints a signed, short-lived URL for this gateway; open it in a browser on
+this machine within about five minutes. Treat it as a credential — don't paste
+it into chat, issues, or shared notes, and don't commit it. The dashboard
+requires authentication even on loopback, so this link is how a browser signs
+in.
+
+[`scripts/get-junction.sh`](scripts/get-junction.sh) runs the same source build
+in one command: it clones or fast-forwards a checkout, then runs
+`minimal_install.sh`. Read it before piping it into a shell. It tracks the
+default branch and does not start the server.
+
+**Chat needs an agent you are signed in to.** Junction is a control plane, not a
+model: a chat turn runs through an installed ACP harness (Codex, Claude, Cursor,
+Grok, …) that you have already logged in to. To use Codex, install the
+[Codex CLI](https://github.com/openai/codex#quickstart) and sign in with your
+own account. Before starting `junction up`, select it with
+`junction config set agent.acp_backend codex`, or pick a runtime in the
+dashboard's first-run **Dock an agent** step
+([install guide](docs/guides/install.md)). `agent.acp_backend` defaults to
+`auto`, which docks the first *installed* harness in Junction's preference order
+— Cursor, Claude, Codex, and so on — not the first one on `PATH`.
+`junction planes` shows what is docked.
+Kiro CLI and an external Codex Router are not required for the Codex path.
+
+The desktop app is not available in this beta; the browser dashboard is the
+supported local surface.
 
 ### Build from source
 
-macOS and Linux require Python 3.10+, Node.js 22+ (24 LTS recommended), and
-npm. An ACP runtime is optional. Windows is supported
-through a native source install; follow the
-[Windows guide](docs/guides/windows-install.md) instead of the shell steps below.
+Contributors can use the Makefile instead of `minimal_install.sh`, from the
+same checkout and with the same prerequisites:
 
 ```bash
-# 1. Clone and build Junction
-git clone https://github.com/laqaer/junction.git
-cd junction
-make build
+make build              # provisions ./.venv and builds the dashboard
 source .venv/bin/activate
-
-# 2. Configure, verify, and start (the CLI is `junction`)
-junction setup
-junction doctor --quick
-junction up
+junction doctor --quick # verify the composed install
 ```
+
+Then follow the install steps above (`setup`, harness selection, `up`); this
+path changes only how the checkout is built.
 
 ## Why Junction
 
@@ -161,7 +193,7 @@ there.
 
 | Surface | Best for |
 |---|---|
-| **Desktop app** | The simplest local experience, with a bundled Gateway plus multi-tab connections to local or remote Gateways. |
+| **Desktop app** | Not available in this beta; use the browser dashboard at `localhost:5476`. |
 | **Web dashboard** | Parallel conversations, files, approvals, activity, memory, schedules, apps, settings, and system status at `localhost:5476`. |
 | **Slack** | Work from DMs and threads with streaming replies, approvals, notifications, and session links back to the dashboard. |
 | **Telegram** | Reach your agent from private DMs on your phone or laptop, with streaming replies, inline approvals, and commands. |
@@ -234,28 +266,12 @@ chat. Read the [security architecture](docs/architecture/security-deep-dive.md) 
 
 ## Install, configure, and operate
 
-**Installer details.** The installer resolves the channel feed, verifies the wheel's SHA-256 against
-the published manifest, installs through `pipx` when available or a managed
-virtual environment at `~/.junction-venv` (beside the data home; override with
-`JUNCTION_VENV`), and records the channel in `~/.junction/channel`. The channels
-are `stable`, `insider`, and `nightly`, and `JUNCTION_CHANNEL` sets the default.
-On Linux and macOS, when the system lacks a Python 3.10+ interpreter the
-installer provisions one itself — no package manager, no sudo: it downloads a
-SHA-256-pinned [uv](https://docs.astral.sh/uv/) binary (or uses your installed
-`uv`) and installs a python-build-standalone CPython 3.12 into
-`~/.junction-python`. Pass `--managed-python` to always use the provisioned
-interpreter and skip the system ones. The
-signed installer never pipes an unsigned third-party script into a shell.
-
-**Pin an exact wheel.** You can also install one exact wheel directly and pin it to its published
-SHA-256. Every version directory publishes a `SHA256SUMS` file next to the
-wheel, so take the hash for your wheel from there and put it in the URL
-fragment. `pip` verifies the hash and does not consult a package index for
-Junction itself:
-
-```bash
-pip install .
-```
+**Source install.** This beta's documented install path builds from GitHub
+source. It does not rely on a published wheel or an update channel.
+`minimal_install.sh` builds from the checkout and `junction setup` writes the
+data home; `junction up` serves the dashboard, and `junction service install`
+runs it in the background. See
+[Installing and Building](docs/guides/install.md).
 
 **Semantic memory.** Semantic memory needs no setup. Embeddings run in-process, and the Gateway
 downloads its embedding model in the background on first start, verifies it,
@@ -264,7 +280,7 @@ falls back to keyword search and picks up embeddings automatically without a
 restart. Set `JUNCTION_EMBED_MODEL_URL` to point at a mirror for airgapped
 installs.
 
-See [Installing and Building](docs/guides/install.md) for wheels, desktop builds,
+See [Installing and Building](docs/guides/install.md) for the source paths,
 Windows, optional voice dependencies, and manual setup.
 
 **Choose where Junction runs.** The current deployment model keeps the Gateway,
@@ -273,10 +289,10 @@ and chat surfaces connect to that Gateway.
 
 | Deployment | How to run it | Where Junction and its state live |
 |---|---|---|
-| **Mac app, local** | Install or build the desktop app with `make desktop` | The app starts its bundled Gateway. Agent sessions, ACP processes, and `~/.junction` stay on your Mac. |
-| **Native local** | `make build`, or install a wheel from `make wheel` | The Gateway and agent runtime run directly on your macOS, Linux, or Windows machine. |
+| **Desktop app (planned)** | Not available in this beta | Nothing to install yet; use the native local row below. |
+| **Native local** | `bash minimal_install.sh` from a checkout, or `make build` | The Gateway and agent runtime run directly on your macOS, Linux, or Windows machine. |
 | **Local container** | Build from this checkout and persist the data home | The Gateway and agent runtime run in a container on your machine. |
-| **Remote hardware** | Follow the [remote host guide](docs/guides/remote-and-mobile.md) and install the service | The Gateway, agent sessions, and state run continuously on your Linux server, home lab, or cloud instance. Connect the desktop app or browser through an SSH tunnel. |
+| **Remote hardware** | Follow the [remote host guide](docs/guides/remote-and-mobile.md) and install the service | The Gateway, agent sessions, and state run continuously on your Linux server, home lab, or cloud instance. Connect from a browser through an SSH tunnel. |
 | **Windows source install** | Follow [the Windows guide](docs/guides/windows-install.md) | The Gateway, agent sessions, chat, cron, and dashboard run natively with documented feature limits. |
 
 For containers, mount the directory selected by `JUNCTION_HOME` so sessions,
@@ -284,7 +300,7 @@ configuration, memory, and credentials survive replacement. Keep the Gateway
 port bound to loopback unless you intentionally configure authenticated remote
 access. Container isolation and the Junction OS sandbox are separate layers
 and depend on the host runtime configuration. See the
-[Docker guide](docs/guides/docker.md) for the published image and deployment details.
+[Docker guide](docs/guides/docker.md) for image and deployment details.
 
 **Keep it running.** Install a systemd service on Linux or a launchd agent on
 macOS:
@@ -304,13 +320,19 @@ JUNCTION_PORT=5477 junction service install
 ```
 
 To change it later without reinstalling, edit the service environment file
-created by `service install` and restart with `junction service` / `junction restart`.
-installed by releases before v0.2.0 lack the `EnvironmentFile=` directive that
-reads this file — re-run `junction service install` or use a systemd drop-in;
-see [the install guide](docs/guides/install.md#setting-the-service-port).
+created by `service install`, then restart with `junction service` or
+`junction restart`; see
+[the install guide](docs/guides/install.md#setting-the-service-port).
 
-The desktop app can use this local Gateway or connect to a remote one. For an
-always-on VPS, home server, or cloud VM in your account, follow the
+**Beta status and known limitations.** This is pre-release software built from
+`main`, not a pinned beta release. Expect rough edges, keep `~/.junction`
+backed up, and check the [open pull requests](https://github.com/laqaer/junction/pulls)
+before assuming a fix is present. Windows has documented feature limits
+([Windows guide](docs/guides/windows-install.md)), and remote or multi-user
+deployments are outside this beta.
+
+A browser can reach this local Gateway, or a Gateway you run on a remote host.
+For an always-on VPS, home server, or cloud VM in your account, follow the
 [remote host guide](docs/guides/remote-and-mobile.md). Junction does not require a
 Junction-hosted control plane.
 
