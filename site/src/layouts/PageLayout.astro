@@ -1,0 +1,53 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import WardBars from "../components/WardBars.astro";
+import { breadcrumbList } from "../lib/seo";
+
+/**
+ * Inner-page layout for the phase-2 page agents: breadcrumbs (with
+ * BreadcrumbList JSON-LD), the page's one H1, and the register. Pages built
+ * from a collection get their OG PNG automatically; a static page must also
+ * be listed in src/lib/og-pages.ts (the structure test checks the file exists).
+ */
+interface Props {
+  title: string;
+  description: string;
+  h1: string;
+  register?: "paper" | "night";
+  breadcrumbs?: { label: string; href: string }[];
+  lead?: string;
+  ogSlug?: string;
+  jsonLd?: Record<string, unknown>[];
+}
+const { title, description, h1, register = "paper", breadcrumbs = [], lead = "", ogSlug, jsonLd = [] } = Astro.props;
+const crumbs = [{ label: "Warding", href: "/" }, ...breadcrumbs];
+const ld = [...jsonLd, ...(breadcrumbs.length ? [breadcrumbList(crumbs)] : [])];
+---
+<BaseLayout title={title} description={description} register={register} ogSlug={ogSlug} jsonLd={ld}>
+  <div class={register === "night" ? "vault" : "paper"}>
+    <div class="wrap page-head">
+      {breadcrumbs.length > 0 && (
+        <nav class="crumbs caption" aria-label="Breadcrumb">
+          <ol>
+            {crumbs.map((c, i) => (
+              <li>{i < crumbs.length - 1 ? <a href={c.href}>{c.label}</a> : <span aria-current="page">{c.label}</span>}</li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      <WardBars align="left" />
+      <h1>{h1}</h1>
+      {lead && <p class="lead measure">{lead}</p>}
+    </div>
+    <div class="wrap page-body">
+      <slot />
+    </div>
+  </div>
+</BaseLayout>
+<style>
+  .page-head { padding-block: 48px 24px; display: grid; gap: 16px; }
+  .page-body { padding-block: 24px 96px; }
+  .crumbs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .crumbs li + li::before { content: "/"; margin-right: 6px; color: var(--fg-3); }
+  .crumbs a { color: var(--fg-2); }
+</style>
