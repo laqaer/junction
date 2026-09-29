@@ -8091,7 +8091,7 @@
       "bearer_token_proves_who_is_calling": "Bearer token — proves who is calling",
       "call_this_hook": "Call this hook",
       "caller_name": "Caller name",
-      "calls_must_send_signature_headers_detail": "Calls with this token must send X-Junction-Timestamp and X-Junction-Signature. The signature covers \"<timestamp>.<raw body>\", the timestamp must be within ±{{seconds}}s, and each signature is accepted once per gateway process.",
+      "calls_must_send_signature_headers_detail": "Calls with this token must send {{timestampHeader}} and {{signatureHeader}}. The signature covers \"<timestamp>.<raw body>\", the timestamp must be within ±{{seconds}}s, and each signature is accepted once per gateway process.",
       "calls_using_it_start_failing_with_401": "Calls using it start failing with 401.",
       "chars": "chars",
       "completed": "Completed",

@@ -2082,6 +2082,8 @@ class TestArgsLookLikeJunction:
             "/usr/bin/junction",  # primary wrapper with no subcommand
             "grep -m junction gateway somefile",  # "-m" is grep's flag (no python interpreter)
             "junction run up",  # "up" is a file arg to run, not the server verb
+            "python tool.py junction gateway",  # the interpreter runs tool.py, not the console script
+            "python -u /usr/bin/junction gateway",  # only the slot right after the interpreter counts
         ],
     )
     def test_rejects_non_server_processes(self, args):

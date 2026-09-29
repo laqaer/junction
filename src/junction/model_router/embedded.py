@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
 import threading
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Mapping
 
+from junction import platform_compat
 from junction.model_router.catalog import load_catalog
 from junction.model_router.probe import HEALTH_PATH, LOOPBACK_HOST, resolve_router_port
 
@@ -28,6 +30,26 @@ _MAX_BODY = 65536
 
 _lock = threading.Lock()
 _server: ThreadingHTTPServer | None = None
+
+
+class _CatalogServer(ThreadingHTTPServer):
+    """The catalog listener, bound so a busy port stays with its owner.
+
+    ``HTTPServer`` turns on ``SO_REUSEADDR``. On POSIX that only lets a restart
+    rebind a port still in ``TIME_WAIT``, but on Windows it lets a second socket
+    bind a port another process is actively listening on, so the router would
+    take over the port instead of leaving it alone. Windows binds with
+    ``SO_EXCLUSIVEADDRUSE`` instead, which refuses the bind while the port is
+    held and keeps a later process from taking this one.
+    """
+
+    allow_reuse_address = not platform_compat.IS_WINDOWS
+
+    def server_bind(self) -> None:
+        exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if platform_compat.IS_WINDOWS and exclusive is not None:
+            self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        super().server_bind()
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +131,7 @@ def ensure_embedded_router(
                 logger.info("model plane skipped: invalid port")
                 return EmbeddedBind(LOOPBACK_HOST, 0, False)
         try:
-            server = ThreadingHTTPServer((LOOPBACK_HOST, resolved), _Handler)
+            server = _CatalogServer((LOOPBACK_HOST, resolved), _Handler)
         except OSError:
             logger.info("model plane port busy; leaving the existing listener")
             return EmbeddedBind(LOOPBACK_HOST, resolved, False)

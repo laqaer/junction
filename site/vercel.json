@@ -1,3 +1,10 @@
 {
-  "redirects": []
+  "redirects": [],
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "apps.getjunction.dev" }],
+      "destination": "/catalog/:path*"
+    }
+  ]
 }
