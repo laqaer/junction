@@ -20,11 +20,12 @@ export const H = 300;
 export const TICKS_PER_SECOND = 30;
 
 const DOOR = { x: 0, y: 100, w: 12, h: 50 };
-const MAX_DESKS = 8;
-const DESK_SEATING = [0, 2, 5, 3, 7, 1, 4, 6];
+const MAX_DESKS = 6;
+/** Seat arrivals apart (front-left, front-right, back-centre first) so labels do not collide. */
+const DESK_SEATING = [0, 2, 4, 1, 5, 3];
 const DESK_POSITIONS = [
-  { x: 40, y: 120 }, { x: 120, y: 120 }, { x: 200, y: 120 }, { x: 280, y: 120 },
-  { x: 40, y: 200 }, { x: 120, y: 200 }, { x: 200, y: 200 }, { x: 280, y: 200 },
+  { x: 50, y: 120 }, { x: 150, y: 120 }, { x: 250, y: 120 },
+  { x: 50, y: 200 }, { x: 150, y: 200 }, { x: 250, y: 200 },
 ];
 /** Brand sprite colours. The seal (#FF7A5C) is reserved for the refused state. */
 export const AGENT_COLORS = ["#FFB547", "#5EE6A0", "#8EA8FF", "#F5C542", "#ECE8E1", "#9AA3B5", "#C98A00"];
@@ -72,7 +73,11 @@ const CHAT_LINES: [string, string][] = [
 ];
 const COFFEE_MACHINE = { x: 390, y: 240 };
 const WHITEBOARD = { x: 350, y: 14, w: 60, h: 36 };
-const CLOCK_POS = { x: 170, y: 22 };
+const CLOCK_POS = { x: 130, y: 22 };
+/** The wall sign sits between the clock and the shelves, clear of both. */
+const SIGN_X = 184;
+/** Centre of the rug, where two agents meet to talk. */
+const MEET = { x: 165, y: 170 };
 const WINDOW_POS = { x: 60, y: 10, w: 50, h: 40 };
 const PLANTS = [
   { x: 15, y: 98 }, { x: 95, y: 98 }, { x: 175, y: 98 }, { x: 255, y: 98 },
@@ -254,7 +259,7 @@ export function update(state: OfficeState, t: number) {
     const i = (rand() * deskAgents.length) | 0;
     const j = (i + 1 + ((rand() * (deskAgents.length - 1)) | 0)) % deskAgents.length;
     const a = deskAgents[i], b = deskAgents[j];
-    a.tx = 210; a.ty = 170; b.tx = 230; b.ty = 170;
+    a.tx = MEET.x - 10; a.ty = MEET.y; b.tx = MEET.x + 10; b.ty = MEET.y;
     a.activity = "collab"; b.activity = "collab"; a.actTimer = 0; b.actTimer = 0;
     state.collab = [a, b]; state.speech = { a: "", b: "" };
   }
@@ -278,6 +283,8 @@ export interface DrawEnv {
   minute: number;
   /** Skip text: the build-time recorder has no font metrics. */
   noText?: boolean;
+  /** Draw the "n/6 desks" counter in the corner (the live hero shows it in the DOM instead). */
+  counter?: boolean;
 }
 
 const dp = (X: Ctx, S: number) => (x: number, y: number, w: number, h: number, c: string) => {
@@ -397,9 +404,9 @@ export function draw(state: OfficeState, X: Ctx, env: DrawEnv, t: number) {
   }
 
   // Sign
-  label(X, env, "warding", W / 2, 30, { color: LAMP, align: "center", px: 16 });
-  d(W / 2 - 28, 36, 56, 1, LAMP);
-  label(X, env, "the late desk", W / 2, 43, { color: "#C98A00", align: "center", px: 8 });
+  label(X, env, "warding", SIGN_X, 30, { color: LAMP, align: "center", px: 16 });
+  d(SIGN_X - 28, 36, 56, 1, LAMP);
+  label(X, env, "the late desk", SIGN_X, 43, { color: "#C98A00", align: "center", px: 8 });
 
   // Bookshelves
   {
@@ -464,12 +471,14 @@ export function draw(state: OfficeState, X: Ctx, env: DrawEnv, t: number) {
 
   // Rug
   [[40, 14, COL.rug], [34, 10, COL.rugPattern], [28, 7, COL.rug]].forEach(([rx, ry, c]) => {
-    X.fillStyle = c as string; X.beginPath(); X.ellipse(220 * S, 175 * S, (rx as number) * S, (ry as number) * S, 0, 0, Math.PI * 2); X.fill();
+    X.fillStyle = c as string; X.beginPath(); X.ellipse(MEET.x * S, (MEET.y + 5) * S, (rx as number) * S, (ry as number) * S, 0, 0, Math.PI * 2); X.fill();
   });
 
   // Desks
   desks.forEach((desk) => {
     const { x: dx, y: dy, accent, items, occupied } = desk;
+    // Unused desks recede instead of carrying an "empty" label.
+    X.save(); X.globalAlpha = occupied ? 1 : 0.45;
     d(dx - 2, dy - 2, 1, 32, COL.cubicleWall); d(dx - 2, dy - 2, 34, 1, COL.cubicleWall); d(dx + 31, dy - 2, 1, 32, COL.cubicleWall);
     d(dx - 2, dy - 3, 35, 1, COL.cubicleTop);
     d(dx, dy + 16, 28, 3, COL.deskTop); d(dx, dy + 15, 28, 1, accent); d(dx + 1, dy + 14, 26, 1, COL.desk);
@@ -492,7 +501,7 @@ export function draw(state: OfficeState, X: Ctx, env: DrawEnv, t: number) {
         case "headphones": d(ix, iy, 4, 1, COL.headphones); d(ix, iy + 1, 1, 2, COL.headphones); d(ix + 3, iy + 1, 1, 2, COL.headphones); break;
       }
     });
-    if (!occupied) label(X, env, "empty", dx + 15, dy + 1, { color: "#7D869A", bg: "#1C2333", align: "center", px: 7 });
+    X.restore();
   });
 
   // Coffee machine
@@ -547,7 +556,10 @@ export function draw(state: OfficeState, X: Ctx, env: DrawEnv, t: number) {
     }
     label(X, env, a.name, bx + 4, by + 15, { color: "#ECE8E1", align: "center", px: 8 });
     if (a.detail) label(X, env, a.detail, bx + 4, by + 22, { color: "#9AA3B5", align: "center", px: 7 });
-    if (a.deskIdx >= 0 && a.activity !== "entering" && a.activity !== "leaving") {
+    // The desk tag sits where a seated agent's overlay goes; it yields to the overlay.
+    const overlay = frozen || !!a.pending || (!!a.lastMessage && t - a.msgAt < SPEECH_TICKS);
+    const seated = Math.abs(a.x - a.tx) < 2 && Math.abs(a.y - a.ty) < 2 && a.activity === "desk";
+    if (a.deskIdx >= 0 && a.activity !== "entering" && a.activity !== "leaving" && !(overlay && seated)) {
       const dk = desks[a.deskIdx];
       label(X, env, a.name.slice(0, 8), dk.x + 15, dk.y + 1, { color: INK, bg: a.color, align: "center", px: 7 });
     }
@@ -566,5 +578,19 @@ export function draw(state: OfficeState, X: Ctx, env: DrawEnv, t: number) {
     speech(b, state.speech.b, b.x < a.x ? -1 : 1);
   }
 
-  label(X, env, `${agents.filter((a) => a.activity !== "leaving").length}/${MAX_DESKS} desks`, W - 4, H - 5, { color: "#7D869A", px: 8, align: "end" });
+  if (env.counter !== false) label(X, env, `${seatedCount(state)}/${MAX_DESKS} desks`, W - 4, H - 5, { color: "#7D869A", px: 8, align: "end" });
+}
+
+/** Agents with a desk (not walking out). */
+export function seatedCount(state: OfficeState): number {
+  return state.agents.filter((a) => a.activity !== "leaving").length;
+}
+export const DESK_COUNT = MAX_DESKS;
+
+/** Logical centre of the desk an agent owns, for the hero's per-step pan. */
+export function deskCentre(state: OfficeState, agentId: string): { x: number; y: number } | null {
+  const a = state.agents.find((g) => g.id === agentId && g.activity !== "leaving");
+  if (!a || a.deskIdx < 0) return null;
+  const dk = state.desks[a.deskIdx];
+  return { x: dk.x + 15, y: dk.y + 15 };
 }

@@ -1,5 +1,6 @@
 ---
 import WardSeal from "./WardSeal.astro";
+import GithubMark from "./GithubMark.astro";
 import Sun from "@lucide/astro/icons/sun";
 import Moon from "@lucide/astro/icons/moon";
 import Menu from "@lucide/astro/icons/menu";
@@ -27,7 +28,7 @@ const path = Astro.url.pathname;
       </ul>
     </nav>
     <div class="nav-right">
-      <a class="btn btn-quiet star" href={site.githubRepo} rel="noopener" data-track="github_click">Star on GitHub</a>
+      <a class="btn btn-quiet star" href={site.githubRepo} rel="noopener" data-track="github_click" aria-label="Star on GitHub"><GithubMark size={18} /><span class="star-text">Star on GitHub</span></a>
       <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to the night theme" data-track="theme_toggle">
         <Sun class="lucide sun" aria-hidden="true" />
         <Moon class="lucide moon" aria-hidden="true" />
@@ -46,7 +47,7 @@ const path = Astro.url.pathname;
   .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; }
   .wordmark {
     font-family: var(--font-display); font-weight: 600; font-size: 1.375rem; letter-spacing: -0.015em; line-height: 1;
-    font-variation-settings: "SOFT" 0, "WONK" 0; font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 144;
   }
   .primary-nav { flex: 1; display: flex; justify-content: center; }
   .primary-nav ul { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
@@ -74,7 +75,9 @@ const path = Astro.url.pathname;
   @media (max-width: 960px) {
     .primary-nav { display: none; }
     .menu-btn { display: inline-grid; }
-    .star { display: none; }
+    /* The star ask stays on phones as a 44 px icon button; its aria-label names it. */
+    .star { width: 44px; min-width: 44px; padding: 0; }
+    .star .star-text { display: none; }
     .site-header.open .primary-nav {
       display: block; position: absolute; left: 0; right: 0; top: 100%; background: var(--surface);
       border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 16px 16px; box-shadow: var(--shadow);

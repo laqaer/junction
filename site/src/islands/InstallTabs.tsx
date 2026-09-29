@@ -1,14 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { site } from "../data/site";
+import { GITHUB_MARK_PATH } from "../lib/github-mark";
 import { track } from "../lib/analytics";
 
 /**
  * The install block (site-spec §2.1). Until a package is published
  * (`site.installOneLiner === ""`) every tab shows the honest three-line source
  * quickstart and the CTA reads "Copy the quickstart"; the pipx/uv/npm tabs say
- * so instead of pretending. The version chip is labelled: it is the pyproject
- * version, and there is no tagged release yet.
+ * so instead of pretending. The version chip renders only when a tagged release
+ * exists (`version` is the tag); an untagged pyproject version is never shown.
  */
 type Tab = "pipx" | "uv" | "npm" | "source";
 const TABS: Tab[] = ["pipx", "uv", "npm", "source"];
@@ -25,7 +26,14 @@ const ONE_LINER: Record<Exclude<Tab, "source">, string> = {
   npm: `npm i -g ${site.installOneLiner}`,
 };
 
-export default function InstallTabs() {
+interface Props {
+  /** The latest release tag; "" (no tagged release yet) hides the version chip. */
+  version?: string;
+  /** Render the "Star on GitHub" outline button next to Copy. */
+  star?: boolean;
+}
+
+export default function InstallTabs({ version = "", star = false }: Props) {
   const published = site.installOneLiner !== "";
   const [tab, setTab] = useState<Tab>(published ? "pipx" : "source");
   const [copied, setCopied] = useState(false);
@@ -78,9 +86,7 @@ export default function InstallTabs() {
             </button>
           ))}
         </div>
-        <span className="chip" title="Version in pyproject.toml; no tagged release exists yet">
-          v{site.version} · pyproject · no tagged release yet
-        </span>
+        {version && <span className="chip">{version}</span>}
       </div>
       <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${tab}`} className="panel">
         {!published && tab !== "source" && (
@@ -91,15 +97,22 @@ export default function InstallTabs() {
         <pre className="install-pre" tabIndex={0}><code>{lines.map((l, i) => (
           <span className="line" key={i}><span className="prompt" aria-hidden="true">$ </span>{l}{"\n"}</span>
         ))}</code></pre>
-        <p className="caption" data-alias>
-          <code>{site.cli}</code> is also available as <code>{site.cliAlias}</code> · macOS and Linux · Python 3.10+ and Node 22+ · the agent CLI you already use
+        <p className="caption">
+          Needs <code>claude</code>, <code>codex</code>, <code>goose</code> or <code>kiro-cli</code> on your PATH, Python 3.10+ and Node 22+. <code>setup</code> finds your agent; <code>up</code> opens the dashboard in your browser.
         </p>
+        <p className="caption" data-alias><code>{site.cliAlias}</code> also works.</p>
       </div>
       <div className="install-actions">
         <button type="button" className="btn btn-primary" onClick={copy} aria-live="off">
           {copied ? <Check className="lucide" aria-hidden="true" /> : <Copy className="lucide" aria-hidden="true" />}
           {published && tab !== "source" ? "Copy the install command" : "Copy the quickstart"}
         </button>
+        {star && (
+          <a className="btn btn-outline" href={site.githubRepo} rel="noopener" onClick={() => track("github_click")}>
+            <svg className="gh-mark" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d={GITHUB_MARK_PATH} /></svg>
+            Star on GitHub
+          </a>
+        )}
         <span className="sr-only" aria-live="polite">{copied ? "Copied" : ""}</span>
         <span className="caption copied" aria-hidden="true">{copied ? "Copied" : ""}</span>
       </div>

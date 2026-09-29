@@ -1,7 +1,11 @@
 import { site } from "../data/site";
 
-/** JSON-LD builders (site-spec §1). No aggregateRating, ever. */
-export function softwareApplication() {
+/**
+ * JSON-LD builders (site-spec §1). No aggregateRating, ever.
+ * `softwareVersion` is set only from a real release tag; while none exists the
+ * key is omitted rather than filled with the untagged pyproject version.
+ */
+export function softwareApplication(releaseTag = "") {
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -9,7 +13,7 @@ export function softwareApplication() {
     applicationCategory: "DeveloperApplication",
     operatingSystem: "macOS, Linux",
     isAccessibleForFree: true,
-    softwareVersion: site.version,
+    ...(releaseTag ? { softwareVersion: releaseTag.replace(/^v/, "") } : {}),
     license: "https://www.apache.org/licenses/LICENSE-2.0",
     url: site.domain + "/",
     downloadUrl: site.githubRepo,

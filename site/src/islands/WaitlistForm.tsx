@@ -10,7 +10,7 @@ import { track } from "../lib/analytics";
  *   2. waitlist.endpoint set   -> POST JSON; on failure fall through
  *   3. waitlist.mailto set     -> open a prefilled mailto and show the text
  *   4. waitlist.discussionUrl  -> link + prefilled text to paste
- *   5. nothing configured      -> "Waitlists open soon" + the GitHub link, no input
+ *   5. nothing configured      -> one line: GitHub's Watch -> Custom -> Releases, no label, no input
  * Every path keeps the address in localStorage (try/catch) under
  * `warding.waitlist.<list>`; it is never sent anywhere else.
  */
@@ -76,16 +76,9 @@ export default function WaitlistForm({ list, label, questions = [], compact = fa
     setDone("none"); track("waitlist_fallback", { path: "none" });
   };
 
-  if (path === "none") {
-    return (
-      <div className="waitlist waitlist-none">
-        <p className="ui">{label}</p>
-        <p>
-          Waitlists open soon. Star the repo to get the release note: <a href={site.githubRepo} rel="noopener">{site.githubRepo.replace("https://", "")}</a>
-        </p>
-      </div>
-    );
-  }
+  // With nothing configured there is no field, so no label either: one line
+  // pointing at GitHub's own release notifications instead of a dead capture.
+  if (path === "none") return <ReleaseNoteLine />;
 
   const formAction = path === "endpoint" ? site.waitlist.endpoint : path === "mailto" ? `mailto:${site.waitlist.mailto}?subject=${encodeURIComponent(`Waitlist: ${list}`)}` : site.waitlist.discussionUrl;
 
@@ -117,9 +110,7 @@ export default function WaitlistForm({ list, label, questions = [], compact = fa
           {done === "discussion" && (
             <p>We don't have a mailing list yet. Post a reply in <a href={site.waitlist.discussionUrl} rel="noopener">this GitHub Discussion</a> and we'll count you in:</p>
           )}
-          {done === "none" && (
-            <p>Waitlists open soon. Star the repo to get the release note: <a href={site.githubRepo} rel="noopener">{site.githubRepo.replace("https://", "")}</a></p>
-          )}
+          {done === "none" && <ReleaseNoteLine />}
           {done !== "none" && (
             <div className="copybox">
               <pre><code>{text}</code></pre>
@@ -131,5 +122,14 @@ export default function WaitlistForm({ list, label, questions = [], compact = fa
         </div>
       )}
     </div>
+  );
+}
+
+/** The capture used while no waitlist backend exists: GitHub's own release notifications. */
+export function ReleaseNoteLine() {
+  return (
+    <p className="caption release-note">
+      Get the release note: <a href={`${site.githubRepo}/releases`} rel="noopener">Watch → Custom → Releases on GitHub</a>
+    </p>
   );
 }

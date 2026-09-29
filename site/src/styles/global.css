@@ -123,6 +123,33 @@
   --grain-opacity: 0;
 }
 
+/* The paper half of the homepage (and any `.paper` wrapper) stays paper in the
+   night scheme: the day/night split is the brand, so these are the Paper tokens
+   verbatim, re-declared locally the way `.vault` re-declares Night. */
+.paper {
+  color-scheme: light;
+  --bg: #f3eee3;
+  --surface: #fbf8f1;
+  --raised: #fbf8f1;
+  --fg: #1a1814;
+  --fg-2: #5e584d;
+  --fg-3: #6f685b;
+  --line: #d9d0bf;
+  --seal: #b3301a;
+  --granted: #2e6b45;
+  --held: #8a5a00;
+  --lamp: #b86a00;
+  --lamp-glow: rgba(184, 106, 0, 0.14);
+  --link: #1f4fa8;
+  --foil: #c98a00;
+  --marker: #f5d547;
+  --btn-primary-bg: var(--seal);
+  --btn-primary-fg: var(--surface);
+  --shadow: none;
+  background: var(--bg);
+  color: var(--fg);
+}
+
 /* Tailwind theme mapping so utilities can reach the tokens. */
 @theme inline {
   --color-bg: var(--bg);
@@ -191,7 +218,9 @@ h1, h2, h3, h4 {
   letter-spacing: -0.012em;
 }
 h1 { font-size: clamp(2.75rem, 2rem + 3.2vw, 4.5rem); line-height: 1; text-wrap: balance; }
-h2 { font-size: clamp(2rem, 1.6rem + 1.4vw, 2.5rem); line-height: 1.1; text-wrap: balance; }
+h2 { font-size: clamp(2rem, 1.6rem + 1.4vw, 2.5rem); line-height: 1.1; text-wrap: balance; font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 96; }
+/* Display cuts: Fraunces at its largest optical size, no soft or wonky forms. */
+h1, .wordmark, .final h2 { font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 144; }
 h3 { font-size: 1.5rem; line-height: 1.25; font-weight: 500; }
 p { margin: 0; text-wrap: pretty; }
 a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 0.15em; }
@@ -251,6 +280,7 @@ button { font: inherit; color: inherit; }
 }
 .display-italic { font-variation-settings: "SOFT" 0, "WONK" 1; font-style: italic; }
 .measure { max-width: 68ch; }
+.lucide-inline { display: inline-block; width: 1em; height: 1em; vertical-align: -0.15em; }
 
 /* ---------------------------------------------------------------------------
    Layout
@@ -363,7 +393,7 @@ button { font: inherit; color: inherit; }
 .paper .terminal { background: var(--surface); }
 
 .stamp-seal {
-  display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 100%; box-sizing: border-box;
+  display: inline-flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap; max-width: 100%; box-sizing: border-box;
   font-family: var(--font-clock); font-size: clamp(15px, 4.6vw, 22px); color: var(--seal);
   border: 2.5px solid var(--seal); padding: 6px 12px; letter-spacing: 0.04em;
   transform-origin: center; text-transform: uppercase;
@@ -392,10 +422,11 @@ details.faq .faq-body { padding: 0 0 18px; color: var(--fg-2); max-width: 68ch; 
 .matrix th, .matrix td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .matrix thead th { font-weight: 600; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-2); }
 .matrix tbody th { font-weight: 500; white-space: nowrap; }
-.matrix td { white-space: nowrap; }
+.matrix td { white-space: normal; }
 .matrix td.unv { color: var(--fg-3); font-size: 0.875rem; }
 
 .keystone-list { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.7; margin: 0; padding: 0; list-style: none; }
+.keystone-list li { overflow-wrap: anywhere; }
 .keystone-list li::before { content: "deny  "; color: var(--seal); white-space: pre; }
 
 /* ---------------------------------------------------------------------------
@@ -427,5 +458,7 @@ details.faq .faq-body { padding: 0 0 18px; color: var(--fg-2); max-width: 68ch; 
 /* Dawn: the page eases from night into paper between sections 6 and 7. */
 .dawn {
   height: 220px;
-  background: linear-gradient(to bottom, #0b0e14 0%, #141a26 38%, #2a3244 62%, var(--bg) 100%);
+  /* Literal ends, not tokens: the band sits between a .vault and a .paper, so
+     neither token set applies to it and the page scheme must not leak in. */
+  background: linear-gradient(to bottom, #0b0e14 0%, #141a26 30%, #5e584d 64%, #d9d0bf 86%, #f3eee3 100%);
 }

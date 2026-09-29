@@ -1,39 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageDown, Pause, Play } from "lucide-react";
-import { applySources, createOffice, draw, update, H, TICKS_PER_SECOND, W } from "./office";
+import { applySources, createOffice, deskCentre, draw, seatedCount, update, DESK_COUNT, H, TICKS_PER_SECOND, W } from "./office";
 import { BEATS, REDUCED_MOTION_STEP, resolvedBeat } from "./timeline";
 import { track } from "../../lib/analytics";
 
 /**
  * The live hero world: the shipping Office renderer fed a scripted timeline.
  *
- * - integer scaling only (2x when the column allows, 1x otherwise, a 2x crop on
- *   phones), image-rendering: pixelated
+ * - integer scaling only: always 2x, cropped to the column. The crop skips the
+ *   wall band (the page's own clock and lit window carry the hour) and pans to
+ *   the acting sprite's desk on each step (400 ms; instant under reduced motion)
  * - time-based tick at 30/s; paused off-screen, on hidden tabs, and by the
  *   visible 44 px Pause/Play control (state kept in localStorage, try/catch)
  * - prefers-reduced-motion draws once at 02:30 with the refused state; the
  *   control then reads "Play" and is the visitor's opt-in
  * - follows the page's `warding:step` events; auto-cycles the night on step 0
- * - "Save tonight as a wallpaper": a PNG of this simulated frame at 2x with the
- *   local time and the lit-window glyph stamped bottom-right
+ * - "Save tonight as a wallpaper": a 44 px icon button beside Pause; a PNG of this
+ *   simulated frame at 2x with the local time and the lit-window glyph stamped
+ *   bottom-right
  */
 interface Props { label?: string }
 
 const PAUSE_KEY = "warding.world.paused";
 const CYCLE_MS = 9000;
-const CROP_H = 480; // CSS px of the phone crop window at 2x
+const SCALE = 2;
+/** Logical y where the wall trim ends and the floor begins; the crop starts here. */
+const FLOOR_Y = 80;
 
-type Layout = { scale: number; crop: boolean; frameW: number; frameH: number; offX: number; offY: number };
+type Layout = { frameW: number; frameH: number };
+type Point = { x: number; y: number };
 
 function measure(width: number): Layout {
-  if (width >= W * 2) return { scale: 2, crop: false, frameW: W * 2, frameH: H * 2, offX: 0, offY: 0 };
-  if (width >= W) return { scale: 1, crop: false, frameW: W, frameH: H, offX: 0, offY: 0 };
-  const frameW = Math.max(240, Math.floor(width));
-  const frameH = Math.min(H * 2, CROP_H);
-  // A 2x window over the door and the first desks, never a fractional scale.
-  const offX = Math.min(W * 2 - frameW, 20 * 2);
-  const offY = Math.min(H * 2 - frameH, 55 * 2);
-  return { scale: 2, crop: true, frameW, frameH, offX, offY };
+  const frameW = Math.max(240, Math.min(W * SCALE, Math.floor(width)));
+  return { frameW, frameH: (H - FLOOR_Y) * SCALE };
+}
+
+/** Offset of the 2x canvas inside the frame so `focus` (logical) sits centred, clamped to the floor. */
+function panTo(layout: Layout, focus: Point | null): Point {
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const fx = focus ? focus.x * SCALE - layout.frameW / 2 : 0;
+  const fy = focus ? focus.y * SCALE - layout.frameH / 2 : 0;
+  return {
+    x: Math.round(clamp(fx, 0, W * SCALE - layout.frameW)),
+    y: Math.round(clamp(fy, FLOOR_Y * SCALE, H * SCALE - layout.frameH)),
+  };
 }
 
 function localTime(): string {
@@ -55,22 +65,22 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
   const pausedRef = useRef(false);
   const reducedRef = useRef(false);
   const dprRef = useRef(1);
-  const [layout, setLayout] = useState<Layout>(() => measure(W * 2));
+  const [layout, setLayout] = useState<Layout>(() => measure(W * SCALE));
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [time, setTime] = useState("");
   const [saved, setSaved] = useState("");
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
+  const [focus, setFocus] = useState<Point | null>(null);
+  const [seated, setSeated] = useState(0);
 
   const render = useCallback(() => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    const S = layoutRef.current.scale * dprRef.current;
+    const S = SCALE * dprRef.current;
     const now = new Date();
-    draw(stateRef.current, ctx, { S, textScale: dprRef.current, hour: now.getHours(), minute: now.getMinutes() }, tickRef.current);
+    draw(stateRef.current, ctx, { S, textScale: dprRef.current, hour: now.getHours(), minute: now.getMinutes(), counter: false }, tickRef.current);
   }, []);
 
   const applyBeat = useCallback((step: number, instant = false) => {
@@ -78,6 +88,8 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
     stepRef.current = beat.step;
     applySources(stateRef.current, beat.sources, { instant, reenter: beat.reenter, tick: tickRef.current });
     if (instant) for (let i = 0; i < 30; i++) update(stateRef.current, ++tickRef.current);
+    setFocus(deskCentre(stateRef.current, beat.focus));
+    setSeated(seatedCount(stateRef.current));
   }, []);
 
   // Layout: integer scale from the container width; buffer sized for the DPR.
@@ -95,7 +107,7 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
   useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
-    const S = layout.scale * dprRef.current;
+    const S = SCALE * dprRef.current;
     c.width = W * S;
     c.height = H * S;
     const ctx = c.getContext("2d");
@@ -199,7 +211,7 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
       if (!ctx) return;
       ctx.imageSmoothingEnabled = false;
       const now = new Date();
-      draw(stateRef.current, ctx, { S, textScale: 2, hour: now.getHours(), minute: now.getMinutes() }, tickRef.current);
+      draw(stateRef.current, ctx, { S, textScale: 2, hour: now.getHours(), minute: now.getMinutes(), counter: false }, tickRef.current);
       // Stamp: local time + the lit-window glyph, bottom-right.
       const t = localTime();
       ctx.font = `${22 * 2}px "Departure Mono", "IBM Plex Mono", monospace`;
@@ -226,32 +238,33 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
   };
 
   const playing = !paused && !reduced;
-  const frameStyle = layout.crop
-    ? { width: layout.frameW, height: layout.frameH }
-    : { width: layout.frameW, height: layout.frameH };
+  const off = panTo(layout, focus);
+  const frameStyle = { width: layout.frameW, height: layout.frameH };
   const canvasStyle = {
-    width: W * layout.scale,
-    height: H * layout.scale,
-    transform: layout.crop ? `translate(${-layout.offX}px, ${-layout.offY}px)` : undefined,
+    width: W * SCALE,
+    height: H * SCALE,
+    transform: `translate(${-off.x}px, ${-off.y}px)`,
+    transition: reduced ? "none" : "transform 400ms cubic-bezier(.22,1,.36,1)",
   };
 
   return (
     <div className="world" data-live ref={wrapRef}>
       <div className="world-frame" style={frameStyle}>
         <canvas ref={canvasRef} className="world-canvas" role="img" aria-label={label} style={canvasStyle} />
+        {seated > 0 && <span className="world-count">{seated}/{DESK_COUNT} desks</span>}
         <div className="world-chip">
           <span className="chip">Simulated demo · real renderer · {time ? `${time} your time` : "your time"}</span>
-          <button type="button" className="world-btn" onClick={togglePause} aria-label={playing ? "Pause" : "Play"} aria-pressed={!playing}>
-            {playing ? <Pause className="lucide" aria-hidden="true" /> : <Play className="lucide" aria-hidden="true" />}
-          </button>
+          <span className="world-controls">
+            <button type="button" className="world-btn" onClick={saveWallpaper} aria-label="Save tonight as a wallpaper" title="Save tonight as a wallpaper">
+              <ImageDown className="lucide" aria-hidden="true" />
+            </button>
+            <button type="button" className="world-btn" onClick={togglePause} aria-label={playing ? "Pause" : "Play"} aria-pressed={!playing}>
+              {playing ? <Pause className="lucide" aria-hidden="true" /> : <Play className="lucide" aria-hidden="true" />}
+            </button>
+          </span>
         </div>
       </div>
-      <div className="world-tools">
-        <button type="button" className="btn btn-quiet" onClick={saveWallpaper}>
-          <ImageDown className="lucide" aria-hidden="true" /> Save tonight as a wallpaper
-        </button>
-        <span className="caption" aria-live="polite">{saved || "PNG of this simulated frame, 2x, stamped with your local time."}</span>
-      </div>
+      <span className="sr-only" aria-live="polite">{saved}</span>
     </div>
   );
 }
