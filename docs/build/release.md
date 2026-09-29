@@ -16,7 +16,7 @@ macOS signing mechanics and notary-credential rotation live in
 
 | Channel | Trigger | Version shape |
 |---------|---------|---------------|
-| `nightly` | `nightly.yml`: cron `0 6 * * *` (06:00 UTC) plus manual dispatch, from `main` HEAD | `<base>-nightly.<YYYYMMDD>t<HHMMSS>` |
+| `nightly` | `nightly.yml`: manual dispatch from `main` HEAD | `<base>-nightly.<YYYYMMDD>t<HHMMSS>` |
 | `insider` | `release.yml`: push of a prerelease tag (`v0.2.0-rc.1`) | `<x.y.z>-rc.N` |
 | `stable` | `release.yml`: push of a bare semver tag (`v0.2.0`) on a recorded candidate's commit; the run verifies and promotes that candidate's exact bytes, never rebuilding | Release identity `<x.y.z>`; artifacts retain the selected candidate's embedded `<x.y.z>rcN` version |
 
@@ -117,7 +117,7 @@ concurrency group, and their version derivation.
 
 | Workflow | Kind | Role |
 |---|---|---|
-| `nightly.yml` | trigger (schedule + dispatch) | Derives the date stamp, then calls everything below. `concurrency: nightly-build` with `cancel-in-progress: true`. |
+| `nightly.yml` | trigger (manual dispatch) | Derives the date stamp, then calls everything below. `concurrency: nightly-build` with `cancel-in-progress: true`. |
 | `release.yml` | trigger (`push` on `v*` tags) | Derives version + channel + wheel version from the tag. A prerelease tag builds, publishes to insider, and records the immutable promotion bundle; a bare tag verifies that same-commit bundle and promotes the exact files/OCI digest to stable without building. Then creates the GitHub Release. `concurrency: release-publish` with `cancel-in-progress: false` (queued). |
 | `dependency-vulnerability.yml` | reusable gate | `scripts/check_npm_audit.py`. Runs first; every build job needs it. |
 | `build-wheel.yml` | reusable build | Stamps the PEP 440 version into `pyproject.toml` and `__init__.py`, stamps the distribution channel, builds the frontend and stages it into the package, then `python -m build`. Uploads artifact `cli-wheel` (wheel + sdist). Credential-free. |
@@ -133,10 +133,10 @@ Release-adjacent, deliberately outside the release path:
 
 | Workflow | Role |
 |---|---|
-| `ota-test.yml` | End-to-end macOS auto-update proof: builds two real app versions signed with one throwaway self-signed identity in a temp keychain, serves a local feed, drives consent over the Chrome DevTools Protocol, and asserts the on-disk bundle version flips. Nightly at `40 8 * * *` plus dispatch. Proves the **swap mechanism**, not Gatekeeper acceptance. Needs no secrets. |
+| `ota-test.yml` | End-to-end macOS auto-update proof: builds two real app versions signed with one throwaway self-signed identity in a temp keychain, serves a local feed, drives consent over the Chrome DevTools Protocol, and asserts the on-disk bundle version flips. Runs on manual dispatch or a reusable workflow call. Proves the **swap mechanism**, not Gatekeeper acceptance. Needs no secrets. |
 | `docker-smoke.yml` | PR gate on the container contract (amd64, load-to-daemon, no push). |
 | `pages.yml` | Deploys the marketing site in `site/` to GitHub Pages on `main`, path-scoped to `site/**`. |
-| `ship-report.yml` | Twice-daily merged-PR summary to Slack. Not a release step. |
+| `ship-report.yml` | On-demand merged-PR summary, dry-run by default; Slack delivery requires an explicit live dispatch. Not a release step. |
 
 ## Where artifacts land
 
@@ -381,7 +381,7 @@ force it, both proven live on `windows-latest`:
   concatenates the identifiers back into the filename. A letter between the
   digit runs is what survives that concatenation.
 - SemVer forbids leading zeros in a purely numeric prerelease identifier, and
-  the 06:00 cron yields `HHMMSS=060000`. Inside an alphanumeric identifier the
+  a 06:00 run yields `HHMMSS=060000`. Inside an alphanumeric identifier the
   leading zero is legal.
 
 Ordering still works: the identifier is fixed-width and semver compares

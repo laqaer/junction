@@ -3,7 +3,7 @@ name: Memory Benchmark (nightly)
 # Measures the memory layer's retrieval quality against a published corpus
 # (LoCoMo) and reports the drift from the last ACCEPTED baseline.
 #
-# Why nightly and not a PR gate -- four reasons, in descending order of how
+# Run on demand, not as a PR gate -- four reasons, in descending order of how
 # decisive they are:
 #
 #   1. There is no threshold a PR could sensibly fail. Retrieval recall is a
@@ -11,7 +11,7 @@ name: Memory Benchmark (nightly)
 #      tight enough to block PRs that never touched memory. What is actionable
 #      is a DELTA against a stored baseline, which is a persistence problem.
 #   2. Cost. MEASURED end to end: one FULL 10-instance arm is 60.1 minutes on a
-#      32-core dev desk. The scheduled run therefore measures a fixed
+#      32-core dev desk. Each run therefore measures a fixed
 #      five-instance slice (see env.BENCH_INSTANCES), because a GitHub standard
 #      runner has 4 cores and the slowdown has not been measured.
 #   3. Host-dependent ranking. `search_episodic` picks its backend from which
@@ -34,8 +34,6 @@ name: Memory Benchmark (nightly)
 # carrying the new numbers so a human decides whether to accept the baseline.
 
 on:
-  schedule:
-    - cron: "0 8 * * *" # 08:00 UTC = 01:00 PDT, after the nightly build
   workflow_dispatch: {}
 
 permissions:

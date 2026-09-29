@@ -13,10 +13,10 @@ name: PR Merge-Conflict Label
 # purely a visibility signal.
 on:
   schedule:
-    # Backstop sweep. A PR flips MERGEABLE -> CONFLICTING purely because its
+    # Daily backstop. A PR flips MERGEABLE -> CONFLICTING purely because its
     # base branch advanced, and GitHub emits NO pull_request event for that,
     # so a periodic sweep is the only way to catch the base-moved case.
-    - cron: "*/30 * * * *"
+    - cron: "37 7 * * *"
   push:
     # A merge into the default branch is the usual cause of other open PRs
     # becoming conflicted -- re-sweep immediately so the labels stay fresh
