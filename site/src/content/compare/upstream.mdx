@@ -1,0 +1,58 @@
+---
+title: "Warding vs its upstream: same engine, what we add and lack"
+description: "Warding is an Apache-2.0 derivative of Amazon's open-source Kiro agent workspace. Same engine; what we add, and what upstream has that we lack."
+h1: "Same engine as the project we fork. Here is what we add, and what we lack."
+competitor: "Upstream"
+ogRegister: paper
+ogQualifier: "If you use kiro-cli, use upstream: it is ahead"
+verified: []
+sources:
+  - { label: "NOTICE: the attribution, in this repository", url: "https://github.com/laqaer/junction/blob/main/NOTICE" }
+  - { label: "Upstream documentation: agent backends (read 2026-09-25)", url: "https://kiro.dev/docs/crew/features/agent-backends/" }
+  - { label: "Upstream changelog: the 0.6 release that added backends", url: "https://kiro.dev/changelog/crew/0-6/" }
+  - { label: "Upstream documentation: install and first launch", url: "https://kiro.dev/docs/crew/" }
+---
+import ChTable from "../../components/ChTable.astro";
+import StatusChip from "../../components/StatusChip.astro";
+import { site } from "../../data/site";
+import ChProse from "../../components/ChProse.astro";
+
+<ChProse />
+
+{site.name} is an Apache-2.0 derivative of Amazon's open-source Kiro agent workspace. Most of the code is theirs; the attribution is in <a href={site.links.notice} rel="noopener">NOTICE</a>, and <a href="/lineage/">the lineage page</a> lists what we carry on top. **If you use kiro-cli, use the upstream project: it is ahead, and we say so.** We are not affiliated with Amazon.
+
+The upstream project is further along than the version we forked. Since its 0.6 release it docks several agents besides kiro-cli, and it ships installers and a container image. We forked at 0.5.0, before all of that.
+
+<ChTable
+  head={["", "The upstream project", site.name]}
+  rows={[
+    ["Governance engine: keystone paths, POLICY ∩ PROFILE, audit log, sandbox", "yes", "the same engine"],
+    ["First launch", "guides you through installing kiro-cli and signing in", "no account with us; <code>auto</code> docks the first agent CLI you have installed"],
+    ["Harnesses", "Upstream docks kiro-cli, Claude Code, Codex, KAS, OpenCode, Pi and goose (the others in preview, behind Developer Mode)", "Cursor, Claude Code, Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid, kiro-cli; mostly unverified"],
+    ["The agent's own tools on a non-Kiro harness", "yes, except on Pi", "<strong>not yet</strong>: kiro-cli only; schedules from the dashboard and CLI instead"],
+    ["How many backends at once", "one, set globally", "one, set globally"],
+    ["Installers, wheel, Docker", "yes: installers for macOS, Windows and Linux, a one-line wheel install, and Docker", "<strong>no</strong>: install from source today"],
+    ["Chat channels", "the same ten; we inherited them from this engine", "the same ten: five with approve buttons, one typed, four chat-only"],
+    ["What the default build contacts", "its own update feed and app catalog", "no server of upstream's and none of ours; the embedding model is fetched from a third-party CDN on first use"],
+    ["Version", "0.7.1", "based on 0.5.0; no tagged release yet"],
+    ["Dawn-expiring approval grants, a Morning Report", "no", "in development"],
+  ]}
+/>
+
+## What we add
+
+- **A registry of ten runtimes with kiro-cli optional and last.** Five of our nine non-Kiro runtimes are ones the upstream project does not dock: Cursor, Kimi, DeepSeek Harness, Grok and Droid. <a href="/registry/">The registry</a> says what is verified on each, which today is little.
+- **No first-launch account with us.** You still need your agent vendor's own login.
+- **Endpoint removal.** The default build contacts no server of upstream's and none of ours, with the one exception in the table.
+- **Proof pages.** A check on this site links to a dated row on <a href="/verified/">the verification log</a>.
+
+## What we lack
+
+- **Installers, a wheel and a container image.** Install is from a source checkout today.
+- **The agent's own tools on other harnesses.** Upstream passes its tools to every backend except Pi; we pass them to kiro-cli only, so on the others the agent cannot create a job, spawn a subagent or ask you a question from chat.
+- **OpenCode and KAS**, which upstream docks and we do not yet.
+- **Maturity.** Upstream is at a later version, with more people on it.
+
+## Fork strategy
+
+We track upstream and rebase the carry-set onto it; the carry-set is listed on <a href="/lineage/">the lineage page</a>. Upstream facts on this page come from its own documentation and changelog, read on 2026-09-25, linked below. Whether upstream requires a Kiro sign-in when you choose another backend is not something we have verified. <StatusChip kind="coming" label="Being checked" />
