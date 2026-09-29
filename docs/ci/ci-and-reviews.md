@@ -91,7 +91,9 @@ Out-of-band lanes that never gate a PR:
 In this fork, nightly publishing, the memory benchmark, the macOS OTA test, and
 the ship report run only on demand. Their build, test, and publishing steps remain
 available; removing the schedules avoids spending on unused nightly outputs.
-Tag-triggered releases and PR checks retain their existing triggers.
+Tag-triggered releases and PR checks retain their existing triggers. The production
+dependency audit keeps its own daily 06:00 UTC schedule so vulnerability-exception
+expiry warnings still appear even when no builds are requested.
 
 PR Readiness still updates from workflow and PR events, with an hourly recovery
 sweep for missed events. Fork and merge-conflict labels keep their event-driven
