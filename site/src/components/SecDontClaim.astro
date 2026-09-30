@@ -1,6 +1,6 @@
 ---
 /**
- * The signed "What we don't claim" box (site-spec §2.10), repeated on
+ * The "What we don't claim" box (site-spec §2.10), repeated on
  * /security/. The bullets follow the homepage box; the sandbox bullet names
  * the command that actually installs the Ubuntu AppArmor profile.
  */
@@ -27,7 +27,7 @@ const { headingId = "dont-claim-h" } = Astro.props;
     <li>The default build contacts no server of ours; the embedding model is still fetched from a third-party CDN on first embedding use. The <code>lsof</code> run: <a href="/verified/">/verified</a>.</li>
   </ul>
   <p class="caption">How to report a bypass: <a href={site.links.securityMd} rel="noopener">SECURITY.md</a>.</p>
-  <p class="sec-signature">— laqaer, 2026-09-26</p>
+  <p class="sec-signature">Last checked against the code on 2026-09-30.</p>
 </CharterSheet>
 <style>
   :global(.sec-signed) { max-width: 820px; }
