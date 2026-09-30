@@ -35,7 +35,7 @@ This channel uses Tencent's iLink bot API, which is not a published developer pr
 1. Open **Settings → Channels → WeChat** in the dashboard and click **Connect via QR**.
 2. Scan the code with the WeChat app and confirm on your phone.
 3. Restart the gateway. The status reads **Connected**.
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 4. **Allow yourself.** The default policy is an allow-list with nobody on it, so a fresh bot ignores every message. DM the bot once, read your user ID from the gateway log, and add it to `weixin.allowed_user_ids`.
 
 The credential is stored on the gateway side and never returned to the browser.

@@ -30,14 +30,14 @@ What has been run on which harness is on <a href="/verified/">the verification l
 ## Set it up
 
 1. **Install the Feishu extra** into the gateway's environment. From a source checkout:
-   <pre><code>pip install -e ".[feishu]"</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{".venv/bin/pip install -e '.[feishu]'"}</code></pre>
 2. **Create a custom app** at open.feishu.cn (or open.larksuite.com for Lark), note its App ID and App Secret, and add the **Bot** feature.
 3. **Grant** `im:message` and `im:message:send_as_bot`, choose **Long connection** under Events & Callbacks, subscribe to `im.message.receive_v1`, and publish the app.
 4. **Save the credentials** in the data home's `.env` as `FEISHU_APP_ID` and `FEISHU_APP_SECRET`.
 5. **Allow yourself** by your `open_id` (it starts with `ou_`) in `config.json`:
-   <pre><code>{`"feishu": { "enabled": true, "allowed_open_ids": ["ou_xxxxxxxxxxxxxxxx"] }`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`"feishu": { "enabled": true, "allowed_open_ids": ["ou_xxxxxxxxxxxxxxxx"] }`}</code></pre>
 6. **Restart the gateway** and DM the bot:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 ## Who can reach it
 

@@ -51,7 +51,7 @@ const DESK_ITEM_SETS: DeskItem[][] = [
 ];
 
 const COL = {
-  floor: "#2a2118", floorAlt: "#31281d", wall: "#121722", wallTrim: "#2A3244",
+  floor: "#352a1f", floorAlt: "#3d3125", wall: "#121722", wallTrim: "#2A3244",
   desk: "#5c4033", deskTop: "#7a5c47", monitor: "#1C2333", screen: "#0f1f16",
   screenText: GRANTED, screenOff: "#141A26",
   cubicleWall: "#2A3244", cubicleTop: "#3a4358",

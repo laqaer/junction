@@ -48,16 +48,16 @@ Creating a new scheduled job, spawning a subagent or answering a question the ag
 
 ## Set it up
 
-You need a running gateway and a Telegram account. The dashboard can do most of this for you: in any session, ask it to "set up the Telegram channel" and hand it the token when asked. By hand:
+You need a running gateway and a Telegram account. Set it up by hand; the token goes in a file the agent is not allowed to read or write, so asking the agent to do it is refused at the gate:
 
 1. **Create a bot.** Message **@BotFather**, send `/newbot`, and follow the prompts. You get a token like `123456789:AA…`.
 2. **Find your user ID.** Message **@userinfobot**; it replies with your number. That is the only account the bot will answer.
 3. **Save the token** in the data home's `.env` file (`~/.junction/.env` by default):
-   <pre><code>TELEGRAM_BOT_TOKEN=123456789:AA…</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>TELEGRAM_BOT_TOKEN=123456789:AA…</code></pre>
 4. **Turn the channel on** in `config.json`, with your ID as the whole allow-list:
-   <pre><code>{`"telegram": { "enabled": true, "allowed_user_ids": [123456789] }`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`"telegram": { "enabled": true, "allowed_user_ids": [123456789] }`}</code></pre>
 5. **Restart the gateway**, then message your bot:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 If it stays quiet, your ID is missing from `allowed_user_ids`, or the gateway log has no `Telegram channel started` line because the token is not set.
 

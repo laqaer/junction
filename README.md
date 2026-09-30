@@ -3,7 +3,7 @@
 </p>
 
 **Warding runs the coding agent you already pay for, all night, on your own
-box, and asks you in chat before anything risky — under a policy it cannot
+box, and can ask you in chat before it acts — under a policy it cannot
 read or rewrite.**
 
 Built on Amazon's open-source Kiro agent workspace, published under
@@ -109,7 +109,7 @@ deployments are outside this beta.
 | **Schedules** | Cron jobs with a template gallery: nightly dependency checks, morning digests, weekly reports. They run on your hardware. No run cap from us; your model plan's limits still apply. |
 | **Walk-away tasks** | `warding run TASK.md` plans, executes, validates, retries, and resumes from checkpoints. |
 | **Subagents** | Fan work out to isolated background agents from the dashboard or CLI, and from chat on kiro-cli. The harness router can send each one to another installed harness. |
-| **Approvals** | A gated tool call arrives as Approve / Deny buttons in Slack, Telegram, Discord, Microsoft Teams and Webex, and as a typed reply on WhatsApp. Built-in deny rules never ask. |
+| **Approvals** | A gated tool call arrives as Approve / Deny buttons in Slack, Telegram, Discord, Microsoft Teams and Webex, and as a typed reply on WhatsApp. Opt-in: the default approval mode is Auto, so set `agent.approval_mode: interactive` (or pick Interactive in the dashboard) for calls to wait for you. Built-in deny rules never ask. |
 | **Memory, lessons, skills** | Preferences and project context persist across sessions; corrections become lessons; repeated patterns become skills you can inspect or drop. |
 | **Agent Worlds** | Seven pixel-art scenes where every live session is an animated character. |
 | **The desk** | 21 built-in apps, 18 themes, 12 dashboard languages, a model catalog that lists names. |

@@ -30,14 +30,14 @@ What has been run on which harness is on <a href="/verified/">the verification l
 
 ## Set it up
 
-The dashboard can do most of it: in any session, ask it to "set up the WeCom channel" and paste the two values when asked. By hand:
+Set it up by hand; the values go in a file the agent is not allowed to read or write, so asking the agent to do it is refused at the gate:
 
 1. **Create an AI bot** in the WeCom admin console (应用管理 → AI 智能体). Its settings page shows a **Bot ID** and a **Secret**.
 2. **Save them** in the data home's `.env` as `WECOM_BOT_ID` and `WECOM_SECRET`.
 3. **Allow yourself** by your WeCom userid in `config.json`:
-   <pre><code>{`"wecom": { "enabled": true, "allowed_users": [{ "userid": "zhangsan", "name": "Zhang San" }] }`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`"wecom": { "enabled": true, "allowed_users": [{ "userid": "zhangsan", "name": "Zhang San" }] }`}</code></pre>
 4. **Restart the gateway** and message the bot:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 ## Who can reach it
 
