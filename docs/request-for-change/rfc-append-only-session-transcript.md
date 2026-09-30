@@ -1,7 +1,7 @@
 ---
 title: Append-Only Session Transcript — revision records instead of window rewrites
 status: draft
-author: zezhexu
+author: upstream contributors
 created: 2026-08-16
 last-audited: 2026-08-16
 audited-at: 2a665e735
@@ -14,7 +14,7 @@ superseded-by: []
 # RFC: Append-Only Session Transcript — revision records instead of window rewrites
 
 - Status: draft — nothing implemented. All four phases are proposals.
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-08-16
 - Related: `docs/system-specs/modules/history.md`,
   `docs/system-specs/modules/session.md`,

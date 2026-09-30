@@ -213,7 +213,7 @@ class TestGithubParse(unittest.TestCase):
         self.assertEqual(self.t.url, "https://github.com/kiro-team/kiro-cli/pull/3361")
 
     def test_metadata(self):
-        self.assertEqual(self.t.author, "zejiangg")
+        self.assertEqual(self.t.author, "alex")
         self.assertEqual(self.t.target_branch, "main")
         # head SHA is the commit_id used to anchor draft comments.
         self.assertEqual(self.t.revision, "fb58081a1c0ffee0000000000000000000000000")

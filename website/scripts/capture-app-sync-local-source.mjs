@@ -64,7 +64,7 @@ const REGISTRY_APP = {
   manifest: {
     name: 'secretary', version: '1.0.0', displayName: 'Secretary',
     description: 'Slack inbox manager — triage, draft replies, and digest channels.',
-    author: 'zezhexu', tags: ['slack'],
+    author: 'alex', tags: ['slack'],
   },
 }
 

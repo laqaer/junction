@@ -91,7 +91,7 @@ function sameHost(hrefHost: string, repoHost: string, repo: RepoIdentity): boole
  * wrong would hijack an unrelated click.
  *
  * Owner/repo are compared case-insensitively (both providers treat the path that
- * way for lookup, so `/KiroDotDev/Junction/issues/5` is the same target as the
+ * way for lookup, so `/Laqaer/Junction/issues/5` is the same target as the
  * lowercase form). GitLab's nested namespace is compared as a whole, so a
  * sibling project one level up cannot match; Azure DevOps' `{org}/{project}` pair
  * is compared the same way, so a sibling project in the same organization cannot

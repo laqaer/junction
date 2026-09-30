@@ -2,7 +2,7 @@
 title: Perpetual agents — self-scheduled, goal-driven, supervised
 status: draft
 revision: 3
-author: zezhexu
+author: upstream contributors
 created: 2026-08-09
 last-audited: 2026-08-12
 audited-at: a72c985f8
@@ -39,7 +39,7 @@ superseded-by: []
   job silently inherits from `CronJob` are pinned, auto-pause first (§9); and
   the "economy" is split into a mechanism and an experiment, because an
   incentive with no learning loop is not an incentive (Phase 3).
-- Author: zezhexu
+- Author: upstream contributors
 - Related: `src/junction/docs/cron-and-scheduling.md` (the surface this extends),
   `docs/request-for-change/rfc-orchestrator-chat-sessions.md` (same
   "sessions are the unit of continuity" organizing rule)

@@ -45,7 +45,7 @@ const realFolders = [
   { id: 'kas', name: 'KAS', order: 11, collapsed: false, parent_id: 'kiro' },
   { id: 'research', name: 'research', order: 12, collapsed: true, parent_id: 'kiro' },
   { id: 'appstore', name: 'App Store', order: 13, collapsed: true, parent_id: 'kiro' },
-  { id: 'mesh', name: 'MeshClaw', order: 2, collapsed: true },
+  { id: 'mesh', name: 'Mesh Lab', order: 2, collapsed: true },
   { id: 'meshsub1', name: 'cr review', order: 3, collapsed: true, parent_id: 'mesh' },
   { id: 'personal', name: 'Personal', order: 9, collapsed: true },
   { id: 'autofix', name: 'junction-github-autofix', order: 12, collapsed: true },

@@ -2,7 +2,7 @@
 title: Durable Run Coordinator — typed lifecycle, idempotent commands, and recoverable delivery
 status: draft
 revision: v1
-author: Kyle Seaman, with Codex
+author: upstream contributors
 created: 2026-08-22
 last-audited: 2026-08-22
 audited-at: c4f253891
@@ -17,7 +17,7 @@ superseded-by: []
 - Status: draft — no implementation in this RFC has shipped. The migration is
   deliberately additive and keeps the current subagent API and file artifacts
   compatible until coordinator-first recovery has proven stable.
-- Author: Kyle Seaman, with Codex
+- Author: upstream contributors
 - Created: 2026-08-22
 - Audited against: `c4f253891`
 - Related: `docs/system-specs/modules/subagent.md`,

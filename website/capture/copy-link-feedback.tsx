@@ -55,8 +55,8 @@ Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { wri
   ? () => { throw new Error('copy unavailable') }
   : () => true
 
-const OWNER = 'kirodotdev'
-const REPO = 'Kiro'
+const OWNER = 'laqaer'
+const REPO = 'junction'
 const URL_ = `https://github.com/${OWNER}/${REPO}/issues/4438`
 
 const ROW: Issue = {

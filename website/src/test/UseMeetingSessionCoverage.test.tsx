@@ -593,10 +593,10 @@ describe('useMeetingSession action items', () => {
       expect(apiMocks.addTask).toHaveBeenCalledWith('weekly_sync', 'ship the report'))
 
     await act(async () => {
-      view.result.current.actions.updateTask('t1', { assignee: 'zezhexu' })
+      view.result.current.actions.updateTask('t1', { assignee: 'alex' })
     })
     await waitFor(() => expect(apiMocks.updateTask).toHaveBeenCalledWith(
-      'weekly_sync', 't1', { assignee: 'zezhexu' }))
+      'weekly_sync', 't1', { assignee: 'alex' }))
 
     await act(async () => {
       view.result.current.actions.deleteTask('t1')

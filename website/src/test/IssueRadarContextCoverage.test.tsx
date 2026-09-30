@@ -46,14 +46,14 @@ vi.mock('../apps/issue-radar/api', async (importOriginal) => ({
 }))
 
 const ME = 'octocat'
-const ACTIVE = { owner: 'kirodotdev', repo: 'Kiro' }
-const OTHER = { owner: 'kirodotdev', repo: 'Other' }
+const ACTIVE = { owner: 'example-org', repo: 'Kiro' }
+const OTHER = { owner: 'example-org', repo: 'Other' }
 const REPOS = [
   { ...ACTIVE, permissions: { pull: true, triage: true } },
   { ...OTHER, permissions: { pull: true } },
 ]
 /** repoScopeKey(ACTIVE) — provider:host:owner/repo. */
-const SCOPE = 'github:github.com:kirodotdev/Kiro'
+const SCOPE = 'github:github.com:example-org/Kiro'
 const STEWARD_UI_KEY = 'jn:issue-radar:steward-ui'
 
 // #1 authored + assigned to me. #2 authored by a roster member, also assigned to

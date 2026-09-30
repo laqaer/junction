@@ -87,7 +87,7 @@ describe('maskAccountEmail', () => {
   })
 
   it('masks a bare handle that carries no domain to anchor on', () => {
-    expect(maskAccountEmail('kseam')).toBe('k•••')
+    expect(maskAccountEmail('kestrel')).toBe('k•••')
   })
 
   it('masks on the LAST @ so a local part containing one cannot leak', () => {

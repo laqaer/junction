@@ -1,5 +1,5 @@
 """Context budget invariant: the global cap is the SUM of independent
-per-section caps (Joe Guo's design), so skills/steering can't eat memory space.
+per-section caps, so skills/steering can't eat memory space.
 """
 
 from __future__ import annotations

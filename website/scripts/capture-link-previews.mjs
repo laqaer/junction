@@ -21,7 +21,7 @@ import { mkdirSync, readFileSync } from 'node:fs'
 const BASE = process.argv[2] || 'http://127.0.0.1:6802'
 const OUT = process.argv[3] || '../temp-screenshots/link-previews'
 const SLOT = 'chat-linkprev'
-const PROJECT = '/Users/diwm/workspace/Junction'
+const PROJECT = '/Users/you/workspace/Junction'
 
 mkdirSync(OUT, { recursive: true })
 
@@ -95,7 +95,7 @@ const CONTENT = [
   'A link with no favicon available, still inline: https://example.org/rfc/9110 — the',
   'icon box holds its width so the title does not shift.',
   '',
-  'Never unfurled: `artifact://abcd1234`, a local path `/Users/diwm/notes.md`, and an',
+  'Never unfurled: `artifact://abcd1234`, a local path `/Users/you/notes.md`, and an',
   'in-app route [the artifact](/artifacts/link-unfurl-notes).',
 ].join('\n')
 

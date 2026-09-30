@@ -1,7 +1,7 @@
 ---
 title: i18n — closing the measurement gap
 status: partial
-author: zezhexu
+author: upstream contributors
 created: 2026-08-01
 last-audited: 2026-08-03
 audited-at: 0ab6ed48
@@ -15,7 +15,7 @@ superseded-by: []
 
 - Status: partial — 1 of 6 proposals shipped, 1 partial, 3 unstarted, 1 deliberately deferred. **Shipped:** #3, the pseudolocale overflow gate (`website/scripts/check-i18n-render.mjs` + `lib/render-scan.mjs`, real `scrollWidth − clientWidth` measurement against the IBM expansion curve, wired into CI at `ci.yml:775`, PR #1107). **Partial:** #4, the `localeCompare` migration — the ceiling went 97 → 62 → **37** and `compareText` now has real consumers, but `SessionGridView.tsx:214` still sorts a timestamp through `localeCompare`. **Unstarted:** #1 source-hash staleness, #2 GEMBA-MQM/MQM 2.0 scoring, #6 `saveMissing` + word-count coverage. **Deferred by decision, not neglect:** #5 lazy-loading, recorded as out-of-scope in issue #1004 pending a 25%-of-JS-gzip or >20-language trigger.
 - **Attribution caveat:** the two proposals that moved were already in flight under the pre-existing remediation program (issue #1004, which predates this RFC and already owned the pseudolocale assertions and locale-aware formatting). PR #1009 merged **18 hours before this document did**. The three genuinely novel *measurement* proposals — the ones the title is about — have zero code. Read "partial" accordingly.
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-08-01
 - Audited at: `f6ec5834`; every number re-verified against `5ec356d5` before publication
 - Related: `website/AGENTS.md` (i18n section — the ratchet design rule this RFC builds on)

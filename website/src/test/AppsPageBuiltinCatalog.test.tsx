@@ -195,7 +195,7 @@ describe('AppsPage — builtin rows come from the catalog', () => {
       provenance: 'external', verified: false,
     }
     const beacon = {
-      name: 'secretary', displayName: 'Secretary', author: 'zezhexu',
+      name: 'secretary', displayName: 'Secretary', author: 'alex',
       description: 'Slack inbox manager.', version: '1.1.0',
       installed: false, updateAvailable: false,
     }

@@ -305,7 +305,7 @@ class TestValidation:
                 "version": "0.2.0",
                 "displayName": "Oncall Watch Tower",
                 "description": "Unified oncall dashboard",
-                "author": "zezhexu",
+                "author": "alex",
                 "license": "MIT",
                 "minJunctionVersion": "1.3.0",
                 "agents": ["agents/ticket-analyst.json"],

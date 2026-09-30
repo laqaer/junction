@@ -1,7 +1,7 @@
 ---
 title: Session Address Model — one authoritative session per conversation, surfaces attach to it
 status: partial
-author: nrb
+author: upstream contributors
 created: 2026-08-17
 last-audited: 2026-08-17
 audited-at: b23ab77af
@@ -14,7 +14,7 @@ superseded-by: []
 # RFC: Session Address Model — one authoritative session per conversation, surfaces attach to it
 
 - Status: partial — the dashboard half of the address rule is shipped and load-bearing. A conversation that starts in a chat app is no longer copied when its dashboard tab opens: the tab resolves and holds the conversation's real key, and one function replaced the ~two dozen name-prefix tests that decided what a conversation was allowed to do. What is **not** done: a conversation's identity still encodes its origin surface in the key string, that encoding is destroyed by the filename fold and has to be recovered by a linear scan, surface capability is still a single boolean, and the failure path when the scan misses silently starts a second session against the same transcript file.
-- Author: nrb
+- Author: upstream contributors
 - Created: 2026-08-17
 - Related: rfc-channel-plugin-architecture.md (its §9 amendment decided the address rule this document implements half of, and left the dashboard-as-surface work explicitly out of scope), rfc-append-only-session-transcript.md (owns the transcript write path this document only reads)
 

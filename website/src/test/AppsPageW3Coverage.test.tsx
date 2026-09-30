@@ -142,7 +142,7 @@ const SECRETARY = {
   installedAt: '2026-07-01T00:00:00Z', origin: 'registry', resources: 'gateway', lifecycle: 'gateway',
   manifest: {
     name: 'secretary', version: '1.0.0', displayName: 'Secretary', description: 'Slack inbox manager.',
-    author: 'zezhexu', tags: ['slack', 'inbox'], agents: ['secretary'], skills: ['mochi-slack'],
+    author: 'alex', tags: ['slack', 'inbox'], agents: ['secretary'], skills: ['mochi-slack'],
     crons: [{ name: 'inbox-sweep' }], repo: 'https://github.com/z/secretary',
     ui: { pages: [{ route: '/secretary-ui', label: 'Secretary', icon: 'Bot' }] },
   },
@@ -155,8 +155,8 @@ const REGISTRY_APPS = [
     tags: ['oncall'], installed: false, updateAvailable: false, provenance: 'core',
   },
   {
-    name: 'secretary', displayName: 'Secretary', author: 'zezhexu',
-    description: 'Slack inbox manager.', version: '1.1.0', _registry: 'kirodotdev-labs',
+    name: 'secretary', displayName: 'Secretary', author: 'alex',
+    description: 'Slack inbox manager.', version: '1.1.0', _registry: 'example-labs',
     tags: ['slack'], installed: true, updateAvailable: true, provenance: 'external',
     repo: 'https://github.com/z/secretary',
   },
@@ -186,7 +186,7 @@ beforeEach(() => {
   listApps.mockResolvedValue([BUILTIN_OFF, SECRETARY])
   listRegistry.mockResolvedValue({ apps: [...REGISTRY_APPS, builtinServerRow('pets', 'Pets')] })
   listRegistries.mockResolvedValue({
-    registries: [{ name: 'kirodotdev-labs', repo: 'https://github.com/kirodotdev-labs/registry', branch: 'main' }],
+    registries: [{ name: 'example-labs', repo: 'https://github.com/example-labs/registry', branch: 'main' }],
   })
   enableApp.mockResolvedValue({ ok: true })
   disableApp.mockResolvedValue({ ok: true })
@@ -758,7 +758,7 @@ describe('AppsPage — sources rail', () => {
     const rail = screen.getByText('SOURCES').parentElement as HTMLElement
     // Configured registry keeps its row at zero; the stale tag gets its own.
     expect(within(rail).getByText('Built-in · junction')).toBeInTheDocument()
-    expect(within(rail).getByText('kirodotdev-labs')).toBeInTheDocument()
+    expect(within(rail).getByText('example-labs')).toBeInTheDocument()
     expect(within(rail).getByText('ghost-registry')).toBeInTheDocument()
     expect(within(rail).getByText('Warding registry')).toBeInTheDocument()
     expect(within(rail).getByText('0 apps')).toBeInTheDocument()

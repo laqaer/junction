@@ -1,7 +1,7 @@
 ---
 title: Off-host backup — a bundle a dead machine cannot take with it
 status: draft
-author: mingweic
+author: upstream contributors
 created: 2026-08-11
 last-audited: 2026-08-11
 audited-at: f4d3327a7

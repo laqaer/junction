@@ -1,6 +1,6 @@
 ---
 title: "Vibe coding 1.0 to 4.0, and the part the ladder leaves out"
-author: zezhexu
+author: upstream contributors
 created: 2026-08-11
 ---
 

@@ -142,13 +142,13 @@ class TestNoExternalRootNomination:
     def test_plain_directory_outside_home_copies(self, narrow_tempdir, tmp_path: Path) -> None:
         # A real project tree that is NOT a repo: copying is a working
         # capability, unlike a link that degrades to a stale snapshot.
-        proj = tmp_path / "workplace" / "nrb" / "notes"
+        proj = tmp_path / "workplace" / "alex" / "notes"
         assert classify_source(_file(proj / "spec.md")) == (COPY, "")
 
     def test_repo_outside_home_links_with_its_root(self, narrow_tempdir, tmp_path: Path) -> None:
         # The headline case: /workplace/... is outside $HOME, which is exactly
         # where linking was silently broken.
-        repo = tmp_path / "workplace" / "nrb" / "repo"
+        repo = tmp_path / "workplace" / "alex" / "repo"
         (repo / ".git").mkdir(parents=True)
         target = _file(repo / "docs" / "spec.md")
         assert classify_source(target) == (LINK, str(repo))
@@ -172,7 +172,7 @@ class TestNonGitProjectsLink:
     def test_marker_makes_a_project_root(
         self, narrow_tempdir, tmp_path: Path, marker: str
     ) -> None:
-        proj = tmp_path / "workplace" / "nrb" / "notes"
+        proj = tmp_path / "workplace" / "alex" / "notes"
         proj.mkdir(parents=True)
         (proj / marker).mkdir() if marker.startswith(".") else (proj / marker).write_text(
             "x", encoding="utf-8"

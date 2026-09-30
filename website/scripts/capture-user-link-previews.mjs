@@ -19,7 +19,7 @@ import { json } from './lib/boot-api.mjs'
 
 const OUT = process.argv[2] || '../temp-screenshots/user-link-previews'
 const SLOT = 'chat-userlinkprev'
-const PROJECT = '/Users/diwm/workspace/Junction'
+const PROJECT = '/Users/you/workspace/Junction'
 
 mkdirSync(OUT, { recursive: true })
 

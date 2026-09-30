@@ -260,7 +260,7 @@ def test_install_falls_back_without_deps_when_the_package_step_is_refused(
             return (
                 1,
                 "",
-                "Sorry, user bolichen is not allowed to execute "
+                "Sorry, user alex is not allowed to execute "
                 "'/bin/sh -c apt-get update' as root on dev-dsk-example.",
             )
         return (0, "", "")

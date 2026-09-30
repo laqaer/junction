@@ -68,7 +68,7 @@ const detail = {
  *  Artifacts sections render (that pair is the whole point of the tab). */
 const SESSION_ARTIFACTS = [
   { slug: 'render-forms', name: 'Three render forms compared', kind: 'widget', pinned: false },
-  { slug: 'link-unfurl-contract-md', name: 'link-unfurl-contract.md', kind: 'markdown', pinned: false, source_path: '/Users/diwm/.junction/workspace/scratch/link-unfurl-contract.md' },
+  { slug: 'link-unfurl-contract-md', name: 'link-unfurl-contract.md', kind: 'markdown', pinned: false, source_path: '/Users/you/.junction/workspace/scratch/link-unfurl-contract.md' },
 ]
 const LIBRARY_ONLY = [
   { slug: 'credit-burn', name: 'Credit burn rate', kind: 'widget', pinned: true },
@@ -166,8 +166,8 @@ async function main() {
       // The Files tab reads agent-touched files from this per-slot key, so
       // seeding it here avoids having to replay a whole tool-call turn.
       localStorage.setItem('junction:touched-files:' + slot, JSON.stringify([
-        { path: '/Users/diwm/.junction/workspace/scratch/link-unfurl-contract.md', ts: Date.now(), lastWrite: Date.now(), source: 'tool' },
-        { path: '/Users/diwm/.junction/workspace/scratch/notes.ts', ts: Date.now(), source: 'tool' },
+        { path: '/Users/you/.junction/workspace/scratch/link-unfurl-contract.md', ts: Date.now(), lastWrite: Date.now(), source: 'tool' },
+        { path: '/Users/you/.junction/workspace/scratch/notes.ts', ts: Date.now(), source: 'tool' },
       ]))
       // Open both view tabs so the strip matches a real session and switching
       // is a click rather than a trip through the + menu.

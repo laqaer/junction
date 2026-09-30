@@ -96,7 +96,7 @@ beforeEach(() => {
   forkChatSlotMock.mockResolvedValue({ ok: true, key: 'chat-1-fork', title: 'Fork', messages: 1 })
 })
 
-describe('handleFork direction wiring (zejiangg #5)', () => {
+describe('handleFork direction wiring', () => {
   it('dispatches forkSlot with direction "tail" when dashboardConfig has tail_fork_enabled: true', async () => {
     dashboardConfigMock.mockResolvedValue({ tail_fork_enabled: true })
     const store = makeStore()

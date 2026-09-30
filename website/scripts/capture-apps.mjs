@@ -73,14 +73,14 @@ const registryApps = [
   A('oncall-radar', 'Oncall Radar', 'junction', 'Oncall operations dashboard — track tickets, pipelines, risks, MCMs, shift handoffs and maintain runbooks.', ['oncall', 'tickets'], { featured: 2, version: '2.1.0' }),
   A('auto-research', 'Research Lab', 'junction', 'Autonomous research campaigns powered by autonudge — pre-flight validation, live findings, stagnation detection.', ['research', 'autonudge'], { featured: 3, installed: true, enabled: true, version: '1.4.0' }),
   A('issue-radar', 'Issue Radar', 'junction', 'An issue triage assistant that remembers. Browse, filter, and triage GitHub issues with AI-suggested labels.', ['github', 'issue-triage'], { _registry: REG }),
-  A('secretary', 'Secretary', 'zezhexu', 'Slack inbox manager — triage, draft replies, and digest channels.', ['slack', 'inbox'], { _registry: REG, installed: true, enabled: true, updateAvailable: true, installedVersion: '1.0.0', version: '1.1.0', lifecycle: 'gateway', origin: 'registry' }),
-  A('taskkeeper', 'TaskKeeper', 'zezhexu', 'Personal task manager — triage Slack and email into actionable tasks with To-Do sync.', ['tasks', 'outlook'], { _registry: REG }),
-  A('mimir', 'Mimir', 'zezhexu', 'Unified task aggregation across Taskei, SIM, and Asana.', ['tasks', 'aggregation'], { _registry: REG }),
-  A('team-manager', 'Team Manager', 'zezhexu', 'Generate periodic team work reports and compare products with source-cited evidence.', ['reports', 'team'], { _registry: REG }),
+  A('secretary', 'Secretary', 'alex', 'Slack inbox manager — triage, draft replies, and digest channels.', ['slack', 'inbox'], { _registry: REG, installed: true, enabled: true, updateAvailable: true, installedVersion: '1.0.0', version: '1.1.0', lifecycle: 'gateway', origin: 'registry' }),
+  A('taskkeeper', 'TaskKeeper', 'alex', 'Personal task manager — triage Slack and email into actionable tasks with To-Do sync.', ['tasks', 'outlook'], { _registry: REG }),
+  A('mimir', 'Mimir', 'alex', 'Unified task aggregation across Jira, Linear, and Asana.', ['tasks', 'aggregation'], { _registry: REG }),
+  A('team-manager', 'Team Manager', 'alex', 'Generate periodic team work reports and compare products with source-cited evidence.', ['reports', 'team'], { _registry: REG }),
   A('workflows', 'Workflows', 'junction', 'Author, run, and watch dynamic workflows — agent-authored Python scripts that orchestrate Junction agents.', ['workflows', 'automation'], { installed: true, enabled: true }),
-  A('code-reviewer', 'Code Reviewer', 'junction', 'Review local git changes with a CRUX-like diff viewer, inline comments, and an IntelliJ-style Git panel.', ['code-review', 'git'], { _registry: REG }),
-  A('writing-review', 'WritingReview', 'zezhexu', 'Multi-scanner writing review for documents. Upload a doc, supply audience and tone context, and get findings grouped by scanner.', ['writing', 'review'], { _registry: REG }),
-  A('auto-improvement', 'Auto-Improvement', 'zezhexu', 'Analyzes a target codebase, designs a calibrated metric, then runs keep-or-revert performance loops.', ['performance', 'code-quality'], { _registry: REG }),
+  A('code-reviewer', 'Code Reviewer', 'junction', 'Review local git changes with a review-style diff viewer, inline comments, and an IntelliJ-style Git panel.', ['code-review', 'git'], { _registry: REG }),
+  A('writing-review', 'WritingReview', 'alex', 'Multi-scanner writing review for documents. Upload a doc, supply audience and tone context, and get findings grouped by scanner.', ['writing', 'review'], { _registry: REG }),
+  A('auto-improvement', 'Auto-Improvement', 'alex', 'Analyzes a target codebase, designs a calibrated metric, then runs keep-or-revert performance loops.', ['performance', 'code-quality'], { _registry: REG }),
 ]
 
 const I = (name, displayName, origin, over = {}) => {

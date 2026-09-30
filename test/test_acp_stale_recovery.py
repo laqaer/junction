@@ -1473,7 +1473,7 @@ async def test_turn_start_retires_the_liveness_state():
 async def test_tool_dispatch_retires_the_liveness_state():
     """Every new tool dispatch is a liveness generation boundary.
 
-    ``reset()`` here was the site Luca Chang's ``AcpClient`` fix named as the
+    ``reset()`` here was the site the ``AcpClient`` fix named as the
     remaining gap: it drops the baseline in place while a walk submitted for the
     PREVIOUS tool may still be running against it.
     """

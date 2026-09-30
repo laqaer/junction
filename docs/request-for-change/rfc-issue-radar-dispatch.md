@@ -1,7 +1,7 @@
 ---
 title: Issue Radar dispatch — let an agent complete an issue, not just investigate it
 status: draft
-author: zezhexu
+author: upstream contributors
 created: 2026-08-12
 last-audited: 2026-08-12
 audited-at: 9fe52b10a

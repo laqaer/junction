@@ -81,7 +81,7 @@ const REGISTRY_APPS = [
     tags: ['oncall', 'tickets'], featured: 2, installed: false, updateAvailable: false,
   },
   {
-    name: 'secretary', displayName: 'Secretary', author: 'zezhexu',
+    name: 'secretary', displayName: 'Secretary', author: 'alex',
     description: 'Slack inbox manager.', version: '1.1.0', _registry: 'acme-labs',
     tags: ['slack', 'inbox'], installed: true, updateAvailable: true,
   },
@@ -91,7 +91,7 @@ const INSTALLED = [
   {
     name: 'secretary', displayName: 'Secretary', version: '1.0.0', enabled: true,
     installedAt: '2026-07-01T00:00:00Z', origin: 'registry', resources: 'gateway', lifecycle: 'gateway',
-    manifest: { name: 'secretary', version: '1.0.0', displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu', tags: ['slack', 'inbox'] },
+    manifest: { name: 'secretary', version: '1.0.0', displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex', tags: ['slack', 'inbox'] },
   },
 ]
 

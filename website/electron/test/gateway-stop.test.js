@@ -699,7 +699,7 @@ test("classifyPortOwner: an ssh -L forward is foreign, not ours", async () => {
   // ssh, while the gateway answering /api/health lives on another machine.
   const owner = await classifyPortOwner(5476, {
     getListenPids: async () => [909],
-    getCommand: async () => "ssh -NL 5476:localhost:5476 dev-dsk-example.amazon.com",
+    getCommand: async () => "ssh -NL 5476:localhost:5476 dev-box.example.com",
   });
   assert.strictEqual(owner, "foreign");
 });

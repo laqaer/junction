@@ -79,7 +79,7 @@ GITHUB_PAYLOAD = {
     "html_url": "https://github.com/kiro-team/kiro-cli/pull/3361",
     "state": "open",
     "draft": False,
-    "user": {"login": "zejiangg"},
+    "user": {"login": "alex"},
     "base": {"ref": "main", "repo": {"full_name": "kiro-team/kiro-cli"}},
     "head": {"ref": "fix-setmode", "sha": "fb58081a1c0ffee0000000000000000000000000"},
     "files": [

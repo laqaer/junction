@@ -42,7 +42,7 @@ const REGISTRY_APP = {
   displayName: 'Secretary',
   description: 'Slack inbox manager.',
   version: '1.1.0',
-  author: 'zezhexu',
+  author: 'alex',
   installed: false,
 }
 
@@ -91,7 +91,7 @@ describe('AppDetailPage — auto-action deep links', () => {
     getApp.mockResolvedValue({
       name: 'secretary', displayName: 'Secretary', version: '1.1.0', enabled: true,
       origin: 'registry', resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     listRegistry.mockResolvedValue({
       apps: [{ ...REGISTRY_APP, installed: true, installedVersion: '1.1.0' }],
@@ -106,7 +106,7 @@ describe('AppDetailPage — auto-action deep links', () => {
     getApp.mockResolvedValue({
       name: 'secretary', displayName: 'Secretary', version: '1.0.0', enabled: true,
       origin: 'registry', resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     renderDetail({ search: '?action=update' })
     await screen.findByText('Slack inbox manager.')
@@ -117,7 +117,7 @@ describe('AppDetailPage — auto-action deep links', () => {
     getApp.mockResolvedValue({
       name: 'secretary', displayName: 'Secretary', version: '1.0.0', enabled: true,
       origin: 'registry', resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     renderDetail({ state: { autoAction: 'update' } })
     await waitFor(() => expect(installFromRegistryStream).toHaveBeenCalled())
@@ -131,7 +131,7 @@ describe('AppDetailPage — auto-action deep links', () => {
       name: 'secretary', displayName: 'Secretary', version: '0.1.0', enabled: true,
       source: '/home/u/apps/secretary', origin: 'local',
       resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     listRegistry.mockResolvedValue({ apps: [], serverPlatform: { os: 'darwin', arch: 'arm64' } })
     renderDetail({ state: { autoAction: 'update' } })
@@ -144,7 +144,7 @@ describe('AppDetailPage — auto-action deep links', () => {
       name: 'secretary', displayName: 'Secretary', version: '1.0.0', enabled: true,
       source: 'registry:secretary', origin: 'registry',
       resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     renderDetail({ state: { autoAction: 'update' } })
     await waitFor(() => expect(installFromRegistryStream).toHaveBeenCalled())
@@ -177,7 +177,7 @@ describe('AppDetailPage — auto-action deep links', () => {
       name: 'secretary', displayName: 'Secretary', version: '0.1.0', enabled: true,
       source: '/home/u/apps/secretary', origin: 'local',
       resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     listRegistry.mockResolvedValue({ apps: [], serverPlatform: { os: 'darwin', arch: 'arm64' } })
     updateApp.mockResolvedValue({ ok: true })
@@ -194,7 +194,7 @@ describe('AppDetailPage — auto-action deep links', () => {
       name: 'secretary', displayName: 'Secretary', version: '1.0.0', enabled: true,
       source: 'registry:secretary', origin: 'registry',
       resources: 'gateway', lifecycle: 'gateway', installedAt: '2026-07-01T00:00:00Z',
-      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'zezhexu' },
+      manifest: { displayName: 'Secretary', description: 'Slack inbox manager.', author: 'alex' },
     })
     listRegistry.mockResolvedValue({ apps: [], serverPlatform: { os: 'darwin', arch: 'arm64' } })
     updateApp.mockResolvedValue({ ok: true })

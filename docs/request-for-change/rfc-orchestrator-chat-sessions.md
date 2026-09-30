@@ -2,7 +2,7 @@
 title: Orchestrator Chat Sessions — an engineered pipeline with a decision-only agent
 status: partial
 revision: v5
-author: junction agent session, directed by zezhexu
+author: upstream contributors
 created: 2026-08-03
 last-audited: 2026-08-22
 audited-at: c4f253891
@@ -30,7 +30,7 @@ BLOCKER traced to simulating engineering in a prompt) → v4 architecture rewrit
 (heavy engineering, light agent) → round 2 (v4, same roster, unanimous REVISE:
 architecture endorsed by all four reviewers including the defender; findings
 are specification gaps, all folded in below)
-Author: junction agent session, directed by zezhexu
+Author: upstream contributors
 Date: 2026-08-03
 
 ## North star

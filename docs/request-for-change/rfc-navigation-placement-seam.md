@@ -1,7 +1,7 @@
 ---
 title: Navigation Placement Seam — honor the manifest contract the rail already promises
 status: draft
-author: zezhexu
+author: upstream contributors
 created: 2026-08-16
 last-audited: 2026-08-16
 audited-at: 2a665e735
@@ -14,7 +14,7 @@ superseded-by: []
 # RFC: Navigation Placement Seam — honor the manifest contract the rail already promises
 
 - Status: draft — nothing implemented. All three phases are proposals.
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-08-16
 - Related: `rfc-federated-app-platform.md` (the app UI loading path this rides),
   `website/docs/extension-seams.md` (the nine existing edition seams this adds a

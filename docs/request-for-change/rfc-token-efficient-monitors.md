@@ -1,7 +1,7 @@
 ---
 title: Token-efficient monitors — probe first, wake on change
 status: draft
-author: kseam
+author: upstream contributors
 created: 2026-08-22
 last-audited: 2026-08-22
 audited-at: 6d3e30bbbd

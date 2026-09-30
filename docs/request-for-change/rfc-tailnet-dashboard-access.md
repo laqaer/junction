@@ -1,7 +1,7 @@
 ---
 title: Tailnet-native dashboard access
 status: partial
-author: zezhexu
+author: upstream contributors
 created: 2026-08-06
 last-audited: 2026-08-06
 audited-at: 429cbad8
@@ -27,7 +27,7 @@ superseded-by: []
   (`dashboard.tailscale.enabled` origin derivation) is implemented; its
   inferred signal (§4 signal 2) and Phase 4 are not.
   Pin scope was settled after review: configurable, defaulting to `node` (§3.1).
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-08-06
 - Related: `docs/guides/remote-and-mobile.md` (the guide this RFC corrects and
   extends), `docs/request-for-change/rfc-update-architecture.md` (same

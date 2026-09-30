@@ -2,7 +2,7 @@
 title: Issue Radar Stewards — autonomous issue workers with a public claim ledger
 status: draft
 revision: v1
-author: junction agent session, directed by diwm
+author: upstream contributors
 created: 2026-08-08
 last-audited: 2026-08-08
 audited-at: f2aa4c8bb

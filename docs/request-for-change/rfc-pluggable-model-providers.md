@@ -1,7 +1,7 @@
 ---
 title: Pluggable agent model providers
 status: draft
-author: ptias
+author: upstream contributors
 created: 2026-08-07
 last-audited: 2026-08-07
 audited-at: upstream/main
@@ -18,7 +18,7 @@ superseded-by: []
   providers" invariant accordingly.** No design is proposed here: the shape of
   the seam is a separate discussion, and deliberately out of scope so the
   direction can be settled on its own merits.
-- Author: ptias
+- Author: upstream contributors
 - Created: 2026-08-07
 - Related: `docs/system-specs/modules/providers.md` (records the current
   single-provider constraint)

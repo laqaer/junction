@@ -1,7 +1,7 @@
 ---
 title: Everything is an App — the core/app boundary and what makes a surface replaceable
 status: draft
-author: zezhexu
+author: upstream contributors
 created: 2026-08-18
 last-audited: 2026-08-18
 audited-at: e6b06685e
@@ -14,7 +14,7 @@ superseded-by: []
 # RFC: Everything is an App — the core/app boundary and what makes a surface replaceable
 
 - Status: draft — nothing implemented. Every phase is a proposal.
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-08-18
 - Measured at: `e6b06685e`. Code line numbers below were verified against that
   commit. Quotations from `TENETS.md` and

@@ -68,7 +68,7 @@ const source = (state, mergedAt) => ({
   headBranch: 'fix/pr-state-sync',
   baseBranch: 'main',
   headSha: 'd4c42602',
-  author: 'kyleseaman',
+  author: 'alex',
   additions: 824,
   deletions: 7,
   changedFiles: 11,
@@ -76,7 +76,7 @@ const source = (state, mergedAt) => ({
   mergeStateStatus: state === 'MERGED' ? 'clean' : 'blocked',
   commits: [{
     sha: 'd4c42602', message: 'fix(chat): keep pull-request state in sync',
-    author: 'kyleseaman', committedAt: new Date().toISOString(), url: PR_URL,
+    author: 'alex', committedAt: new Date().toISOString(), url: PR_URL,
   }],
   checks: [
     { name: 'Backend Tests', workflow: 'CI', status: 'COMPLETED', conclusion: 'SUCCESS', bucket: 'passed', url: '', startedAt: '', completedAt: '' },

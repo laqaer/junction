@@ -76,7 +76,7 @@ const PULLS = [
     url: 'https://github.com/laqaer/junction/pull/1111', state: 'open', draft: false,
     labels: ['enhancement'], author: 'bolinchen', author_association: 'MEMBER',
     created_at: ISO, updated_at: ISO, closed_at: null, merged_at: null,
-    assignees: [], requested_reviewers: ['kyleseaman'],
+    assignees: [], requested_reviewers: ['alex'],
     base: 'main', head: 'feat/pr-actions', head_sha: 'a1b2c3d4e5f6',
     additions: 3106, deletions: 41, changed_files: 22,
     checks_state: 'success',
@@ -86,7 +86,7 @@ const PULLS = [
   {
     number: 1102, title: 'fix(nav): keep the rail width across a reload',
     url: 'https://github.com/laqaer/junction/pull/1102', state: 'open', draft: false,
-    labels: ['bug'], author: 'kyleseaman', author_association: 'MEMBER',
+    labels: ['bug'], author: 'alex', author_association: 'MEMBER',
     created_at: ISO, updated_at: ISO, closed_at: null, merged_at: null,
     assignees: [], requested_reviewers: [],
     base: 'main', head: 'fix/rail-width', head_sha: '9f8e7d6c5b4a',
@@ -174,7 +174,7 @@ async function main() {
         ...REPO, from_cache: false, source: 'collaborators',
         members: [
           { login: 'bolinchen', role: 'write' },
-          { login: 'kyleseaman', role: 'admin' },
+          { login: 'alex', role: 'admin' },
         ],
       })
     }

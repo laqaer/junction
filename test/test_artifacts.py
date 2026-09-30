@@ -1680,7 +1680,7 @@ def home_store(tmp_path: Path, monkeypatch) -> ArtifactStore:
 @pytest.fixture
 def project_file(tmp_path: Path) -> tuple[Path, Path]:
     """A ``/workplace``-style project root + file, outside home and the data home."""
-    proj = tmp_path / "workplace" / "nrb" / "repo"
+    proj = tmp_path / "workplace" / "alex" / "repo"
     src = proj / "docs" / "spec.md"
     src.parent.mkdir(parents=True)
     src.write_text("# live from the project", encoding="utf-8")

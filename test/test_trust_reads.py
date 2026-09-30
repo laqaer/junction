@@ -117,8 +117,7 @@ class TestIsReadOnlyBash:
 
     def test_interpreter_suffix_bypass_rejected(self):
         """Regression: trailing --help/--version must NOT auto-approve
-        interpreter commands whose head is not on the read-only allowlist.
-        See: coordinated disclosure from Robert Noack, 2026-08-15."""
+        interpreter commands whose head is not on the read-only allowlist."""
         # bash -c '<payload>' --help — interpreter passes flag to script
         assert is_read_only_bash("bash -c 'touch /tmp/owned' --help") is False
         assert is_read_only_bash("bash -c 'whoami' --version") is False

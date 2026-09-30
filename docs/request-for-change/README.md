@@ -63,7 +63,7 @@ carries the *what*.
 ---
 title: Channel Plugin Architecture — shared runtime, channels as app extension points
 status: partial            # see vocabulary below
-author: zezhexu
+author: upstream contributors
 created: 2026-07-28
 last-audited: 2026-08-03   # when status was last verified against code
 audited-at: 0ab6ed48       # the commit it was verified against

@@ -123,7 +123,7 @@ const { AssigneesConflictError } = await import('../apps/issue-radar/api')
 
 const REF = { owner: 'kirodotdev', repo: 'Kiro' }
 const SCOPE = 'github:github.com:kirodotdev/Kiro'
-const OTHER_SCOPE = 'github:github.com:kirodotdev/Other'
+const OTHER_SCOPE = 'github:github.com:example-org/Other'
 
 const ROW: Issue = {
   number: 11,

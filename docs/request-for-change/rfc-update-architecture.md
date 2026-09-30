@@ -1,7 +1,7 @@
 ---
 title: Update Architecture (install-shape capability contract)
 status: draft
-author: zezhexu
+author: upstream contributors
 created: 2026-07-31
 last-audited: 2026-08-06
 audited-at: 8861f89e
@@ -22,7 +22,7 @@ superseded-by: []
   mandatory-update modal for the desktop lane only, without the capability
   contract.
 - Correction to the reference below: Junction ships **five** distribution shapes, not the set implied — `beacon.py:155` lists `{dmg, appimage, wheel, source, docker}`.
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-07-31
 - Related: `docs/build/release.md` (channels, release branches, promotion),
   `docs/request-for-change/version-compliance-framework.md` (the policy ceiling

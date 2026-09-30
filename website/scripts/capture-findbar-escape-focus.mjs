@@ -18,7 +18,7 @@ import { openTranscriptHarness } from './lib/transcript-harness.mjs'
 
 const OUT = process.argv[2] || '../temp-screenshots/findbar-escape-focus'
 const SLOT = 'chat-findbarfocus'
-const PROJECT = '/Users/diwm/workspace/Junction'
+const PROJECT = '/Users/you/workspace/Junction'
 
 mkdirSync(OUT, { recursive: true })
 

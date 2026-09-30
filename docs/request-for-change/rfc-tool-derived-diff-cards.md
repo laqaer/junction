@@ -1,7 +1,7 @@
 ---
 title: Tool-Derived Diff Cards — structured diffs as the primary file-change display
 status: in-progress
-author: zezhexu
+author: upstream contributors
 created: 2026-08-21
 last-audited: 2026-08-21
 audited-at: 8c61bc1f0
@@ -16,7 +16,7 @@ superseded-by: []
 - Status: in-progress — the dashboard promotion and the runtime-selected
   prompt rule have shipped;
   the messaging `OutputEvent` extension (§3.3) is unstarted.
-- Author: zezhexu
+- Author: upstream contributors
 - Created: 2026-08-21
 - Related: `docs/system-specs/modules/memory-skills-hooks.md` (session context
   assembly), `docs/system-specs/modules/acp-client.md` (tool-call event

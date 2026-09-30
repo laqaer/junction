@@ -78,7 +78,7 @@ const PrDetail = (await import('../apps/issue-radar/components/PrDetail')).defau
 
 const REF = { owner: 'kirodotdev', repo: 'Kiro' }
 const SCOPE = 'github:github.com:kirodotdev/Kiro'
-const OTHER_SCOPE = 'github:github.com:kirodotdev/Other'
+const OTHER_SCOPE = 'github:github.com:example-org/Other'
 
 const ROW: PullRequest = {
   number: 7,

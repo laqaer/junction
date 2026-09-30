@@ -78,7 +78,7 @@ function installedApp(overrides: Dict = {}): Dict {
     manifest: {
       displayName: 'Ledger Lens',
       description: 'Reads your books and explains them.',
-      author: 'zezhexu',
+      author: 'alex',
     },
     ...overrides,
   }
@@ -91,7 +91,7 @@ function registryRow(overrides: Dict = {}): Dict {
     displayName: 'Ledger Lens',
     description: 'Reads your books and explains them.',
     version: '1.0.0',
-    author: 'zezhexu',
+    author: 'alex',
     repo: REPO_ALIAS,
     trustRepository: TRUST_REPOSITORY,
     installed: false,
@@ -187,7 +187,7 @@ describe('AppDetailPage — uncovered surfaces', () => {
   const WITH_SHOTS = {
     displayName: 'Ledger Lens',
     description: 'Reads your books and explains them.',
-    author: 'zezhexu',
+    author: 'alex',
     screenshots: ['/shots/light-one.png', '/shots/light-two.png', '/shots/light-three.png'],
     screenshotsDark: ['/shots/dark-one.png', '/shots/dark-two.png'],
   }
@@ -690,7 +690,7 @@ describe('AppDetailPage — uncovered surfaces', () => {
       manifest: {
         displayName: 'Ledger Lens',
         description: 'Reads your books and explains them.',
-        author: 'zezhexu',
+        author: 'alex',
         minJunctionVersion: '0.2.0',
         highlights: ['Explains a balance sheet', 'Flags odd entries'],
         tags: ['finance', 'reporting'],

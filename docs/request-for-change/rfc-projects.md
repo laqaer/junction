@@ -1,7 +1,7 @@
 ---
 title: Projects — portable, syncable context bundles
 status: draft
-author: kseam
+author: upstream contributors
 created: 2026-08-21
 last-audited: 2026-08-21
 audited-at: 5cd92ff99

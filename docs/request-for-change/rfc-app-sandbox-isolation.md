@@ -1,6 +1,6 @@
 # App Sandbox & Isolation Roadmap
 
-**Author:** Ray Xu (rayrayxu)
+**Author:** upstream contributors
 **Date:** 2026-04-23
 **Status:** Planned
 

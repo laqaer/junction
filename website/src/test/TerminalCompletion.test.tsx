@@ -806,7 +806,7 @@ describe('TerminalCompletion', () => {
   it('uses an OSC prompt marker to locate the command line', async () => {
     // With a marker there is no reliance on the prompt-terminator heuristic:
     // an exotic prompt (no `$`/`»`/`❯`) still resolves the command correctly.
-    const exotic = 'diwm@host ~/work ⟩⟩ '
+    const exotic = 'you@host ~/work ⟩⟩ '
     const line = `${exotic}cd `
     const fetchMock = mockComplete([{ name: 'docs', dir: true }])
     vi.stubGlobal('fetch', fetchMock)
