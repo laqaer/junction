@@ -1181,6 +1181,24 @@ def _is_session_expired(haystack: str) -> bool:
     )
 
 
+def _relogin_command(backend: str | None) -> str:
+    """The sign-in command for the harness whose session was rejected.
+
+    Kiro is the default: the shared-runtime path and any caller that does not
+    name its backend drive kiro-cli. Other harnesses use the login command
+    their connect setup already publishes, so a claude or codex session is
+    never told to sign in to a CLI it does not use.
+    """
+    if backend:
+        from junction.harness_router.connect import setup_for
+        from junction.harness_router.lanes import harness_name
+
+        setup = setup_for(harness_name(backend))
+        if setup is not None:
+            return setup.login
+    return "kiro-cli login"
+
+
 # Account/plan capacity is EXHAUSTED — terminal. Distinct from a throttle: a
 # throttle clears in seconds and a retry is the right move, whereas a spent
 # monthly allowance does not come back until it resets, so retrying only adds
@@ -1417,7 +1435,12 @@ def resolve_usable_model(preferred: str, advertised: Sequence[str] | None) -> st
     return ""
 
 
-def _format_acp_error(error: object, available_models: Sequence[str] | None = None) -> str:
+def _format_acp_error(
+    error: object,
+    available_models: Sequence[str] | None = None,
+    *,
+    backend: str | None = None,
+) -> str:
     """Format a JSON-RPC error from the ACP backend into actionable user text.
 
     The ACP backend (kiro-cli or claude-agent-acp) surfaces upstream Bedrock
@@ -1432,6 +1455,9 @@ def _format_acp_error(error: object, available_models: Sequence[str] | None = No
 
     The provider request_id is preserved in every variant so that operators
     can correlate against support tickets and Bedrock logs.
+
+    *backend* names the ACP backend that failed, so sign-in guidance points at
+    that harness's own login command (kiro-cli when it is not given).
 
     Security: the ``data`` field originates from upstream and may contain
     credential patterns or exfiltration URLs (especially in the fallback
@@ -1532,7 +1558,7 @@ def _format_acp_error(error: object, available_models: Sequence[str] | None = No
             # the Bedrock credential errors above. Retrying or switching models
             # cannot succeed, so the message must not suggest either.
             formatted = (
-                "Your session has expired. Run `kiro-cli login` in your "
+                f"Your session has expired. Run `{_relogin_command(backend)}` in your "
                 "terminal to sign back in, then start a new chat. "
                 "Retrying or switching models will not help — this is a "
                 "sign-in issue, not a backend error."
@@ -1656,7 +1682,12 @@ def _rejected_model_from_error(error: object) -> str | None:
     return m.group(1) if m else None
 
 
-def _raise_acp_error(error: object, available_models: Sequence[str] | None = None) -> None:
+def _raise_acp_error(
+    error: object,
+    available_models: Sequence[str] | None = None,
+    *,
+    backend: str | None = None,
+) -> None:
     """Format and raise the appropriate AcpError subclass for *error*.
 
     Delegates formatting to ``_format_acp_error`` and raises either
@@ -1665,9 +1696,10 @@ def _raise_acp_error(error: object, available_models: Sequence[str] | None = Non
 
     *available_models* is passed to BOTH the formatter and the transient
     classifier so a model-rejection's wording and its retry verdict are decided
-    from the same evidence.
+    from the same evidence. *backend* selects the harness named in sign-in
+    guidance.
     """
-    formatted = _format_acp_error(error, available_models)
+    formatted = _format_acp_error(error, available_models, backend=backend)
     # Detect prompt-busy from the raw error (before formatting rewrites it)
     raw_data = ""
     if isinstance(error, dict):
@@ -4542,7 +4574,9 @@ class AcpClient:
                     self._turn_done.set()
                     return
                 if action == "error":
-                    _raise_acp_error(msg.error, self._advertised_model_ids())
+                    _raise_acp_error(
+                        msg.error, self._advertised_model_ids(), backend=self._acp_backend
+                    )
                 if action == "permission":
                     await self._handle_permission(msg)
                 elif action == "server_request_unknown":
@@ -4661,7 +4695,7 @@ class AcpClient:
                 )
                 return
             if action == "error":
-                _raise_acp_error(msg.error, self._advertised_model_ids())
+                _raise_acp_error(msg.error, self._advertised_model_ids(), backend=self._acp_backend)
             if action == "permission":
                 yield self._build_permission_event(msg)
             elif action == "server_request_unknown":
@@ -5149,7 +5183,7 @@ class AcpClient:
                 self._turn_done.set()
                 return "".join(output)
             if action == "error":
-                _raise_acp_error(msg.error, self._advertised_model_ids())
+                _raise_acp_error(msg.error, self._advertised_model_ids(), backend=self._acp_backend)
             if action == "permission":
                 await self._handle_permission(msg)
             elif action == "server_request_unknown":

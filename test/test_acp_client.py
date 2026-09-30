@@ -8023,6 +8023,27 @@ class TestFormatAcpError:
             assert "kiro-cli login" in out.lower(), f"No sign-in guidance for: {status!r}"
             assert "transient error" not in out.lower(), f"Misclassified: {status!r}"
 
+    def test_session_expired_names_the_failing_harness(self):
+        """A routed claude or codex session that loses its sign-in must be told
+        to sign in to that harness, not to kiro-cli, which it never used."""
+        err = {
+            "code": -32603,
+            "message": "Internal error",
+            "data": "Failed to authenticate: OAuth session expired and could not be refreshed",
+        }
+        for backend, login in (
+            ("claude", "claude auth login"),
+            ("codex", "codex login"),
+            ("cursor", "cursor-agent login"),
+            ("kiro", "kiro-cli login"),
+            (None, "kiro-cli login"),
+        ):
+            out = _format_acp_error(err, backend=backend)
+            assert f"`{login}`" in out, f"{backend!r}: {out}"
+            assert "will not help" in out, backend
+            if backend not in ("kiro", None):
+                assert "kiro-cli" not in out, backend
+
     def test_session_expired_401_with_transport_error(self):
         """The reported failure mode: an aborted request leaves a transport
         error alongside the 401, and the 5xx family used to win and tell the
