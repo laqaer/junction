@@ -1045,21 +1045,6 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
         "and redact_exfiltration_urls before resolution or persistence.",
     ),
     (
-        "Session-pulse survey feedback (Aperture egress)",
-        "dashboard/handlers/feedback.py",
-        "The free-text `feedback` field submitted via POST /api/feedback/submit is "
-        "forwarded to Aperture, a third-party AWS service, so it is a genuine "
-        "external egress boundary — a user typing a credential or exfiltration URL "
-        "while describing their experience would otherwise leave the host "
-        "unredacted. `_customer_responses` runs it through redact_exfiltration_urls "
-        "then redact_credentials before it is included in the outbound payload. "
-        "`email` is run through that SAME pass (redact_exfiltration_urls then "
-        "redact_credentials) because a user could paste a credential into it; its "
-        "`pii: True` marker is a separate Aperture disclosure flag, not a "
-        "substitute for redaction. `rating` (a fixed frontend enum) is not run "
-        "through this pass.",
-    ),
-    (
         "Auto Triage Pipeline dashboard strings",
         "apps/builtins/auto_triage_pipeline/backend/pipeline_fold.py",
         "Every string this read-only fold hands to its routes -- issue titles, "

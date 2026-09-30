@@ -7,12 +7,11 @@ import { useTranslation } from 'react-i18next'
 import { ratingOptions } from './sessionPulseWireValues'
 import { safeGetItem, safeSetItem } from '../utils/safeStorage'
 
-// Junction is self-hosted, open-source software — every install runs on its
-// own arbitrary origin, which Aperture's browser-CORS allowlist model (a
-// finite, known set of domains) cannot accommodate. These calls go to the
-// Junction backend's own same-origin routes instead
-// (src/junction/dashboard/handlers/feedback.py), which forward to Aperture
-// server-to-server, where CORS does not apply.
+// These calls go to the backend's own same-origin routes
+// (src/junction/dashboard/handlers/feedback.py). The survey has no backend
+// service this project operates, so those routes are inert: eligibility is
+// always false and the card never renders. The card is kept dormant rather
+// than removed so a future first-party survey service needs no frontend work.
 const FEEDBACK_SUBMIT_URL = '/api/feedback/submit'
 const FEEDBACK_ELIGIBLE_URL = '/api/feedback/eligible'
 
@@ -45,8 +44,8 @@ const RATING_LABEL_KEYS: Record<string, string> = {
 const CONFIRMATION_DISPLAY_MS = 3000
 
 // Aperture tracks its own per-user eligibility server-side, but its form-level
-// cooldown isn't something we control from the client, and Mia wants a firm
-// 30-day cooldown regardless of Aperture's configured default. We ask
+// cooldown isn't something we control from the client, and the card keeps a
+// firm 30-day cooldown regardless of Aperture's configured default. We ask
 // Aperture first (so it still gets accurate per-user, cross-device dedup
 // data), then additionally require our own 30-day gate before showing —
 // whichever check is stricter wins.

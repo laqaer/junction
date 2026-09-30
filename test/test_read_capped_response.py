@@ -1,12 +1,12 @@
 """Tests for the shared ``read_capped_response`` helper (issue #4829).
 
-Three dashboard HTTP readers (the release-feed fetch, the Aperture feedback
-reply, and the Jira issue fetch) previously read the body with a single
+Dashboard HTTP readers (the release-feed fetch and the Jira issue fetch)
+previously read the body with a single
 ``StreamReader.read(cap + 1)``. ``read(n)`` returns UP TO *n* bytes, resolving
 as soon as any data is buffered, so on a chunked response with no
 Content-Length it hands back only the first buffered chunk and the caller
 silently works on a truncated body. These tests pin the shared helper's
-stream-to-EOF contract and exercise the three callers with multi-chunk bodies.
+stream-to-EOF contract and exercise the callers with multi-chunk bodies.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ import json
 
 import pytest
 
-from junction.dashboard.handlers import feedback as feedback_mod
 from junction.dashboard.handlers import source_providers as source_mod
 from junction.dashboard.handlers import updates as updates_mod
 from junction.dashboard.handlers._shared import read_capped_response
@@ -112,22 +111,6 @@ class TestReadCappedResponse:
     async def test_empty_body(self):
         resp = _FakeResponse([])
         assert await read_capped_response(resp, 10) == b""
-
-
-class TestFeedbackReadCappedText:
-    @pytest.mark.asyncio
-    async def test_multi_chunk_response_decoded_whole(self):
-        text = "aperture says thanks " * 500
-        raw = text.encode("utf-8")
-        resp = _FakeResponse([raw[:100], raw[100:5000], raw[5000:]])
-        assert await feedback_mod._read_capped_text(resp) == text
-
-    @pytest.mark.asyncio
-    async def test_over_cap_body_still_raises(self, monkeypatch):
-        monkeypatch.setattr(feedback_mod, "_MAX_RESP_BYTES", 8)
-        resp = _FakeResponse([b"0123", b"456789"])
-        with pytest.raises(ValueError, match="exceeded cap"):
-            await feedback_mod._read_capped_text(resp)
 
 
 class TestFetchFeedBytes:
