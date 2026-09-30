@@ -68,6 +68,28 @@ class TestPersistRoundTrip:
         assert reloaded._runs["t1"].status == "paused"
         assert reloaded._runs["t1"].tasks[0].title == "step one"
 
+    def test_round_trip_keeps_step_routing(self, tmp_path: Path) -> None:
+        """A routed run resumes routed, and each step keeps its kind and agent."""
+        runner = _make_runner(tmp_path)
+        run = _make_run()
+        run.route_steps = True
+        run.tasks[0].kind = "review"
+        run.tasks[0].harness = "claude"
+        runner._runs["t1"] = run
+        undecided = _make_run("t2")
+        runner._runs["t2"] = undecided
+        runner._persist_runs()
+
+        reloaded = _make_runner(tmp_path)
+        reloaded._load_runs()
+        assert reloaded._runs["t1"].route_steps is True
+        assert (reloaded._runs["t1"].tasks[0].kind, reloaded._runs["t1"].tasks[0].harness) == (
+            "review",
+            "claude",
+        )
+        # Not yet executed: still decided from routing.json at first execution.
+        assert reloaded._runs["t2"].route_steps is None
+
 
 class TestLoadRunsResilience:
     def test_missing_file_seeds_fresh(self, tmp_path: Path) -> None:

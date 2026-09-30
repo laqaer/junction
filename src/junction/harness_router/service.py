@@ -321,6 +321,7 @@ class HarnessRouter:
         return {
             "code": "ok",
             "enabled": settings.enabled,
+            "route_tasks": settings.route_tasks,
             "source": settings.source,
             "path": settings.path,
             "warnings": list(settings.warnings),
@@ -364,6 +365,7 @@ class HarnessRouter:
             "kinds": list(TASK_KINDS),
             "preview": preview,
             "max_failover": settings.max_failover,
+            "route_tasks": settings.route_tasks,
         }
 
 

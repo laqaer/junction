@@ -22,7 +22,8 @@ taskrunner.py        (orchestrator, ~1270 lines)
 ├── task_models.py   (data models + constants, 127 lines)
 ├── task_planner.py  (LLM decomposition + task parsing + parallel grouping, ~510 lines)
 ├── task_executor.py (task execution + retries + tests + self-review, ~720 lines)
-└── task_reporter.py (status + notifications + progress checkpoints + resume context, ~234 lines)
+├── task_reporter.py (status + notifications + progress checkpoints + resume context, ~234 lines)
+└── task_routing.py  (harness-router dispatch for steps when step routing is on, ~150 lines)
 ```
 
 ### Module Responsibilities
@@ -33,6 +34,7 @@ taskrunner.py        (orchestrator, ~1270 lines)
 | `task_planner.py` | `decompose()`, `parse_tasks()`, `normalize_cross_group_deps()`, `group_parallel_tasks()`, `plan_to_chat_context()`, `update_plan_tasks()`, `auto_name()` | LLM spec decomposition, task parsing, dependency normalization, parallel grouping, plan-to-chat formatting |
 | `task_executor.py` | `execute_task()`, `build_task_prompt()`, `self_review()`, `run_tests()`, `check_context()` | Task execution with retry/recovery budgets, prompt building, context compaction, test running, self-review |
 | `task_reporter.py` | `notify()`, `build_status()`, `save_progress()`, `load_checkpoint()`, `build_resume_context()`, `format_completion_summary()` | Notifications, status reporting, TASK_PROGRESS.md checkpointing, resume context |
+| `task_routing.py` | `StepRoute`, `route_tasks_enabled()` | Opt-in: pick a harness-router lane per step and per review, account every dispatch and outcome, release the lane on a lane-level failure (see § Step Routing) |
 | `taskrunner.py` | `TaskRunner` | Orchestrator — owns run lifecycle, `_try_replan`, watchdog, run persistence (`_persist_runs`/`_load_runs`); delegates decomposition/execution/reporting to the helper modules |
 
 ### Import Graph (no cycles)
@@ -42,6 +44,7 @@ task_models ← task_planner
 task_models ← task_executor (+ task_planner for parallel grouping)
 task_models ← task_reporter (+ task_planner for parallel grouping)
 task_models ← taskrunner (+ all above modules)
+task_routing ← task_executor, taskrunner (task_routing imports only harness_router)
 ```
 
 ### Backward Compatibility
@@ -331,8 +334,10 @@ Loaded on `__init__` — survives gateway restarts.
     "replan_count": 0,
     "step_details": [{
       "index": 1, "title": "Create handler", "description": "...",
-      "status": "passed", "error": "", "result": "...(up to 2K)...", "attempts": 1
+      "status": "passed", "error": "", "result": "...(up to 2K)...", "attempts": 1,
+      "kind": "implement", "harness": "codex"
     }],
+    "route_steps": true,
     "work_dir": "/path/to/work/dir",
     "branch_name": "junction/task/my-task_1771822344"
   }]
@@ -451,6 +456,41 @@ Applies to both exception errors and test failure outputs.
 4. **Completed steps** — titles of passed steps
 5. **Current step** — title, description, spec content
 6. **Retry context** (if attempt > 1) — previous error message
+
+## Step Routing
+
+Off by default. With `route_tasks: true` in `<data home>/routing.json` (Settings ▸
+Agents & plans ▸ *Route task-runner steps*, or `PUT /api/routing/settings`), a
+run sends each step, and each self-review, through the harness router instead
+of the configured agent. The choice is fixed on the run (`Project.route_steps`,
+persisted) when it first executes, so a paused or crash-recovered run resumes
+the way it started. Contract: [harness-router](harness-router.md) § Task-runner
+steps.
+
+- **Kind.** The planner names each step's kind (`plan`, `implement`, `debug`,
+  `review`, `test`, `research`, `docs`, `quick`, `bulk`; `Task.kind`); an
+  unnamed or unknown kind routes as `implement`. Nothing guesses it from the
+  step text. The self-review routes as `review` and prefers a lane on a
+  different harness than the one that did the step, falling back to the same
+  one when nothing else is eligible.
+- **Lane per step, sticky.** `StepRoute.pick()` resolves the best lane and
+  records a dispatch per attempt; a retry after an ordinary failure (red tests,
+  a review issue) stays on it. The step's session gets a dedicated provider on
+  the lane's harness with the lane's model (`open_task_session(...,
+  acp_backend_override=, model=)`), and no role-model pin is applied, since pins
+  are spelled for the configured agent (H12). `Task.harness` records the agent.
+- **Lane failures move the step.** A usage or rate limit, a sign-in failure, a
+  missing harness or a silent stall (`AcpTurnStalled`) rests the lane in the
+  ledger and releases it, so the next attempt resolves another. Before any tool
+  ran that move does not count as an attempt, up to `max_failover` moves per
+  step; after a tool ran it costs one, because the step already changed the
+  workspace.
+- **Never worse than unrouted.** No eligible lane (all resting, none installed)
+  runs the step on the configured agent. Every successful turn is recorded, so a
+  step's work counts toward that lane's window like any routed subagent.
+- Routed reviews use `taskrunner:{task_id}:review{N}`, one session per step:
+  parallel steps review at once, and each review must run on the lane it was
+  accounted to.
 
 ## Self-Review
 
@@ -596,7 +636,7 @@ Only fires when there is truly ZERO activity for the stall period.
 - Decomposition: `taskrunner:{task_id}:decompose` (throwaway, reset in finally) (owned by `task_planner.py`)
   - Returns `{"steps": [...], "acceptance_criteria": [...]}` — criteria shown in final acceptance step
   - Backward compatible with plain JSON arrays (no criteria → step-title fallback)
-- Self-review: `taskrunner:{task_id}:review` (separate session, reset in finally) (owned by `task_executor.py`)
+- Self-review: `taskrunner:{task_id}:review` (separate session, reset in finally) (owned by `task_executor.py`); `review{N}` per step in a routed run
 - Context compaction between steps routes through the shared
   `SessionManager.compact_if_needed(key)` path (#4686) — same dedup, failure/
   ineffective cooldown, turn-semaphore exclusion, and skills reinjection as

@@ -1108,3 +1108,49 @@ async def test_complete_setup_with_agents_needs_a_connected_agent(
     body = json.loads(ok.body)
     assert ok.status == 200 and body["initial_setup_complete"] is True
     assert completed == [True]
+
+
+def test_route_tasks_defaults_off_and_reads_strictly() -> None:
+    assert parse_settings({"lanes": []}).route_tasks is False
+    assert parse_settings({"lanes": [], "route_tasks": True}).route_tasks is True
+    assert parse_settings({"lanes": [], "route_tasks": "yes"}).route_tasks is False
+
+
+def test_save_settings_edit_materializes_validates_and_refuses_a_broken_file(
+    tmp_path: Path,
+) -> None:
+    from junction.harness_router.lanes import RoutingConfigError, save_settings_edit
+
+    saved = save_settings_edit({"route_tasks": True}, home=tmp_path, which=_which(_ALL_BINS))
+    assert saved == {"route_tasks": True}
+    written = json.loads((tmp_path / "routing.json").read_text(encoding="utf-8"))
+    assert written["route_tasks"] is True and written["lanes"]  # detected lanes kept
+    for bad in ({"route_tasks": "on"}, {"max_failover": 5}, {}):
+        with pytest.raises(RoutingConfigError):
+            save_settings_edit(bad, home=tmp_path, which=_which(_ALL_BINS))
+    (tmp_path / "routing.json").write_text("{broken", encoding="utf-8")
+    with pytest.raises(RoutingConfigError):
+        save_settings_edit({"route_tasks": False}, home=tmp_path)
+    assert (tmp_path / "routing.json").read_text(encoding="utf-8") == "{broken"
+
+
+@pytest.mark.asyncio
+async def test_api_edit_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from junction.harness_router import api
+
+    router = _router(tmp_path)
+    monkeypatch.setattr(api, "get_router", lambda: router)
+
+    class _Req:
+        def __init__(self, payload: Any) -> None:
+            self._payload = payload
+
+        async def json(self) -> Any:
+            return self._payload
+
+    ok = await api.api_edit_settings(_Req({"route_tasks": True}))  # type: ignore[arg-type]
+    assert json.loads(ok.body) == {"code": "ok", "settings": {"route_tasks": True}}
+    assert router.harnesses_view()["route_tasks"] is True
+    assert router.status()["route_tasks"] is True
+    bad = await api.api_edit_settings(_Req({"route_tasks": 1}))  # type: ignore[arg-type]
+    assert bad.status == 400 and json.loads(bad.body)["code"] == "invalid_settings_edit"
