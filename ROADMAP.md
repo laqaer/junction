@@ -7,6 +7,33 @@ Identity: [`WORKING_BRIEF.md`](WORKING_BRIEF.md). Lane map:
 [`docs/TASK_MAP.md`](docs/TASK_MAP.md). Agent loop:
 [ADR 0006](docs/adr/0006-agent-os-no-automerge.md).
 
+Work is tracked in three places, with different authority. GitHub issues are
+the record of status for bugs, features, and stories; the ADRs
+([`docs/adr/`](docs/adr/README.md)) own the *why*; and
+[`docs/TASK_MAP.md`](docs/TASK_MAP.md) is a dated local handoff for work in
+flight. Local work is real, just unmerged, and "merged" is not "released". The
+operator's `~/dev/memory/INDEX.md` is a reference, not authority: a reusable
+lesson or convention is proposed as a memory record with its exact source; an
+operator merge makes it an accepted reference, and the owning repository always
+stays authoritative.
+
+**Already on `main`.** The bootstrap work (contributor docs, the `site/`
+overlay, CLI chrome, catalog health, the Vercel preview) landed through
+[#24](https://github.com/laqaer/junction/pull/24) and
+[#25](https://github.com/laqaer/junction/pull/25); the original bootstrap PR
+[#23](https://github.com/laqaer/junction/pull/23) was closed unmerged. The
+ship program merged as [#26](https://github.com/laqaer/junction/pull/26). The
+built-in model catalog is merged: `warding up` binds a loopback listener that
+serves `/health` and `/catalog`, completion routes answer `501` with `code`
+`model_router_no_forward`, no provider translation is bundled, and a busy
+port is left to whatever already owns it. The per-role model and effort keys
+([#45](https://github.com/laqaer/junction/pull/45)), OpenCode as a docked
+harness and the harness router for spawned subagents
+([#46](https://github.com/laqaer/junction/pull/46)) are merged, registered
+and unit-tested; neither OpenCode nor a routed run is verified at runtime yet.
+The test to run before marketing is
+[What a successful test looks like](docs/guides/install.md#what-a-successful-test-looks-like).
+
 ## Ship
 
 ### M0 — the name is final (gate G0)
@@ -43,6 +70,11 @@ fourth round.
   run on the selected harness through `resolve_usable_model` or degrade
   quietly. Pointers: `src/junction/dashboard/handlers/agents.py`,
   `src/junction/session.py` (`get_bg_session`), `acp.client.resolve_usable_model`.
+  Partly on `main`: `/api/models` lists the active harness's advertised
+  models (its newest live session, else its last connection check, `503`
+  `harness_models_pending` until one exists), and background one-liners,
+  task-runner steps, regenerate and rewind run on the active harness; the
+  "picks its own model" state and a clean-machine re-verify are still open.
 - **Sandbox fail-closed UX.** One screen with the exact
   `sudo warding sandbox install` line on Ubuntu ≥ 23.10 and for containers
   without user namespaces and Windows; Settings → Security shows the per-OS

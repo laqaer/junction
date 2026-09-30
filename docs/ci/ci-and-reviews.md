@@ -46,7 +46,7 @@ Two structural facts explain most of the rest:
 
 Out-of-band lanes that never gate a PR:
 
-- **Release and publish**, tag- or schedule-triggered: `release.yml`,
+- **Release and publish**, tag-triggered or manually dispatched: `release.yml`,
   `nightly.yml`, the reusable `build-wheel.yml` / `build-desktop.yml` /
   `build-windows.yml`, `sign-and-notarize.yml`, `publish-cli.yml`,
   `publish-linux.yml`, `publish-docker.yml`, `publish-installer.yml`. The
@@ -54,10 +54,11 @@ Out-of-band lanes that never gate a PR:
   settings, not by a workflow; PR coverage for that tree is `site.yml` (npm
   test + production build, no deploy).
 - **Verification that is too slow or too expensive for a PR:** `ota-test.yml`
+  runs on demand (manual dispatch or a reusable workflow call) and
   builds two real app bundles and performs an actual update swap, because the
   Electron unit suite stops at the `autoUpdater` handoff and never proves a real
   bundle is replaced on disk and relaunches.
-- **Maintenance:** `ship-report.yml` (a scheduled Slack summary),
+- **Maintenance:** `ship-report.yml` (an on-demand summary, dry-run by default),
   `cleanup-temp-screenshots.yml` (prunes the ephemeral `temp-screenshots/` dir,
   see [its README](../../temp-screenshots/README.md); safe because PR bodies
   embed commit-SHA-pinned raw URLs that keep resolving),
@@ -84,6 +85,25 @@ Out-of-band lanes that never gate a PR:
   `agent-os-handoff.yml` (comments the scout / implement / review contract when
   an `agent-os/*` label is applied; it never merges, never checks out the PR,
   and is SHA-pinned).
+
+## Workflow cost controls
+
+In this fork, nightly publishing, the memory benchmark, the macOS OTA test, and
+the ship report run only on demand. Their build, test, and publishing steps remain
+available; removing the schedules avoids spending on unused nightly outputs.
+Tag-triggered releases and PR checks retain their existing triggers. The production
+dependency audit keeps its own daily 06:00 UTC schedule so vulnerability-exception
+expiry warnings still appear even when no builds are requested.
+
+PR Readiness still updates from workflow and PR events, with an hourly recovery
+sweep for missed events. Fork and merge-conflict labels keep their event-driven
+updates and run a daily backstop sweep instead of polling throughout the day.
+
+PR/main build artifacts and CI coverage reports expire after one day. A later
+retry that needs an expired artifact must rerun its producer. Release build
+handoffs retain their existing retention, including the 90-day stable-promotion
+record; shortening that record would prevent promotion of tested RC bytes.
+Existing artifacts keep their original expiry dates.
 
 ## `ci.yml`: correctness
 

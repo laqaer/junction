@@ -30,5 +30,12 @@
       "destination": "https://getjunction.dev/$1",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "apps.getjunction.dev" }],
+      "destination": "/catalog/:path*"
+    }
   ]
 }

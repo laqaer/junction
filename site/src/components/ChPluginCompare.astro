@@ -22,7 +22,7 @@ const ours = ch.approval === "buttons"
 <ChTable
   head={["", "Anthropic's Channels plugin", site.name]}
   rows={[
-    ["Harness", "Claude Code only", "the one you dock: Claude Code, Codex, Cursor, Goose, Kimi and others, one at a time"],
+    ["Harness", "Claude Code only", "the one you dock for chat: Claude Code, Codex, Cursor, Goose, Kimi, OpenCode and others"],
     ["When messages arrive", "while that Claude Code session is open, launched with the channels flag", "while the gateway runs, which it does as a service on your box"],
     ["Apps", "Telegram, Discord, iMessage", `${channelCounts.total}; ${channelCounts.buttons} with approve buttons, ${channelCounts.typed} typed, ${channelCounts.chatOnly} chat-only`],
     [`Approvals in ${ch.name}`, "see Anthropic's documentation", ours],

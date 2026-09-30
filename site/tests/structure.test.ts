@@ -124,7 +124,8 @@ describe("structure (site-spec §11)", () => {
 
   it("ships llms.txt with the limits stated", () => {
     const t = readFileSync(join(DIST, "llms.txt"), "utf8");
-    expect(t).toMatch(/One harness at a time/);
+    expect(t).toMatch(/Chat sessions run the one harness you choose/);
+    expect(t).toMatch(/never forwards provider traffic/);
     expect(t).toMatch(/No model routing/);
     expect(t).toMatch(/No hosted service/);
     expect(t).toMatch(/Apache-2\.0/);

@@ -194,11 +194,13 @@ export const QUOTED_OPERAND_CONFIRM_KEYS = [
 /**
  * Placeholder names that cannot read as prose, so they do not need quoting.
  * Numerals, closed-set schedule fragments, version ids, and system error
- * text cannot parse as the rest of the sentence. A key whose EVERY
- * interpolation is in this set is exempt from both the quoted-operand pin
- * and the key list.
+ * text cannot parse as the rest of the sentence. `productName` is the
+ * product's own name, supplied by `initI18n()` rather than by the user, so it
+ * is never the operand a confirm acts on. A key whose EVERY interpolation is
+ * in this set is exempt from both the quoted-operand pin and the key list.
  */
 export const EXEMPT_CONFIRM_PLACEHOLDER_NAMES = new Set([
+  'productName',
   'count',
   'lines',
   'verb',

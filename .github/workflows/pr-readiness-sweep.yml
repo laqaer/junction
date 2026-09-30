@@ -66,10 +66,10 @@ name: PR Readiness Self-Heal Sweep
 #      re-fire every green PR on every sweep.
 on:
   schedule:
-    # Every 15 minutes. A normal fan-out publishes terminal state via events
+    # Hourly backstop. A normal fan-out publishes terminal state via events
     # well inside this window; anything still `pending` past STALE_MINUTES is
     # treated as a dropped-event freeze and nudged.
-    - cron: "*/15 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 permissions:

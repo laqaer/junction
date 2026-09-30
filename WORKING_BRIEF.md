@@ -12,7 +12,7 @@ kept for provenance, not as current context.
 | Product | **Warding** (company: Warding Labs) |
 | CLI | `warding`; `junction` is a silent alias |
 | Tagline | The lamp stays on. The rules stay shut. |
-| Promise | Warding runs the coding agent you already pay for, all night, on your own box, and asks you in chat before anything risky — under a policy it cannot read or rewrite. One harness at a time, chosen in one setting. No run cap from us; your model plan's limits still apply. Unaudited by a third party. |
+| Promise | Warding runs the coding agent you already pay for, all night, on your own box, and asks you in chat before anything risky — under a policy it cannot read or rewrite. Chat sessions run the one harness you choose in one setting; spawned subagents can be routed to another installed harness, which the router picks without forwarding provider traffic. No run cap from us; your model plan's limits still apply. Unaudited by a third party. |
 | Lineage | Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon. Credited in line one of anything long; elsewhere, the upstream project. |
 | Voice | The night watchman who is also a good notary: calm, dry, exact about time and mechanism. Clock times as nouns. The limit in the same sentence as the feature. The mechanism in every security claim. No owned phrases, no numbers we did not measure, no universal quantifiers about security, no emoji, no exclamation marks. |
 | Visual | Paper and the Ward Seal by day (bg `#F3EEE3`, ink `#1A1814`, seal `#B3301A`); the night office by night (bg `#0B0E14`, warm white `#ECE8E1`, lamp `#FFB547`, refusal `#FF7A5C`); factory theme slug `junction`. Mark: the Ward Seal, a keyhole crossed by three ward bars with one drop of wax; the seal is the only mark. Type: Fraunces (wordmark, display) + IBM Plex Sans (body, UI), bundled. Lucide icons only. Motifs: the seal and the refusal, the lit window, the three ward bars; no mascot. Brand kit: `assets/brand/build.py`. |
@@ -27,27 +27,33 @@ superseded). Agent overlay: [`JUNCTION.md`](JUNCTION.md). Product:
 
 ## Thesis
 
-Warding is a governed late desk for one coding agent. The engine — dashboard,
+Warding is a governed late desk for the coding agents you already use. The engine — dashboard,
 CLI, ten chat apps, cron, task runner, subagents, memory, OS sandbox, deny
 rules, keystone policy, HMAC-chained audit log, `POLICY ∩ PROFILE` at the
 gate, Agent Worlds — is inherited from the upstream project. What this tree
-adds is the harness registry with kiro-cli optional and last, no vendor
-account in the door, no upstream-owned endpoint in the default build, and the
-brand.
+adds is the harness registry with kiro-cli optional and last, a harness
+router for spawned subagents, no vendor account in the door, no upstream-owned
+endpoint in the default build, and the brand.
 
 ```
 Operator
   → warding CLI / dashboard / chat app
     → Python gateway
-      → the docked harness (ACP runtime registry: Claude Code, Codex, Cursor, Goose, …, kiro-cli last)
+      → the docked harness (ACP runtime registry: Claude Code, Codex, Cursor, Goose, OpenCode, …, kiro-cli last)
+        · a spawned subagent may be routed to another installed harness (harness router)
       → the gate (keystone paths, denied commands, POLICY ∩ PROFILE, redaction, audit chain)
       → memory, cron, task runner, subagents
       → a model catalog on loopback (names only; /health and /catalog; completions 501)
 ```
 
-- **One harness at a time.** `agent.acp_backend` defaults to `auto` via
-  `src/junction/acp/runtimes.py`. Running two harnesses side by side is not a
-  goal and must not be claimed.
+- **Chat runs the harness you choose; subagents can be routed.**
+  `agent.acp_backend` defaults to `auto` via `src/junction/acp/runtimes.py`,
+  and chat sessions run that one harness. Spawned subagents can be routed to
+  another installed harness by the harness router (flat-rate quota before
+  metered, task kind, cooldown after a usage limit or failed login); it picks
+  a harness and never forwards provider traffic. The router and OpenCode are
+  registered and unit-tested, not verified at runtime. Chat sessions on two
+  harnesses side by side are not a goal and must not be claimed.
 - **The catalog is names only and never a headline.** `warding up` starts
   the listener in `src/junction/model_router/`; completions return `501`; no
   translation gateway is bundled; if the listener is down, the gateway still
@@ -57,7 +63,8 @@ Operator
 - **Governance is the trust beat, not the headline.** The night is the story;
   the paper-and-seal system is the look; the name is the lock.
 - **Every public claim is true today or labelled in development.** Overnight
-  runs are unverified on every harness; Claude Code is verified for chat only.
+  runs are unverified on every harness; Claude Code is verified for chat only;
+  OpenCode and the harness router are registered · unverified.
 
 ## Authority envelope
 

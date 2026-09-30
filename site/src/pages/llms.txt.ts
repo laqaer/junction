@@ -23,7 +23,7 @@ export async function GET(context: APIContext) {
     "",
     "## What is true",
     "",
-    "- One harness at a time, chosen in one setting. It does not run two harnesses alongside each other.",
+    "- Chat sessions run the one harness you choose in one setting. The harness router can send a spawned subagent to another installed harness (flat-rate quota before metered, task kind, a cooldown after a usage limit or failed login); it picks a harness and never forwards provider traffic. Registered, not verified at runtime.",
     "- No model routing: the model catalog lists names only; nothing is forwarded and no keys are held.",
     "- No hosted service, no account with Warding Labs, no multi-user mode. It runs on your hardware.",
     `- ${channelCounts.total} chat channels: ${channelCounts.buttons} with in-chat approve buttons, ${channelCounts.typed} with typed approvals (WhatsApp), ${channelCounts.chatOnly} chat-only.`,

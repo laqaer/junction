@@ -10,6 +10,13 @@
  * that exemption narrow and auditable — the page itself stays fully translated.
  */
 
+/** Signed-webhook header names, mirroring `TIMESTAMP_HEADER` / `SIGNATURE_HEADER`
+ *  in the gateway's `webhooks.py`. They are wire identifiers a caller types into
+ *  its own client, so the page's translated copy interpolates them rather than
+ *  carrying them as catalog text. */
+export const TIMESTAMP_HEADER = 'X-Junction-Timestamp'
+export const SIGNATURE_HEADER = 'X-Junction-Signature'
+
 /** Wrap a value for safe use as a POSIX shell single-quoted word.
  *
  *  These snippets are meant to be copied and RUN, and the values interpolated
@@ -91,8 +98,8 @@ function signedCurlFor(
     `curl -X POST ${shellQuote(target)} \\`,
     '  -H "Authorization: Bearer $TOKEN" \\',
     `  -H ${shellQuote(`Origin: ${originFor(target)}`)} \\`,
-    '  -H "X-Junction-Timestamp: $TS" \\',
-    '  -H "X-Junction-Signature: sha256=$SIG" \\',
+    `  -H "${TIMESTAMP_HEADER}: $TS" \\`,
+    `  -H "${SIGNATURE_HEADER}: sha256=$SIG" \\`,
     "  -H 'Content-Type: application/json' \\",
     '  --data-raw "$BODY"',
     '',

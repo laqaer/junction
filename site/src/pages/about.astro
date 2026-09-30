@@ -12,7 +12,7 @@ import { organization } from "../lib/seo";
 const title = "About Warding Labs";
 const description = "One person, one fork, one rule: say what is true. The name explained once, the lineage stated plainly, and how to reach us.";
 const contact = `hello@${siteHost}`;
-const lineage = "Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in August 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon.";
+const lineage = "Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon.";
 ---
 <PageLayout title={title} description={description} h1="About" lead="One person, one fork, one rule: say what is true." breadcrumbs={[{ label: "About", href: "/about/" }]} jsonLd={[organization()]}>
   <div class="about">
@@ -48,7 +48,7 @@ const lineage = "Built on Amazon's open-source Kiro agent workspace, published u
       <h2 id="fork-h">Where the code comes from.</h2>
       <div class="prose">
         <p>{lineage}</p>
-        <p>What is ours is thin and named: the harness registry with kiro-cli optional and last, the removal of upstream-owned endpoints from the default build, the brand, and the proof pages on this site. The rest is upstream's, and we do not pretend otherwise. The full account, including what upstream has that we lack, is on <a href="/lineage/">the lineage page</a>; the attribution notice is <a href={site.links.notice} rel="noopener">NOTICE</a> in the repository.</p>
+        <p>What is ours is thin and named: the harness registry with kiro-cli optional and last, a harness router for spawned subagents, the removal of upstream-owned endpoints from the default build, the brand, and the proof pages on this site. The rest is upstream's, and we do not pretend otherwise. The full account, including what upstream has that we lack, is on <a href="/lineage/">the lineage page</a>; the attribution notice is <a href={site.links.notice} rel="noopener">NOTICE</a> in the repository.</p>
       </div>
     </section>
 

@@ -1,7 +1,8 @@
 # Warding
 
-Runs one docked ACP coding agent at a time on the operator's own machine
-and keeps a names-only model catalog beside it. GitHub slug:
+Runs docked ACP coding agents on the operator's own machine and keeps a
+names-only model catalog beside them. Chat sessions run the one harness chosen
+in one setting; spawned subagents can be routed to another installed harness. GitHub slug:
 `laqaer/junction`. Product identity: [`PRODUCT.md`](PRODUCT.md). Overlay:
 [`JUNCTION.md`](JUNCTION.md).
 
@@ -11,12 +12,14 @@ This tree does not require `kiro-cli`. Multi-ACP is already on `main`.
 
 Warding is a gateway (dashboard, CLI, messaging channels, cron, memory)
 that speaks [Agent Client Protocol](https://agentclientprotocol.com/) over
-stdio to one docked agent. `warding up` starts a loopback model catalog
-that lists names. The docked agent uses the models it already serves.
-Warding does not forward provider traffic.
+stdio to the docked agent. `warding up` starts a loopback model catalog
+that lists names. The docked agent uses the models it already serves. The
+harness router (`src/junction/harness_router/`, `warding route`) can send a
+spawned subagent to another installed harness; it picks a harness. Warding
+does not forward provider traffic.
 
 Default `agent.acp_backend` is `auto`: the first installed of Cursor,
-Claude, Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid. `kiro-cli`
+Claude, Codex, Kimi, DeepSeek Harness, Goose, Grok, OpenCode, Pi, Droid. `kiro-cli`
 is last in that list and optional. Set a concrete id to pin.
 
 ```json

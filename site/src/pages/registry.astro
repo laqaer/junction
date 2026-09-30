@@ -3,7 +3,7 @@ import PageLayout from "../layouts/PageLayout.astro";
 import StatusChip from "../components/StatusChip.astro";
 import WardBars from "../components/WardBars.astro";
 import { site } from "../data/site";
-import { CAPABILITIES, harnesses, notDocked } from "../data/harnesses";
+import { CAPABILITIES, harnesses, notDocked, router } from "../data/harnesses";
 import Check from "@lucide/astro/icons/check";
 import planesText from "../assets/cli-junction-planes.txt?raw";
 
@@ -14,12 +14,12 @@ import planesText from "../assets/cli-junction-planes.txt?raw";
  * `warding planes` uses (kiro-cli optional and last).
  */
 const title = "Which coding agents Warding runs, and how verified";
-const description = "The harness compatibility matrix: ten runtimes, one docked at a time, with dated verification rows and honest unverified cells.";
+const description = `The harness compatibility matrix: ${harnesses.length} runtimes, one chosen for chat, subagents routable to another, dated rows and honest unverified cells.`;
 const planesLines = planesText.trim().split("\n").filter((l) => !l.trim().startsWith("roles:")).map((l, i) => (i === 0 ? `${site.name} planes` : l));
 const notDockedLine = `No ${notDocked.join(", no ")} yet`;
 const verifiedCells = harnesses.reduce((n, h) => n + Object.keys(h.verified).length, 0);
 ---
-<PageLayout title={title} description={description} h1="The dock registry" lead={`${harnesses.length} runtimes, one docked at a time, chosen in one setting. A check appears only where a dated row exists on the verification log; today that is ${verifiedCells} cell.`} breadcrumbs={[{ label: "Registry", href: "/registry/" }]}>
+<PageLayout title={title} description={description} h1="The dock registry" lead={`${harnesses.length} runtimes. Chat runs the one you choose in one setting; the harness router can send a spawned subagent to another installed one. A check appears only where a dated row exists on the verification log; today that is ${verifiedCells} cell.`} breadcrumbs={[{ label: "Registry", href: "/registry/" }]}>
   <div class="reg">
     <section class="block" aria-labelledby="matrix-h">
       <WardBars align="left" />
@@ -48,6 +48,7 @@ const verifiedCells = harnesses.reduce((n, h) => n + Object.keys(h.verified).len
         </table>
       </div>
       <p class="caption">{notDockedLine}.</p>
+      <p class="measure">The {router.name.toLowerCase()} (<code>{router.command}</code>) {router.what} <a href="/verified/#notyet-h">Registered · unverified</a>.</p>
     </section>
 
     <section class="block two" aria-labelledby="order-h">

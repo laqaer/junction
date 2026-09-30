@@ -1,8 +1,10 @@
 # Warding Documentation
 
-Warding runs one docked coding agent at a time on your own machine, on a
+Warding runs the coding agent you choose on your own machine, on a
 schedule, reachable from chat, under a policy the agent cannot read or
-rewrite. It reaches tools over the Model Context Protocol (MCP). Everything
+rewrite. Chat sessions run that one harness; spawned subagents can be routed
+to another installed harness, which the router picks without forwarding
+provider traffic. It reaches tools over the Model Context Protocol (MCP). Everything
 below is the reference for the features you can reach from the dashboard,
 the CLI, or a connected messaging channel. A vendor agent CLI is optional.
 

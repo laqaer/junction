@@ -872,6 +872,13 @@ BENIGN_SPAWNS: frozenset[str] = frozenset(
         # Same classification as l0_probe: a CLI entry point driving an
         # in-process aiohttp sweep with asyncio.run.
         "connections/l1_smoke.py::main",
+        # NOT subprocess spawns: the AST heuristic matches ``asyncio.run`` in
+        # the ``junction route`` CLI, which drives its async run/check
+        # coroutines from the loop-less entry point. The harness processes those
+        # coroutines start go through the provider factory -> AcpClient spawn,
+        # which is already sandboxed, exactly like ``cli_chat.py::_run_chat``.
+        "harness_router/cli.py::_run_sync",
+        "harness_router/cli.py::run_route_command",
         "cloud/source.py::_git_tracked_files",
         "cloud/source.py::_tracked_tree_is_dirty",
         "cloud/source.py::_use_git_archive",

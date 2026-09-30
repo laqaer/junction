@@ -230,7 +230,11 @@ function PlaceholderPane({
       // and the ones waiting on them are the ones worth opening first.
       if (!!a.needs_input !== !!b.needs_input) return a.needs_input ? -1 : 1
       if (!!a.running !== !!b.running) return a.running ? -1 : 1
-      return (b.last_activity_ts || '').localeCompare(a.last_activity_ts || '')
+      // Newest first. The timestamps are ISO-8601 strings, which order correctly
+      // as bytes; a locale collation has no business reordering machine text.
+      const at = a.last_activity_ts || ''
+      const bt = b.last_activity_ts || ''
+      return bt < at ? -1 : bt > at ? 1 : 0
     })
 
   const ctrlBtn =

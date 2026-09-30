@@ -1,7 +1,7 @@
 # Warding — company plan
 
 Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0
-in August 2026. Most of the code is theirs; the attribution notice is in NOTICE.
+in 2026. Most of the code is theirs; the attribution notice is in NOTICE.
 Not affiliated with Amazon.
 
 This is the plan the [business team](../../.agents/business/README.md) executes
@@ -41,9 +41,11 @@ runner, subagents, memory, ten channels, OS sandbox, deny rules, a keystone
 policy the agent cannot read or write, an HMAC-chained audit log, POLICY ∩
 PROFILE enforced at our own gate, Agent Worlds, 21 apps, 18 themes, 12
 languages). We added what the 0.5.0 base lacked and 0.7.1 still lacks in part: a
-registry of nine non-Kiro harnesses, five of which upstream does not dock
+registry of ten non-Kiro harnesses, five of which upstream does not dock
 (Cursor, Kimi, DeepSeek Harness, Grok, Droid), with kiro-cli optional and last
-and no vendor account in the door; and, in the plan below, the artefacts that
+and no vendor account in the door; a harness router that can send a spawned
+subagent to another installed harness (registered, not verified at runtime);
+and, in the plan below, the artefacts that
 make governance checkable rather than claimed: a rendered charter, a verifiable
 audit chain, a public bypass script, a per-OS fail-closed table, dawn-expiring
 grants, and a morning report that counts refusals.
@@ -75,7 +77,7 @@ today:
    Whether upstream requires an account on a non-Kiro backend is unverified;
    say so.
 2. **Five harnesses upstream does not dock:** Cursor, Kimi, DeepSeek Harness,
-   Grok, Droid. Upstream docks OpenCode and KAS, which we do not; say so.
+   Grok, Droid. Both dock OpenCode; upstream docks KAS, which we do not; say so.
 3. **The default build contacts no upstream server.**
 4. **The proof artefacts** `[COMING]`: `warding charter`, `warding audit
    verify`, the public "break the charter" script with a stated bounty, the
@@ -86,7 +88,7 @@ today:
    counts commands refused and secrets redacted from the audit log.
 
 Where we have no answer and say so: install polish, Docker, signed installers,
-OpenCode and KAS, and MCP tools on non-Kiro harnesses. Upstream ships the same
+KAS, and MCP tools on non-Kiro harnesses. Upstream ships the same
 ten channels; we inherited them.
 
 **Strategy: track upstream, rebase quarterly, contribute the registry, harden

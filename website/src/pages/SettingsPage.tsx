@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Code, Fingerprint, Globe, History, Import, Info, Keyboard, KeyRound, Link2, MessageSquare, Mic, Palette, PanelsTopLeft, Server, ShieldCheck, Sparkles, SquareMousePointer, Webhook } from 'lucide-react'
+import { Bell, Cable, Code, Fingerprint, Globe, History, Import, Info, Keyboard, KeyRound, Link2, MessageSquare, Mic, Palette, PanelsTopLeft, Server, ShieldCheck, Sparkles, SquareMousePointer, Webhook } from 'lucide-react'
 import { useAppSelector } from '../store'
 import SidePanelLayout from '../components/SidePanelLayout'
 import { SUBNAV_PARAM, SUBNAV_LEGACY_PARAMS, deleteSubSelection, toPathSegment, parsePathSegments } from '../components/subNavParams'
 import { useSettingHighlight } from '../hooks/useSettingHighlight'
+import { AgentsPanel } from './settings/AgentsPanel'
 import { BrowserPanel } from './settings/BrowserPanel'
 import { RemoteInstancesPanel } from './settings/RemoteInstancesPanel'
 import { isEmbeddedPane } from '../lib/embedded'
@@ -51,6 +52,7 @@ function buildTabs() {
   const GROUP_SYSTEM = i18nT('settings.groups.system')
   return [
     { key: 'overview', label: i18nT('settings.tabs.overview.label'), icon: <PanelsTopLeft size={16} />, description: i18nT('settings.tabs.overview.description') },
+    { key: 'agents', label: i18nT('settings.tabs.agents.label'), icon: <Cable size={16} />, description: i18nT('settings.tabs.agents.description') },
     { key: 'imports', label: i18nT('settings.tabs.imports.label'), icon: <Import size={16} />, description: i18nT('settings.tabs.imports.description') },
     { key: 'chat', label: i18nT('settings.tabs.chat.label'), icon: <MessageSquare size={16} />, group: GROUP_PREFERENCES, description: i18nT('settings.tabs.chat.description') },
     { key: 'display', label: i18nT('settings.tabs.display.label'), icon: <Palette size={16} />, group: GROUP_PREFERENCES, description: i18nT('settings.tabs.display.description') },
@@ -214,6 +216,7 @@ export default function SettingsPage() {
     >
       {tab => <>
         {tab === 'overview' && <OverviewPanel />}
+        {tab === 'agents' && <AgentsPanel />}
         {tab === 'imports' && <ImportPanel />}
         {tab === 'chat' && <ChatPanel />}
         {tab === 'display' && <DisplayPanel />}

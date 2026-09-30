@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 
 import { api } from '../api/client'
-import { exampleFor } from './webhooks/requestExamples'
+import { SIGNATURE_HEADER, TIMESTAMP_HEADER, exampleFor } from './webhooks/requestExamples'
 import type { ExampleMode } from './webhooks/requestExamples'
 import type {
   WebhookFreshness, WebhookOutcome, WebhookRunRecord,
@@ -933,7 +933,11 @@ export default function WebhooksPage() {
           <SigningBadge required={selectedToken.require_signature} tokenId={selectedToken.id} />
           <span className="text-[12px] text-muted">
             {selectedToken.require_signature
-              ? i18nT('pages.webhooksPage.calls_must_send_signature_headers_detail', { seconds: signatureWindow })
+              ? i18nT('pages.webhooksPage.calls_must_send_signature_headers_detail', {
+                  seconds: signatureWindow,
+                  timestampHeader: TIMESTAMP_HEADER,
+                  signatureHeader: SIGNATURE_HEADER,
+                })
               : i18nT('pages.webhooksPage.this_token_is_accepted_on_the_bearer_header_alon')}
           </span>
         </div>

@@ -41,20 +41,33 @@ Callers: heartbeat callback, taskrunner lesson extraction.
 
 `get_bg_session()` acquires a `_bg` handle, dispatching by provider backend and
 returning `AcpSessionHandle | _ProviderBgSession`. Provider dispatch is via
-`_bg_provider_is_kiro()`, which resolves the `junction-lite` agent backend:
+`_bg_provider_is_kiro()`, which asks whether the active harness
+(`resolved_backend()`: `agent.acp_backend` with `auto` resolved through
+`acp.runtimes.resolve_backend`, cached `_BACKEND_RESOLVE_TTL_SECS` = 60 s) is in
+`ACP_BACKENDS_ACP_RUNTIME`:
 
-- **kiro (`acp`)** — the only backend the multiplexed `AcpRuntime` supports.
+- **kiro-cli / KAS** — the backends the multiplexed `AcpRuntime` supports.
   Each caller (title generation, suggestions, folders, nav) gets its **own**
   ephemeral `sessionId` multiplexed on a single shared `_bg_runtime` (an
   `AcpRuntime`, kiro-cli only), created lazily under `_bg_runtime_lock`.
   `create_session()` runs **outside** the lock so independent callers aren't
   serialized. The runtime is respawned-and-retried once on `AcpRuntimeDead`
   (`max_retries=1`, 2 attempts total).
-- **non-kiro** — falls back to a `_ProviderBgSession` over the shared
-  `BACKGROUND_KEY` `_Session`, serialized by its `Semaphore(1)`. `AcpRuntime` is
-  kiro-only, so any non-kiro backend must use the provider path. In the public
-  Junction edition `agent.provider` is fixed to `acp`, so this branch is the
-  dormant fallback for the reserved `ACP_BACKEND_CLAUDE` seam only.
+- **any other harness** (Codex, Claude Code, OpenCode, …) — a
+  `_ProviderBgSession` over the shared `BACKGROUND_KEY` `_Session`, serialized
+  by its `Semaphore(1)`, built by the provider factory on the configured
+  harness. `AcpRuntime` hosts only its member backends, so a per-process harness
+  must use the provider path; routing it onto the runtime would spawn kiro-cli
+  for a user who configured another agent.
+
+**Task runner steps follow the same split.** `open_task_session` multiplexes
+steps on the run's shared `AcpRuntime` only for an `ACP_BACKENDS_ACP_RUNTIME`
+harness. For any other harness each step gets a dedicated provider
+(`get_or_create`) on the configured agent, and the run is remembered in
+`_dedicated_task_runs` (cleared by `release_subagent_runtime`) so later steps
+skip the bootstrap. A bootstrap provider that turns out not to host a runtime
+marks the run dedicated the same way instead of falling back to a bare kiro-cli
+runtime.
 
 Both paths yield `AcpEvent` through the shared
 `acp/_dispatch.parse_session_update` parser, so there is no behavioral drift
@@ -281,7 +294,7 @@ send time.
 | Method | Purpose |
 |--------|---------|
 | `start_pool(blocking=True)` | Pre-spawn warm + background sessions. `blocking=False` for non-blocking mode. |
-| `get_or_create(key, agent=None, approval_policy="", speculative=False, speculative_resume=False)` | Returns `(LLMProvider, is_new, resumed)`. Uses warm pool for new sessions (default agent only). Sessions with a resume mapping skip warm pool (cold start needed for `session/load`). Every decision is counted via `_record_pool_decision` (`junction.session.pool.decision`) with the single disqualifying reason, so the pool's hit rate and the frequency of the `bypass_resume` case are observable. Non-default agents skip warm pool and resolve their model by precedence via `_model_fallback()` — caller model > per-agent pin > global default: `model=None` (defer to kiro's agent-JSON resolution) only when the agent pins its own model, otherwise the global default, unless that default is the `"auto"` sentinel (also `None`). The per-agent pin is resolved off the event loop via `run_in_executor` using `_resolve_named_agent_model`; blank agents inherit the global, and `junction` is excluded (tracks the global). `approval_policy` is persisted on the new `_Session` — callers (e.g. subagent) pass parent policy so the session inherits it. `speculative=True` (eager spawn) pre-creates ahead of a real first turn: the one-shot `_Session.first_turn` observation — a single three-member `FirstTurnState` enum (`NOTHING_ARMED` / `FRESH` / `RESUMED`), so a resume marker on an already-claimed session is unrepresentable rather than forbidden by convention — is registered ARMED (`FRESH`) and never consumed by speculative callers, and a resumable key raises `SpeculativeResumeRefused` — unless `speculative_resume=True` (resume prefetch) opts in, in which case the speculative creator performs the `session/load` and registers the observation as `RESUMED` when the load restored the transcript. The observation is consumed in one read-then-clear by the first real claimant under the per-session semaphore (fast path and won-race path alike), with the returned booleans derived from it at the return boundary — so that turn observes `(is_new=True, resumed=True)` exactly as if it had resumed itself, preserving its history-injection decision. |
+| `get_or_create(key, agent=None, approval_policy="", speculative=False, speculative_resume=False)` | Returns `(LLMProvider, is_new, resumed)`. Uses warm pool for new sessions (default agent only). Sessions with a resume mapping skip warm pool (cold start needed for `session/load`). Every decision is counted via `_record_pool_decision` (`junction.session.pool.decision`) with the single disqualifying reason, so the pool's hit rate and the frequency of the `bypass_resume` case are observable. Non-default agents skip warm pool and resolve their model by precedence via `_model_fallback()` — caller model > per-agent pin > global default: `model=None` (defer to kiro's agent-JSON resolution) only when the agent pins its own model, otherwise the global default, unless that default is the `"auto"` sentinel (also `None`). A per-session `acp_backend_override` skips this resolution entirely: with no caller model the value stays `None`, because every tier it would fill is spelled for the *configured* harness and the provider factory must scope the model to the override harness instead (H12); a caller-supplied model is still forwarded verbatim. The per-agent pin is resolved off the event loop via `run_in_executor` using `_resolve_named_agent_model`; blank agents inherit the global, and `junction` is excluded (tracks the global). `approval_policy` is persisted on the new `_Session` — callers (e.g. subagent) pass parent policy so the session inherits it. `speculative=True` (eager spawn) pre-creates ahead of a real first turn: the one-shot `_Session.first_turn` observation — a single three-member `FirstTurnState` enum (`NOTHING_ARMED` / `FRESH` / `RESUMED`), so a resume marker on an already-claimed session is unrepresentable rather than forbidden by convention — is registered ARMED (`FRESH`) and never consumed by speculative callers, and a resumable key raises `SpeculativeResumeRefused` — unless `speculative_resume=True` (resume prefetch) opts in, in which case the speculative creator performs the `session/load` and registers the observation as `RESUMED` when the load restored the transcript. The observation is consumed in one read-then-clear by the first real claimant under the per-session semaphore (fast path and won-race path alike), with the returned booleans derived from it at the return boundary — so that turn observes `(is_new=True, resumed=True)` exactly as if it had resumed itself, preserving its history-injection decision. |
 | `check_context_usage(key, provider)` | Returns %. Triggers compaction at configured threshold (default 70%), warns one `CONTEXT_WARN_MARGIN_PCT` below it. |
 | `compact_if_needed(key)` | Awaitable twin of the `check_context_usage` trigger for callers that must not start their next turn while a compaction is pending (the task runner's between-steps check, #4686). Same gates in the same order — both entry points consume the shared `_compaction_gate_decision` ladder, the single owner of the gate order (its docstring documents each rung) — then AWAITS `_compact_session`. Returns the outcome: `"absent"`, `"reset"` (the settled verdict on the prior attempt was ineffective-and-still-critical and the promoted escalation reset the session here, awaited), `"cc_managed"` (checked before the threshold, mirroring `check_context_usage`), `"below_threshold"`, `"unconfirmed"`, `"in_progress"`, `"cooldown"`, `"ok"`, `"busy"`, `"recycled"`, `"failed"`. A `"busy"` decline means a turn holds the semaphore — the caller leaves the session alone and retries later, never falls back to a direct `provider.compact()`. |
 | `record_success(key)` / `record_failure(key)` | Circuit breaker tracking. |

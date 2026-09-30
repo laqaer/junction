@@ -28,9 +28,10 @@ The upstream project is further along than the version we forked. Since its 0.6 
   rows={[
     ["Governance engine: keystone paths, POLICY ∩ PROFILE, audit log, sandbox", "yes", "the same engine"],
     ["First launch", "guides you through installing kiro-cli and signing in", "no account with us; <code>auto</code> docks the first agent CLI you have installed"],
-    ["Harnesses", "Upstream docks kiro-cli, Claude Code, Codex, KAS, OpenCode, Pi and goose (the others in preview, behind Developer Mode)", "Cursor, Claude Code, Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid, kiro-cli; mostly unverified"],
+    ["Harnesses", "Upstream docks kiro-cli, Claude Code, Codex, KAS, OpenCode, Pi and goose (the others in preview, behind Developer Mode)", "Cursor, Claude Code, Codex, Kimi, DeepSeek Harness, Goose, Grok, OpenCode, Pi, Droid, kiro-cli; mostly unverified. Both of us dock OpenCode"],
     ["The agent's own tools on a non-Kiro harness", "yes, except on Pi", "<strong>not yet</strong>: kiro-cli only; schedules from the dashboard and CLI instead"],
-    ["How many backends at once", "one, set globally", "one, set globally"],
+    ["How many backends at once", "one, set globally", "one for chat, set globally"],
+    ["Sending a subagent to another harness", "not checked yet", "the harness router: flat-rate quota before metered spend, the kind of task, a cooldown after a usage limit or a failed login; it never forwards provider traffic. <a href=\"/verified/#notyet-h\">Registered · unverified</a>"],
     ["Installers, wheel, Docker", "yes: installers for macOS, Windows and Linux, a one-line wheel install, and Docker", "<strong>no</strong>: install from source today"],
     ["Chat channels", "the same ten; we inherited them from this engine", "the same ten: five with approve buttons, one typed, four chat-only"],
     ["What the default build contacts", "its own update feed and app catalog", "no server of upstream's and none of ours; the embedding model is fetched from a third-party CDN on first use"],
@@ -41,7 +42,8 @@ The upstream project is further along than the version we forked. Since its 0.6 
 
 ## What we add
 
-- **A registry of ten runtimes with kiro-cli optional and last.** Five of our nine non-Kiro runtimes are ones the upstream project does not dock: Cursor, Kimi, DeepSeek Harness, Grok and Droid. <a href="/registry/">The registry</a> says what is verified on each, which today is little.
+- **A registry of eleven runtimes with kiro-cli optional and last.** Five of our ten non-Kiro runtimes are ones the upstream project does not dock: Cursor, Kimi, DeepSeek Harness, Grok and Droid. Both of us dock OpenCode. <a href="/registry/">The registry</a> says what is verified on each, which today is little.
+- **A harness router for subagents.** Chat runs the one harness you choose; the router can send a spawned subagent to another installed harness and never forwards provider traffic. It is registered and unit-tested, not verified on a live run; whether upstream has an equivalent is not checked yet.
 - **No first-launch account with us.** You still need your agent vendor's own login.
 - **Endpoint removal.** The default build contacts no server of upstream's and none of ours, with the one exception in the table.
 - **Proof pages.** A check on this site links to a dated row on <a href="/verified/">the verification log</a>.
@@ -50,7 +52,7 @@ The upstream project is further along than the version we forked. Since its 0.6 
 
 - **Installers, a wheel and a container image.** Install is from a source checkout today.
 - **The agent's own tools on other harnesses.** Upstream passes its tools to every backend except Pi; we pass them to kiro-cli only, so on the others the agent cannot create a job, spawn a subagent or ask you a question from chat.
-- **OpenCode and KAS**, which upstream docks and we do not yet.
+- **KAS**, which upstream docks and we do not yet.
 - **Maturity.** Upstream is at a later version, with more people on it.
 
 ## Fork strategy

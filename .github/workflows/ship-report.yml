@@ -1,8 +1,7 @@
-# Ship report: twice daily, summarize PRs merged into this repo as a short
+# Ship report: on demand, summarize PRs merged into this repo as a short
 # glanceable update (Bedrock), append the issues FILED in the same window, and
 # post the whole thing to the team Slack channel via an incoming webhook.
-# Schedule is 16:00 and 00:00 UTC = 9am and 5pm PDT
-# (8am/4pm in winter -- GitHub cron has no timezone support).
+# Manual runs default to a dry-run summary rather than sending to Slack.
 #
 # OUTBOUND AND INBOUND IN ONE POST, THREE SECTIONS. The shipping half is a
 # model-written narrative over merged PRs. The inbound half is split by AUDIENCE
@@ -22,12 +21,10 @@
 # numbers -- so a number it invented, or was told to include by an issue body,
 # cannot reach the post.
 #
-# Reporting windows are contiguous: each run reports (previous successful
-# SCHEDULED run's start, this run's start]. A failed run does not advance the
-# window, so the next run re-covers its PRs and issues (at-least-once delivery).
-# Windows with neither a merged PR nor a filed issue succeed silently and advance
-# the window without posting. Backfill
-# is capped at 72h (covers two consecutive missed runs plus jitter).
+# Set lookback_hours to choose the manual report window. Without an override,
+# the window starts at the last successful scheduled run, capped at 72h, or
+# defaults to 24h when no scheduled run exists. Manual runs do not advance that
+# watermark, so repeated manual reports can overlap.
 #
 # Degradation matrix (narrative degrades, delivery never silently drops):
 #   SHIP_REPORT_BEDROCK_ROLE_ARN secret unset  -> deterministic template body
@@ -53,9 +50,6 @@
 name: Ship Report
 
 on:
-  schedule:
-    - cron: "0 16 * * *" # 9am PDT
-    - cron: "0 0 * * *" # 5pm PDT
   workflow_dispatch:
     inputs:
       lookback_hours:

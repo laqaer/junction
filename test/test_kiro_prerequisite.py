@@ -3694,9 +3694,10 @@ class TestKiroPrerequisiteHandlers:
         assert [response.status for response in responses] == [503, 503, 503]
         assert [body["code"] for body in bodies] == ["kiro_prerequisite_required"] * 3
         # The refusal happens BEFORE any mutation: history is untouched and no
-        # session/persistence call was made.
+        # session/persistence call was made. The gate's one session read is
+        # which harness is active, which picks the Kiro gate here.
         assert messages == original_messages
-        assert sessions.mock_calls == []
+        assert [c for c in sessions.mock_calls if c[0] != "resolved_backend"] == []
         assert persistence.mock_calls == []
 
     @pytest.mark.asyncio

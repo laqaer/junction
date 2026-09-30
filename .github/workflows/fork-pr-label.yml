@@ -15,9 +15,9 @@ on:
     # fork `pull_request` run could not do. No fork code is checked out.
     types: [opened, reopened]
   schedule:
-    # Backstop sweep: labels any pre-existing open fork PR and catches a PR the
+    # Daily backstop: labels any pre-existing open fork PR and catches a PR the
     # event path missed (e.g. opened while this workflow was briefly failing).
-    - cron: "23 * * * *"
+    - cron: "23 7 * * *"
   workflow_dispatch: {}
 
 permissions:

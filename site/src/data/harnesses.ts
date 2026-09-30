@@ -1,5 +1,5 @@
 /**
- * The ten runtimes in the dock registry, in the order `warding planes` lists
+ * The eleven runtimes in the dock registry, in the order `warding planes` lists
  * them (`acp/runtimes.py` AUTO_PREFERENCE: kiro-cli optional and last).
  *
  * A cell is `true` only where a dated row exists on /verified/. Pre-nights the
@@ -46,10 +46,26 @@ export const harnesses: Harness[] = [
   { id: "dsh", command: "dsh", name: "DeepSeek Harness", via: "dsh launcher (ACP)", verified: {}, upstreamMature: false, optional: false },
   { id: "goose", command: "goose", name: "Goose", via: "goose (ACP)", verified: {}, upstreamMature: false, optional: false },
   { id: "grok", command: "grok", name: "Grok", via: "grok (ACP)", verified: {}, upstreamMature: false, optional: false },
+  { id: "opencode", command: "opencode", name: "OpenCode", via: "opencode acp (ACP)", verified: {}, upstreamMature: false, optional: false },
   { id: "pi", command: "pi", name: "Pi", via: "pi (ACP)", verified: {}, upstreamMature: false, optional: false },
   { id: "droid", command: "droid", name: "Droid", via: "droid (ACP)", verified: {}, upstreamMature: false, optional: false },
   { id: "kiro-cli", command: "kiro-cli", name: "kiro-cli", via: "kiro-cli (ACP), optional", verified: {}, upstreamMature: true, optional: true },
 ];
 
 /** Runtimes people ask about that are not in the registry. Named only in "not yet" sentences. */
-export const notDocked = ["Gemini CLI", "OpenCode"];
+export const notDocked = ["Gemini CLI"];
+
+/**
+ * The harness router (`src/junction/harness_router/`): chat sessions run the one
+ * harness `agent.acp_backend` names; a spawned subagent can be routed to another
+ * installed harness. Registered and unit-tested; no routed run is recorded on
+ * /verified/, so every surface that shows verification says "registered ·
+ * unverified" for it.
+ */
+export const router = {
+  id: "router",
+  name: "Harness router",
+  command: "warding route",
+  what: "sends a spawned subagent to another installed harness: flat-rate plan quota before metered spend, the kind of task, and a cooldown after a usage limit or a failed login. It picks a harness and never forwards provider traffic.",
+  verified: false,
+} as const;

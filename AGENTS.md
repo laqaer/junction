@@ -15,11 +15,22 @@ architecture / roadmap overlays: [`PRODUCT.md`](PRODUCT.md),
 identifiers (`junction`, `JUNCTION_HOME`) stay as implementation spellings,
 not the product name.
 
+**Progress and memory:** GitHub issues own status for bugs, features, and
+stories; ADRs ([`docs/adr/`](docs/adr/README.md)) own the *why*;
+[`docs/TASK_MAP.md`](docs/TASK_MAP.md) is a dated local handoff for work in
+flight. The task map carries the session start/finish steps; the operator's
+`~/dev/memory/INDEX.md` is a reference, not authority. Record work in place —
+commit and push only when explicitly authorized.
+
 ## What this is
 
-Warding runs one docked coding agent at a time on the operator's own
-machine, under a policy the agent cannot read or rewrite. Chat from the web
-dashboard, the CLI, or a messaging channel; run multi-step tasks
+Warding runs coding agents on the operator's own machine, under a policy
+the agent cannot read or rewrite. Chat sessions run the one harness the
+operator chooses in one setting (`agent.acp_backend`); spawned subagents can
+be routed to another installed harness by the harness router (flat-rate
+quota before metered, task kind, cooldown after a usage limit or failed
+login), which picks a harness and never forwards provider traffic. Chat from
+the web dashboard, the CLI, or a messaging channel; run multi-step tasks
 unattended; schedule cron jobs; keep memory across sessions. It drives an
 LLM through an ACP adapter plus MCP tools. `kiro-cli` is optional. A model
 catalog on loopback lists names and forwards nothing.
@@ -48,6 +59,7 @@ in the **same commit** when you change what it documents.
 | `computer_use/` | [computer-use](docs/system-specs/modules/computer-use.md) |
 | `acp/`, kiro-cli transport, providers | [acp-client](docs/system-specs/modules/acp-client.md) + [providers](docs/system-specs/modules/providers.md) |
 | `model_router/`, built-in catalog (no provider forwarding) | [model-router](docs/system-specs/modules/model-router.md) |
+| `harness_router/`, `routing.json`, routed `spawn_run`, `warding route` | [harness-router](docs/system-specs/modules/harness-router.md) + [harness-parity](docs/system-specs/modules/harness-parity.md) |
 | the product overlay (`JUNCTION.md`), product identity, the thesis | [`JUNCTION.md`](JUNCTION.md) + [`WORKING_BRIEF.md`](WORKING_BRIEF.md) + [`PRODUCT.md`](PRODUCT.md) |
 | adding or adapting an agent harness (BYO, KAS, claude seam) | [harness-parity](docs/system-specs/modules/harness-parity.md) (invariants) + [harness-parity-gate](docs/ci/harness-parity-gate.md) (CI) |
 | sessions, slots, session keys, PIDs | [session](docs/system-specs/modules/session.md) + [history](docs/system-specs/modules/history.md) |

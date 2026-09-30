@@ -1,4 +1,4 @@
-"""Warding CLI — runs one docked coding agent on your own machine, under policy.
+"""Warding CLI — runs docked coding agents on your own machine, under policy.
 
 Commands:
     warding chat -m "message"    Send a single message
@@ -17,6 +17,7 @@ Commands:
     warding doctor               Verify setup (--quick is compose-only)
     warding planes               Harness + model + role DAG snapshot
     warding router status        Probe the loopback model catalog
+    warding route                Route work across agent subscriptions
 """
 
 from __future__ import annotations
@@ -1984,6 +1985,11 @@ Examples:
         help="Comma-separated advertised model ids (omit to inherit auto)",
     )
 
+    route_parser = cli_help.add_command(sub, "route")
+    from junction.harness_router.cli import add_arguments as _add_route_arguments
+
+    _add_route_arguments(route_parser)
+
     # mcp-cron (MCP server — spawned by the agent backend, not user-facing)
     sub.add_parser("mcp-cron")
 
@@ -2656,6 +2662,10 @@ The dashboard port is set with the JUNCTION_PORT env var, not a config key.
         from junction.model_router.cli import run_router_command
 
         run_router_command(args)
+    elif args.command == "route":
+        from junction.harness_router.cli import run_route_command
+
+        run_route_command(args)
     elif args.command == "consolidate":
         _consolidate_cmd(args)
     elif args.command == "config":

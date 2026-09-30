@@ -96,8 +96,8 @@ describe("forbidden claims (site-spec §11)", () => {
         for (const h of headings(page.html)) expect(h).not.toMatch(/\bany agent\b/i);
       });
 
-      it("names Gemini or OpenCode only in a not-docked / not-yet / upstream-has sentence", () => {
-        for (const m of text.matchAll(/\b(Gemini|OpenCode)\b/g)) {
+      it("names Gemini only in a not-docked / not-yet / upstream-has sentence", () => {
+        for (const m of text.matchAll(/\b(Gemini)\b/g)) {
           const start = text.lastIndexOf(".", m.index ?? 0) + 1;
           const end = text.indexOf(".", m.index ?? 0);
           const sentence = text.slice(start, end < 0 ? undefined : end + 1);

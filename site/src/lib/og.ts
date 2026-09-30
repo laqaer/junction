@@ -116,4 +116,4 @@ export async function renderOg(spec: OgSpec): Promise<Uint8Array> {
   return new Resvg(out, { fitTo: { mode: "width", value: 1200 } }).render().asPng();
 }
 
-export const defaultQualifier = `${site.name} · one agent at a time`;
+export const defaultQualifier = `${site.name} · your agent, your box`;

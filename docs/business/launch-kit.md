@@ -8,13 +8,15 @@ this file current; the Honesty auditor checks every claim in it against the
 [claims register](README.md) and the verification log.
 
 Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0
-in August 2026. Most of the code is theirs; the attribution notice is in NOTICE.
+in 2026. Most of the code is theirs; the attribution notice is in NOTICE.
 Not affiliated with Amazon. (This line opens every long asset; everywhere else
 the upstream product is "the upstream project", never its two-word name.)
 
 Truth rules that bind every asset: every frame is recorded, never mocked; the
-harness and the date are in frame; one harness runs at a time; only a harness
-with a dated row on `/verified` is named as verified; the Claude adapter is the
+harness and the date are in frame; chat runs the one harness chosen in one
+setting, and a subagent the harness router sends to another harness is
+registered, not verified; only a harness with a dated row on `/verified` is
+named as verified; the Claude adapter is the
 ACP project's `claude-agent-acp`, fetched with `npx` on first run; buttons exist
 on five channels (Slack, Discord, Telegram, Teams, Webex), WhatsApp approves by
 typed reply, iMessage, WeChat, WeCom and Feishu are chat-only; no number that
@@ -54,7 +56,7 @@ Founder's voice. Every line maps to a mechanism that ships today; the two
 | Time | Visual | Voice-over | On-screen text |
 |---|---|---|---|
 | 0:00–0:05 | Close-up of the pixel office at night, one sprite typing | "This is my late desk." | Warding |
-| 0:05–0:14 | Pull back to the dashboard. The harness setting shows Claude Code selected; the runtime list scrolls (Cursor, Codex, Kimi, DeepSeek, Goose, Grok, Pi, Droid, kiro-cli). | "It runs the coding agent I already pay for, on my own machine. Claude Code today, through the ACP project's adapter. One agent at a time, chosen in one setting." | "Your agent. Your machine. One at a time." |
+| 0:05–0:14 | Pull back to the dashboard. The harness setting shows Claude Code selected; the runtime list scrolls (Cursor, Codex, Kimi, DeepSeek, Goose, Grok, OpenCode, Pi, Droid, kiro-cli). | "It runs the coding agent I already pay for, on my own machine. Claude Code today, through the ACP project's adapter. Chat runs the one I choose in one setting." | "Your agent. Your machine. Your login." |
 | 0:14–0:24 | The Telegram approval from the GIF | "When it wants to do something risky, it asks me in Telegram. Slack, Discord, Teams and Webex get the same buttons; WhatsApp takes a typed yes." | "Ask first" |
 | 0:24–0:34 | The refused `~/.ssh` read and the audit line | "Some things it's not allowed to do at all. `~/.ssh` and its own policy file are on a deny list that Warding's own gate enforces, inside the OS sandbox, and every decision lands in a hash-chained log." | "The policy it can't open" |
 | 0:34–0:42 | The schedule template gallery; a job is created | "Schedules run on my box. No run cap from us; my model plan's limits still apply." | "On a schedule" |
@@ -85,13 +87,17 @@ people would use for approvals).
 
 ### Fact sheet the founder answers from
 
-Every line is true on 2026-09-26; the Honesty auditor refreshes it before the
+Every line is true on 2026-09-30; the Honesty auditor refreshes it before the
 post.
 
 - **Harnesses registered:** Cursor, Claude Code, Codex, Kimi, DeepSeek Harness,
-  Goose, Grok, Pi, Droid, kiro-cli. One at a time, chosen globally in one
-  setting. Verified: only what has a dated row on `/verified` (today: Claude
-  Code for chat). Gemini and OpenCode are not docked.
+  Goose, Grok, OpenCode, Pi, Droid, kiro-cli. Chat sessions run the one harness
+  you choose in one setting; spawned subagents can be routed to another
+  installed harness by the harness router (flat-rate quota before metered,
+  task kind, cooldown after a usage limit or failed login), which picks a
+  harness and never forwards provider traffic. Verified: only what has a dated
+  row on `/verified` (today: Claude Code for chat); OpenCode and the router are
+  registered · unverified. Gemini is not docked.
 - **Claude Code:** launched under your own login through the official `claude`
   CLI and the ACP project's `claude-agent-acp` adapter, fetched with `npx` on
   first run. Anthropic's terms govern; for shared or production automation use an
@@ -104,8 +110,8 @@ post.
 - **What we added over upstream:** five harnesses upstream does not dock
   (Cursor, Kimi, DeepSeek Harness, Grok, Droid), kiro-cli optional and last, no
   vendor account in the door, no upstream-owned endpoint in the default build.
-  Upstream has OpenCode and KAS, signed installers, a wheel, Docker, and MCP tools
-  on its non-Kiro backends; we do not yet. Base 0.5.0, upstream 0.7.1.
+  Both dock OpenCode. Upstream has KAS, signed installers, a wheel, Docker, and
+  MCP tools on its non-Kiro backends; we do not yet. Base 0.5.0, upstream 0.7.1.
 - **Why fork rather than upstream:** we track upstream and rebase; the registry
   is offered upstream as an RFC (week 2); the downstream carries the hardening
   and the proof artefacts.
@@ -146,14 +152,14 @@ at 1270×760, plus the 60-second video.
 
 - **Name:** Warding
 - **Tagline (59 of 60 characters):** `Your coding agent, all night, on your own box, asking first`
-- **Description (258 of 260 characters):** `Runs the coding agent you already pay for on your own machine, on a schedule, one at a time: Claude Code, Codex, Goose, Cursor and more. Reports into Telegram or Slack and asks first before anything risky, under a policy it can't read or rewrite. Apache-2.0.`
+- **Description (257 of 260 characters):** `Runs the coding agent you already pay for on your own machine, on a schedule: Claude Code, Codex, Goose, Cursor and more, one for chat. Reports into Telegram or Slack and asks first before anything risky, under a policy it can't read or rewrite. Apache-2.0.`
 - **First comment (founder rewrites; under 800 characters):** "Hi, I'm
   [name]. I wanted my coding agent to keep working on my own box after I closed
   the laptop, and to ask me before anything risky, without tying the setup to
   one vendor's cloud. Warding is built on Amazon's open-source Kiro agent
   workspace (Apache-2.0; not affiliated). I added a registry that docks
-  Claude Code, Codex, Goose, Cursor and more, one at a time, with kiro-cli
-  optional. Approvals arrive as buttons in Telegram, Slack, Discord, Teams and
+  Claude Code, Codex, Goose, Cursor and more, with kiro-cli optional; chat
+  runs the one you choose. Approvals arrive as buttons in Telegram, Slack, Discord, Teams and
   Webex; a deny list the agent can't read decides what never gets asked. Free,
   self-hosted, one command to install. What would you schedule first?"
 
@@ -166,7 +172,7 @@ at 1270×760, plus the 60-second video.
 2. "Amazon open-sourced its Kiro agent workspace this year, the one they say
    39,000 of their builders use. It runs on kiro-cli first. Warding is built on
    it (Apache-2.0, not affiliated) and docks Claude Code, Codex, Goose, Cursor
-   and six more, one at a time. Most of the code is theirs; here is exactly
+   and seven more; chat runs the one you choose. Most of the code is theirs; here is exactly
    what changed."
 3. "Things my agent is not allowed to do, whatever I approve in chat: read
    ~/.ssh or ~/.aws, open its own policy file, run the built-in destructive
@@ -199,8 +205,9 @@ tool does, who benefits, cost, and the poster's relationship)
 > as Telegram buttons; a deny list the agent can't read or edit.
 > Cost: free; your normal Claude plan usage applies, and Anthropic's terms
 > govern unattended use.
-> Setup: [the real steps]. What went wrong: [honest]. Limits: one harness at a
-> time; single owner; cron from chat needs kiro-cli today.
+> Setup: [the real steps]. What went wrong: [honest]. Limits: chat runs one
+> harness, chosen in one setting; sending subagents to another harness is not
+> verified yet; single owner; cron from chat needs kiro-cli today.
 > Where would you draw the approve/deny line?
 
 **r/ClaudeAI** (flair Built with Claude; the four required parts: what you
@@ -242,7 +249,7 @@ end to end.
 > Subject: Warding (0.x, Apache-2.0): keep Claude Code working on your own box,
 > approve from chat
 > Hi. Warding is built on Amazon's open-source Kiro agent workspace and docks Claude Code,
-> Codex, Goose, Cursor and more, one at a time; it runs scheduled jobs on your
+> Codex, Goose, Cursor and more, one chosen for chat; it runs scheduled jobs on your
 > own machine and routes approvals to Telegram or Slack under a policy the agent
 > can't read or edit. Pre-1.0; one-line install; docs at [site]; Show HN thread
 > at [link]. Happy to answer questions. [name]

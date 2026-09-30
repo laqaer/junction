@@ -17,6 +17,7 @@ from aiohttp import web
 
 from junction import agent_state, model_registry
 from junction.acp.client import advertised_model_ids, model_is_unusable
+from junction.acp.types import ACP_BACKENDS_KIRO_READINESS
 from junction.agent import (
     AGENT_FILENAME,
     clear_model_pin,
@@ -65,7 +66,11 @@ from junction.dashboard.handlers.source_providers import (
     is_owner_dashboard_request,
     stale_owner_session_response,
 )
-from junction.dashboard.kiro_readiness import reject_if_kiro_unverified
+from junction.dashboard.kiro_readiness import (
+    active_backend,
+    reject_if_kiro_unverified,
+    runs_on_kiro_readiness,
+)
 from junction.dashboard.state import DashboardState
 from junction.executors import discovery_executor, maintenance_executor, subprocess_executor
 from junction.loop_lock import LoopBoundLock
@@ -811,6 +816,37 @@ def _advertised_cc_models(request: web.Request) -> list[dict]:
     return []
 
 
+def _provider_backend(provider: object) -> str | None:
+    """The backend a live provider runs on, or ``None`` when it cannot say.
+
+    Read from the backend string the way ``providers.acp.provider_label`` does,
+    so a runtime-backed session (whose client became an ``AcpSessionProvider``)
+    and a per-process one both answer. Model ids are spelled per harness (H12),
+    so a model list must only ever be read from providers on the harness it is
+    for.
+    """
+    from junction.acp.session_provider import AcpSessionProvider
+    from junction.providers.acp import AcpProvider
+
+    if isinstance(provider, AcpSessionProvider):
+        return provider.backend
+    if isinstance(provider, AcpProvider):
+        backend = getattr(getattr(provider, "client", None), "backend", None)
+        return backend if isinstance(backend, str) else None
+    return None
+
+
+def _advertised_ids_of(provider: object) -> list[str]:
+    """Model ids *provider* advertised, or ``[]`` when it has none to give."""
+    getter = getattr(provider, "available_models", None)
+    if not callable(getter):
+        return []
+    try:
+        return advertised_model_ids(getter())
+    except Exception:
+        return []
+
+
 def _entitled_kiro_models(request: web.Request, models: list[dict]) -> list[dict]:
     """Narrow the ``--list-models`` catalog to what a live session advertises.
 
@@ -853,16 +889,15 @@ def _entitled_kiro_models(request: web.Request, models: list[dict]) -> list[dict
     # entitlements, i.e. keep offering exactly the models this narrowing exists to
     # hide. The most recently started session carries the most recent snapshot.
     for provider in reversed(providers):
-        getter = getattr(provider, "available_models", None)
-        if not callable(getter):
-            continue
-        try:
-            ids = advertised_model_ids(getter())
-        except Exception:
-            continue
-        if ids:
-            advertised = ids
-            break
+        # Only a Kiro-catalog session's list is comparable (H12): an OpenCode or
+        # Codex session running beside Kiro advertises another namespace and must
+        # not narrow Kiro's catalog. A provider that cannot name its backend is
+        # read as before.
+        backend = _provider_backend(provider)
+        if backend is None or backend in ACP_BACKENDS_KIRO_READINESS:
+            advertised = _advertised_ids_of(provider)
+            if advertised:
+                break
     if not advertised:
         return models
     advertises_auto = any(_normalize_model_key(i) == "auto" for i in advertised)
@@ -1014,7 +1049,85 @@ def _wrap_list_models_argv(argv: list[str]) -> tuple[list[str], str | None]:
 
 
 async def api_models(request: web.Request) -> web.Response:
-    """GET /api/models — list available models from the live kiro-cli ACP session."""
+    """GET /api/models — the models the active harness can run.
+
+    Kiro-prerequisite harnesses list ``kiro-cli --list-models``; any other agent
+    lists what it advertised itself, and kiro-cli is never spawned for it.
+    """
+    if runs_on_kiro_readiness(request):
+        return await _api_kiro_models(request)
+    return await _api_harness_models(request, active_backend(request))
+
+
+async def _api_harness_models(request: web.Request, backend: str) -> web.Response:
+    """``/api/models`` for a harness outside the Kiro prerequisite.
+
+    Rows are that agent's advertised ``availableModels``, in its own spelling
+    (H12): the newest live session on it first, since it holds the latest
+    entitlement snapshot, else its last connection probe. ``auto`` leads and
+    means "the agent's own default".
+
+    When neither has a list yet, a probe that connected with nothing advertised
+    is a real answer (the agent picks its model itself, so ``auto`` alone). An
+    agent never seen is the degraded 503 the picker polls through, which here
+    costs a dictionary walk and a small file read, never a spawn.
+    """
+    from junction.harness_router.connect import (
+        STATUS_CONNECTED,
+        AdvertisedModel,
+        parse_advertised,
+    )
+    from junction.harness_router.lanes import harness_name
+    from junction.harness_router.service import get_router
+
+    advertised: tuple[AdvertisedModel, ...] = ()
+    try:
+        state: DashboardState = request.app["state"]
+        providers = state.sessions.active_providers()
+    except (KeyError, AttributeError):
+        providers = []
+    for provider in reversed(providers):
+        if _provider_backend(provider) == backend:
+            getter = getattr(provider, "available_models", None)
+            try:
+                advertised = parse_advertised(getter() if callable(getter) else None)
+            except Exception:
+                advertised = ()
+            if advertised:
+                break
+    probe = None
+    if not advertised:
+        try:
+            probes = await asyncio.to_thread(get_router().probes.load)
+            probe = probes.get(harness_name(backend))
+        except Exception:
+            logger.debug("api_models: probe record unreadable", exc_info=True)
+        if probe is not None:
+            advertised = probe.advertised
+    if not advertised and not (probe is not None and probe.status == STATUS_CONNECTED):
+        return web.json_response(
+            {"error": "model list not available yet", "code": "harness_models_pending"},
+            status=503,
+        )
+    rows: list[dict] = [{"model_name": "auto", "display_name": "Auto", "description": ""}]
+    for model in advertised:
+        if _normalize_model_key(model.id) == "auto":
+            continue
+        row: dict = {
+            "model_name": model.id,
+            "display_name": model.name or model.id,
+            "description": "",
+        }
+        # Only a window the registry actually knows: the picker learns whatever
+        # this reports as fact, so a guessed reference window would stick.
+        if model_registry.has_known_window(model.id):
+            row["context_window"] = model_registry.model_window(model.id)
+        rows.append(row)
+    return web.json_response(rows)
+
+
+async def _api_kiro_models(request: web.Request) -> web.Response:
+    """``/api/models`` from the live kiro-cli ACP session."""
     # Signed-out gateways must never reach the spawn below. kiro-cli auto-opens
     # an interactive browser login for ANY subcommand run unauthenticated
     # (--no-interactive does not suppress it, and there is no opt-out env var),

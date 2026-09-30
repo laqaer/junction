@@ -87,7 +87,11 @@ def test_readme_leads_with_warding_and_the_lineage_line() -> None:
     assert "Not affiliated with Amazon" in head
     assert 'src="assets/banner.svg"' in readme
     assert "The lamp stays on. The rules stay shut." in readme
-    assert "one harness at a time" in readme.lower()
+    # Chat runs the one harness chosen in one setting; the harness router may
+    # send a spawned subagent elsewhere, and says it forwards no provider traffic.
+    assert "your chat sessions run the one harness" in " ".join(readme.lower().split())
+    assert "never forwards provider traffic" in " ".join(readme.lower().split())
+    assert "one harness at a time" not in readme.lower()
     # The quickstart is the source install; the CLI is warding.
     assert "git clone https://github.com/laqaer/junction.git" in readme
     assert "bash minimal_install.sh" in readme
@@ -167,7 +171,9 @@ def test_product_docs_are_warding() -> None:
     assert "## Historical" in brief
     assert "assets/brand/build.py" in brief
     arch = (_REPO_ROOT / "ARCHITECTURE.md").read_text(encoding="utf-8")
-    assert "one docked coding agent at a time" in arch
+    assert "one docked coding agent at a time" not in arch
+    assert "Chat sessions run the one harness" in " ".join(arch.split())
+    assert "never forwards provider traffic" in " ".join(arch.split())
     assert "The catalog forwards nothing" in arch
     roadmap = (_REPO_ROOT / "ROADMAP.md").read_text(encoding="utf-8")
     assert "### M0" in roadmap and "### M5" in roadmap

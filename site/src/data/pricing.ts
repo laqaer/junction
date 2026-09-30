@@ -44,7 +44,7 @@ export const offers: Offer[] = [
     label: "Available now",
     rail: "none",
     blurb:
-      "Dock one harness at a time; schedules; task runner; subagents; memory, lessons, skills; ten chat channels (five with approve buttons); OS sandbox, deny rules, keystone policy, credential redaction, hash-chained audit log; Agent Worlds; 21 apps; 18 themes; 12 languages.",
+      "Dock the harness you choose for chat, with subagents routable to another; schedules; task runner; subagents; memory, lessons, skills; ten chat channels (five with approve buttons); OS sandbox, deny rules, keystone policy, credential redaction, hash-chained audit log; Agent Worlds; 21 apps; 18 themes; 12 languages.",
     cta: site.installOneLiner ? "Copy the install command" : "Copy the quickstart",
     href: "#install",
     preview: true,

@@ -489,6 +489,40 @@ class TestDeclaredDictProperties:
         validate_config_data(data)
         assert data["dashboard"]["terminal"] == {"enabled": True, "shell": 123}
 
+    def test_every_role_pin_is_a_first_class_entry(self) -> None:
+        # The Settings ▸ Chat role controls carry agent.role_models.<role> and
+        # agent.role_efforts.<role> as configKeys; each must resolve in the
+        # registry for every role the coercers accept, not a hand-kept subset.
+        from junction.config.loader import ROLE_MODEL_KEYS
+        from junction.effort import EFFORT_LEVELS
+
+        index = {e.path: e for e in SCHEMA_REGISTRY}
+        for role in ROLE_MODEL_KEYS:
+            model = index.get(f"agent.role_models.{role}")
+            assert model is not None, f"agent.role_models.{role} not declared"
+            assert model.type == "string"
+            assert model.enum_values is None
+            effort = index.get(f"agent.role_efforts.{role}")
+            assert effort is not None, f"agent.role_efforts.{role} not declared"
+            assert effort.type == "string"
+            assert effort.enum_values == ["", *EFFORT_LEVELS]
+
+    def test_role_maps_stay_open_and_keep_a_bad_pin_for_the_coercer(self) -> None:
+        # Declaring the roles must not close either dict, and a declared
+        # 3-level key that violates its enum is kept by validation (depth cap)
+        # and dropped by coerce_role_efforts instead.
+        from junction.config.loader import coerce_role_efforts
+        from junction.config.validation import validate_config_data
+
+        agent = JSON_SCHEMA["properties"]["agent"]["properties"]
+        for name in ("role_models", "role_efforts"):
+            assert agent[name]["additionalProperties"] == {"type": "string"}
+
+        data = {"agent": {"role_efforts": {"planning": "HIGH", "execution": "high"}}}
+        validate_config_data(data)
+        assert data["agent"]["role_efforts"] == {"planning": "HIGH", "execution": "high"}
+        assert coerce_role_efforts(data["agent"]["role_efforts"]) == {"execution": "high"}
+
 
 class TestAgentWorkspaceBindingsSchema:
     """Unit tests for schema registry entries added by Phase 2 dataclasses.

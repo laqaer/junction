@@ -28,33 +28,78 @@ notice is in [NOTICE](NOTICE). Not affiliated with Amazon.
 
 ## Quickstart
 
+Warding is a **source-only local beta**: it builds and runs on one machine you
+control, from a checkout of this repository. This is a preview of `main`, not
+a released version — check the
+[open pull requests](https://github.com/laqaer/junction/pulls) before assuming
+a reported fix is included — and this exact tree has not been verified by a
+clean-machine install. Everything assumes one operator on one machine:
+`localhost` is your own computer, `~/.junction` is yours alone, and you install
+and sign in to the agent harness yourself. There is no account with us and no
+shared multi-tenant server.
+
 You need macOS or Linux, Python 3.10+, Node.js 22+ with npm (the dashboard is
-built from source), and one coding-agent CLI on your `PATH`, signed in the way
-its vendor expects: `claude`, `codex`, `goose`, `cursor`, `kimi`, `grok`, `pi`,
-`droid` or `kiro-cli`. For Claude Code, the ACP project's `claude-agent-acp`
-adapter is fetched with `npx` on first run.
+built from source), git, and one coding-agent CLI on your `PATH`, signed in the
+way its vendor expects: `claude`, `codex`, `goose`, `cursor`, `kimi`, `grok`,
+`opencode`, `pi`, `droid` or `kiro-cli`. For Claude Code, the ACP project's
+`claude-agent-acp` adapter is fetched with `npx` on first run. Windows follows
+the [Windows guide](docs/guides/windows-install.md).
 
 ```bash
 git clone https://github.com/laqaer/junction.git
 cd junction
-bash minimal_install.sh
-warding setup
-warding up
+bash minimal_install.sh   # builds into ./.venv, links warding into ~/.local/bin
+source .venv/bin/activate
+warding setup             # first-run config; the data home is ~/.junction
+warding up                # model catalog + dashboard, in the foreground
 ```
 
-Then open `http://localhost:5476`. `warding setup` picks the agent it finds
-(`agent.acp_backend` is `auto`; pin an id to choose one) and `warding up` docks
-it and serves the dashboard on loopback. `junction` still works as a silent
-alias of `warding`.
+Activating the virtual environment makes `warding` available even when
+`~/.local/bin` is not on your `PATH`. `junction` still works as a silent alias
+of `warding`.
+
+`warding up` docks the agent, serves the dashboard on loopback at
+`http://localhost:5476`, and keeps running in that terminal. The dashboard asks
+for authentication even on loopback, so open it with a link minted from a
+second terminal:
+
+```bash
+cd /path/to/junction      # your checkout directory
+source .venv/bin/activate
+warding token --port 5476
+```
+
+That prints a signed, short-lived URL for this gateway; open it in a browser on
+this machine within about five minutes. Treat it as a credential: do not paste
+it into chat, issues or shared notes, and do not commit it.
+
+**Chat needs an agent you are signed in to.** Warding is not a model: a chat
+turn runs through an installed ACP harness that you have already logged in to.
+`agent.acp_backend` is `auto`, which docks the first *installed* harness in
+the preference order (Cursor, Claude Code, Codex, and so on), not the first one
+on `PATH`. To choose one — Codex, say — install the
+[Codex CLI](https://github.com/openai/codex#quickstart) and sign in with your
+own account, then run `warding config set agent.acp_backend codex` before
+`warding up`, or pick it in the dashboard's first-run **Dock an agent** step
+([install guide](docs/guides/install.md)). `warding planes` shows what is
+docked. kiro-cli is not required.
 
 This is version 0.5.0 from source. There is no tagged release, wheel,
 Docker image or signed desktop build published yet; the source install above
-is the supported path. [`scripts/get-junction.sh`](scripts/get-junction.sh)
-runs the same clone-and-install steps from one command (it tracks the default
-branch and does not start the server; read it before you run it). Windows
-follows the [Windows guide](docs/guides/windows-install.md). To keep it
-running after you close the terminal, `warding service install` registers a
-systemd unit or a launchd agent ([install guide](docs/guides/install.md)).
+is the supported path, and the browser dashboard is the supported local
+surface. [`scripts/get-junction.sh`](scripts/get-junction.sh) runs the same
+source build from one command: it clones or fast-forwards a checkout, then runs
+`minimal_install.sh` (it tracks the default branch and does not start the
+server; read it before you run it). To keep it running after you close the
+terminal, `warding service install` registers a systemd unit or a launchd
+agent ([install guide](docs/guides/install.md)).
+
+**Beta status and known limitations.** This is pre-release software built from
+`main`, not a pinned beta release. Expect rough edges, keep `~/.junction`
+backed up, and check the open pull requests before assuming a fix is present.
+Windows has documented feature limits
+([Windows guide](docs/guides/windows-install.md)), and remote or multi-user
+deployments are outside this beta.
 
 ## What it does
 
@@ -63,18 +108,23 @@ systemd unit or a launchd agent ([install guide](docs/guides/install.md)).
 | **Chat** | Talk to the docked agent from the web dashboard, the CLI (`warding chat`), or one of ten chat apps. Sessions persist and resume after a restart. |
 | **Schedules** | Cron jobs with a template gallery: nightly dependency checks, morning digests, weekly reports. They run on your hardware. No run cap from us; your model plan's limits still apply. |
 | **Walk-away tasks** | `warding run TASK.md` plans, executes, validates, retries, and resumes from checkpoints. |
-| **Subagents** | Fan work out to isolated background agents from the dashboard or CLI, and from chat on kiro-cli. |
+| **Subagents** | Fan work out to isolated background agents from the dashboard or CLI, and from chat on kiro-cli. The harness router can send each one to another installed harness. |
 | **Approvals** | A gated tool call arrives as Approve / Deny buttons in Slack, Telegram, Discord, Microsoft Teams and Webex, and as a typed reply on WhatsApp. Built-in deny rules never ask. |
 | **Memory, lessons, skills** | Preferences and project context persist across sessions; corrections become lessons; repeated patterns become skills you can inspect or drop. |
 | **Agent Worlds** | Seven pixel-art scenes where every live session is an animated character. |
 | **The desk** | 21 built-in apps, 18 themes, 12 dashboard languages, a model catalog that lists names. |
 
-### One harness at a time
+### The harness you choose, and where subagents go
 
 Warding launches the official CLI you already use, under your own login, and
-speaks the Agent Client Protocol to it. One harness at a time, chosen in one
-setting; your schedules, memory and channels stay when you switch. Warding Labs
-never sees your tokens or keys: there is no server of ours in the loop.
+speaks the Agent Client Protocol to it. Your chat sessions run the one harness
+you choose in one setting; your schedules, memory and channels stay when you
+switch. Spawned subagents can be routed to another installed harness by the
+harness router: flat-rate plan quota before metered spend, the kind of task,
+and a cooldown after a usage limit or a failed login. It picks a harness and
+never forwards provider traffic; each harness runs under its own login.
+`warding route` shows the lanes and what each kind of work would get. Warding
+Labs never sees your tokens or keys: there is no server of ours in the loop.
 
 "Verified" below means someone ran that cell on this tree and recorded the
 result. Nothing else is implied.
@@ -83,10 +133,11 @@ result. Nothing else is implied.
 |---|---|---|---|---|---|
 | `kiro-cli` | upstream-mature, unverified here | upstream-mature, unverified here | upstream-mature, unverified here | upstream-mature, unverified here | unverified |
 | Claude Code (`claude`, via the ACP project's `claude-agent-acp` adapter, fetched with `npx` on first run) | verified | unverified | unverified | unverified | unverified |
-| Codex, Cursor, Goose, Kimi, DeepSeek Harness, Grok, Pi, Droid | registered, unverified | registered, unverified | registered, unverified | registered, unverified | unverified |
+| Codex, Cursor, Goose, Kimi, DeepSeek Harness, Grok, OpenCode, Pi, Droid | registered, unverified | registered, unverified | registered, unverified | registered, unverified | unverified |
 
-No Gemini and no OpenCode are docked. The list of registered harnesses is
-`src/junction/acp/runtimes.py`.
+The harness router is registered and covered by unit tests; no routed run has
+been verified at runtime yet. No Gemini is docked. The list of registered
+harnesses is `src/junction/acp/runtimes.py`.
 
 ### Ten chat apps, labelled
 
@@ -140,7 +191,9 @@ bypass is in [SECURITY.md](SECURITY.md).
 
 ## What we don't claim
 
-- One harness at a time, set globally. No second harness running alongside it.
+- Chat sessions run the one harness you choose. Routing a spawned subagent to
+  another installed harness is registered and unit-tested, not verified at
+  runtime; the router picks a harness and forwards no provider traffic.
 - The model catalog lists names; it forwards nothing and holds no keys.
 - Approve buttons on five chat apps; WhatsApp is typed; four apps are chat-only.
 - Cron and subagents *from chat*, and the agent's mid-turn questions, work on
@@ -188,6 +241,11 @@ pip install -e ".[voice]" --group dev && pytest      # backend
 cd website && npm ci && npm run check && npm run build   # dashboard
 ```
 
+Contributors can build the same checkout with the Makefile instead of
+`minimal_install.sh`, with the same prerequisites: `make build` provisions
+`./.venv` and builds the dashboard, and `warding doctor --quick` verifies the
+install. Then follow the Quickstart from `warding setup`.
+
 | Topic | Start here |
 |---|---|
 | Install and operate | [Install guide](docs/guides/install.md), [Windows](docs/guides/windows-install.md), [Remote host](docs/guides/remote-and-mobile.md) |
@@ -207,9 +265,9 @@ policy and what is out of scope are in [SECURITY.md](SECURITY.md).
 Warding is built on Amazon's open-source Kiro agent workspace, published
 under Apache-2.0 in 2026. Most of the code is theirs; the attribution
 notice is in [NOTICE](NOTICE). What this tree adds: kiro-cli optional and
-last, nine non-Kiro harnesses in the registry (five that the upstream project
-does not dock), no vendor account in the door, and no upstream-owned endpoint
-in the default build. If you are a kiro-cli user, the upstream project is
+last, ten non-Kiro harnesses in the registry (five that the upstream project
+does not dock), a harness router for spawned subagents, no vendor account in
+the door, and no upstream-owned endpoint in the default build. If you are a kiro-cli user, the upstream project is
 ahead of this tree and you should use it. Not affiliated with Amazon.
 
 ## Contributors

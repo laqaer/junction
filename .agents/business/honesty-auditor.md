@@ -55,8 +55,8 @@ overnight" · any star, user, customer, logo, download or testimonial · "not a
 fork" · nothing leaves your machine (until the lsof run is a verification row;
 then only "the default build contacts no server of ours") · cron, subagents or
 `ask_question` from chat on any harness but kiro-cli · `ask_question` at all on
-a non-kiro-cli harness · Gemini or OpenCode docked · approve from ten chat apps
-(five with buttons, one typed, four chat-only) · nine harnesses added (five
+a non-kiro-cli harness · Gemini docked · approve from ten chat apps
+(five with buttons, one typed, four chat-only) · ten harnesses added (five
 upstream does not dock) · verified overnight on any harness (no night is
 recorded) · a version number before a tag exists · audited / certified /
 unbreakable / sealed / physically / route around / safe by construction · ToS-safe
@@ -70,12 +70,15 @@ use apply and may change" · "the agent you already pay for" → "launched under
 your own login, via the official CLI; for shared or production automation use
 an API key" · "refused" → name the mechanism (built-in deny rule, keystone path,
 POLICY ∩ PROFILE at Warding's own gate, OS sandbox) and link the scope statement
-· "no account" → "no account with us".
+· "no account" → "no account with us" · the harness router → "spawned
+subagents only; it picks a harness and forwards no provider traffic; registered,
+not verified at runtime" (chat sessions run the one harness chosen in one
+setting).
 
 **Attribution checks:** every screenshot, GIF frame and example names its
 harness and date; every long asset opens with the lineage line ("Built on
-Amazon's open-source Kiro agent workspace, published under Apache-2.0 in August
-2026. Most of the code is theirs; the attribution notice is in NOTICE. Not
+Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026.
+Most of the code is theirs; the attribution notice is in NOTICE. Not
 affiliated with Amazon."); the upstream product's two-word name appears nowhere
 but the root NOTICE; the Kiro and Amazon marks appear in no image; the
 39,000-builders figure, if used, is attributed to Amazon and describes the
@@ -151,7 +154,7 @@ Setup:
 
 Work:
 - Build and crawl. If site/ exists: cd site && npm ci && npm run build, then read every HTML file in the build output. Also read README.md, SECURITY.md, docs/business/launch-kit.md, every file under docs/business/drafts/ if present, src/junction/docs/*.md, and website/src/i18n/locales/en.json. Use grep with the lists in .agents/business/honesty-auditor.md as a first pass, then read the pages, because a false claim can be made without any listed word.
-- For every finding record: file, line or selector, the offending text, the rule (owned phrase / untrue claim / contingent claim without qualifier / attribution / label / unsourced number), and the replacement text. A page that says "verified" for a harness without a dated row in docs/business/verified.md is a finding. A paid item without Available now / Pre-order / Waitlist is a finding. A screenshot or GIF without harness and date in frame or caption is a finding. A version string with no tag is a finding. "Anthropic's adapter" is a finding (it is the ACP project's claude-agent-acp). "nine harnesses" added is a finding (five upstream does not dock).
+- For every finding record: file, line or selector, the offending text, the rule (owned phrase / untrue claim / contingent claim without qualifier / attribution / label / unsourced number), and the replacement text. A page that says "verified" for a harness without a dated row in docs/business/verified.md is a finding. A paid item without Available now / Pre-order / Waitlist is a finding. A screenshot or GIF without harness and date in frame or caption is a finding. A version string with no tag is a finding. "Anthropic's adapter" is a finding (it is the ACP project's claude-agent-acp). "ten harnesses" added is a finding (five upstream does not dock).
 - Fix what is small and unambiguous on your branch (copy only; never a security default, a price, a label promotion, or SECURITY.md terms). File an issue titled "[business/honesty-auditor] <surface>: <finding>" for anything larger or anything that needs a decision.
 - K7. If any public asset (a page element, screenshot, GIF frame, checkmark) shows or implies a harness other than the one the page names, add an item to docs/business/owner-inbox.md titled "KILL K7 — pull <asset> within the hour" with the URL and the correction text, and file an issue. Do this before anything else.
 - Claims register. Create docs/business/claims.md if it does not exist (index it in docs/business/README.md): one row per public claim with the claim, where it appears, verdict TRUE / COMING / NEVER, the mechanism clause for security claims, the evidence, and the date checked; then a "Fact sheet" section with the true one-paragraph answer to each standard objection (why not ssh and tmux; what did you actually write; why fork rather than upstream; will this get my Claude account banned — never say ToS-safe; where does my data go; the vendors' own routines, channels and remote control; RAM — idle 452 MB measured, under load unmeasured; Windows, multi-user, hosted; why Python plus a React SPA). If it exists, re-check every row whose evidence could have changed and update the date.

@@ -56,6 +56,7 @@ from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
     ACP_BACKEND_KIRO,
     ACP_BACKENDS_INTERNAL_SANDBOX,
+    ACP_BACKENDS_SILENT_RETRY,
     ACP_BACKENDS_SPEC_FAMILY,
     ACP_BACKENDS_STEER,
     ACP_CLIENT_CAPABILITIES,
@@ -918,6 +919,18 @@ _STALE_TURN_TIMEOUT = 90.0
 # keep resetting the timer via tool_call_update progress frames and tool
 # results, so this only trips on a genuine stall.
 _TOOL_STALL_TIMEOUT = 600.0
+# For ACP_BACKENDS_SILENT_RETRY harnesses only: with NO tool in flight and no
+# permission request awaiting our answer, if nothing at all arrives on stdout
+# for this many seconds the harness is waiting on its model provider without
+# saying so (OpenCode retrying a rate limit), and the turn is stopped with
+# AcpTurnStalled. Neither watchdog above covers it: the stale-turn check needs
+# streamed text and the tool-stall check needs a tool in flight. Five minutes
+# leaves room for a slow first token on a long context, and is still far short
+# of the prompt timeout a silent retry would otherwise hold the turn for.
+_MODEL_WAIT_STALL_TIMEOUT = 300.0
+# ACP ``tool_call`` / ``tool_call_update`` statuses after which a tool is no
+# longer running.
+_TOOL_TERMINAL_STATUSES = frozenset({"completed", "failed"})
 _CANCEL_GRACE_SECS = 10.0  # grace window for cooperative cancel ack
 # Absolute safety cap for _wait_for_response's activity-based deadline. The
 # per-call deadline resets on every received frame (so a long session/load
@@ -1025,6 +1038,28 @@ class AcpModelUnavailable(AcpError):  # noqa: N818
             f"If you expected this model to be included in your plan, check which "
             f"account you are signed in as with `kiro-cli whoami` — a Builder ID "
             f"sign-in carries a different entitlement than organization SSO.",
+            transient=False,
+        )
+
+
+class AcpTurnStalled(AcpError):  # noqa: N818
+    """The harness went silent mid-turn with nothing in flight.
+
+    Raised by the model-wait watchdog for ``ACP_BACKENDS_SILENT_RETRY``
+    harnesses, which retry a failed model call internally without reporting it.
+    The child is killed first, so the next prompt cold-starts. Non-retryable on
+    the same harness (``transient`` is False); the harness router classifies it
+    as a rate limit, so routed work rests the lane and fails over.
+    """
+
+    def __init__(self, backend: str, idle_secs: float) -> None:
+        self.backend = backend
+        self.idle_secs = idle_secs
+        super().__init__(
+            f"{backend or 'The agent'} stopped responding: no output for "
+            f"{_MODEL_WAIT_STALL_TIMEOUT:.0f}s with no tool in progress. Its model "
+            f"provider is most likely rate-limiting this account, so the turn was "
+            f"stopped. Try again later or pick another agent or model.",
             transient=False,
         )
 
@@ -1144,6 +1179,24 @@ def _is_session_expired(haystack: str) -> bool:
         or _RE_SESSION_EXPIRED.search(haystack)
         or _RE_INVALID_BEARER.search(haystack)
     )
+
+
+def _relogin_command(backend: str | None) -> str:
+    """The sign-in command for the harness whose session was rejected.
+
+    Kiro is the default: the shared-runtime path and any caller that does not
+    name its backend drive kiro-cli. Other harnesses use the login command
+    their connect setup already publishes, so a claude or codex session is
+    never told to sign in to a CLI it does not use.
+    """
+    if backend:
+        from junction.harness_router.connect import setup_for
+        from junction.harness_router.lanes import harness_name
+
+        setup = setup_for(harness_name(backend))
+        if setup is not None:
+            return setup.login
+    return "kiro-cli login"
 
 
 # Account/plan capacity is EXHAUSTED — terminal. Distinct from a throttle: a
@@ -1382,7 +1435,12 @@ def resolve_usable_model(preferred: str, advertised: Sequence[str] | None) -> st
     return ""
 
 
-def _format_acp_error(error: object, available_models: Sequence[str] | None = None) -> str:
+def _format_acp_error(
+    error: object,
+    available_models: Sequence[str] | None = None,
+    *,
+    backend: str | None = None,
+) -> str:
     """Format a JSON-RPC error from the ACP backend into actionable user text.
 
     The ACP backend (kiro-cli or claude-agent-acp) surfaces upstream Bedrock
@@ -1397,6 +1455,9 @@ def _format_acp_error(error: object, available_models: Sequence[str] | None = No
 
     The provider request_id is preserved in every variant so that operators
     can correlate against support tickets and Bedrock logs.
+
+    *backend* names the ACP backend that failed, so sign-in guidance points at
+    that harness's own login command (kiro-cli when it is not given).
 
     Security: the ``data`` field originates from upstream and may contain
     credential patterns or exfiltration URLs (especially in the fallback
@@ -1497,7 +1558,7 @@ def _format_acp_error(error: object, available_models: Sequence[str] | None = No
             # the Bedrock credential errors above. Retrying or switching models
             # cannot succeed, so the message must not suggest either.
             formatted = (
-                "Your session has expired. Run `kiro-cli login` in your "
+                f"Your session has expired. Run `{_relogin_command(backend)}` in your "
                 "terminal to sign back in, then start a new chat. "
                 "Retrying or switching models will not help — this is a "
                 "sign-in issue, not a backend error."
@@ -1621,7 +1682,12 @@ def _rejected_model_from_error(error: object) -> str | None:
     return m.group(1) if m else None
 
 
-def _raise_acp_error(error: object, available_models: Sequence[str] | None = None) -> None:
+def _raise_acp_error(
+    error: object,
+    available_models: Sequence[str] | None = None,
+    *,
+    backend: str | None = None,
+) -> None:
     """Format and raise the appropriate AcpError subclass for *error*.
 
     Delegates formatting to ``_format_acp_error`` and raises either
@@ -1630,9 +1696,10 @@ def _raise_acp_error(error: object, available_models: Sequence[str] | None = Non
 
     *available_models* is passed to BOTH the formatter and the transient
     classifier so a model-rejection's wording and its retry verdict are decided
-    from the same evidence.
+    from the same evidence. *backend* selects the harness named in sign-in
+    guidance.
     """
-    formatted = _format_acp_error(error, available_models)
+    formatted = _format_acp_error(error, available_models, backend=backend)
     # Detect prompt-busy from the raw error (before formatting rewrites it)
     raw_data = ""
     if isinstance(error, dict):
@@ -2272,6 +2339,15 @@ class AcpClient:
         # single progress frame.  Gates the _TOOL_STALL_TIMEOUT watchdog so a
         # dispatched-but-never-resolved tool can't hang the whole turn.
         self._tool_dispatched: bool = False
+        # Model-wait watchdog state (ACP_BACKENDS_SILENT_RETRY only). Tool call
+        # ids dispatched this turn and not yet resolved, so a second tool still
+        # running after the first resolves keeps the watchdog quiet; server
+        # requests (permission prompts) we have not answered yet, since the
+        # harness is then waiting on US; and when we last answered one, so the
+        # time a human spent deciding is not counted as harness silence.
+        self._tools_in_flight: set[str] = set()
+        self._awaiting_answer: set[str | int] = set()
+        self._last_answer_ts: float = 0.0
         # Liveness oracle for the stale-turn gate: before ending a silent turn
         # at _STALE_TURN_TIMEOUT, consult /proc evidence so a backend that is
         # provably working (CPU/IO movement in the subprocess subtree) is not
@@ -2464,9 +2540,15 @@ class AcpClient:
 
         Also records ``currentModelId`` for ``_track_metadata``'s context
         window lookup.
+
+        A spec-family agent that sends no ``models`` block (OpenCode) advertises
+        its models as the ``model``-category select in ``configOptions``
+        instead; see :meth:`_capture_config_option_models`.
         """
         models = session_resp.get("models")
         if not isinstance(models, dict):
+            if self._is_spec:
+                self._capture_config_option_models(session_resp)
             return
         current_model_id = models.get("currentModelId")
         if isinstance(current_model_id, str) and current_model_id:
@@ -2490,6 +2572,41 @@ class AcpClient:
             )
         if captured:
             self._available_models = captured
+
+    def _capture_config_option_models(self, session_resp: dict) -> None:
+        """Record models a spec-family agent advertised as a config option.
+
+        ACP's session config options carry the model picker as
+        ``{category: "model", type: "select", currentValue, options}``, where
+        ``options`` is a flat ``[{value, name}]`` list or ``[{group, options}]``
+        groups. Mapped onto the ``availableModels`` shape so every reader of
+        :meth:`available_models` sees one format. Best-effort, never raises.
+        """
+        config_options = session_resp.get("configOptions")
+        if not isinstance(config_options, list):
+            return
+        for option in config_options:
+            if not isinstance(option, dict) or option.get("category") != "model":
+                continue
+            current = option.get("currentValue")
+            if isinstance(current, str) and current:
+                self._resolved_model_id = current
+            captured: list[dict[str, str]] = []
+            for entry in option.get("options") or []:
+                grouped = entry.get("options") if isinstance(entry, dict) else None
+                for choice in grouped if isinstance(grouped, list) else [entry]:
+                    value = choice.get("value") if isinstance(choice, dict) else None
+                    if isinstance(value, str) and value:
+                        captured.append(
+                            {
+                                "modelId": value,
+                                "name": str(choice.get("name") or value),
+                                "description": str(choice.get("description") or ""),
+                            }
+                        )
+            if captured:
+                self._available_models = captured
+            return
 
     def available_models(self) -> list[dict[str, str]]:
         """Models advertised by the backend at session init (may be empty)."""
@@ -3682,6 +3799,7 @@ class AcpClient:
         except (BrokenPipeError, ConnectionResetError) as exc:
             raise AcpProcessDied(f"ACP process pipe broken: {exc}") from exc
         self._last_activity = time.monotonic()
+        self._note_answered(request_id)
 
     async def _send_error(self, request_id: str | int, code: int, message: str) -> None:
         """Send a JSON-RPC 2.0 error response for a server→client request.
@@ -3701,6 +3819,14 @@ class AcpClient:
         except (BrokenPipeError, ConnectionResetError) as exc:
             raise AcpProcessDied(f"ACP process pipe broken: {exc}") from exc
         self._last_activity = time.monotonic()
+        self._note_answered(request_id)
+
+    def _note_answered(self, request_id: str | int) -> None:
+        """Record that a server request was answered (model-wait watchdog state)."""
+        self._last_answer_ts = time.monotonic()
+        awaiting = getattr(self, "_awaiting_answer", None)
+        if awaiting is not None:
+            awaiting.discard(request_id)
 
     async def _read_message(self, timeout: float = _READ_TIMEOUT) -> JsonRpcMessage | None:
         if self._cancelled:
@@ -4163,6 +4289,13 @@ class AcpClient:
             deadline = time.monotonic() + timeout
             consecutive_empty = 0
             last_data_ts = time.monotonic()
+            silent_retry = self.backend in ACP_BACKENDS_SILENT_RETRY
+            # The model-wait watchdog's own clock: harness silence only, so it
+            # restarts after each frame the consumer finishes handling.
+            model_wait_since = last_data_ts
+            if silent_retry:
+                self._tools_in_flight.clear()
+                self._awaiting_answer.clear()
 
             while time.monotonic() < deadline:
                 remaining = deadline - time.monotonic()
@@ -4265,6 +4398,8 @@ class AcpClient:
                         raise AcpProcessDied(
                             f"tool stalled — no data for {_stall_idle:.0f}s; agent killed to recover"
                         )
+                    if silent_retry:
+                        await self._check_model_wait_stall(req_id, model_wait_since)
                     continue
 
                 consecutive_empty = 0
@@ -4281,7 +4416,12 @@ class AcpClient:
                 self.last_prompt_stats.event_count += 1
 
                 action = self._process_message(msg, req_id)
+                if silent_retry:
+                    self._track_model_wait(action, msg)
                 yield action, msg
+                # Time the consumer spent on the frame (a hook, a broadcast) is
+                # not harness silence.
+                model_wait_since = time.monotonic()
         finally:
             self._turn_lock.release()
             # Release any cooperative-stop waiter regardless of how the loop
@@ -4291,6 +4431,62 @@ class AcpClient:
             # escalates to hard kill, the correct outcome for a dead turn.
             if not self._turn_done.is_set():
                 self._turn_done.set()
+
+    def _track_model_wait(self, action: str, msg: JsonRpcMessage) -> None:
+        """Keep the model-wait watchdog's view of what is in flight.
+
+        Read from the raw frames here rather than in any one consumer, so every
+        caller of :meth:`_prompt_loop` (streaming, ``send_message``, commands)
+        gets the same view. A tool is in flight from its ``tool_call`` until an
+        update reports it ``completed`` or ``failed``; a permission request is
+        pending until :meth:`_note_answered` sees our reply. A harness that never
+        reports a terminal status leaves the tool in flight, which keeps the
+        watchdog quiet rather than risk stopping real work.
+        """
+        if action == "permission":
+            if msg.id is not None:
+                self._awaiting_answer.add(msg.id)
+            return
+        if action != "update" or not isinstance(msg.params, dict):
+            return
+        update = msg.params.get("update")
+        if not isinstance(update, dict):
+            return
+        call_id = update.get("toolCallId")
+        if not isinstance(call_id, str) or not call_id:
+            return
+        kind = update.get("sessionUpdate")
+        done = update.get("status") in _TOOL_TERMINAL_STATUSES
+        if kind == "tool_call" and not done:
+            self._tools_in_flight.add(call_id)
+        elif kind in ("tool_call", "tool_call_update") and done:
+            self._tools_in_flight.discard(call_id)
+
+    async def _check_model_wait_stall(self, req_id: int, since: float) -> None:
+        """Stop a turn whose harness went silent with nothing in flight.
+
+        Only called for ``ACP_BACKENDS_SILENT_RETRY`` harnesses. Silence is
+        measured from *since* (the consumer last handed control back after a
+        frame) or the last answer we sent, never from ``_last_activity``: stderr
+        lines refresh that, and a harness logging its own retries there would
+        otherwise hold the watchdog off for good. A tool in flight or a
+        permission request awaiting our answer means the silence is expected, so
+        neither counts.
+        """
+        if self._tool_dispatched or self._tools_in_flight or self._awaiting_answer:
+            return
+        idle = time.monotonic() - max(since, self._last_answer_ts)
+        if idle <= _MODEL_WAIT_STALL_TIMEOUT:
+            return
+        logger.warning(
+            "Model-wait stall for req %d on %s — no output for %.0fs with nothing in "
+            "flight. Killing the agent; its provider is likely rate-limiting.",
+            req_id,
+            self.backend,
+            idle,
+        )
+        await self._kill_process(force=True)
+        raise AcpTurnStalled(self.backend, idle)
 
     async def _consult_liveness_model_wait(self) -> tuple[str, str]:
         """Liveness verdict for the stale-turn gate, offloaded off the loop.
@@ -4378,7 +4574,9 @@ class AcpClient:
                     self._turn_done.set()
                     return
                 if action == "error":
-                    _raise_acp_error(msg.error, self._advertised_model_ids())
+                    _raise_acp_error(
+                        msg.error, self._advertised_model_ids(), backend=self._acp_backend
+                    )
                 if action == "permission":
                     await self._handle_permission(msg)
                 elif action == "server_request_unknown":
@@ -4497,7 +4695,7 @@ class AcpClient:
                 )
                 return
             if action == "error":
-                _raise_acp_error(msg.error, self._advertised_model_ids())
+                _raise_acp_error(msg.error, self._advertised_model_ids(), backend=self._acp_backend)
             if action == "permission":
                 yield self._build_permission_event(msg)
             elif action == "server_request_unknown":
@@ -4985,7 +5183,7 @@ class AcpClient:
                 self._turn_done.set()
                 return "".join(output)
             if action == "error":
-                _raise_acp_error(msg.error, self._advertised_model_ids())
+                _raise_acp_error(msg.error, self._advertised_model_ids(), backend=self._acp_backend)
             if action == "permission":
                 await self._handle_permission(msg)
             elif action == "server_request_unknown":

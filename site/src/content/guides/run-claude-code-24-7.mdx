@@ -40,7 +40,7 @@ warding setup && warding up
 "agent": { "acp_backend": "claude" }
 ```
 
-One harness runs at a time; switching later keeps your schedules, memory and channels. `warding planes` prints which one is docked.
+Chat runs this one harness; switching later keeps your schedules, memory and channels. `warding planes` prints which one is docked. A spawned subagent can be routed to another installed harness by the harness router; that is registered, not verified.
 
 ## Run it as a service
 
@@ -88,7 +88,7 @@ This section fills in when [/verified](/verified/) has the rows: a recorded over
 
 ## Known limits
 
-- One harness at a time, set globally.
+- Chat runs one harness, chosen in one setting; routing a spawned subagent to another harness is registered, not verified.
 - Single owner: one person's chat accounts, one machine.
 - Your Claude plan's limits and Anthropic's terms for unattended use apply and may change.
 - On Claude Code, the agent cannot ask you a question mid-turn, and cron jobs and subagents are created from the dashboard or CLI, not from chat.

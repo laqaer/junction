@@ -1,11 +1,13 @@
 """ACP runtime registry — spawn argv for each dockable coding agent.
 
 Junction's harness plane treats ACP as a family of stdio JSON-RPC agents
-(Cursor, Claude, Codex, DeepSeek Harness, Pi, Kimi, Goose, Grok, Droid, …).
+(Cursor, Claude, Codex, DeepSeek Harness, Pi, Kimi, Goose, Grok, OpenCode,
+Droid, …).
 ``kiro-cli`` is one selectable backend, last in auto preference, and optional.
 
-This module is stdlib-only besides ``junction.acp.types`` so tests can
-exercise it without spawning a gateway.
+This module imports nothing beyond the stdlib, ``junction.acp.types`` and
+``junction.platform_compat``, so tests can exercise it without spawning a
+gateway.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from junction import platform_compat
 from junction.acp.types import (
     ACP_BACKEND_AUTO,
     ACP_BACKEND_CLAUDE,
@@ -27,6 +30,7 @@ from junction.acp.types import (
     ACP_BACKEND_GROK,
     ACP_BACKEND_KIMI,
     ACP_BACKEND_KIRO,
+    ACP_BACKEND_OPENCODE,
     ACP_BACKEND_PI,
     ACP_BACKENDS_SPEC_FAMILY,
 )
@@ -43,6 +47,7 @@ AUTO_PREFERENCE: tuple[str, ...] = (
     ACP_BACKEND_DSH,
     ACP_BACKEND_GOOSE,
     ACP_BACKEND_GROK,
+    ACP_BACKEND_OPENCODE,
     ACP_BACKEND_PI,
     ACP_BACKEND_DROID,
     ACP_BACKEND_KIRO,
@@ -129,7 +134,7 @@ def builtin_specs(
             id=ACP_BACKEND_CODEX,
             argv=codex_argv,
             protocol="spec",
-            login_hint="Install Codex CLI (`codex`) and log in.",
+            login_hint="Install Codex CLI (`npm i -g @openai/codex`) and run `codex login`.",
             needs=("codex",),
         ),
         ACP_BACKEND_KIMI: RuntimeSpec(
@@ -157,8 +162,18 @@ def builtin_specs(
             id=ACP_BACKEND_GROK,
             argv=("grok", "agent", "stdio"),
             protocol="spec",
-            login_hint="Install Grok CLI (`grok`).",
+            login_hint="Install Grok Build (`npm i -g @xai-official/grok`) and run `grok` to sign in.",
             needs=("grok",),
+        ),
+        ACP_BACKEND_OPENCODE: RuntimeSpec(
+            id=ACP_BACKEND_OPENCODE,
+            argv=("opencode", "acp"),
+            protocol="spec",
+            login_hint=(
+                "Install OpenCode (`npm i -g opencode-ai`) and run `opencode auth login` "
+                "(OpenRouter, Anthropic, OpenAI, …)."
+            ),
+            needs=("opencode",),
         ),
         ACP_BACKEND_PI: RuntimeSpec(
             id=ACP_BACKEND_PI,
@@ -205,6 +220,16 @@ def runtime_available(
         return bool(environ.get("PI_ACP") or find("pi") or find("pi-acp"))
     if spec.id == ACP_BACKEND_CODEX:
         return bool(find("codex") and (find("npx") or find("codex-acp")))
+    if spec.id == ACP_BACKEND_KIRO:
+        # kiro-cli's spawn path tries ``JUNCTION_KIRO_BIN`` before ``PATH``
+        # (``kiro_cli.resolve_kiro_cli``), so an explicit override counts as
+        # installed here too. Otherwise ``auto`` skips a kiro-cli the operator
+        # pointed at directly, and finds no runtime at all when it is the only one.
+        # The runnable test is the spawn path's own: Windows has no execute bit,
+        # so ``os.access(X_OK)`` there accepts any existing file.
+        override = environ.get("JUNCTION_KIRO_BIN", "")
+        if override and platform_compat.is_executable_file(override):
+            return True
     return all(find(name) for name in spec.needs) if spec.needs else bool(find(spec.argv[0]))
 
 
@@ -253,9 +278,32 @@ def select_runtime(
         return kiro_hit
     raise RuntimeNotFoundError(
         "No ACP runtime found. Install cursor-agent, claude, codex, kimi, "
-        "goose, grok, droid, pi, or the DeepSeek Harness launcher "
+        "goose, grok, opencode, droid, pi, or the DeepSeek Harness launcher "
         "(~/.buzz/tools/dsh-buzz/launch-acp.sh)."
     )
+
+
+def resolve_backend(
+    configured: str,
+    *,
+    which: WhichFn | None = None,
+    home: Path | None = None,
+    env: Mapping[str, str] | None = None,
+) -> str:
+    """The concrete backend a session for *configured* ``agent.acp_backend`` runs on.
+
+    ``auto`` resolves the way the provider does at start (first installed
+    runtime). When nothing is installed the answer is ``ACP_BACKEND_KIRO``: that
+    is what an unresolvable ``auto`` has always fallen back to, and callers that
+    branch on the backend (the multiplexed-runtime paths, the Kiro readiness
+    gate) keep their existing behavior on such a host.
+    """
+    if configured == ACP_BACKEND_AUTO:
+        try:
+            return select_runtime(ACP_BACKEND_AUTO, which=which, home=home, env=env).id
+        except RuntimeNotFoundError:
+            return ACP_BACKEND_KIRO
+    return configured
 
 
 def resolve_spawn_argv(

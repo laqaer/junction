@@ -132,6 +132,9 @@ ACP_BACKEND_KIMI = "kimi"
 ACP_BACKEND_GOOSE = "goose"
 ACP_BACKEND_GROK = "grok"
 ACP_BACKEND_DROID = "droid"
+# OpenCode (`opencode acp`). Its own provider login covers OpenRouter, so
+# metered OpenRouter models reach Warding as a harness, not as forwarded traffic.
+ACP_BACKEND_OPENCODE = "opencode"
 # ACP v1 stdio agents driven by AcpClient (one process per session). Not kiro-cli, not KAS.
 ACP_BACKENDS_SPEC_FAMILY = frozenset(
     {
@@ -144,6 +147,7 @@ ACP_BACKENDS_SPEC_FAMILY = frozenset(
         ACP_BACKEND_GOOSE,
         ACP_BACKEND_GROK,
         ACP_BACKEND_DROID,
+        ACP_BACKEND_OPENCODE,
     }
 )
 # Membership gate for the ``acp_backend`` kwarg. An unrecognized value would
@@ -222,6 +226,33 @@ ACP_BACKENDS_ACP_RUNTIME = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 # kiro-cli's store; it opts in when someone demonstrates that it does. Positive
 # membership rather than "not claude" (harness-parity H5).
 ACP_BACKENDS_KIRO_IDENTITY_STORE = frozenset({ACP_BACKEND_KIRO})
+
+# Backends whose readiness is the Kiro prerequisite (kiro-cli installed and
+# signed in) and whose model catalog is ``kiro-cli --list-models``. The dashboard
+# endpoints that act before a turn (destructive reruns, poll-driven kiro-cli
+# spawns) verify these through ``dashboard/kiro_readiness.py``; every other
+# harness is verified by its own connection probe and never spawns kiro-cli.
+# KAS is a member because it has always been gated this way.
+ACP_BACKENDS_KIRO_READINESS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
+
+# Backends that speak kiro-cli's OWN model namespace (``kiro-cli --list-models``).
+# A canonical registry key must be translated with ``model_registry.to_acp_id``
+# before it reaches one of these, and the kiro-spelled global model default
+# applies to them. Every other harness advertises ids in its own namespace, so a
+# model id is never compared, translated, or inherited across the boundary
+# (harness-parity H12). Positive membership rather than "not a spec-family
+# harness", which would sweep in whatever harness is added next.
+ACP_BACKENDS_KIRO_MODELS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
+
+# Backends that retry a failed model call (a provider rate limit, an overload)
+# INSIDE the harness without telling the ACP client: the turn goes silent before
+# any output, or between a tool result and the next model call, and never ends.
+# OpenCode keeps its retry state in its own TUI status and forwards nothing over
+# ACP. Members get the prompt loop's model-wait watchdog
+# (``acp.client._MODEL_WAIT_STALL_TIMEOUT``), which stops such a turn with
+# ``AcpTurnStalled`` so routed work can move to another lane. A harness joins
+# when it is shown to do this; one that streams its own errors never needs it.
+ACP_BACKENDS_SILENT_RETRY = frozenset({ACP_BACKEND_OPENCODE})
 
 # ── Provider labels ──
 # The backend identity key persisted in the session map. It indexes three

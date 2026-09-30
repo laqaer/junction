@@ -245,7 +245,14 @@
       "label": "Orchestration reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -259,7 +266,14 @@
       "label": "Planning reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -273,7 +287,14 @@
       "label": "Execution reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -287,7 +308,14 @@
       "label": "Background reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -301,7 +329,14 @@
       "label": "Subagent reasoning effort",
       "help": "Reasoning effort for this class of work. Empty inherits the chat default, then the provider/model default.",
       "hasChildren": false,
-      "enumValues": null,
+      "enumValues": [
+        "",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
       "defaultValue": ""
     },
     {
@@ -392,7 +427,7 @@
       "sensitive": false,
       "tags": [],
       "label": "ACP Backend",
-      "help": "Which ACP agent to drive. Default 'auto' picks the first installed runtime (cursor, claude, codex, kimi, dsh, goose, grok, pi, droid). 'kiro' or '' selects kiro-cli. Spec-family values: cursor, claude, codex, dsh, pi, kimi, goose, grok, droid. 'kas' is kiro-agent.",
+      "help": "Which ACP agent to drive. Default 'auto' picks the first installed runtime (cursor, claude, codex, kimi, dsh, goose, grok, opencode, pi, droid). 'kiro' or '' selects kiro-cli. Spec-family values: cursor, claude, codex, dsh, pi, kimi, goose, grok, droid, opencode. 'kas' is kiro-agent.",
       "hasChildren": false,
       "enumValues": [
         "auto",
@@ -407,7 +442,8 @@
         "kimi",
         "goose",
         "grok",
-        "droid"
+        "droid",
+        "opencode"
       ],
       "defaultValue": "auto"
     },

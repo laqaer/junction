@@ -783,6 +783,41 @@ catalog's OFFLINE SNAPSHOT, not a peer source: a reachable catalog means the
 store renders the published document's list, display copy, AND installable
 inventory; an unreachable one degrades the listing to the seed.
 
+**Where the document comes from.** Until the dedicated registry repository is
+published, `scripts/build_app_catalog.py` generates the document in this repo
+and commits it at `site/public/catalog/official-registry.json`. The `site/`
+Vercel deployment serves it under `build_app_catalog.PUBLISHED_BASE`
+(`https://apps.getjunction.dev/`) through a host-conditioned REWRITE in
+`site/vercel.json` (never a redirect: `fetch_document` refuses 3xx). That is a
+published location, not a client default: a stock build leaves
+`JUNCTION_APP_CATALOG_BASE` empty and lists the seed, and an operator points the
+variable at the published base once the host answers. The generator's inputs and rules, each closing a way the store can go wrong:
+
+- **Every non-hidden built-in** becomes a `builtin` row with display fields and
+  its manifest's absolute `/app-assets/...` refs, which `_resolve_ref` passes
+  through as gateway-local paths, so the catalog host serves no bytes. Because
+  the published list REPLACES the seed listing, a built-in the document omitted
+  would vanish from Discover.
+- **A built-in row carries no `version`.** `_enrich_with_install_status` derives
+  `updateAvailable` from the row's version, and a built-in updates only with
+  the wheel, so a version bumped on `main` would offer every older install an
+  Update control that cannot work. An absent version compares as not-newer.
+- **Every seed entry** becomes a `git` row, with the seed's URL (so
+  `_catalog_row_supersedes_seed` holds by construction) and the commit and baked
+  display copy recorded in `scripts/app_catalog_pins.json`. `--refresh-pins`
+  resolves each seed branch to its tip and reads `app.json` at exactly that
+  commit, so the copy and the pin describe the same bytes. A seed entry without
+  a pin is a build error: `inventory_for_install` refuses a catalog-named app
+  with no usable coordinates, so an unpinned row would be uninstallable.
+- The output is validated with the client's own `_envelope_error` and
+  `inventory` before it is written, and it is deterministic (sorted, no
+  `generatedAt`), so `test/test_app_catalog_publish.py` pins it byte-for-byte
+  against the generator. Editing a built-in's display fields therefore means
+  re-running the generator in the same change.
+
+`editorial.json` and `category-order.json` are not published yet; their readers
+degrade to the derived featured pick and the client's own category order.
+
 User-configured external registries (`config.registries`) are a separate,
 always-present source: both `list_registry` and `list_catalog_apps` merge them
 through one shared site, `_append_external_registry_apps`, so the online and

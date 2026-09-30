@@ -22,6 +22,7 @@ from junction.acp.client import (
     AcpClient,
     AcpError,
     AcpProcessDied,
+    AcpTurnStalled,
     _format_acp_error,
     _is_model_substitution_advisory,
     _make_unified_diff,
@@ -39,6 +40,8 @@ from junction.acp.liveness import (
 )
 from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_KIRO,
+    ACP_BACKEND_OPENCODE,
     JSONRPC_METHOD_NOT_FOUND,
     AcpPromptStats,
 )
@@ -6133,6 +6136,161 @@ class TestPromptLoopReleasesTurnDone:
         assert result == ""
 
 
+class TestModelWaitWatchdog:
+    """A silent-retry harness that goes quiet with nothing in flight is stopped.
+
+    OpenCode retries a rate-limited model call inside the harness and sends
+    nothing over ACP, so without this watchdog the turn holds until the prompt
+    timeout. Kiro never runs it (harness parity: the Kiro path is unchanged).
+    """
+
+    @staticmethod
+    def _client(tmp_path, monkeypatch, backend=ACP_BACKEND_OPENCODE, frames=()):
+        from junction.acp import client as acp_client
+
+        monkeypatch.setattr(acp_client, "_MODEL_WAIT_STALL_TIMEOUT", 0.2)
+        monkeypatch.setattr(acp_client, "_TOOL_STALL_TIMEOUT", 60.0)
+        monkeypatch.setattr(acp_client, "_READ_TIMEOUT", 0.02)
+        client = AcpClient(acp_backend=backend, work_dir=tmp_path)
+        client._turn_done.clear()
+        client._is_process_alive = lambda: True
+        client._kill_process = AsyncMock()
+        queue = list(frames)
+
+        async def fake_read(*_args, **_kwargs):
+            return queue.pop(0) if queue else None
+
+        client._read_message = fake_read  # type: ignore[assignment]
+        return client
+
+    @staticmethod
+    def _update(kind, call_id, status=None):
+        from junction.acp.types import JsonRpcMessage
+
+        update = {"sessionUpdate": kind, "toolCallId": call_id}
+        if status:
+            update["status"] = status
+        return JsonRpcMessage(method="session/update", params={"update": update})
+
+    @staticmethod
+    async def _drain(client, timeout):
+        actions = []
+        t0 = time.monotonic()
+        async for action, _ in client._prompt_loop(req_id=1, timeout=timeout):
+            actions.append(action)
+        return actions, time.monotonic() - t0
+
+    @pytest.mark.asyncio
+    async def test_silence_with_nothing_in_flight_stops_the_turn(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path, monkeypatch)
+        t0 = time.monotonic()
+        with pytest.raises(AcpTurnStalled, match="stopped responding") as info:
+            await self._drain(client, timeout=30.0)
+        assert time.monotonic() - t0 < 5.0
+        assert info.value.transient is False
+        client._kill_process.assert_awaited_once()
+        assert client._turn_done.is_set()
+
+    @pytest.mark.asyncio
+    async def test_kiro_never_runs_it(self, tmp_path, monkeypatch):
+        client = self._client(tmp_path, monkeypatch, backend=ACP_BACKEND_KIRO)
+        _, elapsed = await self._drain(client, timeout=0.5)
+        assert elapsed >= 0.4  # ran to its own deadline
+        client._kill_process.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_a_running_tool_keeps_it_quiet(self, tmp_path, monkeypatch):
+        client = self._client(
+            tmp_path, monkeypatch, frames=[self._update("tool_call", "t1", "in_progress")]
+        )
+        actions, elapsed = await self._drain(client, timeout=0.6)
+        assert actions == ["update"] and elapsed >= 0.5
+        client._kill_process.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_it_arms_again_once_every_tool_finishes(self, tmp_path, monkeypatch):
+        frames = [
+            self._update("tool_call", "t1", "in_progress"),
+            self._update("tool_call", "t2", "in_progress"),
+            self._update("tool_call_update", "t1", "completed"),
+            self._update("tool_call_update", "t2", "failed"),
+        ]
+        client = self._client(tmp_path, monkeypatch, frames=frames)
+        with pytest.raises(AcpTurnStalled):
+            await self._drain(client, timeout=30.0)
+        assert client._tools_in_flight == set()
+
+    @pytest.mark.asyncio
+    async def test_one_of_two_tools_finishing_is_not_a_stall(self, tmp_path, monkeypatch):
+        frames = [
+            self._update("tool_call", "t1", "in_progress"),
+            self._update("tool_call", "t2", "in_progress"),
+            self._update("tool_call_update", "t1", "completed"),
+        ]
+        client = self._client(tmp_path, monkeypatch, frames=frames)
+        _, elapsed = await self._drain(client, timeout=0.6)
+        assert elapsed >= 0.5
+        assert client._tools_in_flight == {"t2"}
+
+    @pytest.mark.asyncio
+    async def test_a_pending_approval_is_not_harness_silence(self, tmp_path, monkeypatch):
+        from junction.acp.types import JsonRpcMessage
+
+        permission = JsonRpcMessage(id=7, method="session/request_permission", params={})
+        client = self._client(tmp_path, monkeypatch, frames=[permission])
+        actions, elapsed = await self._drain(client, timeout=0.6)
+        assert actions == ["permission"] and elapsed >= 0.5
+        assert client._awaiting_answer == {7}
+        # Answering it re-arms the watchdog, timed from the answer.
+        client._note_answered(7)
+        assert client._awaiting_answer == set()
+
+    @pytest.mark.asyncio
+    async def test_stderr_chatter_does_not_hold_it_off(self, tmp_path, monkeypatch):
+        """A harness that logs its own retries to stderr is still stopped."""
+        client = self._client(tmp_path, monkeypatch)
+
+        async def chatter():
+            while True:
+                client._last_activity = time.monotonic()
+                await asyncio.sleep(0.01)
+
+        task = asyncio.create_task(chatter())
+        try:
+            with pytest.raises(AcpTurnStalled):
+                await self._drain(client, timeout=30.0)
+        finally:
+            task.cancel()
+
+    @pytest.mark.asyncio
+    async def test_consumer_time_is_not_harness_silence(self, tmp_path, monkeypatch):
+        """A consumer slow to handle a frame does not make the harness look stalled."""
+        from junction.acp.types import JsonRpcMessage
+
+        frames = [
+            JsonRpcMessage(method="session/update", params={"update": {}}),
+            JsonRpcMessage(method="session/update", params={"update": {}}),
+        ]
+        client = self._client(tmp_path, monkeypatch, frames=frames)
+        seen = []
+        handed_back = 0.0
+        with pytest.raises(AcpTurnStalled):
+            async for action, _ in client._prompt_loop(req_id=1, timeout=30.0):
+                seen.append(action)
+                await asyncio.sleep(0.3)  # longer than the stall window
+                handed_back = time.monotonic()
+        # The stall is timed from when the consumer handed control back, not
+        # from when the frame arrived: counting the 0.3s the consumer held it
+        # would fire at once.
+        assert seen == ["update", "update"]
+        assert time.monotonic() - handed_back >= 0.18
+
+    def test_router_reads_it_as_a_rate_limit(self):
+        from junction.harness_router.limits import FAILURE_RATE_LIMIT, classify_exception
+
+        assert classify_exception(AcpTurnStalled("opencode", 301.0)) == FAILURE_RATE_LIMIT
+
+
 class TestToolStallWatchdog:
     """A tool dispatched that never returns must abort the turn via the
     _TOOL_STALL_TIMEOUT watchdog, not hang to the full prompt timeout."""
@@ -7115,6 +7273,61 @@ class TestCaptureAvailableModels:
         )
         assert c.available_models()[0]["modelId"] == "m1"
 
+    @staticmethod
+    def _config_option_response(options):
+        return {
+            "sessionId": "s",
+            "configOptions": [
+                {"id": "mode", "category": "mode", "options": [{"value": "build"}]},
+                {
+                    "id": "model",
+                    "category": "model",
+                    "type": "select",
+                    "currentValue": "opencode/big-pickle",
+                    "options": options,
+                },
+            ],
+        }
+
+    def test_spec_agent_models_from_config_options(self):
+        """OpenCode sends no ``models`` block; its picker is a config option."""
+        c = AcpClient(acp_backend=ACP_BACKEND_OPENCODE)
+        c._capture_available_models(
+            self._config_option_response(
+                [
+                    {"value": "opencode/big-pickle", "name": "Big Pickle"},
+                    {"value": "openrouter/deepseek-v4"},
+                    {"name": "no value"},
+                ]
+            )
+        )
+        assert [(m["modelId"], m["name"]) for m in c.available_models()] == [
+            ("opencode/big-pickle", "Big Pickle"),
+            ("openrouter/deepseek-v4", "openrouter/deepseek-v4"),
+        ]
+        assert c._resolved_model_id == "opencode/big-pickle"
+
+    def test_grouped_config_option_models_are_flattened(self):
+        c = AcpClient(acp_backend=ACP_BACKEND_OPENCODE)
+        c._capture_available_models(
+            self._config_option_response(
+                [
+                    {"group": "openrouter", "options": [{"value": "openrouter/a"}]},
+                    {"group": "opencode", "options": [{"value": "opencode/b"}]},
+                ]
+            )
+        )
+        assert [m["modelId"] for m in c.available_models()] == ["openrouter/a", "opencode/b"]
+
+    def test_kiro_ignores_config_option_models(self):
+        """The Kiro path reads only its ``models`` block, exactly as before."""
+        c = AcpClient(acp_backend=ACP_BACKEND_KIRO)
+        c._capture_available_models(
+            self._config_option_response([{"value": "opencode/big-pickle"}])
+        )
+        assert c.available_models() == []
+        assert c._resolved_model_id is None
+
 
 def _scripted_process(lines, *, returncode=None):
     """Build a mock subprocess whose stdout.readline yields *lines* in order.
@@ -7809,6 +8022,27 @@ class TestFormatAcpError:
             out = _format_acp_error(err)
             assert "kiro-cli login" in out.lower(), f"No sign-in guidance for: {status!r}"
             assert "transient error" not in out.lower(), f"Misclassified: {status!r}"
+
+    def test_session_expired_names_the_failing_harness(self):
+        """A routed claude or codex session that loses its sign-in must be told
+        to sign in to that harness, not to kiro-cli, which it never used."""
+        err = {
+            "code": -32603,
+            "message": "Internal error",
+            "data": "Failed to authenticate: OAuth session expired and could not be refreshed",
+        }
+        for backend, login in (
+            ("claude", "claude auth login"),
+            ("codex", "codex login"),
+            ("cursor", "cursor-agent login"),
+            ("kiro", "kiro-cli login"),
+            (None, "kiro-cli login"),
+        ):
+            out = _format_acp_error(err, backend=backend)
+            assert f"`{login}`" in out, f"{backend!r}: {out}"
+            assert "will not help" in out, backend
+            if backend not in ("kiro", None):
+                assert "kiro-cli" not in out, backend
 
     def test_session_expired_401_with_transport_error(self):
         """The reported failure mode: an aborted request leaves a transport

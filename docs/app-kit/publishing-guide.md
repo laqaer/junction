@@ -351,17 +351,28 @@ MyAppRepo/
 
 There are two listing surfaces, and they take different paths:
 
-**The official App Store catalog** lives in its own repository, the Junction
-app registry — not in this repo. That repository is not published yet, so until
-it is, this path is not open to outside authors. Since the catalog became the store's inventory, publishing an entry there
-is what makes your app appear in the store *and installable*, with **no Junction
-release involved**. You author a `git` source (URL + a branch or tag; the
-publish pipeline resolves and pins the exact commit) plus a category, and open a
-pull request on that repository. Its README documents the authored schema, the
-validators, and the two-schema (authored vs published) contract. Clients install
-the pinned commit exactly and read update availability from the published
-entry's `version` field, so publishing a new revision of the catalog is also how
-an update reaches users.
+**The official App Store catalog** is the `official-registry.json` document a
+client fetches from the origin named by `JUNCTION_APP_CATALOG_BASE`. A stock
+build names no origin, so it lists the bundled seed below; the `site/`
+deployment publishes the document for `https://apps.getjunction.dev/`, and an
+operator opts in by pointing the variable there once that host is live. For a
+client that fetches it, the catalog is the store's inventory: an entry there is
+what makes your app appear in the store *and installable*, with **no Warding
+release involved**. Clients install the pinned commit exactly and read update
+availability from the published entry's `version` field, so publishing a new
+revision of the catalog is also how an update reaches them.
+
+The catalog's intended home is its own repository, the Warding app registry,
+which is not published yet. Until it is, the document is generated in this repo
+by `scripts/build_app_catalog.py` from the built-in apps and the bundled seed
+below, and served by the `site/` deployment. So today an outside app reaches the
+official store through a pull request here: add your seed entry, run
+`python3 scripts/build_app_catalog.py --refresh-pins` (it resolves your branch
+to its current commit and bakes your `app.json` display fields at exactly that
+commit into `scripts/app_catalog_pins.json`), and commit the seed, the pins, and
+the regenerated `site/public/catalog/official-registry.json` together. A new
+revision of your app reaches users the same way: re-run `--refresh-pins` and
+open a pull request with the new pin.
 
 **The bundled seed** (`src/junction/apps/app-registry.json` in the Junction
 repo) is the catalog's offline snapshot, not the listing surface: it is what a
@@ -393,10 +404,10 @@ The seed (and any federated registry index) uses this row shape:
 | `detectInstalled` | | Shell command that exits 0 when the app is already present on the machine (for self-managed apps). It runs sandboxed with a 5s timeout. |
 | `featured` | | Curator flag for the Discover editorial layer. `true` marks the app featured; a number both marks it and orders the slots (lower first). It lives on the registry entry, not in `app.json`, and is honored only for core-registry entries: a `featured` flag from an external registry is ignored, so adding a registry cannot seize the spotlight. With nothing flagged, the store falls back to a deterministic pick (apps with hero art first, then verified publishers, then name). |
 
-To reach the official store, open the pull request on **the Junction app
-registry** once it is published (add your entry to
-`catalog/official-registry.json` there; run its `tools/validate.py` first). A seed change in the Junction repo follows the normal contribution flow
-and ships with the next release.
+A seed change in this repo follows the normal contribution flow. The catalog
+half of it is published once the `site/` deployment publishes the merge, for
+clients that fetch the catalog; the seed half, which a stock build lists, ships
+with the next release.
 
 ## 11. Federated external registries
 

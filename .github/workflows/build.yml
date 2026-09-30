@@ -78,6 +78,7 @@ jobs:
         with:
           name: wheel
           path: dist/*.whl
+          retention-days: 1
 
   # Keep the native installer fast without coupling the check to a custom UI.
   # This builds the real Windows artifact, installs it silently, verifies the
@@ -122,6 +123,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-installer-performance
+          retention-days: 1
           path: |
             website/electron/runtime-evidence/install-timing.txt
             website/electron/runtime-evidence/native-install-mode.png
@@ -209,6 +211,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: desktop-macos-arm64
+          retention-days: 1
           path: |
             website/electron/dist/*.dmg
             website/electron/dist/*.zip
@@ -221,5 +224,6 @@ jobs:
           # Arch in the name: both Linux legs match `runner.os == 'Linux'`, and a
           # shared artifact name makes the two uploads collide.
           name: desktop-linux-${{ runner.arch }}
+          retention-days: 1
           path: website/electron/dist/*.AppImage
           if-no-files-found: warn

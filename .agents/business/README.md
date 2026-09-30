@@ -65,7 +65,7 @@ This envelope binds all six roles. A role file may narrow it; nothing may widen 
 ## Truth rules every role applies
 
 1. **Lineage, line one of anything long.** "Built on Amazon's open-source Kiro
-   agent workspace, published under Apache-2.0 in August 2026. Most of the code
+   agent workspace, published under Apache-2.0 in 2026. Most of the code
    is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon."
    Everywhere else say "the upstream project" or "upstream". The upstream
    product's two-word name is never written in this tree outside the root
@@ -74,8 +74,12 @@ This envelope binds all six roles. A role file may narrow it; nothing may widen 
    allowed. Never Kiro in the product name, tagline, logo or domain; never the
    Kiro or Amazon marks in any image asset. The compare page is
    `/compare/upstream/`.
-2. **State the limit in the same sentence as the feature.** One agent at a time,
-   chosen in one setting. Five channels with approve buttons (Slack, Discord,
+2. **State the limit in the same sentence as the feature.** Chat sessions run
+   the one harness chosen in one setting; spawned subagents can be routed to
+   another installed harness by the harness router (flat-rate quota before
+   metered, task kind, cooldown after a usage limit or failed login), which
+   picks a harness and never forwards provider traffic; OpenCode and the router
+   are registered, not verified at runtime. Five channels with approve buttons (Slack, Discord,
    Telegram, Teams, Webex), one with typed approvals (WhatsApp), four chat-only
    (iMessage, WeChat, WeCom, Feishu); the upstream project ships the same ten
    channels. Cron and subagents from chat work on kiro-cli only today; on other
@@ -87,8 +91,9 @@ This envelope binds all six roles. A role file may narrow it; nothing may widen 
    harness without a row is "registered", not "supported".
 4. **Name what we added exactly.** Upstream 0.7.1 docks six non-Kiro backends;
    Warding's registry adds five harnesses upstream does not dock (Cursor, Kimi,
-   DeepSeek Harness, Grok, Droid) and lacks two upstream has (OpenCode, KAS).
-   Never "nine more harnesses". The Claude adapter is the ACP project's
+   DeepSeek Harness, Grok, Droid) and lacks one upstream has (KAS); both dock
+   OpenCode.
+   Never "ten more harnesses". The Claude adapter is the ACP project's
    `claude-agent-acp`, fetched with `npx` on first run; never "Anthropic's
    adapter". The base is 0.5.0 and there is no tagged release; no version string
    appears in public until a tag exists.

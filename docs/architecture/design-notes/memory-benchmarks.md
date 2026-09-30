@@ -191,10 +191,10 @@ present), so `get_shared_embedder().wait_ready()` returns False and
 degrades to FTS5 keyword `LIKE` matching. The harness refuses to run in that state
 rather than reporting a substring-overlap score as a retrieval number.
 
-## Running it on a schedule
+## Running it on demand
 
-`.github/workflows/memory-benchmark.yml` runs the retrieval ruler nightly at
-08:00 UTC (and on `workflow_dispatch`), and reports the **drift from the last
+`.github/workflows/memory-benchmark.yml` runs the retrieval ruler on demand
+via `workflow_dispatch`, and reports the **drift from the last
 accepted baseline** rather than an absolute number.
 
 The baseline lives in `bench_baselines/accepted/` and only changes when a human

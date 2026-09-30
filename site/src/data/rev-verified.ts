@@ -99,6 +99,12 @@ export const notYet: NotYet[] = [
       "The gateway code is the same for every harness by construction, and nobody has run a channel round-trip, a scheduled job or an in-chat approval on Claude Code, Codex or the others at runtime.",
   },
   {
+    what: "The harness router: a subagent sent to another harness",
+    status: "planned",
+    detail:
+      "Registered · unverified. Chat sessions run the one harness you choose; the router can send a spawned subagent to another installed harness (flat-rate quota before metered, task kind, a cooldown after a usage limit or a failed login), and it never forwards provider traffic. It is covered by unit tests; no routed run on a live harness has been recorded, and neither has an OpenCode session.",
+  },
+  {
     what: "The Telegram round-trip on Claude Code",
     status: "planned",
     detail: "The homepage shows it as a simulation and says so in the caption.",

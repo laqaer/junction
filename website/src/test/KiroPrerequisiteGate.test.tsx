@@ -27,6 +27,9 @@ vi.mock('../api/client', () => ({
   api: {
     kiroPrerequisite: vi.fn(),
     repairKiroPrerequisiteSpecs: vi.fn(),
+    routingHarnesses: vi.fn().mockResolvedValue(null),
+    checkRoutingHarness: vi.fn(),
+    completeSetupWithAgents: vi.fn(),
   },
 }))
 
@@ -1143,5 +1146,44 @@ describe('KiroPrerequisiteGate', () => {
     )
 
     expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
+  })
+
+  it('opens the dashboard on another connected agent without kiro-cli', async () => {
+    // kiro-cli is optional: an operator who signed in to Codex (or any other
+    // docked agent) finishes first-run setup from the gate itself.
+    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status())
+    vi.mocked(api.routingHarnesses).mockResolvedValue({
+      code: 'ok', enabled: true, source: 'auto', path: '', warnings: [], kinds: [], preview: {},
+      harnesses: [{
+        harness: 'codex', label: 'Codex (ChatGPT)', billing: 'subscription', featured: true,
+        installed: true, setup: { install: 'npm i -g @openai/codex', login: 'codex login', docs_url: '' },
+        hint: '', lane: null, lane_count: 0, routed: false, window_used: 0, day_used: 0,
+        cooldown_until: 0, cooldown_reason: '',
+        probe: { status: 'connected', detail: '', models: 2, checked_at: 1 },
+      }],
+    })
+    vi.mocked(api.completeSetupWithAgents).mockResolvedValue(status({ initial_setup_complete: true }))
+
+    renderWithProviders(
+      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+    )
+
+    const next = await screen.findByRole('button', { name: /Continue with these agents/ })
+    await waitFor(() => expect(next).not.toBeDisabled())
+    fireEvent.click(next)
+    expect(await screen.findByText('Dashboard loaded')).toBeInTheDocument()
+    expect(api.completeSetupWithAgents).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps Continue disabled until an agent is connected', async () => {
+    vi.mocked(api.kiroPrerequisite).mockResolvedValue(status())
+    vi.mocked(api.routingHarnesses).mockResolvedValue(null)
+
+    renderWithProviders(
+      <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
+    )
+
+    expect(await screen.findByRole('button', { name: /Continue with these agents/ })).toBeDisabled()
+    expect(screen.getByText('Connect at least one agent to continue.')).toBeInTheDocument()
   })
 })

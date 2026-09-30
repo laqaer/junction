@@ -47,14 +47,19 @@ there — what ran, what asked, what was refused, nothing leaked.
 
 ## What it is
 
-1. **One docked harness.** A registry of ACP runtimes
-   (`src/junction/acp/runtimes.py`): Cursor, Claude Code (via the ACP
+1. **The docked harness, and a router for subagents.** A registry of ACP
+   runtimes (`src/junction/acp/runtimes.py`): Cursor, Claude Code (via the ACP
    project's `claude-agent-acp` adapter, fetched with `npx` on first run),
-   Codex, Kimi, DeepSeek Harness, Goose, Grok, Pi, Droid, and kiro-cli last
-   and optional. `agent.acp_backend` defaults to `auto`; pin an id to choose.
-   One harness at a time, set globally; schedules, memory and channels stay
-   when you switch. Verification status per harness is the matrix in
-   [README](README.md#one-harness-at-a-time).
+   Codex, Kimi, DeepSeek Harness, Goose, Grok, OpenCode, Pi, Droid, and
+   kiro-cli last and optional. `agent.acp_backend` defaults to `auto`; pin an
+   id to choose. Your chat sessions run the one harness you choose in that
+   one setting; schedules, memory and channels stay when you switch. Spawned
+   subagents can be routed to another installed harness by the harness router
+   (flat-rate quota before metered, task kind, cooldown after a usage limit or
+   failed login); it picks a harness and never forwards provider traffic.
+   Verification status per harness is the matrix in
+   [README](README.md#the-harness-you-choose-and-where-subagents-go); OpenCode
+   and the router are registered and unit-tested, not verified at runtime.
 2. **The desk.** The gateway this tree inherited: web dashboard, CLI, ten chat
    apps (five with approve buttons, WhatsApp typed, four chat-only), cron with
    a template gallery, a walk-away task runner with checkpoints, subagents,
@@ -88,8 +93,10 @@ labels: Available now, Pre-order, or Waitlist. The live list is the
 
 ## What it is not
 
-- **Not a parallel-agent GUI.** One harness at a time. If you are at the
-  keyboard watching several agents, use a tool built for that.
+- **Not a parallel-agent GUI.** Chat runs the one harness you choose; the
+  router picks a harness for each spawned subagent, which runs in the
+  background, not in a pane you watch. If you are at the keyboard watching
+  several agents, use a tool built for that.
 - **Not a model router.** The catalog lists names; it forwards no traffic and
   takes no provider keys.
 - **Not a hosted service.** No account with us, no cloud sessions, no
@@ -112,6 +119,7 @@ labels: Available now, Pre-order, or Waitlist. The live list is the
 | `warding doctor --quick` | Verify the install without serving. |
 | `warding service install` | Run the same gateway as a systemd unit or launchd agent. |
 | `warding chat`, `run`, `cron`, `spawn` | Chat, walk-away tasks, schedules, subagents. |
+| `warding route` | The harness router: lanes, cooldowns, the pick per kind of work (`status`, `pick`, `run`, `check`, `init`, `clear`). |
 | `warding security events`, `audit`, `verify` | Read and verify the audit log. |
 | `warding policy show`, `validate`, `explain` | Inspect the policy and profiles. |
 | `warding router catalog` | The names-only model catalog. |

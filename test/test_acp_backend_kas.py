@@ -180,7 +180,16 @@ class TestConfigThreading:
     future refactor from dropping the kwarg silently.
     """
 
-    def test_default_config_is_auto(self):
+    def test_default_config_is_auto(self, monkeypatch: pytest.MonkeyPatch):
+        # Nothing installed: ``auto`` has no concrete harness to resolve to, so
+        # the factory keeps the configured value and the provider resolves — and
+        # fails — at spawn exactly as it always has.
+        from junction.acp.runtimes import RuntimeNotFoundError
+
+        def _no_runtime(*_args: object, **_kwargs: object) -> object:
+            raise RuntimeNotFoundError("none installed")
+
+        monkeypatch.setattr("junction.acp.runtimes.select_runtime", _no_runtime)
         cfg = JunctionConfig()
         assert cfg.agent.acp_backend == ACP_BACKEND_AUTO
         provider = cfg.create_provider_factory()(session_key="test:default", agent="")

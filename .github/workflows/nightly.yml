@@ -1,9 +1,7 @@
 name: Nightly Build
 
 on:
-  schedule:
-    - cron: "0 6 * * *" # 06:00 UTC = 11pm PDT
-  workflow_dispatch: {} # manual trigger for testing
+  workflow_dispatch: {} # Build and publish nightlies only when requested.
 
 # All build/sign/notarize/publish logic lives in reusable workflows shared
 # with release.yml (build-wheel.yml, build-desktop.yml, publish-cli.yml,
@@ -75,7 +73,7 @@ jobs:
           # why it is not just a bare timestamp:
           #
           # 1. LIVE -- SemVer forbids leading zeros in a purely NUMERIC
-          #    prerelease identifier. The 06:00 cron yields HHMMSS=060000, so a
+          #    prerelease identifier. A 06:00 run yields HHMMSS=060000, so a
           #    bare `.${STAMP_TIME}` identifier would be invalid and
           #    electron-builder would reject it. Inside an alphanumeric
           #    identifier (the "t" makes it alphanumeric) leading zeros are legal.

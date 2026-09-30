@@ -251,9 +251,9 @@ const bento = [
         <div class="reveal">
           <h2 id="h7">Bring the agent you already use.</h2>
           <p class="step-body">
-            Warding launches the official <code>claude</code> (via the ACP project's <code>claude-agent-acp</code> adapter, fetched with <code>npx</code> on first run), <code>codex</code>, <code>goose</code>, <code>cursor</code>, <code>kimi</code>, <code>dsh</code> (DeepSeek Harness), <code>grok</code>, <code>pi</code>, <code>droid</code> or <code>kiro-cli</code> under your own login. One harness at a time, chosen in one setting; your schedules, memory and channels stay when you switch. Warding adds no run cap, and Warding Labs never sees your tokens or keys: there is no server of ours in the loop. Your vendor's plan limits and terms for unattended use apply exactly as in the terminal; for shared or production automation, use an API key.
+            Warding launches the official <code>claude</code> (via the ACP project's <code>claude-agent-acp</code> adapter, fetched with <code>npx</code> on first run), <code>codex</code>, <code>goose</code>, <code>cursor</code>, <code>kimi</code>, <code>dsh</code> (DeepSeek Harness), <code>grok</code>, <code>opencode</code>, <code>pi</code>, <code>droid</code> or <code>kiro-cli</code> under your own login. Chat runs the one harness you choose in one setting; your schedules, memory and channels stay when you switch. The harness router can send a spawned subagent to another installed harness, and never forwards provider traffic; that is registered, not yet verified. Warding adds no run cap, and Warding Labs never sees your tokens or keys: there is no server of ours in the loop. Your vendor's plan limits and terms for unattended use apply exactly as in the terminal; for shared or production automation, use an API key.
           </p>
-          <p class="caption">No Gemini, no OpenCode yet. <a href="/registry/">Registry</a>.</p>
+          <p class="caption">No Gemini yet. <a href="/registry/">Registry</a>.</p>
         </div>
         <figure class="plate reveal" data-shot>
           <pre class="terminal planes"><code><span class="prompt">$ </span>{site.cli} planes
@@ -399,7 +399,7 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
           <WardSeal size={64} class="stamp" />
         </div>
         <ul class="signed-list">
-          <li>One harness at a time, set globally. No second harness running alongside it.</li>
+          <li>Chat runs the one harness you choose. Sending a spawned subagent to another installed harness is registered and unit-tested, not verified at runtime; the router picks a harness and forwards no provider traffic.</li>
           <li>The model catalog lists names; it forwards nothing and holds no keys.</li>
           <li>Approve buttons on five chat apps; WhatsApp is typed; four apps are chat-only.</li>
           <li>Cron and subagents <em>from chat</em>, and the agent's mid-turn questions, work on kiro-cli today; on other harnesses create jobs and spawn subagents from the dashboard or CLI, and the agent cannot ask you a question mid-turn.</li>

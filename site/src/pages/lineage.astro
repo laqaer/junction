@@ -4,7 +4,7 @@ import StatusChip from "../components/StatusChip.astro";
 import WardBars from "../components/WardBars.astro";
 import CharterSheet from "../components/CharterSheet.astro";
 import { site } from "../data/site";
-import { harnesses, notDocked } from "../data/harnesses";
+import { harnesses, router } from "../data/harnesses";
 
 /**
  * /lineage/ (site-spec §7): the lineage statement, the carry-set, the fork
@@ -14,10 +14,9 @@ import { harnesses, notDocked } from "../data/harnesses";
  */
 const title = "Lineage: built on Amazon's open-source Kiro workspace";
 const description = "Warding derives from Amazon's open-source Kiro agent workspace (Apache-2.0). The NOTICE, what we carry, the fork plan, and what upstream has that we lack.";
-const lineage = "Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in August 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon.";
+const lineage = "Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon.";
 const nonKiro = harnesses.filter((h) => !h.upstreamMature);
 const registryOffered = ""; // ISO date once the registry has been offered upstream; "" renders "planned"
-const notDockedLine = `No ${notDocked.join(", no ")} yet`;
 ---
 <PageLayout title={title} description={description} h1="Where it comes from" lead={lineage} breadcrumbs={[{ label: "Lineage", href: "/lineage/" }]}>
   <div class="lineage">
@@ -30,7 +29,11 @@ const notDockedLine = `No ${notDocked.join(", no ")} yet`;
       <ol class="carry">
         <li>
           <h3>The harness registry, with kiro-cli optional and last</h3>
-          <p>One dock, {harnesses.length} runtimes, chosen by preference order or by one setting: {nonKiro.map((h) => h.command).join(", ")}, then kiro-cli. Nine are non-Kiro; five of them the upstream project does not dock. First run never asks for a vendor account with us. <a href="/registry/">The registry</a>, with what is verified on each.</p>
+          <p>One dock, {harnesses.length} runtimes, chosen by preference order or by one setting: {nonKiro.map((h) => h.command).join(", ")}, then kiro-cli. Ten are non-Kiro; five of them the upstream project does not dock, and both of us dock OpenCode. First run never asks for a vendor account with us. <a href="/registry/">The registry</a>, with what is verified on each.</p>
+        </li>
+        <li>
+          <h3>The harness router, for subagents</h3>
+          <p>Chat runs the one harness you choose. The {router.name.toLowerCase()} (<code>{router.command}</code>) {router.what} <a href="/verified/#notyet-h">Registered · unverified</a>.</p>
         </li>
         <li>
           <h3>Endpoint removal</h3>
@@ -80,7 +83,7 @@ const notDockedLine = `No ${notDocked.join(", no ")} yet`;
         <li>No signed installers yet; upstream ships them for macOS, Windows and Linux.</li>
         <li>No Docker image yet; upstream publishes one.</li>
         <li>No desktop app yet; upstream ships one.</li>
-        <li>{notDockedLine}; upstream docks OpenCode and KAS.</li>
+        <li>No KAS yet; upstream docks it. Both of us dock OpenCode.</li>
         <li>On a non-Kiro harness, upstream gives the agent its own MCP tools; Warding passes them only to kiro-cli today, so on other harnesses the agent cannot create jobs, spawn subagents or ask you a question from chat.</li>
         <li>Install polish, generally. The upstream project is at a later version with more hands on it.</li>
       </ul>

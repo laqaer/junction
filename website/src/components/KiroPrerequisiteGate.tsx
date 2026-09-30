@@ -16,6 +16,7 @@ import {
   ApiError,
   api,
   type KiroPrerequisiteStatus,
+  type RoutingHarnessesView,
 } from '../api/client'
 import {
   PANEL_CLASS,
@@ -26,8 +27,10 @@ import {
 import { safeGetItem, safeSetItem } from '../utils/safeStorage'
 import { copyToClipboard } from '../utils/clipboard'
 import { Badge, Btn, Card, SendBtn } from './ui'
+import { AgentsPanel, ROUTING_HARNESSES_QUERY_KEY } from '../pages/settings/AgentsPanel'
 
 import { i18nT } from '../i18n/t'
+import { fmtList } from '../i18n/format'
 const QUERY_KEY = ['kiro-prerequisite'] as const
 
 export function kiroPrerequisiteRefetchInterval(
@@ -717,6 +720,21 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
     mutationFn: api.repairKiroPrerequisiteSpecs,
     onSuccess: updateStatus,
   })
+  // kiro-cli is optional: first-run setup also completes on any other docked
+  // agent once the harness router has seen it connect. Read only while the
+  // first-run gate is up, so a returning user pays nothing for it.
+  const firstRunBlocking = kiroPrerequisiteIsBlocking(statusQuery.data)
+  const agentsQuery = useQuery<RoutingHarnessesView | null>({
+    queryKey: ROUTING_HARNESSES_QUERY_KEY,
+    queryFn: () => Promise.resolve(api.routingHarnesses?.()).then(v => v ?? null),
+    enabled: firstRunBlocking,
+  })
+  const connectedAgents = (agentsQuery.data?.harnesses ?? [])
+    .filter(h => h.installed && h.probe.status === 'connected')
+  const completeWithAgents = useMutation({
+    mutationFn: () => api.completeSetupWithAgents(),
+    onSuccess: updateStatus,
+  })
 
   // Remember that this gateway has completed first-run setup, so a later COLD
   // load can classify the user before (or without) a successful status
@@ -861,6 +879,41 @@ export default function KiroPrerequisiteGate({ children }: { children: ReactNode
   return (
     <SetupShell>
         <>
+          <Card className={connectedAgents.length > 0 ? 'border-accent/60 shadow-[0_10px_35px_var(--accent-glow)]' : ''}>
+            <h2 className="text-base font-semibold text-text-strong">
+              {i18nT('components.kiroPrerequisiteGate.agents_heading')}
+            </h2>
+            <p className="mt-2 mb-3 text-sm leading-relaxed text-muted">
+              {i18nT('components.kiroPrerequisiteGate.agents_description')}
+            </p>
+            <AgentsPanel compact />
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <p className="text-[13px] text-muted" aria-live="polite">
+                {connectedAgents.length > 0
+                  ? i18nT('components.kiroPrerequisiteGate.agents_ready', { agents: fmtList(connectedAgents.map(a => a.label)) })
+                  : i18nT('components.kiroPrerequisiteGate.connect_an_agent_first')}
+              </p>
+              <SendBtn
+                type="button"
+                className="inline-flex items-center gap-1.5 shrink-0"
+                disabled={connectedAgents.length === 0 || completeWithAgents.isPending}
+                onClick={() => completeWithAgents.mutate()}
+              >
+                {i18nT('components.kiroPrerequisiteGate.continue_with_agents')}
+                <ArrowRight className="lucide-inline" />
+              </SendBtn>
+            </div>
+            {completeWithAgents.isError && (
+              <p className="mt-2 text-[13px] text-warn" role="alert">
+                {asSentence(completeWithAgents.error?.message || '')}
+              </p>
+            )}
+          </Card>
+
+          <p className="my-5 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted">
+            {i18nT('components.kiroPrerequisiteGate.or_use_kiro_cli')}
+          </p>
+
           <div className="mb-7">
             <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold tracking-[0.14em] text-accent">
               <span className="uppercase">{i18nT('components.kiroPrerequisiteGate.setup')}</span>
