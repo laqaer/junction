@@ -87,6 +87,14 @@ are all closed.
 
 On a branch, not on `main`. Local work is real; it is just unmerged.
 
+**Update 2026-09-30.** Two lanes below have since merged: `rescue/harness-router`
+as [#46](https://github.com/laqaer/junction/pull/46) (OpenCode docked, the
+harness router for spawned subagents) and `rescue/config-role-keys` as
+[#45](https://github.com/laqaer/junction/pull/45). Both are on `main`,
+registered and unit-tested; no live-harness run is recorded for either.
+`claude/pensive-faraday-g61q5y` now carries the Warding relaunch with `main`
+merged in, and is not on `main`. The rows below are the 2026-09-27 record.
+
 | Branch | Worktree | SHA | Lane | State | Issue |
 |---|---|---|---|---|---|
 | `rescue/harness-router` | `/tmp/jxrescue` | `50bc58329` | Dock OpenCode as an ACP harness; route work across harness subscriptions; reruns, model choice, tasks, and background work run on the active harness | Kiro-ID leakage fix in place: Kiro model ids were wrongly inherited and translated onto a foreign harness; the fix keeps the foreign harness on its own ids. Focused harness suite **402 passed** (router / parity / runtimes / session, 2026-09-27); an extended nine-file run is 777 passed / 6 pre-existing skips; ACP client suite 533 passed. `auto` now resolves to a concrete harness at provider creation, so an `auto`-persisted session may see one provider-switch replay after upgrade (live behavior unverified). Not yet merged | [#43](https://github.com/laqaer/junction/issues/43) |

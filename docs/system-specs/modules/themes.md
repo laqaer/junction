@@ -11,10 +11,13 @@ Themes are a **standalone subsystem built on `useTheme`**. This document is the
 **source of truth** for the end-to-end subsystem.
 The factory theme's picker slug is `junction` (`DEFAULT_COLOR_THEME` in
 `website/src/hooks/useTheme.tsx`; it renders as `data-theme="junction-dark"` /
-`"junction-light"`). Its palette is "Interchange": signal blue (`#5c8dff` dark,
-`#1f55ec` light) on cool asphalt neutrals (`#0b0e13` dark background). `:root`
-carries the dark set, so first paint is already Junction. The UI typefaces are
-Overpass and Overpass Mono, bundled under `website/public/fonts/overpass` and
+`"junction-light"`). The brand palette is paper and night: ink `#1A1814` and a
+vermillion seal `#B3301A` on paper `#F3EEE3`, warm white `#ECE8E1` and lamp
+amber `#FFB547` on night `#0B0E14`. `:root` carries the dark set, so first paint
+is already Junction. The UI typefaces are Overpass and Overpass Mono, bundled
+under `website/public/fonts/overpass`; the brand faces, Fraunces (wordmark,
+display) and IBM Plex Sans (body, UI), are bundled beside them under
+`website/public/fonts/fraunces` and `website/public/fonts/ibm-plex-sans`. All are
 served from the dashboard's own origin. A persisted built-in slug that no longer
 exists resets to the default through the theme self-repair effect, so no alias
 table is kept for retired slugs. The brand kit (mark, glyph, wordmark, app and

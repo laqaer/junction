@@ -1,11 +1,11 @@
-"""``junction route`` — see and use the harness router from a terminal.
+"""``warding route`` — see and use the harness router from a terminal.
 
-    junction route                     lanes, windows, cooldowns, per-kind picks
-    junction route pick KIND           rank every lane for one kind of work
-    junction route run "PROMPT"        run one prompt on the routed harness
-    junction route check [LANE ...]    start each harness once: installed? logged in?
-    junction route init                write routing.json from the installed harnesses
-    junction route clear [LANE]        lift a cooldown early
+    warding route                      lanes, windows, cooldowns, per-kind picks
+    warding route pick KIND            rank every lane for one kind of work
+    warding route run "PROMPT"         run one prompt on the routed harness
+    warding route check [LANE ...]     start each harness once: installed? logged in?
+    warding route init                 write routing.json from the installed harnesses
+    warding route clear [LANE]         lift a cooldown early
 
 ``route pick`` is the CLI twin of the ``route_task`` MCP tool; ``route run`` is
 the terminal twin of ``spawn_run(harness="route")``.
@@ -173,7 +173,7 @@ def _print_status(router: HarnessRouter, *, as_json: bool) -> None:
     print("\nCurrent pick per kind:")
     for kind in status["kinds"]:
         print(f"  {kind:<9} → {status['preview'].get(kind) or '(none)'}")
-    print('\nUse: junction route run -k <kind> "<prompt>"   ·   junction route pick <kind>')
+    print('\nUse: warding route run -k <kind> "<prompt>"   ·   warding route pick <kind>')
 
 
 def _print_pick(router: HarnessRouter, kind: str, *, prefer: str, as_json: bool) -> None:
@@ -326,7 +326,7 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
     installed = router.installed(refresh=True)
     lanes = [ln for ln in settings.lanes if ln.enabled and (not lane_ids or ln.id in lane_ids)]
     if not lanes:
-        print("no lanes to check (see `junction route status`)")
+        print("no lanes to check (see `warding route status`)")
         return 1
     worst = 0
     for lane in lanes:

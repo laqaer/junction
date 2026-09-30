@@ -413,10 +413,13 @@ alone; probe whatever already owns it instead of starting a second listener.
 
 ### Route work across your subscriptions
 
-Junction can send each task to whichever coding agent you already pay for is
-best placed to do it: Claude Code, Codex (ChatGPT), Cursor, Grok Build, and
-OpenCode (OpenRouter and any other provider it logs into). Each agent keeps its
-own login; Junction never sees a key. kiro-cli is optional.
+Chat sessions run the one agent `agent.acp_backend` names. Work handed to a
+spawned subagent can go to whichever installed coding agent you already pay for
+is best placed to do it: Claude Code, Codex (ChatGPT), Cursor, Grok Build, and
+OpenCode (OpenRouter and any other provider it logs into). The router picks an
+agent and never forwards provider traffic; each agent keeps its own login and
+Warding never sees a key. kiro-cli is optional. The router and OpenCode are
+registered and unit-tested; neither is verified on a live run yet.
 
 1. `junction up` and open the dashboard. On first run, the setup screen lists
    your agents; after that they live in **Settings ▸ Agents & plans**.
@@ -431,10 +434,11 @@ own login; Junction never sees a key. kiro-cli is optional.
    **Tasks per window** if you know the plan's limit. **Who gets what** shows
    where each kind of work goes right now.
 
-The same from a terminal: `junction route check`, `junction route`, and
-`junction route run -k review "review the diff on this branch"`. Ask the
+The same from a terminal: `warding route check`, `warding route`, and
+`warding route run -k review "review the diff on this branch"`. Ask the
 dashboard agent to fan a plan out and it calls `spawn_run` with
-`harness="route"` and a `kind` per step. Work that hits a usage limit before
+`harness="route"` and a `kind` per step (from chat, that needs a chat harness
+that carries Warding's MCP tools, which today is kiro-cli). Work that hits a usage limit before
 doing anything moves to the next agent on its own.
 
 How lanes are scored and when work fails over:

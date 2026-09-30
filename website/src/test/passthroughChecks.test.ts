@@ -23,7 +23,7 @@ import {
 /** The real do-not-translate list is small and stable; these are enough of it. */
 const DNT = [
   'AWS', 'GitHub', 'Kiro', 'Python', 'Slack', 'JSON', 'MCP', 'npm', 'Git',
-  'Junction', // brand-ok: the product name as `dnt` itself spells it
+  'Warding', // the product name as `dnt` itself spells it
 ]
 
 const [script, english] = passthroughChecks(DNT)

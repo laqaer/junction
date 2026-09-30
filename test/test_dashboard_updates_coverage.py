@@ -49,7 +49,7 @@ def _isolated_module_state(monkeypatch, tmp_path):
     to prevent.
     """
     monkeypatch.delenv("JUNCTION_PROJECT_DIR", raising=False)
-    monkeypatch.delenv("JUNCTION_CDN_BASE", raising=False)
+    monkeypatch.setenv("JUNCTION_CDN_BASE", "https://cdn.test.invalid")
     monkeypatch.setattr(update_layout, "data_home", lambda: tmp_path)
     saved_info = dict(updates._update_info)
     saved_ring = list(updates._log_ring)

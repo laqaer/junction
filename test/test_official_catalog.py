@@ -128,8 +128,15 @@ class TestResolveRef:
         """NOT against the app's repository -- the whole point of the catalog
         hosting the bytes is that the publisher's repo leaves the render path."""
         assert oc._resolve_ref("assets/icons/abc.png") == (
-            "https://apps.getjunction.dev/assets/icons/abc.png"
+            oc.catalog_base() + "assets/icons/abc.png"
         )
+
+    def test_a_relative_ref_is_dropped_when_no_catalog_is_configured(self, monkeypatch):
+        """With no origin to host the bytes, a bare relative path would resolve
+        against the dashboard itself; dropping it is the only honest answer."""
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        assert oc._resolve_ref("assets/icons/abc.png") == ""
+        assert oc._resolve_ref("/app-assets/x/icon.svg") == "/app-assets/x/icon.svg"
 
     @pytest.mark.parametrize(
         "ref",
@@ -229,8 +236,8 @@ class TestAnnotate:
             "iconRefDark": "assets/icons/b.png",
             "heroRef": "/app-assets/demo/hero.svg",
         }])
-        assert rows[0]["iconUrl"] == "https://apps.getjunction.dev/assets/icons/a.png"
-        assert rows[0]["iconUrlDark"] == "https://apps.getjunction.dev/assets/icons/b.png"
+        assert rows[0]["iconUrl"] == oc.catalog_base() + "assets/icons/a.png"
+        assert rows[0]["iconUrlDark"] == oc.catalog_base() + "assets/icons/b.png"
         assert rows[0]["heroImage"] == "/app-assets/demo/hero.svg"
 
     def test_a_url_shaped_icon_ref_is_not_applied(self):
@@ -240,11 +247,67 @@ class TestAnnotate:
         assert rows[0]["iconUrl"] == "/app-assets/demo/icon.svg"
 
 
-def test_the_catalog_url_is_https_and_under_the_documented_host():
+def test_the_catalog_url_is_https_and_under_the_configured_origin():
     """A plaintext or third-party host here would silently move where every
-    client's app list comes from."""
-    assert oc.OFFICIAL_CATALOG_BASE.startswith("https://apps.getjunction.dev/")
-    assert oc.OFFICIAL_CATALOG_URL == oc.OFFICIAL_CATALOG_BASE + "official-registry.json"
+    client's app list comes from, so the origin comes from one variable and
+    every document is resolved under it."""
+    assert oc.catalog_base().startswith("https://")
+    assert oc.catalog_base().endswith("/")
+    assert oc.catalog_document_url(oc.OFFICIAL_CATALOG_FILE) == (
+        oc.catalog_base() + "official-registry.json"
+    )
+
+
+class TestUnconfiguredCatalog:
+    """A stock build names no catalog origin: nothing is fetched, nothing is
+    cached, nothing is logged above debug, and the seed answers alone."""
+
+    @pytest.fixture(autouse=True)
+    def _unset(self, monkeypatch):
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+
+    def test_the_default_is_no_origin(self):
+        assert oc.catalog_base() == ""
+        assert oc.catalog_configured() is False
+        assert oc.catalog_document_url(oc.OFFICIAL_CATALOG_FILE) == ""
+
+    def test_a_blank_value_counts_as_unset(self, monkeypatch):
+        monkeypatch.setenv(oc.CATALOG_BASE_ENV, "   ")
+        assert oc.catalog_configured() is False
+
+    def test_a_non_https_origin_is_ignored(self, monkeypatch, caplog):
+        monkeypatch.setenv(oc.CATALOG_BASE_ENV, "http://apps.test.invalid/")
+        with caplog.at_level("WARNING"):
+            assert oc.catalog_base() == ""
+        assert any(oc.CATALOG_BASE_ENV in r.getMessage() for r in caplog.records)
+
+    def test_a_configured_origin_gets_a_trailing_slash(self, monkeypatch):
+        monkeypatch.setenv(oc.CATALOG_BASE_ENV, "https://apps.example")
+        assert oc.catalog_base() == "https://apps.example/"
+        assert oc.catalog_document_url("x.json") == "https://apps.example/x.json"
+
+    def test_fetch_document_of_an_empty_url_is_a_silent_none(self, monkeypatch, caplog):
+        def boom(req):
+            raise AssertionError("no network without an origin")
+
+        monkeypatch.setattr(oc, "_open_catalog", boom)
+        with caplog.at_level("INFO"):
+            assert oc.fetch_document("") is None
+        assert caplog.records == []
+
+    def test_load_returns_empty_without_touching_the_cache(self, tmp_path, monkeypatch):
+        cache = tmp_path / "official-catalog.json"
+        monkeypatch.setattr(oc, "_cache_path", lambda: cache)
+        assert oc.load_official_catalog() == []
+        assert not cache.exists(), "no failure marker may be written"
+        assert oc.list_catalog_rows() == []
+
+    def test_inventory_is_definitely_empty_rather_than_unavailable(self, monkeypatch):
+        """Empty, not ``CatalogUnavailable``: absence is asserted, so the install
+        path may resolve a seed row instead of refusing."""
+        monkeypatch.setattr(oc, "_read_cache", lambda: {oc._FAILED_KEY: 1.0})
+        assert oc.fetch_inventory_entries() == []
+        assert oc.inventory_for_install("demo-app") is None
 
 
 def test_cache_write_survives_an_unwritable_directory(tmp_path, monkeypatch):
@@ -335,9 +398,9 @@ class TestSchemeGuard:
         "url",
         [
             "file:///etc/passwd",
-            "http://apps.getjunction.dev/official-registry.json",
+            "http://apps.test.invalid/official-registry.json",
             "ftp://example.invalid/x.json",
-            "//apps.getjunction.dev/x.json",
+            "//apps.test.invalid/x.json",
         ],
     )
     def test_a_non_https_url_is_refused(self, url):
@@ -345,12 +408,13 @@ class TestSchemeGuard:
             oc._https_request(url)
 
     def test_https_is_built_with_a_json_accept_header(self):
-        req = oc._https_request(oc.OFFICIAL_CATALOG_URL)
-        assert req.get_full_url() == oc.OFFICIAL_CATALOG_URL
+        url = oc.catalog_document_url(oc.OFFICIAL_CATALOG_FILE)
+        req = oc._https_request(url)
+        assert req.get_full_url() == url
         assert req.get_header("Accept") == "application/json"
 
-    def test_the_shipped_url_is_https(self):
-        assert oc.OFFICIAL_CATALOG_URL.startswith("https://")
+    def test_a_configured_url_is_https(self):
+        assert oc.catalog_document_url(oc.OFFICIAL_CATALOG_FILE).startswith("https://")
 
 
 class TestTransportFailuresDegrade:
@@ -601,7 +665,7 @@ class TestRedirectsAreRefused:
             # Point the fetch at the redirector. The https guard is bypassed for
             # this test on purpose: the property under test is the REDIRECT
             # refusal, and a test that could not reach a 3xx would prove nothing.
-            monkeypatch.setattr(oc, "OFFICIAL_CATALOG_URL", url)
+            monkeypatch.setattr(oc, "catalog_document_url", lambda name: url)
             monkeypatch.setattr(oc, "_https_request", lambda u: urllib.request.Request(u, method="GET"))
             assert oc._download() is None, "a 3xx must be a fetch failure"
             assert reached == [], f"the redirect target was contacted: {reached}"

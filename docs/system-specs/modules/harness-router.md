@@ -5,11 +5,12 @@ Read it before changing that package, the `harness` / `kind` fields on
 `spawn_run`, or the per-session `acp_backend_override` factory seam. Update it
 in the same commit when behavior documented here changes.
 
-Junction docks several coding-agent harnesses at once — Claude Code, Codex
+Warding docks coding-agent harnesses from one registry — Claude Code, Codex
 (ChatGPT), Cursor, Grok Build, OpenCode (OpenRouter and every other provider it
-logs into), and the rest of the registry in `acp/runtimes.py`. Each is reached
-through a plan or account the operator already pays for. The harness router
-decides which one takes each unit of work. It **chooses a harness**; it never
+logs into), and the rest of `acp/runtimes.py`. Each is reached through a plan
+or account the operator already pays for. Chat sessions run the one harness
+`agent.acp_backend` names; the harness router decides which installed harness
+takes each unit of work handed to a spawned subagent. It **chooses a harness**; it never
 forwards provider traffic, stores a key, or reads a harness's credentials. The
 chosen harness runs with its own login, exactly as `agent.acp_backend` would.
 
@@ -23,7 +24,7 @@ not touch), [subagent](subagent.md) (where routed work runs), [mcp](../../archit
 |---|---|
 | **Harness** | An ACP backend id from `acp/types.py`, spelled for operators (`kiro` for the empty backend). |
 | **Lane** | One subscription or account reached through one harness: `id`, `harness`, `billing`, `weight`, `window_hours`, `window_limit`, `daily_limit`, optional `model`, per-kind `affinity`. Two lanes may share a harness (an OpenCode lane on a cheap OpenRouter model for bulk work, another on a strong one for review). |
-| **Kind** | What the work is: `plan`, `implement`, `debug`, `review`, `test`, `research`, `docs`, `quick`, `bulk` (`kinds.TASK_KINDS`). The orchestrating LLM names it as an enum; the router never guesses it from free text. |
+| **Kind** | What the work is: `plan`, `implement`, `debug`, `review`, `test`, `research`, `docs`, `quick`, `bulk` (`kinds.TASK_KINDS`). The calling agent names it as an enum; the router never guesses it from free text. |
 | **Billing** | `subscription` (flat plan with a usage window), `free`, or `metered` (pay per token). |
 | **Ledger** | `<data home>/routing/ledger.json`: per-lane dispatch timestamps, outcome counters, cooldown deadline, and a truncated, credential-redacted last error. Never prompts or keys. |
 
@@ -38,7 +39,7 @@ Maximum useful work from what the operator already pays for:
    NOMINAL_WINDOW_DISPATCHES`). A lane near its cap yields to one with room.
 3. **Match the task.** Affinity for the kind decides between lanes with similar
    headroom.
-4. **Route around trouble.** A lane resting after a lane-level failure is
+4. **Rest a lane in trouble.** A lane resting after a lane-level failure is
    excluded until its cooldown ends; a lane past `daily_limit` is excluded; a
    lane at `window_limit` falls behind every lane with room (`EXHAUSTED_FACTOR`)
    but is not excluded, since a stated limit may be conservative.
@@ -61,7 +62,7 @@ overrides any of them per lane.
 becomes one lane with its built-in profile (`source: "auto"`), and that set
 tracks installs without a restart. A present-but-unparseable file degrades to
 the detected lanes with a warning: routing is never the reason a gateway cannot
-start. Invalid lanes are skipped with a warning, never guessed at. `junction
+start. Invalid lanes are skipped with a warning, never guessed at. `warding
 route init` writes a template from the installed harnesses.
 
 ```json
@@ -165,7 +166,7 @@ runtime resolves.
 session persisted under `auto` may see a single provider-switch replay after
 upgrade. Live behavior is unverified.
 
-### Terminal (`junction route run`)
+### Terminal (`warding route run`)
 
 Runs one prompt on the resolved lane with the same failover rules, streaming to
 stdout. Tool permission requests are asked at the terminal when both ends are a
@@ -174,12 +175,12 @@ the event loop starts, because the probe never runs on a live loop.
 
 ## Connecting harnesses (`connect.py`)
 
-Junction never performs a sign-in and never sees a credential. "Connecting" an
+Warding never performs a sign-in and never sees a credential. "Connecting" an
 agent means running that agent's own login command, then probing it.
 
 - `HARNESS_SETUP` holds the install and login shell commands and a docs URL for
   the featured subscriptions (Claude Code, Codex, Cursor, Grok Build, OpenCode).
-  Claude's install names `@agentclientprotocol/claude-agent-acp` too: Junction
+  Claude's install names `@agentclientprotocol/claude-agent-acp` too: Warding
   drives Claude Code through that adapter, which the `claude` CLI does not ship.
   Other registry harnesses show their runtime `login_hint` instead.
 - `probe_harness` starts the harness exactly as a session would (provider
@@ -189,7 +190,7 @@ agent means running that agent's own login command, then probing it.
   missing adapter), `timeout`, `error`, and is persisted with a redacted,
   truncated detail and the models the harness advertised (`advertised`, its own
   ids, at most `PROBE_MODELS_MAX`) in `<data home>/routing/harnesses.json`.
-  `junction route check` and the dashboard share it. The complete read/merge/
+  `warding route check` and the dashboard share it. The complete read/merge/
   atomic-replace transaction holds `platform_compat.file_lock` on the stable
   sibling `harnesses.lock`, shared by all harnesses and store instances.
   Concurrent completions retain each harness and its advertised model ids.
@@ -232,13 +233,13 @@ gate.
 
 | Surface | What |
 |---|---|
-| `junction route` / `route status [--json]` | Lanes, windows, 24h use, cooldowns and last error, current pick per kind |
-| `junction route pick KIND` | Rank every lane for a kind (twin of `route_task`) |
-| `junction route run [-k KIND] [--harness T] PROMPT` | One prompt on the routed lane, with failover |
-| `junction route check [LANE…]` | Start each harness once (initialize + session/new): installed? logged in? |
-| `junction route init [--force] [--all]` | Write `routing.json` from the installed harnesses |
-| `junction route clear [LANE]` | Lift a cooldown early |
-| MCP `route_task(kind, prefer?)` | Read-only ranking for the orchestrating agent |
+| `warding route` / `route status [--json]` | Lanes, windows, 24h use, cooldowns and last error, current pick per kind |
+| `warding route pick KIND` | Rank every lane for a kind (twin of `route_task`) |
+| `warding route run [-k KIND] [--harness T] PROMPT` | One prompt on the routed lane, with failover |
+| `warding route check [LANE…]` | Start each harness once (initialize + session/new): installed? logged in? |
+| `warding route init [--force] [--all]` | Write `routing.json` from the installed harnesses |
+| `warding route clear [LANE]` | Lift a cooldown early |
+| MCP `route_task(kind, prefer?)` | Read-only ranking for the agent splitting the work |
 | MCP `spawn_run(harness, harnesses[], kind, kinds[])` | Routed or pinned dispatch |
 | `GET /api/routing/status` | Same payload as `route status --json` |
 | `GET /api/routing/decide?kind=&role=&prefer=&exclude=` | One decision; "no lane" is a 200 with `code: no_lane` |
@@ -253,7 +254,7 @@ Handlers do their file I/O off the event loop.
 ## Invariants
 
 1. **Choose, never forward.** No provider traffic, keys, or credential reads.
-   OpenRouter reaches Junction as the OpenCode harness logged into it.
+   OpenRouter reaches Warding as the OpenCode harness logged into it.
 2. **Unrouted is unchanged.** No lane ⇒ `_run_inner` directly; no override ⇒
    the configured backend; the Kiro path gains no conditional (H13).
 3. **Explicit beats routed.** A named lane or harness never silently moves.
@@ -265,4 +266,6 @@ Handlers do their file I/O off the event loop.
 
 Pinned by `test/test_harness_router.py`, `test/test_harness_router_notices.py`,
 `test/test_harness_probe_store.py`, `test/test_harness_readiness_gate.py`, and
-the per-harness cases in `test/test_session.py`.
+the per-harness cases in `test/test_session.py`. Those are unit and
+integration tests with the harness faked; no routed run on a live harness, and
+no OpenCode session, is recorded as verified yet.

@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Junction is broken or behaves differently than documented.
+description: Something in Warding is broken or behaves differently than documented.
 labels: ["bug"]
 body:
   - type: markdown
@@ -22,8 +22,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Junction version
-      description: Output of `junction --version`.
+      label: Warding version
+      description: Output of `warding --version`.
       placeholder: 1.2.3
     validations:
       required: true
@@ -95,7 +95,7 @@ body:
         Numbered steps from a known starting state. If it is intermittent, say
         roughly how often it happens.
       placeholder: |
-        1. Start Junction with `junction up`
+        1. Start Warding with `warding up`
         2. Open the dashboard and ...
         3. Observe ...
     validations:
@@ -106,7 +106,7 @@ body:
     attributes:
       label: Relevant log output
       description: >-
-        From `junction logs -n 200`, or the browser console for a dashboard
+        From `warding logs -n 200`, or the browser console for a dashboard
         issue. Redact anything sensitive — this is a public issue.
       render: shell
     validations:

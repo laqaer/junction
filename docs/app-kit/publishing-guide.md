@@ -351,15 +351,18 @@ MyAppRepo/
 
 There are two listing surfaces, and they take different paths:
 
-**The official App Store catalog** is the document clients fetch from
-`https://apps.getjunction.dev/official-registry.json`. Since the catalog became
-the store's inventory, an entry there is what makes your app appear in the store
-*and installable*, with **no Junction release involved**: clients install the
-pinned commit exactly and read update availability from the published entry's
-`version` field, so publishing a new revision of the catalog is also how an
-update reaches users.
+**The official App Store catalog** is the `official-registry.json` document a
+client fetches from the origin named by `JUNCTION_APP_CATALOG_BASE`. A stock
+build names no origin, so it lists the bundled seed below; the `site/`
+deployment publishes the document for `https://apps.getjunction.dev/`, and an
+operator opts in by pointing the variable there once that host is live. For a
+client that fetches it, the catalog is the store's inventory: an entry there is
+what makes your app appear in the store *and installable*, with **no Warding
+release involved**. Clients install the pinned commit exactly and read update
+availability from the published entry's `version` field, so publishing a new
+revision of the catalog is also how an update reaches them.
 
-The catalog's intended home is its own repository, the Junction app registry,
+The catalog's intended home is its own repository, the Warding app registry,
 which is not published yet. Until it is, the document is generated in this repo
 by `scripts/build_app_catalog.py` from the built-in apps and the bundled seed
 below, and served by the `site/` deployment. So today an outside app reaches the
@@ -401,9 +404,10 @@ The seed (and any federated registry index) uses this row shape:
 | `detectInstalled` | | Shell command that exits 0 when the app is already present on the machine (for self-managed apps). It runs sandboxed with a 5s timeout. |
 | `featured` | | Curator flag for the Discover editorial layer. `true` marks the app featured; a number both marks it and orders the slots (lower first). It lives on the registry entry, not in `app.json`, and is honored only for core-registry entries: a `featured` flag from an external registry is ignored, so adding a registry cannot seize the spotlight. With nothing flagged, the store falls back to a deterministic pick (apps with hero art first, then verified publishers, then name). |
 
-A seed change in the Junction repo follows the normal contribution flow. The
-catalog half of it is live once the `site/` deployment publishes the merge; the
-seed half, the offline fallback, ships with the next release.
+A seed change in this repo follows the normal contribution flow. The catalog
+half of it is published once the `site/` deployment publishes the merge, for
+clients that fetch the catalog; the seed half, which a stock build lists, ships
+with the next release.
 
 ## 11. Federated external registries
 

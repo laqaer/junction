@@ -170,9 +170,9 @@ describe('ArtifactDeployPage — navigation, disclosure, and copy affordances', 
     installFetch()
     renderPage()
     await profilesLoaded()
-    expect(screen.queryByText('Your credentials never touch Junction.')).toBeNull()
+    expect(screen.queryByText('Your credentials never touch Warding.')).toBeNull()
     fireEvent.click(screen.getByText(/How this is secured/))
-    expect(screen.getByText('Your credentials never touch Junction.')).toBeInTheDocument()
+    expect(screen.getByText('Your credentials never touch Warding.')).toBeInTheDocument()
   })
 
   it('copies a setup command verbatim, comment and all', async () => {

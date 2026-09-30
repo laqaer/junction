@@ -1151,6 +1151,32 @@ class TestConfigDefaults:
         monkeypatch.setattr(beacon.urllib.request, "urlopen", _no_network)
         assert beacon.send(cfg.beacon_endpoint, "1.0.0", enabled=True, acked=True) is False
 
+    def test_a_default_install_sends_nothing_and_says_so_once(self, monkeypatch, caplog):
+        """No endpoint: ``send`` is a no-op before any filesystem or network
+        probe, and explains itself exactly once per process, at debug."""
+        import urllib.request
+
+        from junction.config.loader import TelemetryConfig
+
+        def boom(*a, **k):
+            raise AssertionError("no network without an endpoint")
+
+        monkeypatch.setattr(urllib.request, "urlopen", boom)
+        # beacon_url is the first step past the endpoint guard; reaching it
+        # would mean the guard let an empty endpoint through.
+        monkeypatch.setattr(beacon, "beacon_url", boom)
+        monkeypatch.setattr(beacon, "_UNCONFIGURED_LOGGED", False)
+        cfg = TelemetryConfig()
+        with caplog.at_level("DEBUG", logger=beacon.__name__):
+            assert beacon.send(cfg.beacon_endpoint, "1.0.0", enabled=True, acked=True) is False
+            assert beacon.send(cfg.beacon_endpoint, "1.0.0", enabled=True, acked=True) is False
+        notes = [r for r in caplog.records if "beacon_endpoint is empty" in r.getMessage()]
+        assert len(notes) == 1
+        assert notes[0].levelname == "DEBUG"
+        status = beacon.status(cfg.beacon_endpoint, enabled=True, app_version="1.0.0", acked=True)
+        assert status["would_send"] is False
+        assert status["reason_code"] == "no_endpoint"
+
     def test_a_default_install_actually_sends(self, _isolated_home):
         """DEFAULT-ON, end to end — the whole suppression chain, not just the flag.
 

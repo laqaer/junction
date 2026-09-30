@@ -24,7 +24,7 @@ import { describe, it, expect } from 'vitest'
 
 import { dntViolations } from '../../scripts/lib/render-scan.mjs'
 
-const TERMS = ['GitHub', 'Node.js', 'Git', 'Playwright', 'Junction', 'YAML', 'npm']
+const TERMS = ['GitHub', 'Node.js', 'Git', 'Playwright', 'Warding', 'YAML', 'npm']
 
 /** The respellings the detector exists to catch. */
 const found = (text: string) => dntViolations(text, TERMS).map(v => v.found)

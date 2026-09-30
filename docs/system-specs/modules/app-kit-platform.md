@@ -755,6 +755,25 @@ authors: [../../../src/junction/docs/app-platform-trust-model.md](../../../src/j
 
 ## 14. The published catalog is the store's inventory
 
+**The catalog origin is operator-configured, and a stock build has none.**
+`official_catalog.catalog_base()` reads `JUNCTION_APP_CATALOG_BASE`
+(`CATALOG_BASE_ENV`), accepts only an `https://` value, and answers `""` when it
+is unset — the shipped default. All three published documents
+(`official-registry.json`, `editorial.json`, `category-order.json`) resolve under
+that one origin through `catalog_document_url` / `category_order_url` /
+`editorial_url`. With no origin: `fetch_document("")` returns `None` at debug
+level without a request, `load_official_catalog` / `list_catalog_rows` /
+`load_sections` / `load_category_order` return empty **before reading or writing
+the on-disk cache** (so no failure marker is recorded), `fetch_inventory_entries`
+returns `[]` and `inventory_for_install` returns `None` — a definite absence, not
+`CatalogUnavailable`, so the install path resolves seed rows rather than
+refusing — and a catalog-relative asset ref is dropped by `_resolve_ref` rather
+than emitted as a bare path. `GET /api/apps/registry` therefore renders the
+bundled seed plus the built-ins on disk with no network attempt and no warning.
+Setting the variable to a catalog you publish restores everything below; the
+test suite pins a reserved `.invalid` origin in `conftest.py` so its catalog
+tests describe the configured behaviour.
+
 `GET /api/apps/registry` answers from the published catalog when it is reachable:
 `handle_registry` prefers `list_catalog_apps` (`registry.py`), which maps the
 published `official-registry.json` entries through
@@ -767,9 +786,12 @@ inventory; an unreachable one degrades the listing to the seed.
 **Where the document comes from.** Until the dedicated registry repository is
 published, `scripts/build_app_catalog.py` generates the document in this repo
 and commits it at `site/public/catalog/official-registry.json`. The `site/`
-Vercel deployment serves it at `OFFICIAL_CATALOG_URL` through a host-conditioned
-REWRITE in `site/vercel.json` (never a redirect: `fetch_document` refuses
-3xx). The generator's inputs and rules, each closing a way the store can go wrong:
+Vercel deployment serves it under `build_app_catalog.PUBLISHED_BASE`
+(`https://apps.getjunction.dev/`) through a host-conditioned REWRITE in
+`site/vercel.json` (never a redirect: `fetch_document` refuses 3xx). That is a
+published location, not a client default: a stock build leaves
+`JUNCTION_APP_CATALOG_BASE` empty and lists the seed, and an operator points the
+variable at the published base once the host answers. The generator's inputs and rules, each closing a way the store can go wrong:
 
 - **Every non-hidden built-in** becomes a `builtin` row with display fields and
   its manifest's absolute `/app-assets/...` refs, which `_resolve_ref` passes

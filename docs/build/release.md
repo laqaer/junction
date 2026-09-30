@@ -135,7 +135,6 @@ Release-adjacent, deliberately outside the release path:
 |---|---|
 | `ota-test.yml` | End-to-end macOS auto-update proof: builds two real app versions signed with one throwaway self-signed identity in a temp keychain, serves a local feed, drives consent over the Chrome DevTools Protocol, and asserts the on-disk bundle version flips. Runs on manual dispatch or a reusable workflow call. Proves the **swap mechanism**, not Gatekeeper acceptance. Needs no secrets. |
 | `docker-smoke.yml` | PR gate on the container contract (amd64, load-to-daemon, no push). |
-| `pages.yml` | Deploys the marketing site in `site/` to GitHub Pages on `main`, path-scoped to `site/**`. |
 | `ship-report.yml` | On-demand merged-PR summary, dry-run by default; Slack delivery requires an explicit live dispatch. Not a release step. |
 
 ## Where artifacts land
@@ -516,9 +515,14 @@ since publishing is not a regression for it.
 ### Installing and switching channels
 
 ```bash
-# install, or move to another channel
-curl -fsSL https://download.getjunction.dev/cli.sh | sh -s -- --channel {nightly|insider|stable}
+# install, or move to another channel; BASE is the distribution you install from
+curl -fsSL "$BASE/cli.sh" | sh -s -- --cdn "$BASE" --channel {nightly|insider|stable}
 ```
+
+The installer has no default distribution: without `--cdn` or
+`JUNCTION_CDN_BASE` it stops before any request. The in-app update command
+carries `--cdn` itself, so it installs from the distribution the gateway was
+configured with even when pasted into a shell that lacks the variable.
 
 The installer resolves the channel feed, verifies it as described above,
 installs with `pipx` when available (otherwise a managed venv beside the data
@@ -596,9 +600,12 @@ reintroduced.
 The client resolves `{feedBase}/{channel}/` as a **directory** (the trailing
 slash matters: without it `new URL("latest-mac.yml", base)` replaces the last
 segment and resolves the wrong channel) and the library appends the platform
-filename. The feed base defaults to `https://updates.getjunction.dev/feed` and is
-overridable through `JUNCTION_UPDATE_FEED`, which enforces HTTPS except on
-loopback so the local harness works. The yml lives on the pointer host while
+filename. There is **no default feed base**: `DEFAULT_FEED_BASE` is empty, and
+the updater is armed only when `JUNCTION_UPDATE_FEED` (or an injected
+`feedBase`) names a pointer host; otherwise `initAutoUpdate` returns
+`disabled: "feed"` and contacts nothing. The variable enforces HTTPS except on
+loopback so the local harness works. The manual-download permalink likewise
+needs `JUNCTION_DOWNLOAD_BASE` and is `null` without it. The yml lives on the pointer host while
 `files[].url` entries are absolute byte-host URLs; electron-updater's
 `newUrlFromBase` ignores the base for absolute URLs, which is what preserves the
 split. First check runs 30s after launch, then every 4 hours.

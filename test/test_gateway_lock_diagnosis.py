@@ -252,7 +252,7 @@ def test_refusal_withholds_kill_from_a_candidate_that_is_serving_http(monkeypatc
     monkeypatch.setattr(gateway_lock, "_port_answers_http", lambda *_a, **_k: True)
 
     text = str(_refusal(refused_lock, port=5477))
-    assert "IS serving HTTP" in text and "junction stop" in text
+    assert "IS serving HTTP" in text and "warding stop" in text
     assert "kill -9" not in text
 
 

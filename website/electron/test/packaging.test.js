@@ -146,12 +146,30 @@ describe("macOS bundle naming", () => {
   });
 
   it("uses CFBundleDisplayName for spaced stable and nightly names", () => {
-    assert.equal(extendInfo.CFBundleDisplayName, "Junction");
+    assert.equal(extendInfo.CFBundleDisplayName, "Warding");
     assert.match(
       buildScript,
-      /-c\.mac\.extendInfo\.CFBundleDisplayName=Junction Nightly/
+      /-c\.mac\.extendInfo\.CFBundleDisplayName=Warding Nightly/
     );
     assert.doesNotMatch(buildScript, /-c\.mac\.extendInfo\.CFBundleName=/);
+  });
+
+  it("names the universal post-gate's bundle exactly as electron-builder emits it", () => {
+    // The lipo post-gate finds <PRODUCT_NAME>.app/Contents/MacOS/<PRODUCT_NAME>,
+    // and electron-builder names that bundle from productName (the nightly
+    // override included), so the two spellings must be the same string or
+    // every universal build fails after packaging.
+    const nightlyOverride = buildScript.match(/"-c\.productName=([^"]+)"/);
+    assert.ok(nightlyOverride, "expected a nightly -c.productName override");
+    assert.match(buildScript, new RegExp(`\\*\\)\\s+PRODUCT_NAME="${pkg.build.productName}" ;;`));
+    assert.match(
+      buildScript,
+      new RegExp(`\\*-nightly\\.\\*\\) PRODUCT_NAME="${nightlyOverride[1]}" ;;`)
+    );
+    assert.match(
+      buildScript,
+      new RegExp(`if \\[ "\\$PRODUCT_NAME" = "${nightlyOverride[1]}" \\]; then`)
+    );
   });
 });
 
@@ -364,13 +382,14 @@ describe("first-download installer design contract", () => {
     assert.equal(pkg.devDependencies["electron-builder"], "26.15.3");
   });
 
-  it("reuses the Junction mark across splash, site, and installer art", () => {
-    // assets/brand/build.py generates all of these from one glyph geometry, so
-    // the J's stem path appearing verbatim is what proves they share the mark.
+  it("reuses the Ward Seal across the splash, the brand mark, and installer art", () => {
+    // assets/brand/build.py generates the mark and the installer art from one
+    // seal geometry, so the keyhole shaft path appearing verbatim is what proves
+    // they share the mark. The splash is hand-written and must match it.
     const normalize = text => text.replaceAll(",", " ").replace(/\s+/g, " ");
     const loading = normalize(fs.readFileSync(path.join(ROOT, "loading.html"), "utf8"));
-    const siteLogo = normalize(
-      fs.readFileSync(path.join(REPO_ROOT, "site", "public", "junction-mark.svg"), "utf8")
+    const brandMark = normalize(
+      fs.readFileSync(path.join(REPO_ROOT, "assets", "brand", "mark.svg"), "utf8")
     );
     const dmgSource = normalize(
       fs.readFileSync(path.join(INSTALLER_ASSETS, "dmg-background.svg"), "utf8")
@@ -382,15 +401,21 @@ describe("first-download installer design contract", () => {
       fs.readFileSync(path.join(INSTALLER_ASSETS, "windows-installer-header.svg"), "utf8")
     );
 
-    const glyphStem = "M34 13v25a11 11 0 0 1-22 0";
-    assert.ok(loading.includes(glyphStem));
-    assert.ok(sidebarSource.includes(glyphStem));
-    assert.ok(headerSource.includes(glyphStem));
-    assert.ok(siteLogo.includes(glyphStem));
+    const shaftPath = "M29 28h6v5h-6zM29 35.5h6v2h-6zM29 40h6v2h-6zM29 44.5h6v1.5h-6z";
+    assert.ok(loading.includes(shaftPath));
+    assert.ok(sidebarSource.includes(shaftPath));
+    assert.ok(headerSource.includes(shaftPath));
+    assert.ok(brandMark.includes(shaftPath));
 
-    // Retired marks: the mascot body and the earlier Y-shaped track stem.
-    const retired = ["M398.554 818.914C316.315 1001.03", "M84.76 266.62c-19.2 42.53", "M10 6v7.5c0 2.8 2.2 5 6 5"];
-    for (const source of [loading, siteLogo, dmgSource, sidebarSource, headerSource]) {
+    // Retired marks: the mascot body, its logo variant, the Y-shaped track stem
+    // and the rounded-plate J.
+    const retired = [
+      "M398.554 818.914C316.315 1001.03",
+      "M84.76 266.62c-19.2 42.53",
+      "M10 6v7.5c0 2.8 2.2 5 6 5",
+      "M34 13v25a11 11 0 0 1-22 0",
+    ];
+    for (const source of [loading, brandMark, dmgSource, sidebarSource, headerSource]) {
       for (const path of retired) assert.ok(!source.includes(path));
     }
   });

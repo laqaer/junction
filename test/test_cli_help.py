@@ -1,4 +1,4 @@
-"""Tests for the grouped top-level ``junction`` help.
+"""Tests for the grouped top-level ``warding`` help.
 
 The listing a user reads is rendered from ``cli_help.COMMAND_GROUPS``, not from
 argparse's own subcommand block, so the risk this file exists to catch is a
@@ -83,7 +83,7 @@ class TestInternalCommandsStayHidden:
     def test_still_dispatchable_despite_being_hidden(self, monkeypatch, tmp_path, capsys):
         """Hiding filters what argparse PRINTS, never what it accepts."""
         out, _err = _capture_cli(monkeypatch, tmp_path, capsys, ["mcp-core", "--help"])
-        assert out.startswith("usage: junction mcp-core")
+        assert out.startswith("usage: warding mcp-core")
 
     def test_error_lists_the_starting_commands_first(self, monkeypatch, tmp_path, capsys):
         """The offer is ordered like the help, not like the registration order."""
@@ -117,14 +117,14 @@ class TestTopLevelHelpLayout:
         out, _err = _capture_cli(monkeypatch, tmp_path, capsys, ["--help"])
         assert "==SUPPRESS==" not in out
         assert "{chat," not in out
-        assert out.startswith("usage: junction [-h] [--version] [-v] [--no-jail] <command>")
+        assert out.startswith("usage: warding [-h] [--version] [-v] [--no-jail] <command>")
 
     def test_subcommand_usage_is_not_prefixed_with_the_top_level_usage(
         self, monkeypatch, tmp_path, capsys
     ):
         """argparse derives a subcommand's prog from the parent's ``usage=``."""
         out, _err = _capture_cli(monkeypatch, tmp_path, capsys, ["service", "--help"])
-        assert out.startswith("usage: junction service")
+        assert out.startswith("usage: warding service")
 
     def test_orientation_explains_both_lifetimes_and_the_default_port(
         self, monkeypatch, tmp_path, capsys
@@ -132,8 +132,8 @@ class TestTopLevelHelpLayout:
         from junction.config.loader import _DEFAULT_PORT
 
         out, _err = _capture_cli(monkeypatch, tmp_path, capsys, ["--help"])
-        assert "junction service install" in out
-        assert "junction up" in out
+        assert "warding service install" in out
+        assert "warding up" in out
         assert "foreground" in out
         # The help text spells the port out; keep it honest against the binder.
         assert str(_DEFAULT_PORT) in out
@@ -141,6 +141,6 @@ class TestTopLevelHelpLayout:
 
     def test_up_help_shares_the_gateway_flags(self, monkeypatch, tmp_path, capsys):
         out, _err = _capture_cli(monkeypatch, tmp_path, capsys, ["up", "--help"])
-        assert out.startswith("usage: junction up")
+        assert out.startswith("usage: warding up")
         assert "--port" in out
         assert "--json-ready" in out

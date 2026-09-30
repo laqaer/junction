@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────
-# Junction installer
+# Warding installer
 # One-command setup for macOS and Linux from a local checkout.
 # Public build. Uses python3/pip (backend) + npm/vite (dashboard).
 #
@@ -77,7 +77,7 @@ _TOTAL_STEPS=5
 
 banner() {
     echo ""
-    echo "  ${BOLD}Junction${RESET}"
+    echo "  ${BOLD}Warding${RESET}"
     echo "  ${DIM}Where coding agents meet the models you want.${RESET}"
     echo "  ${DIM}────────────────────────────────────────${RESET}"
     echo ""
@@ -141,7 +141,7 @@ echo "  ${DIM}Platform:${RESET}           $(uname -s) $(uname -m)"
 echo ""
 
 if [ ! -f "$JUNCTION_APP_DIR/pyproject.toml" ]; then
-    die "Run this from inside a Junction checkout (pyproject.toml not found in $JUNCTION_APP_DIR).
+    die "Run this from inside a Warding checkout (pyproject.toml not found in $JUNCTION_APP_DIR).
      git clone https://github.com/laqaer/junction.git && cd junction && bash install.sh"
 fi
 
@@ -331,7 +331,7 @@ fi
 # ══════════════════════════════════════════════════════════════════════
 step "Agent backend"
 
-# A vendor agent CLI is optional. Junction docks an ACP runtime already
+# A vendor agent CLI is optional. Warding docks an ACP runtime already
 # on PATH; this script does not install one.
 ok "A vendor agent CLI is optional"
 
@@ -426,7 +426,7 @@ _pip_log="$(mktemp)"
     # Frontend already built and staged above; skip rebuild in setup.py.
     JUNCTION_SKIP_FRONTEND=1 "$_venv/bin/pip" install -e "$_pip_target" 2>&1 | tail -20 >> "$_pip_log"
 ) &
-spinner $! "Installing Junction and dependencies…"
+spinner $! "Installing Warding and dependencies…"
 if wait $!; then
     if "$_venv/bin/python" -c "import aiohttp" 2>/dev/null; then
         ok "Python package installed (isolated venv)"
@@ -450,11 +450,12 @@ ok "Install method recorded (.install-method=pip)"
 
 # Link the public CLI. The package also ships a silent console-script alias.
 mkdir -p "$HOME/.local/bin"
-ln -sf "$_venv/bin/junction" "$HOME/.local/bin/junction"
+ln -sf "$_venv/bin/warding" "$HOME/.local/bin/warding"
+# Silent console-script alias. Existing launchers still resolve this name.
 if [ -x "$_venv/bin/junction" ]; then
     ln -sf "$_venv/bin/junction" "$HOME/.local/bin/junction"
 fi
-ok "Linked junction → ~/.local/bin/junction"
+ok "Linked warding → ~/.local/bin/warding"
 
 # ── Desktop App (macOS only) ──
 if [ "$(uname)" = "Darwin" ] && has node && [ -d "$JUNCTION_APP_DIR/electron" ]; then
@@ -497,7 +498,7 @@ fi
 # ══════════════════════════════════════════════════════════════════════
 step "PATH Configuration"
 
-# The public CLI is linked at ~/.local/bin/junction.
+# The public CLI is linked at ~/.local/bin/warding (junction stays as an alias).
 export PATH="$HOME/.local/bin:$JUNCTION_APP_DIR/bin:$PATH"
 
 # Persist to shell rc files. Re-runs replace the block this script owns, so
@@ -606,7 +607,7 @@ if [ -n "$_cli" ]; then
         || warn "junction setup --agent-only failed (run manually after install)"
 fi
 
-ok "Run ${CYAN}junction setup${RESET} to configure agent, workspace, and integrations"
+ok "Run ${CYAN}warding setup${RESET} to configure agent, workspace, and integrations"
 
 info "Embeddings download in the background on first start"
 
@@ -617,7 +618,7 @@ info "Embeddings download in the background on first start"
 
 echo ""
 echo ""
-echo "  ${GREEN}${BOLD}Junction installed.${RESET}"
+echo "  ${GREEN}${BOLD}Warding installed.${RESET}"
 echo ""
 echo "  ${DIM}────────────────────────────────────────${RESET}"
 echo ""
@@ -631,10 +632,10 @@ case "$(basename "${SHELL:-}")" in
 esac
 echo ""
 echo "    ${CYAN}2.${RESET} Run the setup wizard:"
-echo "       ${GREEN}junction setup${RESET}"
+echo "       ${GREEN}warding setup${RESET}"
 echo ""
 echo "    ${CYAN}3.${RESET} Start the dashboard:"
-echo "       ${GREEN}junction up${RESET}"
+echo "       ${GREEN}warding up${RESET}"
 echo ""
 echo "    ${CYAN}4.${RESET} Open ${CYAN}http://localhost:${JUNCTION_PORT}${RESET} in your browser"
 echo ""

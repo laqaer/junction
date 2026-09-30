@@ -110,8 +110,28 @@ logger = logging.getLogger(__name__)
 
 # The default endpoint lives in ``config/loader.py`` next to the other config
 # defaults (and so this module adds no import edge into the config package).
-# Every function here takes the endpoint as a parameter; an empty endpoint
-# disables sending entirely.
+# Every function here takes the endpoint as a parameter; an empty endpoint --
+# which is the shipped default -- disables sending entirely, so a stock build
+# contacts no analytics host until an operator configures one.
+
+# Process-wide "already said so" flag for the unconfigured case. The gateway
+# starts a send on every boot and the install receipt on every official
+# install; one debug line per process is enough to explain why nothing
+# egresses, and a line per call would be noise on a path that is a no-op by
+# design.
+_UNCONFIGURED_LOGGED = False
+
+
+def _note_unconfigured() -> None:
+    """Log once, at debug, that the beacon has no endpoint and is a no-op."""
+    global _UNCONFIGURED_LOGGED
+    if _UNCONFIGURED_LOGGED:
+        return
+    _UNCONFIGURED_LOGGED = True
+    logger.debug(
+        "beacon disabled: telemetry.beacon_endpoint is empty (no analytics host configured)"
+    )
+
 
 # Filenames under the data home. They must NOT ride an export/snapshot onto a
 # second machine (two hosts sharing one id would collapse to a single Daily
@@ -743,6 +763,7 @@ def send(endpoint: str, app_version: str, *, enabled: bool, acked: bool) -> bool
     silently opt out of it (see :func:`telemetry_permitted`).
     """
     if not endpoint:
+        _note_unconfigured()
         return False
     try:
         # should_send + payload probe the filesystem (stamp file, data home), so

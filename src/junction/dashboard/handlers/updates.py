@@ -59,6 +59,7 @@ from junction.platform.update_governance import (
     update_blocked_reason,
     update_required,
 )
+from junction.platform.update_layout import CDN_BASE_ENV as _CDN_BASE_ENV
 from junction.platform.update_layout import cdn_bases as _cdn_bases
 from junction.platform.update_layout import detect_install_layout
 from junction.platform.update_layout import release_channel as _release_channel
@@ -876,6 +877,14 @@ async def _check_release_feed(capability: UpdateCapability) -> None:
         **_capability_fields(capability.for_channel(channel)),
         "channel": channel,
     }
+    if not feed_base:
+        # No release CDN configured: the shipped default. Nothing to fetch, so
+        # the check is skipped rather than failed -- a stock install is not
+        # broken for having no feed, and a warning on every boot would say it
+        # was. ``unchecked`` is the honest status: no verdict was reached.
+        logger.debug("Release feed check skipped: no %s configured", _CDN_BASE_ENV)
+        _set_update_info(**base, check_status=CHECK_UNCHECKED)
+        return
     url = f"{feed_base}/feed/{channel}/latest-cli.json"
 
     try:

@@ -1,5 +1,5 @@
 name: Feature request
-description: Propose a new capability or a change to how Junction behaves.
+description: Propose a new capability or a change to how Warding behaves.
 labels: ["enhancement"]
 body:
   - type: markdown

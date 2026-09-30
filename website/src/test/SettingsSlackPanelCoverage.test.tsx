@@ -242,7 +242,7 @@ describe('SlackPanel read-only session', () => {
 
     expect(
       screen.getByText(
-        'Slack settings are managed on the machine running Junction and are read-only from remote sessions.',
+        'Slack settings are managed on the machine running Warding and are read-only from remote sessions.',
       ),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save Slack settings' })).not.toBeInTheDocument()

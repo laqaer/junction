@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Build the official app catalog that ``apps.getjunction.dev`` serves.
+"""Build the official app catalog that the ``site/`` deployment publishes.
 
-The client (``junction.apps.official_catalog``) fetches
-``https://apps.getjunction.dev/official-registry.json`` and, whenever that
-document is reachable, renders the store FROM it instead of from the bundled
-seed. So the document decides what Discover lists: a built-in the document
-omits is not listed, and a seed app the document omits disappears from the
-store the moment the catalog comes up. This script is what keeps both lists
-complete.
+A stock client (``junction.apps.official_catalog``) names no catalog origin and
+renders the store from the bundled seed. An operator opts in by pointing
+``JUNCTION_APP_CATALOG_BASE`` at a catalog base -- :data:`PUBLISHED_BASE`, where
+the ``site/`` deployment serves this document, once that host answers -- and
+from then on, whenever ``official-registry.json`` is reachable there, the store
+renders FROM it instead of from the seed. So the document decides what Discover
+lists: a built-in the document omits is not listed, and a seed app the document
+omits disappears from the store the moment the catalog comes up. This script is
+what keeps both lists complete.
 
 The document is GENERATED, never hand-edited, from two inputs:
 
@@ -59,10 +61,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BUILTINS_DIR = REPO_ROOT / "src" / "junction" / "apps" / "builtins"
 SEED_PATH = REPO_ROOT / "src" / "junction" / "apps" / "app-registry.json"
 PINS_PATH = REPO_ROOT / "scripts" / "app_catalog_pins.json"
-#: Under the marketing site's ``public/`` so Vite copies it into the build; the
+#: Under the marketing site's ``public/`` so the site build copies it; the
 #: site's ``vercel.json`` rewrites the ``apps.getjunction.dev`` host onto this
-#: directory, which is what puts the document at the URL the client fetches.
+#: directory, which is what puts the document under :data:`PUBLISHED_BASE`.
 OUTPUT_PATH = REPO_ROOT / "site" / "public" / "catalog" / "official-registry.json"
+#: The catalog base the ``site/`` deployment serves this document under. Not a
+#: client default: a stock build leaves ``JUNCTION_APP_CATALOG_BASE`` empty, and
+#: an operator sets it to this value once the host is live.
+PUBLISHED_BASE = "https://apps.getjunction.dev/"
 
 #: The manifest fields baked into every catalog row, and the row key each lands
 #: on. ``description`` becomes ``summary`` because that is the list copy the

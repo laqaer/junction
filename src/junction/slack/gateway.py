@@ -9629,7 +9629,18 @@ class GatewayOrchestrator:
         # satisfy the policy source pin, same check the git path applies to
         # its remote. A pinned fleet's wheel installs cannot bypass the ceiling.
         from junction.platform.update_governance import update_blocked_reason
-        from junction.platform.update_layout import cdn_bases, cdn_bases_are_safe
+        from junction.platform.update_layout import (
+            cdn_bases,
+            cdn_bases_are_safe,
+            cdn_configured,
+        )
+
+        if not cdn_configured():
+            # The shipped default: no release CDN, so there is nothing to
+            # install from. Not an error -- the safety gate below would report
+            # an empty base as "disallowed characters", which it is not.
+            logger.debug("Auto-update (wheel): no release CDN configured — skipping")
+            return
 
         # The installer command embeds the CDN bases and is handed to a shell, and
         # JUNCTION_CDN_BASE is operator-set: a metacharacter could close the URL

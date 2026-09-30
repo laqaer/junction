@@ -1,4 +1,4 @@
-// Screen-share request handling for the Junction Electron app.
+// Screen-share request handling for the Warding Electron app.
 //
 // Why this exists: in a browser, navigator.mediaDevices.getDisplayMedia() shows
 // the OS picker natively. In Electron (>= 20) the renderer's call is REJECTED

@@ -1,7 +1,10 @@
-# Junction Documentation
+# Warding Documentation
 
-Junction is a local control plane: dock ACP coding agents and route their
-models. It reaches tools over the Model Context Protocol (MCP). Everything
+Warding runs the coding agent you choose on your own machine, on a
+schedule, reachable from chat, under a policy the agent cannot read or
+rewrite. Chat sessions run that one harness; spawned subagents can be routed
+to another installed harness, which the router picks without forwarding
+provider traffic. It reaches tools over the Model Context Protocol (MCP). Everything
 below is the reference for the features you can reach from the dashboard,
 the CLI, or a connected messaging channel. A vendor agent CLI is optional.
 
@@ -10,7 +13,7 @@ the CLI, or a connected messaging channel. A vendor agent CLI is optional.
 Install from source (see [Getting Started](getting-started.md)), then:
 
 ```bash
-junction up          # compose both planes, then bind the dashboard on loopback
+warding up           # dock the agent, then bind the dashboard on loopback
 ```
 
 A vendor agent CLI is optional. Dock Cursor, Claude, Codex, or another ACP runtime.
@@ -39,7 +42,7 @@ Site: https://getjunction.dev
 
 | Feature | Description |
 |---------|-------------|
-| [Backup & Restore](snapshot-and-restore.md) | Portable snapshot and restore of Junction state, for upgrades and machine migration |
+| [Backup & Restore](snapshot-and-restore.md) | Portable snapshot and restore of Warding state, for upgrades and machine migration |
 | [Knowledge Library](knowledge-library-how-it-works.md) | Semantic search over your own documents, folders, and generated artifacts |
 | [Web Deploy](deploy-web.md) | Publish artifacts to a public HTTPS URL on your own AWS (private S3 + CloudFront + OAC) |
 | [Inbound Webhooks](inbound-webhooks.md) | Let an external system trigger an agent turn over HTTP — named tokens, HMAC request signing, a reversible off switch, ephemeral sessions, `register_hook` resume context |
@@ -52,7 +55,7 @@ Site: https://getjunction.dev
 
 ## Chat Channels
 
-Besides the dashboard and CLI, Junction ships channel integrations for
+Besides the dashboard and CLI, Warding ships channel integrations for
 [Slack](slack-integration.md), [Discord](discord-integration.md),
 [Telegram](telegram-integration.md), [Teams](teams-integration.md),
 [Webex](webex-integration.md), [WeCom](wecom-integration.md),
@@ -79,7 +82,7 @@ in [Messaging Transport](messaging-transport.md).
 - OS-level sandbox for the agent process, layered on the harness sandbox when that runtime has one
 - Credential redaction across every LLM output path
 - HMAC-SHA256 signed, IP-pinned dashboard tokens
-- Denied-command rules enforced at Junction's own PreToolUse gate, with audit
+- Denied-command rules enforced at Warding's own PreToolUse gate, with audit
   logging
 - Prompt-injection credential-exfiltration protection
 - Slack access is owner-only: multi-user access and open channels are refused

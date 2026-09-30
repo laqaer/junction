@@ -1,5 +1,5 @@
 /**
- * JunctionCfgTab — the Junction config table on the developer page.
+ * JunctionCfgTab — the Warding config table on the developer page.
  *
  * The file sat at ~3% before this suite: only its module-level constants ran.
  * Everything below aims at the cold paths — the query error/loading boundaries,
@@ -102,7 +102,7 @@ function seed(cfg: Cfg = CFG, patched: Cfg = CFG) {
 /** Render and wait for the first table to replace the skeleton. */
 async function renderTab() {
   const view = renderWithProviders(<JunctionCfgTab />)
-  expect(await screen.findByText('Junction Agents')).toBeInTheDocument()
+  expect(await screen.findByText('Warding Agents')).toBeInTheDocument()
   return view
 }
 
@@ -147,11 +147,11 @@ describe('JunctionCfgTab — query boundaries', () => {
 
     const { container } = renderWithProviders(<JunctionCfgTab />)
     expect(container.querySelector('.skeleton')).not.toBeNull()
-    expect(screen.queryByText('Junction Agents')).toBeNull()
+    expect(screen.queryByText('Warding Agents')).toBeNull()
 
     // Settle it before the test ends so the query never resolves after teardown.
     await act(async () => { release(CFG) })
-    expect(await screen.findByText('Junction Agents')).toBeInTheDocument()
+    expect(await screen.findByText('Warding Agents')).toBeInTheDocument()
   })
 
   it('renders an Error rejection by its message', async () => {

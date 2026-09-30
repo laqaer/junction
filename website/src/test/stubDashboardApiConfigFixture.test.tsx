@@ -55,13 +55,13 @@ describe('stub-dashboard-api config fixture', () => {
     renderWithProviders(<JunctionCfgTab />)
     // Reaching the first table means the three Object.entries() calls that
     // threw under the catch-all's `{}` all survived.
-    expect(await screen.findByText('Junction Agents')).toBeInTheDocument()
+    expect(await screen.findByText('Warding Agents')).toBeInTheDocument()
     expect(screen.getAllByRole('table').length).toBeGreaterThanOrEqual(3)
   })
 
   it('populates every table the tab renders, not just the headers', async () => {
     renderWithProviders(<JunctionCfgTab />)
-    await screen.findByText('Junction Agents')
+    await screen.findByText('Warding Agents')
     // An empty-but-present object would still render three tables with zero
     // rows -- a screenshot of empty tables is barely better evidence than a
     // blank page, so the fixture has to carry actual entries.
@@ -78,7 +78,7 @@ describe('stub-dashboard-api config fixture', () => {
     // pins the field name so the drift cannot silently return.
     expect(Object.values(JUNCTION_CONFIG_FIXTURE.workspaces)[0]).toHaveProperty('dir')
     renderWithProviders(<JunctionCfgTab />)
-    await screen.findByText('Junction Agents')
+    await screen.findByText('Warding Agents')
     expect(screen.getByText('~/.junction/workspace')).toBeInTheDocument()
   })
 
@@ -106,7 +106,7 @@ describe('stub-dashboard-api config fixture', () => {
     expect(JUNCTION_CONFIG_FIXTURE.workspaces).toHaveProperty(JUNCTION_CONFIG_FIXTURE.default_workspace)
     expect(JUNCTION_CONFIG_FIXTURE.memory_stores).toHaveProperty(JUNCTION_CONFIG_FIXTURE.default_memory_store)
     renderWithProviders(<JunctionCfgTab />)
-    await screen.findByText('Junction Agents')
+    await screen.findByText('Warding Agents')
     expect(screen.getAllByText('default').length).toBeGreaterThan(0)
   })
 

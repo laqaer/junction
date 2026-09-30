@@ -1,7 +1,7 @@
 """Task kinds the harness router scores against.
 
 Stdlib-only so the tool-argument validator can import the enum without pulling
-in the ACP stack. The orchestrating LLM names the kind explicitly (an enum on
+in the ACP stack. The calling agent names the kind explicitly (an enum on
 the MCP tool); the router never guesses it from free text.
 """
 

@@ -40,7 +40,7 @@ class TestBotNameSubstitution:
 
         # When no custom name is set, the prompt uses the product name.
         ctx = ContextBuilder(bot_name="")
-        assert ctx._substitute_bot_name("You are {bot_name}.") == "You are Junction."
+        assert ctx._substitute_bot_name("You are {bot_name}.") == "You are Warding."
 
     def test_no_placeholder_is_noop(self):
         from junction.context import ContextBuilder

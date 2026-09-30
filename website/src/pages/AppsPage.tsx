@@ -129,7 +129,7 @@ const MAX_SECTION_APPS = 6
  *
  * What it deliberately does NOT block: an https URL on a host other than the
  * catalog. Rejecting that needs the catalog origin, and the only copy of it lives
- * server-side (`official_catalog.OFFICIAL_CATALOG_BASE`); a second copy here
+ * server-side (`official_catalog.catalog_base()`); a second copy here
  * would silently blank all artwork the day the catalog moves. That case stays
  * the server's job, where the origin is already known.
  */

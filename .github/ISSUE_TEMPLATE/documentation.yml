@@ -1,11 +1,11 @@
 name: Documentation
-description: Something in the Junction docs is wrong, missing, or misleading.
+description: Something in the Warding docs is wrong, missing, or misleading.
 labels: ["documentation"]
 body:
   - type: markdown
     attributes:
       value: |
-        This covers the Junction README, `CONTRIBUTING.md`, docs under
+        This covers the Warding README, `CONTRIBUTING.md`, docs under
         `src/junction/docs/`, skill files, and in-product help. If the docs
         are correct but the product is wrong, file a bug report instead.
 

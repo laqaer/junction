@@ -1,4 +1,4 @@
-// Renderer permission gating for the Junction Electron app.
+// Renderer permission gating for the Warding Electron app.
 //
 // Why this exists: without an explicit handler, Electron's default permission
 // *check* can report `media` as denied for the renderer's getUserMedia(), so

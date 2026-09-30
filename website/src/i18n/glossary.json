@@ -1,5 +1,5 @@
 {
-  "_comment": "Do-not-translate list. These proper nouns must appear verbatim in every language. Matching is word-boundary, not substring. Enforced by glossary.test.ts. A phrase belongs here only if no identifier form of it (dev_fleet, DEVFLEET) and no legitimate compound spelling (German 'Junction-Dashboard') appears in the catalogs: the check is a near-miss detector, so it would read those as respellings of the product name.",
+  "_comment": "Do-not-translate list. These proper nouns must appear verbatim in every language. Matching is word-boundary, not substring. Enforced by glossary.test.ts. A phrase belongs here only if no identifier form of it (dev_fleet, DEVFLEET) and no legitimate compound spelling (German 'Warding-Dashboard') appears in the catalogs: the check is a near-miss detector, so it would read those as respellings of the product name.",
   "dnt": [
     "Agent Worlds",
     "Amazon Polly",
@@ -22,7 +22,6 @@
     "Issue Radar",
     "JSON",
     "Kiro",
-    "Junction",
     "Markdown",
     "MCP",
     "Microsoft Teams",
@@ -48,6 +47,7 @@
     "Task Runner",
     "Telegram",
     "TypeScript",
+    "Warding",
     "Webex",
     "WhatsApp",
     "Windows PowerShell",

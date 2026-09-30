@@ -43,21 +43,21 @@ describe('BrandingProvider', () => {
     branding.mockResolvedValue({ bot_name: '', avatar: '' })
     renderProvider()
     await waitFor(() => expect(branding).toHaveBeenCalled())
-    expect(screen.getByTestId('zzq-brand').textContent).toBe('Junction|/logo.png')
+    expect(screen.getByTestId('zzq-brand').textContent).toBe('Warding|/logo.png')
   })
 
   it('keeps the defaults when the fetch rejects', async () => {
     branding.mockRejectedValue(new Error('zzq offline'))
     renderProvider()
     await waitFor(() => expect(branding).toHaveBeenCalled())
-    expect(screen.getByTestId('zzq-brand').textContent).toBe('Junction|/logo.png')
+    expect(screen.getByTestId('zzq-brand').textContent).toBe('Warding|/logo.png')
   })
 })
 
 describe('useBranding', () => {
   it('returns the defaults with no provider above it', () => {
     render(<Consumer />)
-    expect(screen.getByTestId('zzq-brand').textContent).toBe('Junction|/logo.png')
+    expect(screen.getByTestId('zzq-brand').textContent).toBe('Warding|/logo.png')
     expect(branding).not.toHaveBeenCalled()
   })
 })

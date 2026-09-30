@@ -240,7 +240,7 @@ function extractStringProp(source: string, propName: string): string | undefined
 
 /** Resolve `{{productName}}` the way the stock dashboard renders it. */
 function searchEnglish(value: string | undefined): string | undefined {
-  return value?.replaceAll('{{productName}}', 'Junction')
+  return value?.replaceAll('{{productName}}', 'Warding')
 }
 
 /** Return the catalog key when a JSX prop is a supported translation call. */

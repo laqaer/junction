@@ -25,7 +25,7 @@
 //   "none"           — no gateway yet, or an adopted holder that could NOT be
 //                      positively identified as local (tunnel / external).
 //   "spawned"        — this app spawned the bundled backend on this port.
-//   "reused-local"   — adopted a local same-family Junction process.
+//   "reused-local"   — adopted a local same-family Warding process.
 //   "reused-service" — like reused-local, but the holder was SERVICE-classified.
 const GATEWAY_OWNERSHIP_STATES = Object.freeze(["none", "spawned", "reused-local", "reused-service"]);
 
@@ -202,27 +202,27 @@ function unrecoverableGatewayDialog({
   const held = variant === "held";
   return {
     title: probeFailed
-      ? `Junction: can't verify what's using port ${port}`
+      ? `Warding: can't verify what's using port ${port}`
       : held
-        ? `Junction: port ${port} is in use`
-        : `Junction: backend stuck on port ${port}`,
+        ? `Warding: port ${port} is in use`
+        : `Warding: backend stuck on port ${port}`,
     message: probeFailed
-      ? `Junction could not verify which process owns port ${port}, so it did not `
+      ? `Warding could not verify which process owns port ${port}, so it did not `
         + `risk terminating an unrelated process or starting a second gateway. `
-        + `Quit and reopen Junction to try again. If the port is still blocked, `
+        + `Quit and reopen Warding to try again. If the port is still blocked, `
         + `restart your computer.`
       : held
-        ? `Another process is holding port ${port}, so Junction can't reconnect to `
+        ? `Another process is holding port ${port}, so Warding can't reconnect to `
           + `it or start its own backend there. Quit the process using port ${port} `
           + `(the launch log below names it; look for the "port-owner:" line), `
           + `then reopen this app.`
-        : `The Junction backend is wedged and cannot be stopped. It is in an `
+        : `The Warding backend is wedged and cannot be stopped. It is in an `
           + `uninterruptible state and is still holding port ${port}, so it can't be `
           + `force-stopped or restarted in place. Restart your computer to clear it. `
           + `(This is a known backend hang; see the launch log below for the cause.)`,
     portConflict: false,
     primaryAction: "quit",
-    primaryLabel: isPrimaryWindow ? "Quit Junction" : "Close",
+    primaryLabel: isPrimaryWindow ? "Quit Warding" : "Close",
     showQuitButton: false,
   };
 }

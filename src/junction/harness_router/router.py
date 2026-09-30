@@ -243,7 +243,7 @@ def decide(
     eligible = [c for c in candidates if c.eligible]
     if not eligible:
         if not settings.lanes:
-            reason = "no harness is installed; install one (see `junction route status`)"
+            reason = "no harness is installed; install one (see `warding route status`)"
         else:
             reason = "every lane is excluded, disabled, resting after a limit, or not installed"
         return Decision(

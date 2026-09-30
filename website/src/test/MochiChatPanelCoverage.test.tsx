@@ -404,19 +404,19 @@ describe('ChatPanel gateway start', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     backendOnline = false
     await renderPanel()
-    const start = await screen.findByRole('button', { name: 'Start Junction' }, { timeout: 5000 })
+    const start = await screen.findByRole('button', { name: 'Start Warding' }, { timeout: 5000 })
     retryConnect.mockResolvedValueOnce({ ok: true })
     await userEvent.click(start)
 
     // Two separate surfaces: the button is replaced by a progress label, and the
     // message line explains what is happening.
     expect(await screen.findByText('Connecting...')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start Junction' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start Warding' })).not.toBeInTheDocument()
 
     // The socket never connects, so the panel gives up waiting and lets the user
     // try again rather than sitting on "Connecting..." forever.
     await act(async () => { await vi.advanceTimersByTimeAsync(8000) })
-    expect(await screen.findByRole('button', { name: 'Start Junction' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Start Warding' })).toBeInTheDocument()
   })
 })
 

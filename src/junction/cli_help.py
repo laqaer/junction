@@ -1,4 +1,4 @@
-"""Grouped top-level help for the ``junction`` CLI.
+"""Grouped top-level help for the ``warding`` CLI.
 
 argparse lists subcommands as one flat block in registration order, which for
 ~40 commands reads as a wall the first three commands anybody needs are buried
@@ -20,6 +20,8 @@ from __future__ import annotations
 import argparse
 from typing import Any, Iterable, Iterator, Mapping
 
+from junction.constants import CLI_BIN, PRODUCT_NAME
+
 # The dashboard port a default install binds. Duplicated as a STRING for help
 # text only; the runtime value is config/loader.py's ``_DEFAULT_PORT``.
 _DEFAULT_PORT_TEXT = "5476"
@@ -31,8 +33,8 @@ COMMAND_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
         "Start here",
         (
             ("setup", "Install agent config and mark first-run complete"),
-            ("planes", "Show harness + model plane status in one snapshot"),
-            ("up", "Compose both planes and start Junction on loopback"),
+            ("planes", "Show the docked harness and the model catalog in one snapshot"),
+            ("up", f"Start {PRODUCT_NAME} on loopback: dock the agent, serve the dashboard"),
             ("doctor", "Verify this install; --quick is compose-only"),
         ),
     ),
@@ -48,7 +50,7 @@ COMMAND_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
             ("logs", "Show gateway logs"),
             ("token", "Print a dashboard access URL with auth token"),
             ("logout", "Revoke all active dashboard sessions"),
-            ("update", "Update Junction to the latest version"),
+            ("update", f"Update {PRODUCT_NAME} to the latest version"),
         ),
     ),
     (
@@ -83,8 +85,8 @@ COMMAND_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
     (
         "Extend it",
         (
-            ("app", "Manage Junction apps"),
-            ("agent", "Manage Junction agent definitions"),
+            ("app", f"Manage {PRODUCT_NAME} apps"),
+            ("agent", f"Manage {PRODUCT_NAME} agent definitions"),
             ("workspace", "Manage workspace definitions"),
         ),
     ),
@@ -100,14 +102,14 @@ COMMAND_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
     (
         "Move it and back it up",
         (
-            ("cloud", "Run Junction on your own AWS EC2 instance"),
+            ("cloud", f"Run {PRODUCT_NAME} on your own AWS EC2 instance"),
             ("tailnet", "Publish this dashboard on your tailnet (Tailscale)"),
-            ("snapshot", "Create a portable backup of Junction state"),
-            ("restore", "Restore Junction state from a snapshot"),
+            ("snapshot", f"Create a portable backup of {PRODUCT_NAME} state"),
+            ("restore", f"Restore {PRODUCT_NAME} state from a snapshot"),
         ),
     ),
     (
-        "Develop Junction itself",
+        f"Develop {PRODUCT_NAME} itself",
         (
             ("pod", "Isolated, throwaway, full-stack test instances per worktree"),
             ("eval", "Run multi-session evaluation scenarios"),
@@ -134,27 +136,27 @@ def _listing_rank(name: str) -> int:
 
 # argparse builds the usage line from the actions it is allowed to show, and the
 # subparsers action is hidden, so the placeholder is spelled out here instead.
-TOP_USAGE = "junction [-h] [--version] [-v] [--no-jail] <command> [<args>]"
+TOP_USAGE = f"{CLI_BIN} [-h] [--version] [-v] [--no-jail] <command> [<args>]"
 
 # Why both commands exist, and what a default install actually listens on --
 # the two questions the flat command list never answered.
 _ORIENTATION = f"""\
 up vs. service -- the same server, two lifetimes:
-  junction up               composes both planes, then runs in the foreground
+  {CLI_BIN} up                docks the agent, then runs in the foreground
                             and stops on Ctrl-C or when the terminal closes.
                             Best for a first look and for development.
-  junction gateway          the same server as `up`; kept for scripts.
-  junction service install  registers a systemd unit (Linux, needs sudo) or a
+  {CLI_BIN} gateway           the same server as `up`; kept for scripts.
+  {CLI_BIN} service install   registers a systemd unit (Linux, needs sudo) or a
                             launchd agent (macOS) that runs the SAME gateway
                             detached: it survives logout, restarts on crash and
-                            starts at boot. Then use `junction service status`,
-                            `junction restart`, `junction logs`.
+                            starts at boot. Then use `{CLI_BIN} service status`,
+                            `{CLI_BIN} restart`, `{CLI_BIN} logs`.
   Run only one of them at a time -- both bind the same port.
 
-Ports: the dashboard is the only port Junction opens, and it binds loopback
+Ports: the dashboard is the only port {PRODUCT_NAME} opens, and it binds loopback
   only -- http://localhost:{_DEFAULT_PORT_TEXT}. Messaging channels (Slack, Discord, ...)
   connect outbound, so nothing else needs to be reachable. Override the port
-  with `junction up --port N`, JUNCTION_PORT=N, or the `dashboard.url`
+  with `{CLI_BIN} up --port N`, JUNCTION_PORT=N, or the `dashboard.url`
   config value; for the service, set JUNCTION_PORT when you run
   `service install`."""
 
@@ -168,7 +170,7 @@ def add_command(
 
     Passing ``help`` is pointless (``cli.py`` hides argparse's own listing), so
     the section summary is used as the subparser's ``description`` instead --
-    which is what ``junction <command> --help`` prints. A caller that wants a
+    which is what ``warding <command> --help`` prints. A caller that wants a
     longer description just passes its own.
 
     Raises ``KeyError`` when ``name`` has no section, so a command cannot be
@@ -194,7 +196,7 @@ def render_epilog(width: int = 13) -> str:
         lines.append("")
         if index == 0:
             lines.extend([_ORIENTATION, ""])
-    lines.append("Run `junction <command> -h` for a command's own options.")
+    lines.append(f"Run `{CLI_BIN} <command> -h` for a command's own options.")
     return "\n".join(lines)
 
 
@@ -216,7 +218,7 @@ class _VisibleCommandChoices(Mapping[str, Any]):
     just cleaned of. Validation and dispatch do not read ``choices``: the parser
     tests membership (``__contains__``) and ``_SubParsersAction.__call__``
     resolves through its own ``_name_parser_map``. So membership stays complete
-    while iteration is filtered, and ``junction mcp-core`` keeps working.
+    while iteration is filtered, and ``warding mcp-core`` keeps working.
 
     ``__len__`` follows ``__iter__`` (the visible count) to keep this a coherent
     view of what it claims to contain; nothing in argparse reads it.

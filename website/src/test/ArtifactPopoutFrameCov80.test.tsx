@@ -58,21 +58,21 @@ describe('ArtifactPopoutFrame', () => {
 
   it('mirrors the fetched artifact name into the window title', async () => {
     renderFrame()
-    await waitFor(() => expect(document.title).toBe('zz-artifact-name — Junction'))
+    await waitFor(() => expect(document.title).toBe('zz-artifact-name — Warding'))
     expect(artifact).toHaveBeenCalledWith('zz-slug')
   })
 
   it('titles from the slug until the name lands', () => {
     artifact.mockReturnValue(new Promise(() => {}))
     renderFrame()
-    expect(document.title).toBe('zz-slug — Junction')
+    expect(document.title).toBe('zz-slug — Warding')
   })
 
   it('skips the fetch and registration without a slug', () => {
     renderFrame('/popout/artifact')
     expect(artifact).not.toHaveBeenCalled()
     expect(registerPopout).not.toHaveBeenCalled()
-    expect(document.title).toBe('Artifact — Junction')
+    expect(document.title).toBe('Artifact — Warding')
   })
 
   it('returns to the main window from the labelled affordance', () => {

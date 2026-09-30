@@ -223,7 +223,7 @@ class HarnessRouter:
                 lane = lane_from_profile(profile_for(value))
         if lane is None:
             raise RoutingError(
-                f"unknown lane or harness {target!r}; see `junction route status`",
+                f"unknown lane or harness {target!r}; see `warding route status`",
                 code="unknown_target",
             )
         if lane.harness not in self.installed():
@@ -330,7 +330,7 @@ class HarnessRouter:
         }
 
     def status(self) -> dict[str, Any]:
-        """Everything `junction route status` and the dashboard show."""
+        """Everything `warding route status` and the dashboard show."""
         settings = self.settings()
         installed = self.installed(refresh=True)
         usage = self._ledger.snapshot()

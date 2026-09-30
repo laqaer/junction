@@ -1,0 +1,126 @@
+---
+import WardSeal from "./WardSeal.astro";
+import GithubMark from "./GithubMark.astro";
+import Sun from "@lucide/astro/icons/sun";
+import Moon from "@lucide/astro/icons/moon";
+import Menu from "@lucide/astro/icons/menu";
+import X from "@lucide/astro/icons/x";
+import { primaryNav } from "../data/nav";
+import { site } from "../data/site";
+
+interface Props { installHref?: string }
+const { installHref = "/#install" } = Astro.props;
+const path = Astro.url.pathname;
+---
+<header class="site-header">
+  <div class="wrap-wide nav-row">
+    <a class="brand" href="/" aria-label={`${site.name} home`}>
+      <WardSeal size={24} />
+      <span class="wordmark">warding</span>
+    </a>
+    <nav id="primary-nav" class="primary-nav" aria-label="Primary">
+      <ul>
+        {primaryNav.map((l) => (
+          <li>
+            <a href={l.href} aria-current={path === l.href ? "page" : undefined} rel={l.external ? "noopener" : undefined}>{l.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <div class="nav-right">
+      <a class="btn btn-quiet star" href={site.githubRepo} rel="noopener" data-track="github_click" aria-label="Star on GitHub"><GithubMark size={18} /><span class="star-text">Star on GitHub</span></a>
+      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to the night theme" data-track="theme_toggle">
+        <Sun class="lucide sun" aria-hidden="true" />
+        <Moon class="lucide moon" aria-hidden="true" />
+      </button>
+      <a class="btn btn-primary install-link" href={installHref}>Install</a>
+      <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open menu">
+        <Menu class="lucide open" aria-hidden="true" />
+        <X class="lucide close" aria-hidden="true" />
+      </button>
+    </div>
+  </div>
+</header>
+<style>
+  .site-header { position: relative; z-index: 20; background: transparent; }
+  .nav-row { display: flex; align-items: center; gap: 24px; min-height: 72px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; }
+  .wordmark {
+    font-family: var(--font-display); font-weight: 600; font-size: 1.375rem; letter-spacing: -0.015em; line-height: 1;
+    font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 144;
+  }
+  .primary-nav { flex: 1; display: flex; justify-content: center; }
+  .primary-nav ul { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+  .primary-nav a {
+    display: inline-block; padding: 8px 12px; border-radius: 4px; color: var(--fg-2); text-decoration: none;
+    font-size: 0.9375rem; font-weight: 500;
+  }
+  .primary-nav a:hover, .primary-nav a[aria-current="page"] { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+  .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 4px; border: 1px solid var(--line);
+    background: transparent; cursor: pointer; color: var(--fg);
+  }
+  .icon-btn :global(.lucide) { width: 20px; height: 20px; stroke-width: 1.75; }
+  .icon-btn :global(.moon), .icon-btn :global(.close) { display: none; }
+  :root[data-theme="dark"] .icon-btn :global(.sun) { display: none; }
+  :root[data-theme="dark"] .icon-btn :global(.moon) { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .icon-btn :global(.sun) { display: none; }
+    :root:not([data-theme="light"]) .icon-btn :global(.moon) { display: block; }
+  }
+  .menu-btn { display: none; }
+  .menu-btn[aria-expanded="true"] :global(.open) { display: none; }
+  .menu-btn[aria-expanded="true"] :global(.close) { display: block; }
+  @media (max-width: 960px) {
+    .primary-nav { display: none; }
+    .menu-btn { display: inline-grid; }
+    /* The star ask stays on phones as a 44 px icon button; its aria-label names it. */
+    .star { width: 44px; min-width: 44px; padding: 0; }
+    .star .star-text { display: none; }
+    .site-header.open .primary-nav {
+      display: block; position: absolute; left: 0; right: 0; top: 100%; background: var(--surface);
+      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 16px 16px; box-shadow: var(--shadow);
+    }
+    .site-header.open .primary-nav ul { flex-direction: column; gap: 0; }
+    .site-header.open .primary-nav a { display: block; padding: 12px 8px; font-size: 1.0625rem; min-height: 44px; }
+    /* Without JS the links stay reachable: the menu is open by default. */
+    :global(html:not(.js-ready)) .primary-nav { display: block; }
+    :global(html:not(.js-ready)) .primary-nav ul { flex-wrap: wrap; }
+  }
+  @media (max-width: 480px) {
+    .install-link { padding-inline: 12px; }
+  }
+</style>
+<script>
+  import { track } from "../lib/analytics";
+  const header = document.querySelector<HTMLElement>(".site-header");
+  const menuBtn = document.getElementById("menu-btn");
+  menuBtn?.addEventListener("click", () => {
+    const open = header?.classList.toggle("open") ?? false;
+    menuBtn.setAttribute("aria-expanded", String(open));
+    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  });
+
+  const root = document.documentElement;
+  const toggle = document.getElementById("theme-toggle");
+  const effective = () => {
+    const forced = root.getAttribute("data-theme");
+    if (forced === "dark" || forced === "light") return forced;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  };
+  const relabel = () => {
+    toggle?.setAttribute("aria-label", effective() === "dark" ? "Switch to the paper theme" : "Switch to the night theme");
+  };
+  relabel();
+  toggle?.addEventListener("click", () => {
+    const next = effective() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("warding.theme", next); } catch { /* private mode: the choice lasts for this page */ }
+    relabel();
+    track("theme_toggle", { theme: next });
+  });
+  document.querySelectorAll<HTMLElement>("[data-track='github_click']").forEach((el) => {
+    el.addEventListener("click", () => track("github_click"));
+  });
+</script>

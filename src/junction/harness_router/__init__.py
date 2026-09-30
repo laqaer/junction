@@ -1,11 +1,11 @@
 """Subscription-aware harness router.
 
-Junction docks several coding-agent harnesses (Claude Code, Codex, Cursor,
+Warding docks several coding-agent harnesses (Claude Code, Codex, Cursor,
 Grok, OpenCode, …), each reached through a plan or account the operator
 already pays for. This package decides which one takes each unit of work:
 it matches the task kind to each harness's strengths, spends flat-rate
 subscription quota before metered API spend, spreads load by each lane's
-remaining window, and routes around a lane that just hit a usage limit.
+remaining window, and rests a lane that just hit a usage limit.
 
 It chooses a harness; it does not forward provider traffic. The chosen
 harness runs with its own login, as ``agent.acp_backend`` would.

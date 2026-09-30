@@ -260,7 +260,7 @@ def schemas() -> list[dict[str, Any]]:
                         "type": "string",
                         "description": (
                             "Which coding-agent harness runs the subagent(s). 'route' "
-                            "lets Junction's harness router pick by task kind and "
+                            "lets Warding's harness router pick by task kind and "
                             "remaining subscription quota, and fail over to another "
                             "harness if one hits a usage limit before doing any work. "
                             "A harness name ('claude', 'codex', 'cursor', 'grok', "

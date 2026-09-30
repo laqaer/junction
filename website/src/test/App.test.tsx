@@ -194,7 +194,7 @@ describe('App routing', () => {
       expect(localStorage.getItem('mc-import-onboarded')).toBe('1')
     })
     expect(screen.queryByRole('dialog', { name: 'Import agent setup' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'Welcome to Junction' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Welcome to Warding' })).not.toBeInTheDocument()
   })
 
   it('waits for theme boot before deciding the foreign-agent import gate', async () => {
@@ -449,7 +449,7 @@ describe('App routing', () => {
     // navigating to the issue list).
     expect(screen.getByText('Star us')).toBeInTheDocument()
     expect(screen.getByText('Report issue')).toBeInTheDocument()
-    expect(screen.getByLabelText('Star Junction on GitHub')).toBeInTheDocument()
+    expect(screen.getByLabelText('Star Warding on GitHub')).toBeInTheDocument()
     expect(
       screen.getByLabelText(
         'Report a problem — collects logs and crash reports, secrets removed',
@@ -804,12 +804,12 @@ describe('App routing', () => {
     localStorage.removeItem('mc-apps-expanded')
   })
 
-  it('renders Junction branding', () => {
+  it('renders Warding branding', () => {
     localStorage.removeItem('mc-nav') // expanded sidebar shows the brand text
     renderWithProviders(<App />, { route: '/chat' })
     // Brand (logo + name) moved from the top bar into the sidebar menu row.
-    // The default wordmark is a single copper Junction lockup.
-    expect(screen.getAllByText('Junction').length).toBeGreaterThan(0)
+    // The default wordmark is the product name next to the mark.
+    expect(screen.getAllByText('Warding').length).toBeGreaterThan(0)
     localStorage.removeItem('mc-nav')
   })
 
@@ -1024,7 +1024,7 @@ describe('App routing', () => {
     const nav = screen.getByRole('navigation', { name: 'Main navigation' })
     // Brand (logo + name) now lives in the rail's menu row, replacing the old
     // hamburger; the collapse control is an arrow-left-to-line button.
-    expect(within(nav).getByText('Junction')).toBeInTheDocument()
+    expect(within(nav).getByText('Warding')).toBeInTheDocument()
     const collapse = within(nav).getByRole('button', { name: 'Collapse sidebar' })
     expect(within(nav).queryByRole('button', { name: 'Toggle sidebar' })).not.toBeInTheDocument()
     expect(within(nav).queryByText('Main')).not.toBeInTheDocument()

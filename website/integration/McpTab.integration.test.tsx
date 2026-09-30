@@ -141,7 +141,7 @@ describe('McpTab Integration Tests', () => {
     })
   })
 
-  it('stages Junction scope off and commits it via Apply', async () => {
+  it('stages Warding scope off and commits it via Apply', async () => {
     const user = userEvent.setup()
 
     let applyPayload: any = null
@@ -158,7 +158,7 @@ describe('McpTab Integration Tests', () => {
       expect(screen.getAllByText('builder-mcp').length).toBeGreaterThan(0)
     })
 
-    // Find the builder-mcp row and click its Junction scope badge
+    // Find the builder-mcp row and click its Warding scope badge
     const rows = screen.getAllByRole('row')
     const builderRow = rows.find(row =>
       within(row as HTMLElement).queryByText('builder-mcp')
@@ -166,7 +166,7 @@ describe('McpTab Integration Tests', () => {
     expect(builderRow).toBeDefined()
 
     const mcBadge = within(builderRow as HTMLElement).getByRole('button', {
-      name: /Junction.*click to disable/i,
+      name: /Warding.*click to disable/i,
     })
     await user.click(mcBadge)
 

@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from junction.apps import official_catalog as oc
 from junction.apps import official_editorial as oe
 
 
@@ -228,7 +229,7 @@ class TestArtwork:
     def test_a_catalog_relative_ref_resolves_against_the_catalog_base(self):
         doc = _doc([_full(_app(artwork={"ref": "assets/editorial/abc.png"}))])
         art = _cards(oe.load_sections(fetcher=lambda: doc))[0]["artwork"]
-        assert art["url"] == f"{oe.OFFICIAL_CATALOG_BASE}assets/editorial/abc.png"
+        assert art["url"] == f"{oc.catalog_base()}assets/editorial/abc.png"
 
     def test_the_dark_variant_and_alt_come_through(self):
         doc = _doc(

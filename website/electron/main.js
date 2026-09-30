@@ -263,11 +263,11 @@ const { attachContextMenu } = require("./context-menu");
 
 // Set app name for macOS menu bar and dock. Nightly ships as a separate
 // side-by-side app, so its menu bar must say so.
-app.name = identityFamily(app.getVersion()) === "nightly" ? "Junction Nightly" : "Junction";
+app.name = identityFamily(app.getVersion()) === "nightly" ? "Warding Nightly" : "Warding";
 
 // Windows taskbar identity. Without an explicit AppUserModelID, Windows groups
 // the app under the generic Electron host (wrong icon in the taskbar/jumplist,
-// pinning targets Electron rather than Junction). Match the packaged appId
+// pinning targets Electron rather than Warding). Match the packaged appId
 // (build.appId = "dev.junction.desktop"); nightly gets a distinct id so it
 // pins/groups side-by-side with stable, mirroring the app.name split above.
 if (IS_WIN) {
@@ -334,7 +334,7 @@ let gatewayProcess = null;
 // gateway-recovery.js (chooseRecoveryStrategy / classifyAdoptedGateway); assign
 // at exactly one place per outcome.
 //   "none"           — no gateway yet, or the reuse path could NOT positively
-//                      identify the port-holder as a local Junction process
+//                      identify the port-holder as a local Warding process
 //                      (remote SSH tunnel, manual/external gateway, probe
 //                      failure). Recovery must NEVER kill or respawn it: the
 //                      port-holder is someone else's process, and the correct
@@ -344,7 +344,7 @@ let gatewayProcess = null;
 //   "spawned"        — WE spawned the bundled backend on this flavor's port;
 //                      recovery may kill + respawn it.
 //   "reused-local"   — reuse path, holder POSITIVELY identified as a local
-//                      same-family Junction process (same-family /api/health
+//                      same-family Warding process (same-family /api/health
 //                      + a "junction" LISTEN owner). An adopted local gateway
 //                      that dies will never come back on its own, so recovery
 //                      must wait BOUNDED and then respawn — never the
@@ -665,7 +665,7 @@ async function resolveGatewayConflict(rebindDepth = 0) {
     }
     glog(`reusing existing gateway on :${PORT} (${decision.reason}) — bundled backend NOT spawned`);
     // Reuse path — recovery must not kill/respawn a gateway we don't own. A
-    // same-family gateway held by a local Junction process is OURS in spirit
+    // same-family gateway held by a local Warding process is OURS in spirit
     // even though we didn't spawn it: if it dies, no tunnel will resurrect it,
     // so recovery may respawn after a bounded wait. Anything less positively
     // identified (tunnel, no visible owner, probe failure) keeps the
@@ -682,10 +682,10 @@ async function resolveGatewayConflict(rebindDepth = 0) {
   const { response } = await dialog.showMessageBox({
     type: "warning",
     title: `${other.displayName} is running`,
-    message: `${other.displayName} (${decision.otherVersion}) is already running with your Junction data.`,
+    message: `${other.displayName} (${decision.otherVersion}) is already running with your Warding data.`,
     detail: canTakeover
-      ? `Only one Junction app can use ~/.junction at a time. Quit ${other.displayName} and continue here?`
-      : `Only one Junction app can use ~/.junction at a time. Quit ${other.displayName}, then reopen this app.`,
+      ? `Only one Warding app can use ~/.junction at a time. Quit ${other.displayName} and continue here?`
+      : `Only one Warding app can use ~/.junction at a time. Quit ${other.displayName}, then reopen this app.`,
     buttons: canTakeover ? [`Quit ${other.displayName} & Continue`, "Cancel"] : ["OK"],
     defaultId: 0,
     cancelId: canTakeover ? 1 : 0,
@@ -731,7 +731,7 @@ async function offerRelocationIfUnupdatable() {
   try {
     ({ response } = await dialog.showMessageBox({
       type: "warning",
-      title: "Move Junction to Applications?",
+      title: "Move Warding to Applications?",
       message: describeLocation(location, { bundleWritable }),
       detail: "Move it to your Applications folder to receive updates. "
         + "You can keep using it from here for now, but it will not update itself.",
@@ -767,8 +767,8 @@ async function offerRelocationIfUnupdatable() {
   try {
     await dialog.showMessageBox({
       type: "error",
-      message: "Could not move Junction automatically.",
-      detail: "Drag Junction into your Applications folder, then reopen it from there.",
+      message: "Could not move Warding automatically.",
+      detail: "Drag Warding into your Applications folder, then reopen it from there.",
       buttons: ["OK"],
     });
   } catch { /* boot must continue even if we cannot report the failure */ }
@@ -826,7 +826,7 @@ function startGateway() {
   });
 }
 
-// Resolve the Junction project root (the tree that ships `agents/` + `skills/`)
+// Resolve the Warding project root (the tree that ships `agents/` + `skills/`)
 // for the gateway's JUNCTION_PROJECT_DIR. The bundled app keeps these alongside
 // the Electron files (Resources/), i.e. one level up from `electron/`; a source
 // checkout has them at the repo root, two levels up (<repo>/website/electron).
@@ -1287,7 +1287,7 @@ function waitForBackend(targetWin, healthUrl = HEALTH_URL, { watchSpawn = false 
 
 // ── Theme-aware modal styles ──
 
-/** Read CSS custom properties from the active Junction dashboard. */
+/** Read CSS custom properties from the active Warding dashboard. */
 async function getDashboardThemeVars() {
   const win = BaseWindow.getFocusedWindow() || mainWindow;
   if (!win || win.isDestroyed()) return null;
@@ -1571,15 +1571,15 @@ function setupWindowContents(win, backendUrl) {
     if (!IS_WIN) {
       // macOS/Linux behavior unchanged: always show the [:port] suffix.
       const suffix = customName || remoteName || `[:${port}]`;
-      win.setTitle(`Junction ${suffix}`);
+      win.setTitle(`Warding ${suffix}`);
       return;
     }
     // Windows: the bare "[:5476]" read as part of the product name and confused
-    // users, so the primary local window is just "Junction"; keep the suffix
+    // users, so the primary local window is just "Warding"; keep the suffix
     // only for a non-default (remote/secondary) window.
     let suffix = customName || remoteName || "";
     if (!suffix && port && String(port) !== "5476") suffix = `[:${port}]`;
-    win.setTitle(suffix ? `Junction ${suffix}` : "Junction");
+    win.setTitle(suffix ? `Warding ${suffix}` : "Warding");
   }
 
   win._mcSetCustomName = (name) => { customName = name; applyTitle(); };
@@ -2715,7 +2715,7 @@ function _psPpid(pid) {
 }
 
 /**
- * Best-effort force-stop of whatever holds `port`, scoped to Junction processes
+ * Best-effort force-stop of whatever holds `port`, scoped to Warding processes
  * only, then VERIFY the port actually freed (see forceStopPort in gateway-stop.js).
  * Returns {killed, freed, survivors}: `freed === false` means the holder could
  * not be killed (uninterruptible-sleep wedge) and a respawn would just fail to
@@ -2795,11 +2795,11 @@ async function recoverWedgedGateway(win) {
     return reconnectExternalGateway(win);
   }
   // An ADOPTED local same-family gateway (reuse path, but the holder was a
-  // local Junction process) gets neither the kill (we don't own it) nor the
+  // local Warding process) gets neither the kill (we don't own it) nor the
   // indefinite tunnel wait (nothing external will bring it back): bounded
   // wait, then respawn once the port clears on its own.
   if (strategy === "reconnect-bounded") {
-    glog("liveness: backend unresponsive on an adopted local Junction gateway — bounded wait, then respawn");
+    glog("liveness: backend unresponsive on an adopted local Warding gateway — bounded wait, then respawn");
     if (!win || win.isDestroyed() || isQuitting) return;
     return reconnectOrRespawnAdoptedGateway(win);
   }
@@ -2888,7 +2888,7 @@ const ADOPTED_RECOVERY_WAIT_MS = 30_000;
 
 /**
  * Recover an ADOPTED local same-family gateway (reuse path, port held by a
- * local Junction process we did not spawn). We must not kill the holder — but
+ * local Warding process we did not spawn). We must not kill the holder — but
  * unlike a tunnel, a dead local gateway will never come back on its own, so the
  * indefinite reconnectExternalGateway loop is exactly the observed failure:
  * adopt a draining gateway, classify its death as "remote tunnel", and wait
@@ -3021,7 +3021,7 @@ async function showLoadingThenConnect(win, backendUrl = BACKEND_URL) {
   const healthUrl = `${backendUrl}/api/status`;
   const wc = win.webContents;
   // Paint the splash in the user's chosen accent (persisted from a prior session
-  // via the "theme-accent-changed" IPC). Defaults to Junction's signal blue.
+  // via the "theme-accent-changed" IPC). Defaults to the factory theme's accent.
   wc.loadFile(path.join(__dirname, "loading.html"), {
     query: { accent: currentThemeAccent() },
   });
@@ -3127,7 +3127,7 @@ async function showLoadingThenConnect(win, backendUrl = BACKEND_URL) {
     // A wedged/other gateway already holding this flavor's port is a distinct,
     // recoverable case: the spawn dies with "address already in use" and a plain
     // retry can't help (the holder is still there). Detect it and offer to
-    // force-stop the stuck Junction process. Only meaningful for OUR own port.
+    // force-stop the stuck Warding process. Only meaningful for OUR own port.
     // Nothing was spawned in the client-only case, so it is classified before
     // the port-conflict probe — see classifyStartFailure for why the log tail
     // cannot be trusted to mean "a holder exists right now".
@@ -3174,24 +3174,24 @@ async function showLoadingThenConnect(win, backendUrl = BACKEND_URL) {
       // unfinished-install copy rather than err.message: on the reclassified
       // path err.message is the interpreter's own exit report, which is what
       // this branch exists to stop showing as the headline.
-      title = "Junction — installation still finishing";
+      title = "Warding — installation still finishing";
       message = err.failure?.incompleteBundle ? err.message : describeIncompleteBundle([]);
     } else if (localGatewayOff) {
       // Nothing failed here — the app was told not to start a gateway and the
       // port is silent. "Failed to start" would send the user hunting a crash.
-      title = `Junction — no gateway on port ${PORT}`;
+      title = `Warding — no gateway on port ${PORT}`;
       message = err.message;
     } else if (portConflict) {
-      title = `Junction — port ${PORT} already in use`;
-      message = `Another Junction gateway is already using port ${PORT} (it may be wedged). `
+      title = `Warding — port ${PORT} already in use`;
+      message = `Another Warding gateway is already using port ${PORT} (it may be wedged). `
         + `Force-stop it and retry, or quit. From a terminal you can also run: `
         + `junction stop --port ${PORT}`;
     } else if (failedToStart) {
-      title = "Junction — gateway failed to start";
+      title = "Warding — gateway failed to start";
       message = err.message;
     } else {
-      title = "Junction — can't reach the gateway";
-      message = "Could not connect to the Junction backend. Make sure "
+      title = "Warding — can't reach the gateway";
+      message = "Could not connect to the Warding backend. Make sure "
         + "'junction gateway' is running, or check junction doctor.";
     }
 
@@ -3272,7 +3272,7 @@ async function openNewConnectionWindow() {
   </style></head><body>
     <label>Gateway port</label>
     <input id="p" type="number" value="7778" min="1" max="65535" autofocus>
-    <div class="hint">Connect to a Junction gateway running on another port</div>
+    <div class="hint">Connect to a Warding gateway running on another port</div>
     <div class="row"><button class="ok" onclick="go()">Connect</button>
     <button class="cancel" onclick="window.close()">Cancel</button></div>
     <script>
@@ -3366,7 +3366,7 @@ function renameCurrentWindow() {
     .check-row label { margin:0; font-size:12px; }
   </style></head><body>
     <label>Window name</label>
-    <input id="n" value="${esc(currentTitle.replace(/^Junction /, ''))}" autofocus>
+    <input id="n" value="${esc(currentTitle.replace(/^Warding /, ''))}" autofocus>
     <div class="row"><button class="ok" onclick="go()">Rename</button>
     <button class="cancel" onclick="window.close()">Cancel</button></div>
     <div class="check-row"><input type="checkbox" id="d"><label for="d">Set as default name for :${port} windows</label></div>
@@ -3406,16 +3406,16 @@ function renameCurrentWindow() {
 // Guide the user to grant macOS Screen Recording permission when it has been
 // explicitly denied — the snip tool cannot capture any frame without it. Opens
 // the exact Privacy pane. Note: the granted entity must be the packaged
-// Junction.app, not the terminal that launched a dev build.
+// Junction.app bundle, not the terminal that launched a dev build.
 function showScreenPermissionDialog() {
   const pane = "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
   dialog
     .showMessageBox({
       type: "info",
       title: "Screen Recording permission needed",
-      message: "Allow Junction to capture the screen",
+      message: "Allow Warding to capture the screen",
       detail:
-        "The screen-snip tool needs macOS Screen Recording permission. Open System Settings › Privacy & Security › Screen Recording, enable Junction, then try the snip again.",
+        "The screen-snip tool needs macOS Screen Recording permission. Open System Settings › Privacy & Security › Screen Recording, enable Warding, then try the snip again.",
       buttons: ["Open System Settings", "Cancel"],
       defaultId: 0,
       cancelId: 1,
@@ -3450,10 +3450,10 @@ function showMicPermissionDialog(status = "denied") {
       title: "Microphone permission needed",
       message: restricted
         ? "Microphone access is blocked by a policy"
-        : "Allow Junction to use the microphone",
+        : "Allow Warding to use the microphone",
       detail: restricted
-        ? "Voice input needs macOS Microphone permission, but access is restricted by a device-management policy on this Mac. Contact whoever manages it to allow microphone access for Junction."
-        : "Voice input needs macOS Microphone permission, and macOS will not ask again once it has been denied. Open System Settings › Privacy & Security › Microphone, enable Junction, then try the mic again.",
+        ? "Voice input needs macOS Microphone permission, but access is restricted by a device-management policy on this Mac. Contact whoever manages it to allow microphone access for Warding."
+        : "Voice input needs macOS Microphone permission, and macOS will not ask again once it has been denied. Open System Settings › Privacy & Security › Microphone, enable Warding, then try the mic again.",
       buttons: restricted ? ["OK"] : ["Open System Settings", "Cancel"],
       defaultId: 0,
       cancelId: restricted ? 0 : 1,

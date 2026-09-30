@@ -2780,7 +2780,7 @@ class TestDispatcher:
             )
 
         asyncio.run(_go())
-        assert "Junction" in cli.sent[-1][0]
+        assert "Warding" in cli.sent[-1][0]
 
     def test_compact_refused_while_turn_running(self) -> None:
         # /compact must NOT drive the same provider while a turn streams. The

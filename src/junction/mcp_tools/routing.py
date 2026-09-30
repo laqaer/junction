@@ -24,7 +24,7 @@ def schemas() -> list[dict[str, Any]]:
             "name": "route_task",
             "description": (
                 "Show which coding-agent harness (Claude Code, Codex, Cursor, Grok, "
-                "OpenCode/OpenRouter, …) Junction's harness router would pick for a kind "
+                "OpenCode/OpenRouter, …) Warding's harness router would pick for a kind "
                 "of work, with every lane ranked: affinity for the kind, remaining "
                 "usage window, billing (subscription before metered), and lanes resting "
                 "after a usage limit. Read-only. To dispatch, call spawn_run with "

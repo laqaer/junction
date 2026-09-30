@@ -1053,7 +1053,7 @@ def _no_release_feed_network(monkeypatch: pytest.MonkeyPatch) -> None:
     env with no ``JUNCTION_PROJECT_DIR`` takes the feed branch by definition.
 
     Without this fixture the suite would make real HTTPS requests to
-    ``updates.getjunction.dev`` — slow, flaky, offline-hostile, and CI traffic
+    whatever CDN is configured — slow, flaky, offline-hostile, and CI traffic
     nobody asked for. Tests that WANT a feed response stub this same seam, which
     overrides the fixture for that test.
 
@@ -1064,6 +1064,15 @@ def _no_release_feed_network(monkeypatch: pytest.MonkeyPatch) -> None:
     the feed branch must stub the seam and assert on the result.
     """
 
+    # A stock build names no release CDN, so the feed branch is a silent
+    # no-op before it can reach the seam below. The suite's update tests
+    # describe the CONFIGURED behaviour (fetch, compare, offer a command), so
+    # the floor sets a test-only CDN; the network guard below still makes it
+    # unreachable. Tests of the unconfigured path delete this variable.
+    from junction.platform.update_layout import CDN_BASE_ENV
+
+    monkeypatch.setenv(CDN_BASE_ENV, TEST_CDN_BASE)
+
     async def _refuse(url: str) -> tuple[int, bytes]:
         raise AssertionError(
             f"test reached the real release feed ({url}) — stub "
@@ -1073,6 +1082,16 @@ def _no_release_feed_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "junction.dashboard.handlers.updates._fetch_feed_bytes", _refuse, raising=True
     )
+
+
+#: The release CDN the suite pretends is configured (see
+#: ``_no_release_feed_network``). ``.invalid`` is reserved (RFC 2606).
+TEST_CDN_BASE = "https://cdn.test.invalid"
+
+#: The catalog origin the suite pretends is configured. ``.invalid`` is
+#: reserved (RFC 2606), so even a test that escapes the network guard cannot
+#: resolve it.
+TEST_CATALOG_BASE = "https://apps.test.invalid/"
 
 
 @pytest.fixture(autouse=True)
@@ -1107,6 +1126,13 @@ def _no_live_catalog_network(monkeypatch: pytest.MonkeyPatch):
     diagnostic second.
     """
     from junction.apps import official_catalog
+
+    # A stock build names no catalog origin, so every catalog path is a no-op
+    # before it can reach the seam below. The suite's catalog tests describe
+    # the CONFIGURED behaviour (fetch, cache, fail-closed install resolution),
+    # so the floor sets a test-only origin; the network guard below still makes
+    # it unreachable. Tests of the unconfigured path delete this variable.
+    monkeypatch.setenv(official_catalog.CATALOG_BASE_ENV, TEST_CATALOG_BASE)
 
     original = official_catalog._open_catalog
 

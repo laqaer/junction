@@ -2,11 +2,12 @@
 # ──────────────────────────────────────────────────────────────────────
 # Junction CLI installer (channel / wheel based).
 #
-#   curl -fsSL https://download.getjunction.dev/cli.sh | sh
-#   curl -fsSL https://download.getjunction.dev/cli.sh | sh -s -- --channel nightly
+#   curl -fsSL "$BASE/cli.sh" | sh -s -- --cdn "$BASE"
+#   curl -fsSL "$BASE/cli.sh" | sh -s -- --cdn "$BASE" --channel nightly
 #
-# The getjunction.dev distribution hosts are not provisioned yet; until they
-# are, set JUNCTION_CDN_BASE to a distribution you host.
+# There is no default distribution, matching the gateway's cdn_bases(): name
+# one with --cdn or JUNCTION_CDN_BASE, or the installer stops before any
+# network request.
 #
 # Installs the prebuilt `junction` wheel for a release channel. It resolves the
 # channel feed, verifies its RSA-SHA256 signature against the public key pinned
@@ -24,7 +25,7 @@
 #   --channel <nightly|insider|stable>   (default: stable; env JUNCTION_CHANNEL)
 #   --version <X.Y.Z>                    pin an exact version, verified against
 #                                        its immutable signed CLI manifest
-#   --cdn <base-url>                     (default CloudFront; env JUNCTION_CDN_BASE)
+#   --cdn <base-url>                     (required; env JUNCTION_CDN_BASE)
 #   --managed-python                     skip the system interpreters and run on
 #                                        a uv-provisioned Python instead (sticky:
 #                                        later runs and updates keep the choice;
@@ -42,10 +43,10 @@ unset PYTHONPATH PYTHONHOME
 
 # The URL contract splits by class: FEED_BASE serves the mutable pointers
 # (latest-cli.json), ARTIFACT_BASE serves the bytes (wheels, SHA256SUMS).
-# Both are aliases of the same distribution today; --cdn / JUNCTION_CDN_BASE
-# overrides BOTH (test / alternate-CDN escape hatch).
-FEED_BASE="${JUNCTION_CDN_BASE:-https://updates.getjunction.dev}"
-ARTIFACT_BASE="${JUNCTION_CDN_BASE:-https://download.getjunction.dev}"
+# --cdn / JUNCTION_CDN_BASE sets BOTH to one distribution, and neither has a
+# default: an unset base is refused below rather than resolved to a host.
+FEED_BASE="${JUNCTION_CDN_BASE:-}"
+ARTIFACT_BASE="${JUNCTION_CDN_BASE:-}"
 CHANNEL="${JUNCTION_CHANNEL:-stable}"
 PIN_VERSION=""
 # Three states: "" = undecided (fall back to the persisted python-mode marker,
@@ -108,7 +109,7 @@ Options / env:
   --channel <nightly|insider|stable>   (default: stable; env JUNCTION_CHANNEL)
   --version <X.Y.Z>                    pin an exact version, verified against
                                        its immutable signed CLI manifest
-  --cdn <base-url>                     (default CloudFront; env JUNCTION_CDN_BASE)
+  --cdn <base-url>                     (required; env JUNCTION_CDN_BASE)
   --managed-python                     skip the system interpreters and run on a
                                        uv-provisioned Python instead (sticky: later
                                        runs and updates keep the choice)
@@ -128,6 +129,9 @@ FEED_BASE="${FEED_BASE%/}"
 ARTIFACT_BASE="${ARTIFACT_BASE%/}"
 
 err() { echo "junction-install: $*" >&2; exit 1; }
+
+[ -n "$FEED_BASE" ] && [ -n "$ARTIFACT_BASE" ] \
+  || err "no distribution configured; pass --cdn <base-url> or set JUNCTION_CDN_BASE"
 
 # Same choice as junction.config.paths._select_default_home: JUNCTION_HOME
 # when set, otherwise the one data home, ~/.junction.

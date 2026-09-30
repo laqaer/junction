@@ -133,7 +133,7 @@ ACP_BACKEND_GOOSE = "goose"
 ACP_BACKEND_GROK = "grok"
 ACP_BACKEND_DROID = "droid"
 # OpenCode (`opencode acp`). Its own provider login covers OpenRouter, so
-# metered OpenRouter models reach Junction as a harness, not as forwarded traffic.
+# metered OpenRouter models reach Warding as a harness, not as forwarded traffic.
 ACP_BACKEND_OPENCODE = "opencode"
 # ACP v1 stdio agents driven by AcpClient (one process per session). Not kiro-cli, not KAS.
 ACP_BACKENDS_SPEC_FAMILY = frozenset(

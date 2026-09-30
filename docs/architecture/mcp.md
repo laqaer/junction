@@ -606,7 +606,7 @@ answers `tools/list` from):
 - **Subagents:** `spawn_status`, `spawn_continue`, `spawn_steer`,
   `spawn_release`, `spawn_sub_agents`, `wait`
 - **Harness routing:** `route_task` (read-only ranking of lanes for a task
-  kind; the MCP twin of `junction route pick`). Dispatch is `spawn_run` with
+  kind; the MCP twin of `warding route pick`). Dispatch is `spawn_run` with
   `harness="route"` — see
   [harness-router](../system-specs/modules/harness-router.md).
 - **Messaging and notification:** `send_message`, `send_notification`,

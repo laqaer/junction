@@ -522,9 +522,9 @@ Modular aiohttp package at `127.0.0.1:5476` (configurable). Split into:
   content. Empty directories and zero-byte files created during gateway startup
   do not bypass first-run setup. App tokens remain denied. Two owner-only POST
   routes write on this surface, both returning `200` with the snapshot:
-  `repair-specs` rewrites Junction's own agent specs, and
+  `repair-specs` rewrites Warding's own agent specs, and
   `complete-with-agents` writes the first-run marker (the dashboard twin of
-  `junction setup`) for an operator who docked another agent instead of
+  `warding setup`) for an operator who docked another agent instead of
   kiro-cli. It answers `409` `no_connected_agent` unless the harness router's
   last probe shows at least one agent connected, and it leaves Kiro `ready`
   untouched. The first-run screen lists those agents above the Kiro steps
@@ -1470,7 +1470,7 @@ marker (`CONN_RECOVERY_PREFIX`, `BUSY_RECOVERY_PREFIX`), is folded by the fronte
 
 ### Design
 
-- Junction "Interchange" identity: Overpass + Overpass Mono (bundled, no font CDN), dark/light themes with a signal-blue accent
+- Brand identity: the Ward Seal mark and the paper (light) / night (dark) palettes, a vermillion seal and a lamp-amber accent; the brand faces Fraunces + IBM Plex Sans and the UI faces Overpass + Overpass Mono are all bundled (no font CDN)
 - Tailwind CSS 3 with custom theme (`tailwind.config.js`) — design tokens as CSS custom properties, utility classes throughout
 - **Typography scale**: body 14px, descriptions/details 14px (`text-sm`), labels/buttons/sidebar 13px, badges/captions 12px, decorative icons 10-11px. Minimum readable text: 11px. Code blocks: 13px mono. No text below 10px anywhere.
 - CSS grid shell: topbar + nav sidebar + content area

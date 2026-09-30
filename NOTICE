@@ -1,4 +1,4 @@
-Junction
+Warding
 Copyright 2026 laqaer.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -7,9 +7,9 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
-Junction's modifications — including the multi-runtime ACP registry, the
-composed harness and model planes, and the Junction product overlay — are
-original to this project and licensed under the same Apache License 2.0.
+Warding's modifications — including the multi-runtime ACP registry, the
+names-only model catalog, and the Warding product overlay — are original
+to this project and licensed under the same Apache License 2.0.
 
 Portions of this software incorporate third-party components; see
 THIRD-PARTY-NOTICES for their respective copyright notices and licenses.

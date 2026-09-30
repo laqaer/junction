@@ -1,4 +1,4 @@
-// External-scheme hand-off for the Junction Electron app.
+// External-scheme hand-off for the Warding Electron app.
 //
 // Why this exists: Settings -> Computer Use offers "Open System Settings"
 // shortcuts that target macOS System Settings deep links

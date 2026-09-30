@@ -241,9 +241,9 @@ describe("unrecoverableGatewayDialog", () => {
       port: 5476,
       isPrimaryWindow: true,
     });
-    assert.equal(model.title, "Junction: backend stuck on port 5476");
+    assert.equal(model.title, "Warding: backend stuck on port 5476");
     assert.equal(model.primaryAction, "quit");
-    assert.equal(model.primaryLabel, "Quit Junction");
+    assert.equal(model.primaryLabel, "Quit Warding");
     assert.equal(model.showQuitButton, false);
     assert.equal(model.portConflict, false);
     assert.match(model.message, /Restart your computer/);
@@ -255,11 +255,11 @@ describe("unrecoverableGatewayDialog", () => {
       probeFailed: true,
       isPrimaryWindow: false,
     });
-    assert.equal(model.title, "Junction: can't verify what's using port 5476");
+    assert.equal(model.title, "Warding: can't verify what's using port 5476");
     assert.equal(model.primaryAction, "quit");
     assert.equal(model.primaryLabel, "Close");
     assert.equal(model.showQuitButton, false);
-    assert.match(model.message, /Quit and reopen Junction to try again/);
+    assert.match(model.message, /Quit and reopen Warding to try again/);
     assert.match(model.message, /If the port is still blocked, restart your computer/);
   });
 
@@ -269,9 +269,9 @@ describe("unrecoverableGatewayDialog", () => {
       variant: "held",
       isPrimaryWindow: true,
     });
-    assert.equal(model.title, "Junction: port 5476 is in use");
+    assert.equal(model.title, "Warding: port 5476 is in use");
     assert.equal(model.primaryAction, "quit");
-    assert.equal(model.primaryLabel, "Quit Junction");
+    assert.equal(model.primaryLabel, "Quit Warding");
     assert.equal(model.showQuitButton, false);
     assert.match(model.message, /Quit the process using port 5476/);
     assert.doesNotMatch(model.message, /Restart your computer/);

@@ -2,7 +2,7 @@
 
 The router spreads work by *observed* usage, so it needs a record that
 survives restarts and is shared by every process that dispatches (the
-gateway, ``junction route run``). The ledger is one small JSON file under the
+gateway, ``warding route run``). The ledger is one small JSON file under the
 data home, rewritten atomically under an advisory lock. It holds timestamps,
 counters and a truncated, credential-redacted last error — never prompts or
 keys.
@@ -38,7 +38,7 @@ LEDGER_SCHEMA_VERSION = 1
 # dispatched to in a tight loop.
 RETENTION_SECS = MAX_WINDOW_HOURS * 3600
 MAX_DISPATCHES_PER_LANE = 4000
-# Stored error text is for the operator's eyes in `junction route status`.
+# Stored error text is for the operator's eyes in `warding route status`.
 LAST_ERROR_MAX_CHARS = 300
 
 

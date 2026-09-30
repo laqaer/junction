@@ -85,7 +85,7 @@ def test_launcher_without_venv_explains_source_install(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 1
-    assert f"Junction virtual environment not found at {install_root}/.venv" in result.stderr
+    assert f"Warding virtual environment not found at {install_root}/.venv" in result.stderr
     assert f'cd "{install_root}" && bash minimal_install.sh' in result.stderr
     assert "Source checkouts run from their own Python virtual environment." in result.stderr
 

@@ -71,8 +71,8 @@ function executableSelector(tokens) {
 }
 
 /**
- * Match only a Junction executable, or a Python process whose first execution
- * selector invokes the `junction` module or a Junction script. Later process
+ * Match only a Warding executable, or a Python process whose first execution
+ * selector invokes the `junction` module or a Warding script. Later process
  * arguments never establish ownership, so SSH aliases and unrelated script
  * arguments cannot authorize a kill. Absolute Windows executables must also
  * match the exact path selected by the launch resolver.
@@ -321,7 +321,7 @@ async function stopGatewayGracefully(
 }
 
 /**
- * Force-stop whatever Junction process is LISTENing on `port`, then VERIFY the
+ * Force-stop whatever Warding process is LISTENing on `port`, then VERIFY the
  * port actually freed before reporting success.
  *
  * The old inline version SIGKILLed the owner and resolved after a fixed 800ms
@@ -333,8 +333,8 @@ async function stopGatewayGracefully(
  *
  * This version polls the listener set after killing and returns `freed` based on
  * whether the port is ACTUALLY free afterwards (not merely whether our targets
- * died), plus `survivors` (the Junction PIDs we tried to kill that are still
- * holding the port) and `foreignHolder` (a non-Junction process still owns it).
+ * died), plus `survivors` (the Warding PIDs we tried to kill that are still
+ * holding the port) and `foreignHolder` (a non-Warding process still owns it).
  * `freed === false` means a respawn would just fail to bind — the caller MUST
  * NOT respawn; it should tell the user a restart is required (`survivors`, an
  * unkillable wedge) or that another app holds the port (`foreignHolder`).
@@ -382,7 +382,7 @@ async function forceStopPort(
     return { killed: 0, freed: true, survivors: [], foreignHolder: false, serviceHolder: false };
   }
 
-  // Only signal PIDs we can positively identify as Junction — never SIGKILL an
+  // Only signal PIDs we can positively identify as Warding — never SIGKILL an
   // unrelated app that happens to share the port.
   const targets = [];
   let serviceHolder = false;
@@ -395,7 +395,7 @@ async function forceStopPort(
       // race the respawn. Leave it alone and tell the caller why.
       if (await isServiceManaged(pid, getPpid)) {
         serviceHolder = true;
-        log(`force-stop: SKIP pid=${pid} — service-managed Junction gateway (${cmd.slice(0, 80)})`);
+        log(`force-stop: SKIP pid=${pid} — service-managed Warding gateway (${cmd.slice(0, 80)})`);
         continue;
       }
       try {
@@ -406,7 +406,7 @@ async function forceStopPort(
         log(`force-stop: kill pid=${pid} failed: ${e && e.message}`);
       }
     } else {
-      log(`force-stop: SKIP pid=${pid} — not a Junction process (${cmd.slice(0, 80)})`);
+      log(`force-stop: SKIP pid=${pid} — not a Warding process (${cmd.slice(0, 80)})`);
     }
   }
 
@@ -459,7 +459,7 @@ async function forceStopPort(
     log(`force-stop: port :${port} STILL held after ${waited}ms by pid ${survivors.join(", ")} `
       + `— process is unkillable (likely uninterruptible sleep); a system restart is required`);
   } else if (foreignHolder) {
-    log(`force-stop: port :${port} held by a non-Junction process we won't kill — respawn would fail to bind`);
+    log(`force-stop: port :${port} held by a non-Warding process we won't kill — respawn would fail to bind`);
   }
   if (serviceHolder && !freed) {
     log(`force-stop: port :${port} is held by a service-managed gateway — the OS respawns it, so the app must reuse it instead of retrying a spawn`);
@@ -479,7 +479,7 @@ async function forceStopPort(
  * owner is the ground truth the payload lacks — on a tunnel it is `ssh`.
  *
  * Deliberately fail-safe: every outcome except a positively identified local
- * Junction process is a reason NOT to evict.
+ * Warding process is a reason NOT to evict.
  *   "junction" — a local LISTEN owner matching isJunctionCommand. Only this
  *                value may authorise a takeover.
  *   "foreign"  — a local LISTEN owner exists but is not ours (e.g. `ssh`).
@@ -517,13 +517,13 @@ async function classifyPortOwner(
     const ours = isJunction(cmd);
     if (ours) {
       if (await isServiceManaged(pid, getPpid)) {
-        log(`port-owner: :${port} held by SERVICE-MANAGED Junction pid=${pid} (${cmd.slice(0, 80)}) — reuse, never evict`);
+        log(`port-owner: :${port} held by SERVICE-MANAGED Warding pid=${pid} (${cmd.slice(0, 80)}) — reuse, never evict`);
         return "service";
       }
-      log(`port-owner: :${port} held by local Junction pid=${pid} (${cmd.slice(0, 80)})`);
+      log(`port-owner: :${port} held by local Warding pid=${pid} (${cmd.slice(0, 80)})`);
       return "junction";
     }
-    log(`port-owner: :${port} held by NON-Junction pid=${pid} (${cmd.slice(0, 80)})`);
+    log(`port-owner: :${port} held by NON-Warding pid=${pid} (${cmd.slice(0, 80)})`);
   }
   return "foreign";
 }

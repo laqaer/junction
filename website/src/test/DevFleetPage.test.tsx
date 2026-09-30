@@ -487,7 +487,7 @@ describe('DevFleetPage', () => {
     // path is missing that the user never chose.
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText('Discovery Error')).not.toBeInTheDocument()
-    expect(screen.getByText('No Junction checkout found')).toBeInTheDocument()
+    expect(screen.getByText('No Warding checkout found')).toBeInTheDocument()
     expect(screen.getByText(/JUNCTION_DEVFLEET_REPO=/)).toBeInTheDocument()
     // Controls that act on a fleet which does not exist yet are suppressed:
     // rendering them invites a click whose only answer is a failure toast.

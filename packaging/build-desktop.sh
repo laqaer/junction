@@ -526,7 +526,7 @@ log "Packaging desktop app (electron-builder, version: $JN_VERSION)…"
       # paths from that internal name, so changing it while productName stays
       # space-free makes the packaged app abort with "Unable to find helper
       # app". Nightly re-overrides the static display name to keep its suffix.
-      "-c.mac.extendInfo.CFBundleDisplayName=Junction Nightly"
+      "-c.mac.extendInfo.CFBundleDisplayName=Warding Nightly"
       # Linux packages key their INSTALL identity off the package name, so
       # nightly needs its own or dpkg/rpm treat a nightly install as an UPGRADE
       # of stable and remove it -- the same hazard as the nsis.guid below, from

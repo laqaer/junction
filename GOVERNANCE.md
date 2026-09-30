@@ -1,6 +1,6 @@
 # Governance
 
-This document covers who makes decisions in Junction, how those decisions get
+This document covers who makes decisions in Warding, how those decisions get
 made, and how someone becomes one of the people making them.
 [CONTRIBUTING.md](CONTRIBUTING.md) covers how to contribute, and the two are
 meant to be read together.
@@ -18,7 +18,7 @@ or translations, and everyone who takes part in feature discussion. Contributing
 does not require permission, only [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [Code of Conduct](CODE_OF_CONDUCT.md).
 
-**Users** are everyone running Junction. Filing an issue about what is broken or
+**Users** are everyone running Warding. Filing an issue about what is broken or
 missing is a real contribution to the project's direction, and most changes in
 direction start there.
 
@@ -64,8 +64,8 @@ asking. Commit access can also be withdrawn for a Code of Conduct violation.
 
 ## Marks and amendments
 
-**Product identity is Junction.** The names and logos of other agents, models,
-and tools that Junction docks or routes remain with their owners. See
+**Product identity is Warding.** The names and logos of other agents, models,
+and tools that Warding docks remain with their owners. See
 [NOTICE](NOTICE) for software attribution. Maintainers have no authority to
 license, transfer, or redefine those marks. The code in this repository is open
 source. Third-party marks are not.

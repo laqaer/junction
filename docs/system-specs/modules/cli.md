@@ -56,6 +56,22 @@ and of macOS signing/notarization.
 - Channel source: `feed/<channel>/latest-cli.json`. Pinned-version source:
   `cli/<channel>/<version>/cli-manifest.json`; pinned installs do not resolve
   through the mutable channel feed.
+- **Feed host: none by default.** `platform/update_layout.cdn_bases()` reads
+  `JUNCTION_CDN_BASE` (`CDN_BASE_ENV`) and answers `("", "")` when it is unset;
+  `cdn_configured()` is the predicate every feed consumer checks first. On a
+  stock wheel install the dashboard's periodic check records `check_status:
+  unchecked` at debug level and fetches nothing (no "not a manifest" warning at
+  boot), `derive_capability` reports the wheel shape with `mode: none`, no
+  `remediation` and `wheel_update_command() == ""`, the Slack unattended
+  wheel path returns without running an installer, and `junction update`
+  prints that no feed is configured and exits 1 without a request. Setting
+  the variable to an `https://` CDN that serves the layout above restores
+  every path; `cdn_bases_are_safe()` still refuses a non-https or
+  metacharacter-bearing value. `cli.sh` follows the same contract: with
+  neither `--cdn` nor `JUNCTION_CDN_BASE` it exits 1 ("no distribution
+  configured") before any request, so `wheel_update_command()` passes
+  `--cdn <artifact base>` explicitly rather than relying on the variable
+  reaching the shell that runs it.
 
 The installer embeds the public key and expected key id. Before any network
 request, it requires OpenSSL, rejects an unconfigured pin, materializes the key,

@@ -6,13 +6,14 @@ open before touching that subsystem: see
 [Read before you touch](#read-before-you-touch). The frontend has its own router,
 [`website/AGENTS.md`](website/AGENTS.md).
 
-**Product overlay:** this checkout is **Junction** (`laqaer/junction`).
-Read [`JUNCTION.md`](JUNCTION.md) and
-[`WORKING_BRIEF.md`](WORKING_BRIEF.md) before any product, brand, CLI, or
-model-router change. Product / architecture / roadmap overlays:
-[`PRODUCT.md`](PRODUCT.md), [`ARCHITECTURE.md`](ARCHITECTURE.md),
-[`ROADMAP.md`](ROADMAP.md). Package identifiers (`junction`,
-`JUNCTION_HOME`) stay as implementation spellings, not the product name.
+**Product overlay:** this checkout is **Warding** (`laqaer/junction`).
+Read [`JUNCTION.md`](JUNCTION.md) (the overlay, kept under its historical
+filename, with the NO-SAY list) and [`WORKING_BRIEF.md`](WORKING_BRIEF.md)
+before any product, brand, CLI, or model-catalog change. Product /
+architecture / roadmap overlays: [`PRODUCT.md`](PRODUCT.md),
+[`ARCHITECTURE.md`](ARCHITECTURE.md), [`ROADMAP.md`](ROADMAP.md). Package
+identifiers (`junction`, `JUNCTION_HOME`) stay as implementation spellings,
+not the product name.
 
 **Progress and memory:** GitHub issues own status for bugs, features, and
 stories; ADRs ([`docs/adr/`](docs/adr/README.md)) own the *why*;
@@ -23,11 +24,16 @@ commit and push only when explicitly authorized.
 
 ## What this is
 
-Junction is a local control plane: dock ACP coding agents and route their
-models. Chat from the web dashboard, the CLI, or a messaging channel;
-run multi-step tasks unattended; schedule cron jobs; keep memory across
-sessions. It drives an LLM through an ACP adapter plus MCP tools. `kiro-cli`
-is optional.
+Warding runs coding agents on the operator's own machine, under a policy
+the agent cannot read or rewrite. Chat sessions run the one harness the
+operator chooses in one setting (`agent.acp_backend`); spawned subagents can
+be routed to another installed harness by the harness router (flat-rate
+quota before metered, task kind, cooldown after a usage limit or failed
+login), which picks a harness and never forwards provider traffic. Chat from
+the web dashboard, the CLI, or a messaging channel; run multi-step tasks
+unattended; schedule cron jobs; keep memory across sessions. It drives an
+LLM through an ACP adapter plus MCP tools. `kiro-cli` is optional. A model
+catalog on loopback lists names and forwards nothing.
 
 - **Backend:** Python package `junction` in `src/junction/` (import path,
   not the product name).
@@ -36,7 +42,7 @@ is optional.
 - **Data home:** `~/.junction`, overridden with `JUNCTION_HOME`. There is no
   other data home and no fallback to another product's directory.
 - **Distribution:** public GitHub, plain setuptools, public PyPI / public npm.
-- **CLI:** `junction`, the only console script.
+- **CLI:** `warding` (`junction` is a silent alias of the same entry point).
 
 Full map: [`docs/architecture/overview.md`](docs/architecture/overview.md).
 
@@ -53,8 +59,8 @@ in the **same commit** when you change what it documents.
 | `computer_use/` | [computer-use](docs/system-specs/modules/computer-use.md) |
 | `acp/`, kiro-cli transport, providers | [acp-client](docs/system-specs/modules/acp-client.md) + [providers](docs/system-specs/modules/providers.md) |
 | `model_router/`, built-in catalog (no provider forwarding) | [model-router](docs/system-specs/modules/model-router.md) |
-| `harness_router/`, `routing.json`, routed `spawn_run`, `junction route` | [harness-router](docs/system-specs/modules/harness-router.md) + [harness-parity](docs/system-specs/modules/harness-parity.md) |
-| Junction overlay, product identity, two-plane thesis | [`JUNCTION.md`](JUNCTION.md) + [`WORKING_BRIEF.md`](WORKING_BRIEF.md) + [`PRODUCT.md`](PRODUCT.md) |
+| `harness_router/`, `routing.json`, routed `spawn_run`, `warding route` | [harness-router](docs/system-specs/modules/harness-router.md) + [harness-parity](docs/system-specs/modules/harness-parity.md) |
+| the product overlay (`JUNCTION.md`), product identity, the thesis | [`JUNCTION.md`](JUNCTION.md) + [`WORKING_BRIEF.md`](WORKING_BRIEF.md) + [`PRODUCT.md`](PRODUCT.md) |
 | adding or adapting an agent harness (BYO, KAS, claude seam) | [harness-parity](docs/system-specs/modules/harness-parity.md) (invariants) + [harness-parity-gate](docs/ci/harness-parity-gate.md) (CI) |
 | sessions, slots, session keys, PIDs | [session](docs/system-specs/modules/session.md) + [history](docs/system-specs/modules/history.md) |
 | session summaries, the chat summary panel, intent extraction | [session-summary](docs/system-specs/modules/session-summary.md) |
@@ -97,7 +103,7 @@ This repo is a public OSS tree. Never re-add:
 - **Keep these stubbed** (public symbols preserved as no-ops so the import graph
   holds): `sso_status.py`, `browser/auth.py`, `dashboard/handlers/sso_login.py`,
   `tunnel/manager.py`, `aim_agents.py`.
-- **Other providers.** Junction's `agent.provider` stays `enum=["acp"]`.
+- **Other providers.** Warding's `agent.provider` stays `enum=["acp"]`.
   `kiro-cli` is optional. Keep the dormant `ACP_BACKEND_CLAUDE` /
   `_is_claude` seam in `acp/client.py` so an internal companion can re-register
   Claude Code; do NOT re-add the public registration glue. A harness added at
@@ -108,10 +114,11 @@ This repo is a public OSS tree. Never re-add:
   a default-open Slack enterprise gate, lazy STT extras.
 - **Removed surfaces:** the Channels app is hidden from the App Store and the
   Board app is removed. Do not restore them.
-- **The upstream product's identity.** Junction started as a fork; none of that
+- **The upstream product's identity.** Warding started as a fork; none of that
   product's name, data homes, env prefix, CLI aliases, bundle ids, download or
-  update hosts, repository slug, or ghost mascot ship in Junction. Junction's
-  own identity (the J-and-switch mark, the "Interchange" palette, Overpass) is
+  update hosts, repository slug, or ghost mascot ship in Warding. Warding's
+  own identity (the Ward Seal mark, the paper-and-night palette, Fraunces and
+  IBM Plex Sans) is
   generated from [`assets/brand/build.py`](assets/brand/build.py); change it
   there, not by hand-editing a raster. The one deliberate exception is the
   Apache-2.0 attribution in `NOTICE`, which the license requires to be kept.
@@ -132,7 +139,7 @@ destructive-command deny rules, `~/.aws` / `~/.ssh` path blocking, the SEL audit
   including write and extract verbs. This single mechanism is what makes the
   ceiling un-disableable.
 - **Governance.** `effective = POLICY ∩ PROFILE`, tightest-wins, enforced at
-  Junction's OWN PreToolUse gate: it denies a tool or MCP call even when the kiro
+  Warding's OWN PreToolUse gate: it denies a tool or MCP call even when the kiro
   agent config granted it. The evaluator is scope-name-agnostic, so adding a scope
   is a `SCOPE_CATALOG` data change, never an evaluator edit.
 - **`CONTRACT_VERSION` stays pinned at 1 pre-launch.**
@@ -182,7 +189,7 @@ Never hardcode a model id (`claude-*`, `opus*`, `sonnet*`, `haiku*`, `gpt-*`,
 
 ## Harness parity: Kiro is first-class, the rest are adapted
 
-Never express "this is the Kiro harness" as the ABSENCE of another harness. Junction
+Never express "this is the Kiro harness" as the ABSENCE of another harness. Warding
 drives one first-class harness — `kiro-cli` (`ACP_BACKEND_KIRO`, spelled
 `""`) — and adapts the others (the dormant `ACP_BACKEND_CLAUDE` seam, KAS, and
 any bring-your-own harness). A negative test like `not is_claude_backend` reads
@@ -203,7 +210,7 @@ that harness pays for it.
 - **Capabilities are opt-in membership sets** (`ACP_BACKENDS_SESSION_SHARING`,
   `ACP_BACKENDS_STEER`, `ACP_BACKENDS_INTERNAL_SANDBOX`), and every harness's
   membership is an explicit decision. `is_kiro_cli` is the one that fails OPEN:
-  it makes `sandbox.wrap_argv` SKIP Junction's own seatbelt in favour of the
+  it makes `sandbox.wrap_argv` SKIP Warding's own seatbelt in favour of the
   harness's internal sandbox, so granting it to a harness without one leaves the
   agent process unconfined.
 - **Kiro is the floor.** `agent.acp_backend` defaults to `ACP_BACKEND_KIRO` and
@@ -439,12 +446,12 @@ Two traps are worth naming here because neither is visible when reading the test
 | Constants | No hardcoded strings or values in business logic; every limit has an owning module. Index: [code-style](docs/system-specs/common/code-style.md) |
 | Comments | Explain **behavior and rationale (the why)**: invariants, edge cases, units, non-obvious constraints. NOT a task log: no PR/CR numbers, review-round markers, incident dates, milestone tags, or commit SHAs. No "previously/used to/we now" narration, state current behavior in present tense. Don't restate what the code plainly does. `_vendor/` and pragmas are exempt. |
 | Icons | **Never use emojis in the UI.** Use `lucide-react` with `className="lucide-inline"`. |
-| Product name | The product is **Junction**. Identifiers stay as their systems spelled them (`junction`, `JUNCTION_*`, Electron `productName`, slug `laqaer/junction`). The upstream identity is retired: CI fails an added line carrying the upstream product name glued or joined by one separator (whitespace, `_ - . + / \`, a Unicode dash, `%20`, or a regex spelling of one: an escape, a short character class or a short group), in prose and identifiers alike, env-var prefix included; its data home as a path literal (or a regex of one) or built from split string literals; its hosts and its bundle id, dots plain or regex-escaped; its GitHub org (except citations of kiro-cli's own repository under it); or its mascot. The root `NOTICE` is the only exempt file and there is no inline marker, so a test or gate that names the old identity builds it from fragments. kiro-cli's `~/.kiro` and its own directories, `kiro-cli`, the word "crew", and the two words split by clause punctuation are not flagged. Run `BRAND_BASE_REF=origin/main python3 scripts/check_brand_name.py` before pushing. |
+| Product name | The product is **Warding**. Identifiers stay as their systems spelled them (`junction`, `JUNCTION_*`, Electron `productName`, slug `laqaer/junction`). The upstream identity is retired: CI fails an added line carrying the upstream product name glued or joined by one separator (whitespace, `_ - . + / \`, a Unicode dash, `%20`, or a regex spelling of one: an escape, a short character class or a short group), in prose and identifiers alike, env-var prefix included; its data home as a path literal (or a regex of one) or built from split string literals; its hosts and its bundle id, dots plain or regex-escaped; its GitHub org (except citations of kiro-cli's own repository under it); or its mascot. The root `NOTICE` is the only exempt file and there is no inline marker, so a test or gate that names the old identity builds it from fragments. kiro-cli's `~/.kiro` and its own directories, `kiro-cli`, the word "crew", and the two words split by clause punctuation are not flagged. Run `BRAND_BASE_REF=origin/main python3 scripts/check_brand_name.py` before pushing. |
 | User-facing strings | The dashboard is translated into 12 languages. **Never hardcode a user-facing English string, and never format a date, number, or sort order without naming a locale.** Both are CI-gated. Backend-owned strings have no catalog path yet, so a new non-2xx JSON body MUST carry a machine-readable `code` field. |
 
 ## Cross-platform: route POSIX calls through `platform_compat`
 
-Junction runs on macOS, Linux (x86_64 and ARM), and Windows (native). `fcntl`,
+Warding runs on macOS, Linux (x86_64 and ARM), and Windows (native). `fcntl`,
 `termios`, `resource`, and `pty` do not exist on Windows, and
 **`os.kill(pid, 0)` TERMINATES the target there**: it is not a liveness probe.
 

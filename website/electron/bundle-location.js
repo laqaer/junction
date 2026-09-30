@@ -151,10 +151,10 @@ function shouldOfferRelocation(location, { bundleWritable = true } = {}) {
 function describeLocation(location, { bundleWritable = true } = {}) {
   if (canInstallUpdates(location, { bundleWritable })) return "";
   if (location === "translocated") {
-    return "macOS is running Junction from a temporary read-only copy (App Translocation), "
+    return "macOS is running Warding from a temporary read-only copy (App Translocation), "
       + "so it cannot install its own updates.";
   }
-  return "Junction is running from a read-only disk image, so it cannot install its own updates.";
+  return "Warding is running from a read-only disk image, so it cannot install its own updates.";
 }
 
 /**
@@ -246,10 +246,10 @@ function canUpdateLinuxInstall(kind, { imageWritable = true, packageFormat = "" 
 function describeLinuxInstall(kind, { imageWritable = true, packageFormat = "" } = {}) {
   if (canUpdateLinuxInstall(kind, { imageWritable, packageFormat })) return "";
   if (kind === "package") {
-    return "Junction cannot tell which package format this install came from, so it "
+    return "Warding cannot tell which package format this install came from, so it "
       + "cannot fetch the right update. Update it through your package manager.";
   }
-  return "Junction cannot write to the folder holding its AppImage, so it cannot replace "
+  return "Warding cannot write to the folder holding its AppImage, so it cannot replace "
     + "itself with an update. Move the AppImage somewhere you own, such as ~/Applications.";
 }
 

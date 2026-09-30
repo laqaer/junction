@@ -439,7 +439,25 @@ def derive_capability(
 
     # Function-local: update_layout imports this module for its own shape
     # detection, so importing it at module scope would close a cycle.
-    from junction.platform.update_layout import release_channel, wheel_update_command
+    from junction.platform.update_layout import (
+        cdn_configured,
+        release_channel,
+        wheel_update_command,
+    )
+
+    if not cdn_configured():
+        # No release CDN is configured (the shipped default), so there is no feed
+        # to compare against and no installer to point at. Still ``supported``:
+        # the shape is a wheel this gateway could in principle replace, and the
+        # UI may show the version; it simply has nothing to fetch or to offer.
+        return UpdateCapability(
+            supported=True,
+            managed_by=MANAGED_BY_JUNCTION,
+            mode=MODE_NONE,
+            can_download=False,
+            can_apply=False,
+            requires_restart=True,
+        )
 
     return UpdateCapability(
         supported=True,

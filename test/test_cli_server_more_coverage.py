@@ -224,7 +224,7 @@ class TestStopViaService:
         with pytest.raises(SystemExit) as exc:
             cli_server._stop(8123)
         assert exc.value.code == 1
-        assert "No Junction gateway currently running on port 8123" in capsys.readouterr().out
+        assert "No Warding gateway currently running on port 8123" in capsys.readouterr().out
         assert sel_rec.calls[-1]["outcome"] == "no_target"
 
 
@@ -1171,7 +1171,7 @@ class TestUpdateGitPath:
         monkeypatch.setattr("builtins.input", lambda prompt="": "Y")
         cli_server._update()
         assert any(c[:2] == ["git", "reset"] for c in stub.calls)
-        assert "Junction updated!" in capsys.readouterr().out
+        assert "Warding updated!" in capsys.readouterr().out
 
     def test_reset_failure_exits(self, monkeypatch, git_checkout, capsys) -> None:
         monkeypatch.setattr(subprocess, "run", _GitStub(reset=1))
@@ -1198,7 +1198,7 @@ class TestUpdateGitPath:
         monkeypatch.setattr(cli_server, "build_frontend_sync", lambda p: built.append(p))
         cli_server._update()
         out = capsys.readouterr().out
-        assert "Junction updated!" in out
+        assert "Warding updated!" in out
         assert "Agent config refreshed" in out
         assert built == [git_checkout]
         assert ["kiro-cli", "update"] in stub.calls
@@ -1210,7 +1210,7 @@ class TestUpdateGitPath:
         monkeypatch.setattr(subprocess, "run", _GitStub(setup=1))
         cli_server._update()  # non-fatal
         out = capsys.readouterr().out
-        assert "Junction updated!" in out
+        assert "Warding updated!" in out
         assert "Agent config refresh failed" in out
 
 
@@ -1248,7 +1248,7 @@ class TestUpdateSubprocessHardening:
         # A findable kiro-cli makes the sixth (best-effort) site reachable.
         monkeypatch.setattr(cli_server.shutil, "which", lambda name: "/usr/bin/kiro-cli")
         cli_server._update()
-        assert "Junction updated!" in capsys.readouterr().out
+        assert "Warding updated!" in capsys.readouterr().out
 
         six = [
             ["git", "rev-parse"],
@@ -1291,7 +1291,7 @@ class TestUpdateSubprocessHardening:
         out = capsys.readouterr().out
         assert "git diff timed out" in out
         # The update still completed through the guard + reset path.
-        assert "Junction updated!" in out
+        assert "Warding updated!" in out
         assert any(c[:2] == ["git", "reset"] for c in stub.calls)
 
     def test_status_timeout_refuses_the_reset(self, monkeypatch, git_checkout, capsys) -> None:
@@ -1316,7 +1316,7 @@ class TestUpdateSubprocessHardening:
         cli_server._update()
         out = capsys.readouterr().out
         assert "kiro-cli update timed out" in out
-        assert "Junction updated!" in out
+        assert "Warding updated!" in out
 
 
 class TestUpdateWheelDispatch:

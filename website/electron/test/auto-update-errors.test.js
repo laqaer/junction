@@ -7,6 +7,10 @@
 const { test } = require("node:test");
 const assert = require("node:assert");
 
+// The build ships no default download host, so the manual-download link tests
+// configure one the way an operator would. Set before the module reads it.
+process.env.JUNCTION_DOWNLOAD_BASE = process.env.JUNCTION_DOWNLOAD_BASE || "https://download.example.invalid";
+
 const { classifyError, initAutoUpdate } = require("../auto-update");
 
 // --------------------------------------------------------------------------
@@ -281,7 +285,7 @@ test("manualDownloadUrl: null wherever there is no publish lane", () => {
   assert.strictEqual(manualDownloadUrl("stable", "linux", "ia32"), null);
 });
 
-test("manualDownloadUrl: points at the same CDN the updater pulls from", () => {
-  // A manual reinstall must land on identical artifacts, not a different host.
-  assert.match(manualDownloadUrl("nightly", "darwin"), /^https:\/\/download\.getjunction\.dev\//);
+test("manualDownloadUrl: points at the configured download host", () => {
+  // A manual reinstall must land on the operator's own artifacts, not another host.
+  assert.ok(manualDownloadUrl("nightly", "darwin").startsWith(`${DOWNLOAD_BASE}/`));
 });

@@ -1,9 +1,11 @@
 """The published official catalog: in sync, accepted by the client, and hosted.
 
 ``site/public/catalog/official-registry.json`` is what ``apps.getjunction.dev``
-serves, and when it is reachable the store renders from it INSTEAD of the
-bundled seed. So a stale or incomplete document is not cosmetic: a built-in it
-omits disappears from Discover, and a seed app it omits cannot be installed.
+serves. A stock client names no catalog origin; once an operator points
+``JUNCTION_APP_CATALOG_BASE`` there and it is reachable, the store renders from
+it INSTEAD of the bundled seed. So a stale or incomplete document is not
+cosmetic: a built-in it omits disappears from Discover, and a seed app it omits
+cannot be installed.
 """
 
 from __future__ import annotations
@@ -96,11 +98,22 @@ class TestCommittedDocument:
 
 
 class TestHosting:
-    def test_the_catalog_host_serves_the_committed_file(self):
-        # The chain the client depends on: OFFICIAL_CATALOG_URL's host is rewritten
-        # (never redirected -- the client refuses redirects) onto the directory the
-        # generator writes into, under the site's `public/`.
-        url = urllib.parse.urlsplit(official_catalog.OFFICIAL_CATALOG_URL)
+    def test_a_stock_client_names_no_catalog_origin(self, monkeypatch):
+        # Publishing the document never turns the fetch on: the operator opts in.
+        monkeypatch.delenv(official_catalog.CATALOG_BASE_ENV, raising=False)
+        assert not official_catalog.catalog_configured()
+        assert official_catalog.catalog_document_url(official_catalog.OFFICIAL_CATALOG_FILE) == ""
+
+    def test_the_catalog_host_serves_the_committed_file(self, monkeypatch):
+        # The chain an operator opts into: with the catalog base pointed at the
+        # published base, the document URL's host is rewritten (never redirected --
+        # the client refuses redirects) onto the directory the generator writes
+        # into, under the site's `public/`.
+        monkeypatch.setenv(official_catalog.CATALOG_BASE_ENV, builder.PUBLISHED_BASE)
+        url = urllib.parse.urlsplit(
+            official_catalog.catalog_document_url(official_catalog.OFFICIAL_CATALOG_FILE)
+        )
+        assert url.hostname
         config = json.loads((_REPO_ROOT / "site" / "vercel.json").read_text(encoding="utf-8"))
         assert not any(
             {"type": "host", "value": url.hostname} in r.get("has", [])

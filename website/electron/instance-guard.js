@@ -81,8 +81,8 @@ function classifyGatewayReadiness(statusCode, payload) {
 const FAMILY_META = {
   // appName is the technical Finder/AppleScript target. displayName is the
   // product spelling shown in dialogs and status text.
-  prod: { appName: "Junction", displayName: "Junction" }, // brand-ok: Electron productName identifier
-  nightly: { appName: "Junction Nightly", displayName: "Junction Nightly" }, // brand-ok: nightly channel identifier
+  prod: { appName: "Junction", displayName: "Warding" }, // appName: the Electron productName identifier
+  nightly: { appName: "Junction Nightly", displayName: "Warding Nightly" }, // appName: the nightly productName identifier
 };
 
 /**

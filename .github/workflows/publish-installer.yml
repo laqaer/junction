@@ -2,7 +2,7 @@ name: Publish Installer
 
 # Publishes cli.sh -- the bootstrap installer behind the documented one-liner
 #
-#   curl -fsSL https://download.getjunction.dev/cli.sh | sh -s -- --channel X
+#   curl -fsSL "$BASE/cli.sh" | sh -s -- --cdn "$BASE" --channel X
 #
 # to the ROOT of the public distribution bucket. It is the only root object.
 #

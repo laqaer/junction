@@ -34,11 +34,11 @@ ARTIFACT_NAME = "desktop-metrics.json"
 # Electron productName values, which determine app.getPath("logs"). Kept in sync
 # with website/electron/package.json (the release default) and
 # packaging/build-desktop.sh, which overrides it with
-# `-c.productName=Junction Nightly` for nightly stamps. Nightly is not a cosmetic
+# `-c.productName=Warding Nightly` for nightly stamps. Nightly is not a cosmetic
 # variant: it installs as a separate app with its own log directory, and its users
 # are the ones most likely to be profiling, so omitting it made the command report
 # "not found" against an app that was recording correctly.
-PRODUCT_NAMES = ("Junction", "Junction Nightly")
+PRODUCT_NAMES = ("Warding", "Warding Nightly")
 
 SUPPORTED_VERSION = 1
 

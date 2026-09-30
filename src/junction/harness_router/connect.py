@@ -1,7 +1,7 @@
 """Connecting harnesses: how to install and log in to each, and whether it works.
 
-This is what the dashboard's Agents & plans panel and ``junction route check``
-show. Junction never performs a login itself and never sees a credential:
+This is what the dashboard's Agents & plans panel and ``warding route check``
+show. Warding never performs a login itself and never sees a credential:
 every harness keeps its own sign-in, so "connecting" means running that
 harness's own login command (in the dashboard terminal or a shell) and then
 probing it.
@@ -78,7 +78,7 @@ class HarnessSetup:
 
 # The subscriptions most operators bring. Other registry harnesses still
 # connect; they show their runtime's login hint instead of commands. Claude's
-# install names the ACP adapter too: Junction drives Claude Code through
+# install names the ACP adapter too: Warding drives Claude Code through
 # claude-agent-acp, which is not bundled with the claude CLI.
 HARNESS_SETUP: Mapping[str, HarnessSetup] = MappingProxyType(
     {

@@ -116,14 +116,14 @@ export function registerCatalogs(
  *
  * Catalog strings never hardcode the displayed product name; they interpolate
  * this variable, supplied to i18next as `interpolation.defaultVariables`. The
- * stock build resolves it to "Junction", so rendered output is identical to a
+ * stock build resolves it to "Warding", so rendered output is identical to a
  * hardcoded literal — the indirection exists for downstream editions.
  *
  * The `apps.<id>.manifest.*` keys are the deliberate exception: they must stay
  * byte-identical to the Python-side `app.json` prose (the manifest-sync gate),
  * so they keep the literal.
  */
-const DEFAULT_PRODUCT_NAME = 'Junction'
+const DEFAULT_PRODUCT_NAME = 'Warding'
 let productName = DEFAULT_PRODUCT_NAME
 
 /**

@@ -1,5 +1,5 @@
 /**
- * Right-click context menu for the Junction dashboard window.
+ * Right-click context menu for the Warding dashboard window.
  *
  * Electron enables its built-in spellchecker by default and draws the red
  * underlines under misspelled words, but it does NOT ship a default UI for
