@@ -5,10 +5,10 @@ Embeddings run in-process via the vendored llama-cpp-python runtime
 runtime pip install. The Qwen3-Embedding-0.6B GGUF model is downloaded in
 the background (sha256-verified, with retries) and installed persistently
 to ``~/.junction/models/``. Sources are tried in order: a byte-identical
-blob salvaged from a legacy Ollama install, then the public CloudFront CDN
-(plain HTTPS — no git access, no cloud SDK). ``JUNCTION_EMBED_MODEL_URL``
-(or the ``memory.embed_model_url`` config knob) overrides the CDN URL for
-mirrored/airgapped deployments.
+blob salvaged from a legacy Ollama install, then the model publisher's own
+release on Hugging Face (plain HTTPS — no git access, no cloud SDK, no account).
+``JUNCTION_EMBED_MODEL_URL`` (or the ``memory.embed_model_url`` config knob)
+overrides the default URL for mirrored/airgapped deployments.
 
 A user-supplied model can be run instead of the bundled one by pointing
 ``JUNCTION_EMBED_MODEL_PATH`` (or ``memory.embed_model_path``) at a local
@@ -140,17 +140,17 @@ _DOWNLOAD_BACKOFF_BASE_SECS = 60.0
 _DOWNLOAD_BACKOFF_CAP_SECS = 1800.0
 # Escape hatch for tests/CI: never kick a 610MB model download from a test run.
 _SKIP_DOWNLOAD_ENV = "JUNCTION_SKIP_MODEL_DOWNLOAD"
-# Distribution: public CloudFront CDN in front of Junction's OWN model bucket
-# (junction-models, reachable only through the distribution's OAC — the bucket
-# itself blocks public access). Serving our own copy rather than sharing another
-# project's bucket keeps the download signal attributable: a fetch here is a
-# Junction first-install, uncontaminated by another product's traffic.
-# Plain HTTPS, no git access and no cloud SDK required. The
-# sha256 pin above is the trust anchor for every source, so a tampered CDN
+# Distribution: the Qwen team's own GGUF release on Hugging Face, pinned to a
+# repository revision so a later re-upload cannot change what a fresh install
+# fetches. The project runs no model host of its own, so the default points at
+# the publisher rather than at infrastructure someone else operates. Plain
+# HTTPS, no git access, no account and no cloud SDK required; the URL answers
+# with a redirect to Hugging Face's CDN, which urllib follows. The sha256 pin
+# above is the trust anchor for every source, so a tampered or substituted
 # object can only fail verification. Resolution order: JUNCTION_EMBED_MODEL_URL
 # env, then the memory.embed_model_url config knob, then this default. The URL
-# basename (qwen3-embedding-0.6b.gguf) intentionally differs from the on-disk
-# _GGUF_FILENAME — the sha pin, not the name, is the integrity gate.
+# basename (Qwen3-Embedding-0.6B-Q8_0.gguf) intentionally differs from the
+# on-disk _GGUF_FILENAME — the sha pin, not the name, is the integrity gate.
 _MODEL_URL_ENV = "JUNCTION_EMBED_MODEL_URL"
 # Custom-model escape hatch: an absolute path to a user-supplied GGUF. When set
 # (env, or the memory.embed_model_path config knob) Junction runs THAT model and
@@ -163,7 +163,8 @@ _MODEL_URL_ENV = "JUNCTION_EMBED_MODEL_URL"
 # embedder at an arbitrary file.
 _MODEL_PATH_ENV = "JUNCTION_EMBED_MODEL_PATH"
 _DEFAULT_MODEL_URL = (
-    "https://d3j0sthz5doyui.cloudfront.net/models/qwen3-embedding-0.6b.gguf"
+    "https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF/resolve/"
+    "370f27d7550e0def9b39c1f16d3fbaa13aa67728/Qwen3-Embedding-0.6B-Q8_0.gguf"
 )
 _HTTP_TIMEOUT_SECS = 1800  # 610MB at >=340KB/s; slower links retry with backoff
 _HTTP_CHUNK_BYTES = 1 << 20
@@ -446,7 +447,7 @@ def models_dir() -> Path:
 
 
 def default_model_path() -> Path:
-    """On-disk path of the BUNDLED model (the CDN download target)."""
+    """On-disk path of the BUNDLED model (the HTTPS download target)."""
     return models_dir() / _GGUF_FILENAME
 
 
@@ -1727,11 +1728,11 @@ def _make_ssl_context() -> ssl.SSLContext:
 
 
 def _resolve_model_url() -> str:
-    """Resolve the model download URL: env > config knob > CDN default.
+    """Resolve the model download URL: env > config knob > built-in default.
 
     The ``JUNCTION_EMBED_MODEL_URL`` env var wins (mirrored/airgapped
     deployments), then a non-empty ``memory.embed_model_url`` in
-    ``config.json``, then the public CDN default. The config file is read
+    ``config.json``, then ``_DEFAULT_MODEL_URL``. The config file is read
     raw (not via the full loader) so the download thread never depends on
     the config dataclass import graph. Overrides must be ``https://`` —
     other schemes (``file://``, ``http://``) are rejected so an
@@ -1744,7 +1745,7 @@ def _resolve_model_url() -> str:
         if env_url.lower().startswith("https://"):
             return env_url
         logger.warning(
-            "%s must be an https:// URL — ignoring the override and using " "the CDN default",
+            "%s must be an https:// URL — ignoring the override and using the default source",
             _MODEL_URL_ENV,
         )
     cfg_url = str(_read_memory_config().get("embed_model_url", "") or "").strip()
@@ -1753,7 +1754,7 @@ def _resolve_model_url() -> str:
             return cfg_url
         logger.warning(
             "memory.embed_model_url must be an https:// URL — ignoring "
-            "the override and using the CDN default",
+            "the override and using the default source",
         )
     return _DEFAULT_MODEL_URL
 
@@ -1776,7 +1777,7 @@ def redact_model_url(url: str) -> str:
 
 
 class ModelDownloadManager:
-    """Background download of the embedding GGUF from the CDN, with retries.
+    """Background download of the embedding GGUF over HTTPS, with retries.
 
     The gateway kicks ``ensure_model()`` as a background task at startup, so
     boot is never blocked by the 610MB transfer. ``status`` is a plain dict
@@ -1906,17 +1907,17 @@ class ModelDownloadManager:
             staging.unlink(missing_ok=True)
 
     def _download_once(self) -> tuple[bool, str]:
-        """Try sources in order: Ollama salvage → HTTPS CDN."""
+        """Try sources in order: Ollama salvage → HTTPS download."""
         # Migration fast path: users coming from the Ollama-era embeddings
         # already have the identical GGUF in Ollama's content-addressed store.
         if self._salvage_legacy_ollama_blob():
             return True, ""
-        # HTTPS download from the CloudFront CDN (works for everyone, no
+        # HTTPS download from the resolved URL (works for everyone, no
         # git/SSH and no cloud SDK required). Reports byte-level progress.
         return self._download_via_https()
 
     def _download_via_https(self) -> tuple[bool, str]:
-        """Download the GGUF from the CDN via plain HTTPS with progress reporting."""
+        """Download the GGUF via plain HTTPS with progress reporting."""
         url = _resolve_model_url()
         self._target.parent.mkdir(parents=True, exist_ok=True)
         staging = self._target.parent / f".{self._target.name}.http.{os.getpid()}.tmp"

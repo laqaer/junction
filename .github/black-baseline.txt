@@ -270,7 +270,6 @@ src/junction/deploy/skills/artifact-deploy/templates/handler-example.py
 src/junction/deploy/webapp_types.py
 src/junction/discord/attachments.py
 src/junction/doc_parser.py
-src/junction/embeddings.py
 src/junction/emoji_list.py
 src/junction/env.py
 src/junction/eval/bench/adapters/longmemeval.py

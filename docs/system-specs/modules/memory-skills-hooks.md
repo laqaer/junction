@@ -274,8 +274,8 @@ Embeddings run in-process via the vendored llama-cpp-python 0.3.34 runtime (`jun
 
 **Download flow** (`ensure_model()` / `start_background_model_download()`):
 - **Salvage fast-path** (`_salvage_legacy_ollama_blob`): before downloading, checks the legacy Ollama blob store (`~/.ollama/models/blobs/sha256-<digest>`, honoring `$OLLAMA_MODELS`) — Ollama stores layer blobs content-addressed and the Ollama-era GGUF is byte-identical, so migrating users skip the 610MB re-download entirely. The copy is sha256-verified like a real download; any failure falls through to the normal download
-- Downloads `qwen3-embedding-0.6b-q8_0.gguf` (Q8_0 quantized, 610MB) over plain HTTPS from the public Junction CDN — URL resolution order: `JUNCTION_EMBED_MODEL_URL` env var, then the `memory.embed_model_url` config knob, then the built-in `_DEFAULT_MODEL_URL` CDN constant. No git, no cloud SDK. Streaming sha256 is computed while downloading and byte-level progress (`bytes_downloaded`/`bytes_total`) is written to `status` every ~16MB for the dashboard's determinate progress bar
-- sha256-verifies the file (`06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` — the trust anchor for every source: a tampered CDN object or mirror can only fail verification); files under `_GGUF_MIN_BYTES` (1MB) are rejected as truncated
+- Downloads `qwen3-embedding-0.6b-q8_0.gguf` (Q8_0 quantized, 610MB) over plain HTTPS from the Qwen team's own release on Hugging Face, pinned to a repository revision — URL resolution order: `JUNCTION_EMBED_MODEL_URL` env var, then the `memory.embed_model_url` config knob, then the built-in `_DEFAULT_MODEL_URL` constant. The project runs no model host of its own. No git, no account, no cloud SDK. Streaming sha256 is computed while downloading and byte-level progress (`bytes_downloaded`/`bytes_total`) is written to `status` every ~16MB for the dashboard's determinate progress bar
+- sha256-verifies the file (`06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` — the trust anchor for every source: a tampered or substituted object on any source or mirror can only fail verification); files under `_GGUF_MIN_BYTES` (1MB) are rejected as truncated
 - Installs persistently to `~/.junction/models/qwen3-embedding-0.6b.gguf` — atomic install: stages into a per-process unique file in the TARGET directory (same filesystem) then `os.replace`, so two concurrent processes (gateway + one-shot CLI) can never interleave writes into a shared staging file
 - **Daemon-thread download** (`_run_download_on_daemon_thread`): the blocking HTTPS transfer runs on a daemon thread (deliberately NOT `run_in_executor` — executor threads are joined at interpreter exit), so Ctrl-C or a finished one-shot CLI is never pinned by an in-flight 610MB transfer
 - **Retry ladder**: background startup task = up to 6 attempts with exponential backoff (60s base, 30min cap, may span hours); every gateway restart retries; dashboard Enable/Retry click = `DOWNLOAD_ATTEMPTS_INTERACTIVE` (3) attempts for fast feedback. `junction run` (one-shot CLI) never kicks downloads — only the long-lived gateway does
@@ -300,7 +300,7 @@ Embeddings run in-process via the vendored llama-cpp-python 0.3.34 runtime (`jun
 |-------|-------|
 | Model | Qwen/Qwen3-Embedding-0.6B (Q8_0 GGUF) |
 | License | Apache-2.0 (on approved list for self-approval) |
-| Source | public Junction CDN (`_DEFAULT_MODEL_URL`; sha256-pinned; `JUNCTION_EMBED_MODEL_URL` / `memory.embed_model_url` for mirrors) |
+| Source | the publisher's Hugging Face release (`_DEFAULT_MODEL_URL`, revision-pinned; sha256-pinned; `JUNCTION_EMBED_MODEL_URL` / `memory.embed_model_url` for mirrors) |
 | Runtime | Vendored llama-cpp-python 0.3.34 (MIT license, `junction/_vendor/`) |
 | Data flow | Text → in-process function call → float vectors (no data leaves machine) |
 | Policy | Self-approvable under a public dataset / ML model policy |
@@ -396,7 +396,7 @@ The backend `POST /api/memory/migrate` endpoint and the `junction memory migrate
 
 ### Cross-Platform
 
-macOS (Apple Silicon and Intel), Linux (x86_64, arm64/Graviton), and Windows supported. All paths use `pathlib.Path`. GGUF model downloaded over sha256-pinned HTTPS from the Junction CDN. No runtime install step — native llama.cpp libraries are vendored per platform in `_vendor/llama_cpp_libs/` and selected via `LLAMA_CPP_LIB_PATH` (the old Docker fallback is gone).
+macOS (Apple Silicon and Intel), Linux (x86_64, arm64/Graviton), and Windows supported. All paths use `pathlib.Path`. GGUF model downloaded over sha256-pinned HTTPS from the publisher's Hugging Face release. No runtime install step — native llama.cpp libraries are vendored per platform in `_vendor/llama_cpp_libs/` and selected via `LLAMA_CPP_LIB_PATH` (the old Docker fallback is gone).
 
 | Platform | Vendored libs | GPU | Notes |
 |----------|--------------|-----|-------|

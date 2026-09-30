@@ -200,7 +200,8 @@ Node must be `20` or `>= 22`; an older Node fails the Vite build. Python must be
 ### Embedding model download failed
 
 The embedding model (about 610 MB) downloads in the background over HTTPS from
-the Junction CDN on gateway startup and is sha256-verified. A failed download
+the model publisher's release on Hugging Face on gateway startup and is
+sha256-verified. A failed download
 retries with exponential backoff (up to 6 attempts) and again on every gateway
 start. If it keeps failing:
 

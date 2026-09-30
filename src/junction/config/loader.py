@@ -2317,7 +2317,7 @@ class MemoryConfig:
         metadata=_meta(
             "Embedding Model URL",
             "Override HTTPS URL for the embedding model GGUF download (mirrored/airgapped "
-            "deployments). Empty uses the public Junction CDN default; the "
+            "deployments). Empty uses the model publisher's release on Hugging Face; the "
             "JUNCTION_EMBED_MODEL_URL env var wins over both. The download is "
             "sha256-verified regardless of source.",
         ),

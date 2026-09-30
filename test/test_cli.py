@@ -4835,7 +4835,7 @@ class TestDoctorEmbeddings:
         def _fake_urlopen(req, timeout=None, **kw):
             url = getattr(req, "full_url", str(req))
             probed.append(url)
-            if "cloudfront" in url or "mirror" in url:
+            if "mirror" in url:
                 resp = MagicMock(status=200)
                 cm = MagicMock()
                 cm.__enter__ = MagicMock(return_value=resp)

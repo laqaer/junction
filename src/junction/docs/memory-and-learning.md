@@ -81,9 +81,9 @@ Semantic search over your memory, always on:
   other server to install — the runtime is bundled; no data leaves your machine)
 
 The embedding model (~610MB) downloads automatically in the background the
-first time the gateway starts, over HTTPS from the Junction CDN — failed
-downloads retry automatically with backoff, and again on the next gateway
-start; the Memory tab shows download progress. Once downloaded, the model
+first time the gateway starts, over HTTPS from the model publisher's release on
+Hugging Face — failed downloads retry automatically with backoff, and again
+on the next gateway start; the Memory tab shows download progress. Once downloaded, the model
 loads in the background too, so nothing ever waits on it. While the model is
 downloading or loading, memory falls back to keyword search and switches to
 semantic search as soon as the model is ready — no restart needed. Requires
