@@ -471,12 +471,12 @@ if [ "$(uname)" = "Darwin" ] && has node && [ -d "$JUNCTION_APP_DIR/electron" ];
             ) &
             spinner $! "Building Electron app…"
             if wait $!; then
-                _app_src="$JUNCTION_APP_DIR/electron/dist/mac-arm64/Warding.app"
-                [ ! -d "$_app_src" ] && _app_src="$JUNCTION_APP_DIR/electron/dist/mac/Warding.app"
+                _app_src="$JUNCTION_APP_DIR/electron/dist/mac-arm64/Junction.app"
+                [ ! -d "$_app_src" ] && _app_src="$JUNCTION_APP_DIR/electron/dist/mac/Junction.app"
                 if [ -d "$_app_src" ]; then
                     mkdir -p "$HOME/Applications"
-                    rm -rf "$HOME/Applications/Warding.app" 2>/dev/null
-                    cp -R "$_app_src" "$HOME/Applications/Warding.app"
+                    rm -rf "$HOME/Applications/Junction.app" 2>/dev/null
+                    cp -R "$_app_src" "$HOME/Applications/Junction.app"
                     ok "Desktop app installed to ~/Applications"
                     detail "Launch it from Spotlight or Finder → ~/Applications"
                 else

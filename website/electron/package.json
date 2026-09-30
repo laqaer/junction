@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "dev.junction.desktop",
-    "productName": "Warding",
+    "productName": "Junction",
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "icon.icns",

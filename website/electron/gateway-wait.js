@@ -127,7 +127,7 @@ function describeGatewayFailure(failure) {
   if (failure.signal === "SIGKILL") {
     return "The gateway was killed on launch (SIGKILL). On macOS this usually "
       + "means Gatekeeper blocked an unsigned or quarantined executable — try: "
-      + "xattr -cr <path to Warding.app>";
+      + "xattr -cr <path to Junction.app>";
   }
   if (failure.signal) {
     return `The gateway exited on launch (signal ${failure.signal}).`;

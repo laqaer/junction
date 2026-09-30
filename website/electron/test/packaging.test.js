@@ -137,7 +137,7 @@ describe("macOS bundle naming", () => {
   );
 
   it("keeps CFBundleName aligned with productName for Electron helpers", () => {
-    assert.equal(pkg.build.productName, "Warding");
+    assert.equal(pkg.build.productName, "Junction");
     assert.equal(
       Object.hasOwn(extendInfo, "CFBundleName"),
       false,
@@ -152,6 +152,24 @@ describe("macOS bundle naming", () => {
       /-c\.mac\.extendInfo\.CFBundleDisplayName=Warding Nightly/
     );
     assert.doesNotMatch(buildScript, /-c\.mac\.extendInfo\.CFBundleName=/);
+  });
+
+  it("names the universal post-gate's bundle exactly as electron-builder emits it", () => {
+    // The lipo post-gate finds <PRODUCT_NAME>.app/Contents/MacOS/<PRODUCT_NAME>,
+    // and electron-builder names that bundle from productName (the nightly
+    // override included), so the two spellings must be the same string or
+    // every universal build fails after packaging.
+    const nightlyOverride = buildScript.match(/"-c\.productName=([^"]+)"/);
+    assert.ok(nightlyOverride, "expected a nightly -c.productName override");
+    assert.match(buildScript, new RegExp(`\\*\\)\\s+PRODUCT_NAME="${pkg.build.productName}" ;;`));
+    assert.match(
+      buildScript,
+      new RegExp(`\\*-nightly\\.\\*\\) PRODUCT_NAME="${nightlyOverride[1]}" ;;`)
+    );
+    assert.match(
+      buildScript,
+      new RegExp(`if \\[ "\\$PRODUCT_NAME" = "${nightlyOverride[1]}" \\]; then`)
+    );
   });
 });
 

@@ -711,7 +711,7 @@ describe('DevFleetPage', () => {
   // on this page reveals that the managed code is not the running code.
   it('warns when the install serving the dashboard is not the managed checkout', async () => {
     mockFleet({
-      serving_install_reason: 'this dashboard is served by the install at /Applications/Warding.app/Contents/Resources/backend-dist/junction-backend-arm64/lib/python3.12/site-packages/junction, which is not inside the checkout Dev Fleet manages (/Users/dev/junction).',
+      serving_install_reason: 'this dashboard is served by the install at /Applications/Junction.app/Contents/Resources/backend-dist/junction-backend-arm64/lib/python3.12/site-packages/junction, which is not inside the checkout Dev Fleet manages (/Users/dev/junction).',
       worktrees: [{ name: 'main', is_main: true, running: false, has_dist: true, behind: 0 }],
     })
     renderPage()

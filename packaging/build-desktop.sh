@@ -517,7 +517,7 @@ log "Packaging desktop app (electron-builder, version: $JN_VERSION)…"
     # Cost accepted: shared TCC/notification identity, and a junction:// URL
     # scheme could not disambiguate the two apps (none is registered today).
     EB_ARGS+=(
-      "-c.productName=Warding Nightly"
+      "-c.productName=Junction Nightly"
       "-c.mac.icon=icon-nightly.icns"
       "-c.linux.icon=icon-nightly.png"
       "-c.win.icon=icon-nightly.png"

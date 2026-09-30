@@ -1059,7 +1059,7 @@ function spawnGateway(resolve) {
           // every fallback stop, in the very log the unrecoverable-gateway dialog
           // tells the user to read.
           if (signal === "SIGKILL" && IS_MAC) {
-            glog("HINT: SIGKILL on a freshly-spawned bundled binary almost always means macOS Gatekeeper blocked an unsigned/quarantined nested executable. On the recipient's Mac run: xattr -cr <path to Warding.app>");
+            glog("HINT: SIGKILL on a freshly-spawned bundled binary almost always means macOS Gatekeeper blocked an unsigned/quarantined nested executable. On the recipient's Mac run: xattr -cr <path to Junction.app>");
           }
           // Only the CURRENT child may mutate the shared state. A stale child's
           // late exit (e.g. the one recoverWedgedGateway just SIGKILLed) must be
@@ -3406,7 +3406,7 @@ function renameCurrentWindow() {
 // Guide the user to grant macOS Screen Recording permission when it has been
 // explicitly denied — the snip tool cannot capture any frame without it. Opens
 // the exact Privacy pane. Note: the granted entity must be the packaged
-// Warding.app, not the terminal that launched a dev build.
+// Junction.app bundle, not the terminal that launched a dev build.
 function showScreenPermissionDialog() {
   const pane = "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
   dialog
