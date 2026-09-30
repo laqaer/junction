@@ -515,9 +515,14 @@ since publishing is not a regression for it.
 ### Installing and switching channels
 
 ```bash
-# install, or move to another channel
-curl -fsSL https://download.getjunction.dev/cli.sh | sh -s -- --channel {nightly|insider|stable}
+# install, or move to another channel; BASE is the distribution you install from
+curl -fsSL "$BASE/cli.sh" | sh -s -- --cdn "$BASE" --channel {nightly|insider|stable}
 ```
+
+The installer has no default distribution: without `--cdn` or
+`JUNCTION_CDN_BASE` it stops before any request. The in-app update command
+carries `--cdn` itself, so it installs from the distribution the gateway was
+configured with even when pasted into a shell that lacks the variable.
 
 The installer resolves the channel feed, verifies it as described above,
 installs with `pipx` when available (otherwise a managed venv beside the data

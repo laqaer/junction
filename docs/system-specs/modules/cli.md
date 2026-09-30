@@ -67,7 +67,11 @@ and of macOS signing/notarization.
   prints that no feed is configured and exits 1 without a request. Setting
   the variable to an `https://` CDN that serves the layout above restores
   every path; `cdn_bases_are_safe()` still refuses a non-https or
-  metacharacter-bearing value.
+  metacharacter-bearing value. `cli.sh` follows the same contract: with
+  neither `--cdn` nor `JUNCTION_CDN_BASE` it exits 1 ("no distribution
+  configured") before any request, so `wheel_update_command()` passes
+  `--cdn <artifact base>` explicitly rather than relying on the variable
+  reaching the shell that runs it.
 
 The installer embeds the public key and expected key id. Before any network
 request, it requires OpenSSL, rejects an unconfigured pin, materializes the key,

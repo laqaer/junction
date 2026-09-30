@@ -185,6 +185,10 @@ class TestWheelUpdateCommand:
         assert "--channel nightly" in cmd
         assert "https://cdn.test.invalid/cli.sh" in cmd
         assert "--proto '=https'" in cmd
+        # cli.sh has no default distribution, so the command must name the one
+        # it fetched the installer from, or a paste into a shell without
+        # JUNCTION_CDN_BASE would stop at the installer's configuration check.
+        assert "sh -s -- --cdn https://cdn.test.invalid --channel nightly" in cmd
 
     def test_no_cdn_means_no_command(self, monkeypatch, tmp_path) -> None:
         """A stock build has no installer to fetch, so the command is empty."""

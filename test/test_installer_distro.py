@@ -143,6 +143,10 @@ def _run_cli_with_fake_env(
         "PATH": str(tools),
         "HOME": str(tmp_path / "home"),
         "JUNCTION_HOME": str(tmp_path / "data-home"),
+        # cli.sh has no default distribution and stops before the interpreter
+        # ladder without one. Every request goes to the curl stub, so the host
+        # only has to be well-formed.
+        "JUNCTION_CDN_BASE": "https://fixtures.invalid",
     }
     argv = [str(tools / "sh"), str(CLI_SH), *(extra_args or [])]
     result = run_bounded(argv, env)

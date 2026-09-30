@@ -263,7 +263,10 @@ def wheel_update_command(channel: str | None = None) -> str:
         # An empty body would let sh exit 0 on nothing at all, which is the same
         # false success as the piped form.
         'test -n "$_jn_body"; '
-        f'printf \'%s\\n\' "$_jn_body" | sh -s -- --channel {channel}'
+        # cli.sh has no default distribution, so the base travels with the
+        # command: a copy pasted into a shell without JUNCTION_CDN_BASE still
+        # installs from the distribution the gateway was configured with.
+        f'printf \'%s\\n\' "$_jn_body" | sh -s -- --cdn {artifact_base} --channel {channel}'
     )
 
 

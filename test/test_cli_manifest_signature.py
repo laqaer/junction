@@ -608,6 +608,34 @@ def test_installer_fails_before_network_when_trust_root_is_unconfigured(
     assert not install_marker.exists()
 
 
+def test_installer_refuses_to_guess_a_distribution(tmp_path: Path) -> None:
+    """With no --cdn and no JUNCTION_CDN_BASE the installer names the missing
+    setting and stops, rather than resolving a host nobody configured."""
+    if os.name == "nt":
+        pytest.skip("cli.sh is supported on macOS and Linux only")
+    root = tmp_path / "run"
+    tools, curl_marker, install_marker = _write_fake_tools(root)
+    env = os.environ.copy()
+    env.pop("JUNCTION_CDN_BASE", None)
+    env.update(
+        {
+            "PATH": f"{tools}{os.pathsep}{env['PATH']}",
+            "HOME": str(root / "home"),
+            "JUNCTION_HOME": str(root / "data-home"),
+            "FAKE_CDN_ROOT": str(tmp_path / "unused-cdn"),
+            "FAKE_CURL_MARKER": str(curl_marker),
+            "FAKE_INSTALL_MARKER": str(install_marker),
+        }
+    )
+
+    result = run_bounded(["sh", str(INSTALLER)], env)
+
+    assert result.returncode == 1
+    assert "no distribution configured" in result.stderr
+    assert not curl_marker.exists(), "an unconfigured distribution must fail before any request"
+    assert not install_marker.exists()
+
+
 def test_installer_and_repository_public_key_are_one_fail_closed_contract() -> None:
     source = INSTALLER.read_text(encoding="utf-8")
     key_id = re.search(r'^CLI_MANIFEST_KEY_ID="([^"]+)"$', source, re.M)
