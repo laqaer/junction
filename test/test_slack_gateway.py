@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -1978,8 +1979,17 @@ class TestNotifMeta:
     def test_slack_link(self):
         result = GatewayOrchestrator._notif_meta("C123:1234.567890")
         assert result is not None
-        assert "slack_link" in result
-        assert "C123" in result["slack_link"]
+        assert result["slack_link"] == "https://slack.com/app_redirect?channel=C123"
+
+    def test_slack_link_names_no_workspace(self):
+        """The gateway never learns the operator's workspace subdomain, so the
+        link must go through Slack's own host rather than any fixed workspace."""
+        link = GatewayOrchestrator._notif_meta("C123:1234.567890")["slack_link"]
+        assert urlsplit(link).netloc == "slack.com"
+
+    def test_slack_link_escapes_channel(self):
+        link = GatewayOrchestrator._notif_meta("C1&x=y:1.2")["slack_link"]
+        assert parse_qs(urlsplit(link).query) == {"channel": ["C1&x=y"]}
 
     def test_cron_key_returns_none(self):
         assert GatewayOrchestrator._notif_meta("cron:j1") is None

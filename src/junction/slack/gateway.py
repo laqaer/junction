@@ -36,6 +36,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 from aiohttp import web
 from slack_sdk.socket_mode.websockets import SocketModeClient as WSSocketModeClient
@@ -420,6 +421,12 @@ _MARKER_WRITE_WAIT_SECS = 5.0
 # approvals are NOT background: they route to the dashboard where the spawning
 # human is present (via the parent slot), so they keep the long interactive window.
 _BACKGROUND_APPROVAL_SOURCES = frozenset({"cron", "heartbeat", "taskrunner", "autonudge", ""})
+
+# Workspace-agnostic Slack deep link. A message permalink needs the workspace's
+# own subdomain, which the gateway never learns, so a jump-to-source link opens
+# the channel through Slack's redirector instead; Slack resolves it against the
+# workspace the operator is signed in to.
+_SLACK_CHANNEL_REDIRECT_URL = "https://slack.com/app_redirect?channel={channel}"
 
 # Slack Block Kit section.text hard limit is 3000 chars.
 # We split cron output at this boundary so each chunk fits in a section block.
@@ -5880,10 +5887,8 @@ class GatewayOrchestrator:
         if slot:
             return {"slot": slot}
         if ":" in parent_key and not parent_key.startswith(("cron:", "subagent:", "hook:")):
-            chan, ts = parent_key.split(":", 1)
-            return {
-                "slack_link": f"https://amzn-aws.slack.com/archives/{chan}/p{ts.replace('.', '')}"
-            }
+            chan = parent_key.split(":", 1)[0]
+            return {"slack_link": _SLACK_CHANNEL_REDIRECT_URL.format(channel=quote(chan, safe=""))}
         return None
 
     async def _persist_slot_title(self, slot: "_ChatSlot") -> None:
