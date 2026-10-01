@@ -235,7 +235,7 @@ copy opens `O_NOFOLLOW` and the walk rejects links and reparse points — so wha
 path gives up is ancestor-swap resistance, not link resistance.
 
 | `junction config get [key]` | Print full config or a dot-path value |
-| `junction config set <key> <val>` | Set a config value (auto type detection) |
+| `junction config set <key> <val>` | Set a config value (auto type detection). `agent.acp_backend` refuses an unknown harness and prints the harness line `junction planes` shows; a running gateway starts its next new session on it |
 | `junction config set --file <path>` | Replace config from a JSON file |
 | `junction config edit` | Open config in `$EDITOR` |
 | `junction memory list/search/stats/audit` | Inspect vector memory (entries, semantic search, counts, suspicious-content scan) |

@@ -176,7 +176,10 @@ on the **agent** side. Junction does not mint that URL in chat.
   `junction router plan`. Human text for planes, doctor, and the `up` banner
   is one formatter. `junction router` human lines name the model plane and
   never claim a sidecar injects provider keys.
-- HTTP: `GET /api/planes` (harness inventory + model-plane health + role DAG),
+- HTTP: `GET /api/planes` (harness inventory + model-plane health + role DAG;
+  `harness.configured` is `agent.acp_backend` read fresh, `harness.selected` what
+  a new session runs with `auto` resolved, `harness.selected_available` whether
+  that harness is installed, `null` when unknowable),
   `GET /api/model-router/status`, `GET /api/model-router/catalog`,
   `GET /api/model-router/plan`. An unreachable plane is degraded, not a 5xx.
   The built-in listener adds `GET /health` and `GET /catalog` on its own port.

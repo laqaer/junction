@@ -2533,8 +2533,9 @@ export const api = {
       cli: string
       harness: {
         default: string
+        configured: string
         selected: string
-        kiro_cli: string
+        selected_available: boolean | null
         runtimes: Array<{
           id: string
           available: boolean

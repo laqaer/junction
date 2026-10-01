@@ -72,6 +72,64 @@ def harness_inventory(
     return rows
 
 
+def configured_backend() -> str:
+    """``agent.acp_backend`` as persisted; ``auto`` when the config cannot be read.
+
+    Read fresh on every call: the gateway adopts a changed value for its next
+    new session, so a snapshot that reused a boot-time copy would describe a
+    harness chat no longer runs.
+    """
+    # Deferred: junction.config.loader imports most of the package, and this
+    # module is imported by the CLI before the compose banner prints.
+    from junction.config import JunctionConfig
+
+    try:
+        return JunctionConfig.load().agent.acp_backend
+    except Exception:
+        logger.debug("planes: config unreadable; reporting auto", exc_info=True)
+        return ACP_BACKEND_AUTO
+
+
+def harness_snapshot(
+    *,
+    configured: str | None = None,
+    which: Any = None,
+    home: Path | None = None,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """The harness a NEW session runs, by the provider factory's own rule.
+
+    ``configured`` is ``agent.acp_backend`` (read from config when omitted).
+    ``auto`` resolves to the first installed runtime, ``""`` when none is. An
+    explicit harness is selected as configured whether or not it is installed,
+    because that is what the factory spawns; ``selected_available`` says which,
+    so a missing harness is reported instead of being replaced by whatever
+    ``auto`` would have picked. ``None`` there means this host cannot tell (a
+    harness outside the auto registry, such as KAS).
+    """
+    if configured is None:
+        configured = configured_backend()
+    inventory = harness_inventory(which=which, home=home, env=env)
+    if configured == ACP_BACKEND_AUTO:
+        try:
+            spec = select_runtime(ACP_BACKEND_AUTO, which=which, home=home, env=env)
+            selected = runtime_label(spec.id)
+        except RuntimeNotFoundError:
+            selected = ""
+    else:
+        selected = runtime_label(configured)
+    available: bool | None = False
+    if selected:
+        available = next((row["available"] for row in inventory if row["id"] == selected), None)
+    return {
+        "default": ACP_BACKEND_AUTO,
+        "configured": runtime_label(configured),
+        "selected": selected,
+        "selected_available": available,
+        "runtimes": inventory,
+    }
+
+
 def snapshot_planes(
     *,
     which: Any = None,
@@ -79,15 +137,10 @@ def snapshot_planes(
     env: Mapping[str, str] | None = None,
     router_port: int | None = None,
     gateway_port: int | None = None,
+    configured: str | None = None,
 ) -> dict[str, Any]:
     """Harness inventory + model-plane health + role DAG. Never crashes the gateway."""
-    inventory = harness_inventory(which=which, home=home, env=env)
-    selected = ""
-    try:
-        spec = select_runtime(ACP_BACKEND_AUTO, which=which, home=home, env=env)
-        selected = runtime_label(spec.id)
-    except RuntimeNotFoundError:
-        selected = ""
+    harness = harness_snapshot(configured=configured, which=which, home=home, env=env)
     model = probe_status(router_port=router_port, gateway_port=gateway_port)
     # Empty pins: this snapshot is compose, not apply. ``junction router plan``
     # is the pin-aware view. Inventory already marks the Kiro harness optional,
@@ -96,11 +149,7 @@ def snapshot_planes(
     return {
         "product": PRODUCT_NAME,
         "cli": CLI_BIN,
-        "harness": {
-            "default": ACP_BACKEND_AUTO,
-            "selected": selected,
-            "runtimes": inventory,
-        },
+        "harness": harness,
         "model": model.to_dict(),
         "roles": plan.to_dict(),
         "gateway": {"status": "ok", "code": CODE_OK},
@@ -111,15 +160,14 @@ def snapshot_planes(
 def format_human_planes(snap: Mapping[str, Any], *, heading: str) -> str:
     """One human screen for planes, doctor, and ``junction up``.
 
-    Shared so the three surfaces cannot drift: harness default + selected,
+    Shared so the three surfaces cannot drift: configured harness + selected,
     model-plane health, role DAG, docked runtimes, and the no-keys rule.
     """
     harness = snap["harness"]
     model = snap["model"]
-    selected = harness.get("selected") or "none installed"
     lines = [
         heading,
-        (f"  harness: {harness['default']} " f"(selected={selected}; vendor CLI optional)"),
+        format_harness_line(harness),
         _model_line(model),
     ]
     role_bits = " ".join(
@@ -134,6 +182,19 @@ def format_human_planes(snap: Mapping[str, Any], *, heading: str) -> str:
         lines.append(f"  docked:  {', '.join(available)}")
     lines.append("never paste provider keys into chat.")
     return "\n".join(lines)
+
+
+def format_harness_line(harness: Mapping[str, Any]) -> str:
+    """``  harness: <configured> (selected=<what a new session runs>; ...)``.
+
+    Also printed by ``config set agent.acp_backend``, so the confirmation and
+    the planes screen say the same thing about the same setting.
+    """
+    configured = harness.get("configured") or harness["default"]
+    selected = harness.get("selected") or "none installed"
+    if harness.get("selected") and harness.get("selected_available") is False:
+        selected = f"{selected}, not installed"
+    return f"  harness: {configured} (selected={selected}; vendor CLI optional)"
 
 
 def _model_line(model: Mapping[str, Any]) -> str:
@@ -186,7 +247,8 @@ async def api_planes(request: web.Request) -> web.Response:
     """GET /api/planes — composed harness + model status. Always 200."""
     payload = await asyncio.to_thread(snapshot_planes)
     logger.info(
-        "planes snapshot harness_selected=%s model=%s",
+        "planes snapshot harness_configured=%s harness_selected=%s model=%s",
+        payload["harness"]["configured"],
         payload["harness"]["selected"],
         payload["model"]["status"],
     )

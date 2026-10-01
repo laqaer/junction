@@ -25,6 +25,27 @@ This eliminates the cost of spawning/tearing down a kiro-cli process for
 every cron job or heartbeat tick. Background tasks acquire the semaphore,
 do their work, and release — the process stays warm.
 
+### Harness changes on disk
+
+`agent.model`, `agent.reasoning_effort` and `agent.acp_backend` are defaults
+for NEW sessions, captured when the provider factory is built.
+`refresh_defaults(cfg=None)` rebuilds the factory and `_cfg` from one config
+snapshot and drains the warm pool, leaving live sessions alone. The dashboard's
+PATCH handler calls it for the model and effort keys, and the MCP-gateway
+enable path for its overlay. A harness switch usually
+arrives from outside the gateway instead (`junction config set
+agent.acp_backend`), so a manager built with `adopt_backend_changes=True` (the
+gateway's) checks on every cold start: `_adopt_persisted_backend` re-reads the
+config off the loop and, when the persisted `agent.acp_backend` differs from
+`_cfg`, re-reads it again under `_backend_adopt_lock` and calls
+`refresh_defaults(cfg)` once. The new session then runs the new harness, and its
+model tier comes from the same snapshot, so a model pinned for the previous
+harness never reaches the new one (H12). It is opt-in because the rebuild
+replaces the factory with `build_provider_factory`: a caller that injects its own
+(the eval runner, tests) keeps it. The shared `BACKGROUND_KEY` session is not
+retired by the switch; it moves at its next recycle or a gateway restart. A
+failed re-read logs a warning and the session starts on the existing factory.
+
 ### Context Overflow Protection
 
 `recycle_background()` is called after every background task completes.

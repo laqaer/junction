@@ -1144,6 +1144,123 @@ class TestRefreshDefaultsSparesLiveSessions:
 
 
 # ---------------------------------------------------------------------------
+# A harness switched on disk reaches the next NEW session without a restart
+# ---------------------------------------------------------------------------
+
+
+def _adopting_manager(backend: str):
+    from junction.session import SessionManager
+
+    cfg = _make_cfg(pool_size=0)
+    cfg.agent.acp_backend = backend
+    factory = MagicMock(side_effect=lambda *a, **kw: _make_provider())
+    with patch(
+        "junction.session.default_project_dir", return_value="/home/user/.junction/workspace"
+    ):
+        mgr = SessionManager(cfg, provider_factory=factory, adopt_backend_changes=True)
+    return mgr, factory
+
+
+def _persisted(backend: str):
+    """A config.json snapshot naming *backend*, with its own factory."""
+    cfg = _make_cfg(pool_size=0)
+    cfg.agent.acp_backend = backend
+    factory = MagicMock(side_effect=lambda *a, **kw: _make_provider())
+    cfg.create_provider_factory = MagicMock(return_value=factory)
+    return cfg, factory
+
+
+def _keys(factory: MagicMock) -> list:
+    return [c.args[0] for c in factory.call_args_list if c.args]
+
+
+class TestAdoptPersistedBackend:
+    """``warding config set agent.acp_backend`` writes config.json from outside
+    the gateway. The next cold start must run the new harness, live sessions keep
+    the one their process runs, and a manager that did not opt in keeps the
+    factory it was handed."""
+
+    @pytest.mark.asyncio
+    async def test_new_session_runs_the_harness_switched_on_disk(self):
+        mgr, old_factory = _adopting_manager("claude")
+        new_cfg, new_factory = _persisted("codex")
+
+        with patch("junction.session.JunctionConfig.load", return_value=new_cfg):
+            _, is_new, _ = await mgr.get_or_create("dashboard:new")
+
+        assert is_new
+        assert mgr._cfg is new_cfg
+        assert "dashboard:new" in _keys(new_factory)
+        assert "dashboard:new" not in _keys(old_factory)
+
+    @pytest.mark.asyncio
+    async def test_live_session_keeps_its_harness(self):
+        mgr, _ = _adopting_manager("claude")
+        boot_cfg, _ = _persisted("claude")
+        # Patched for the first start too: an unpatched load reads the real
+        # default (auto), which differs from "claude" and would build a REAL
+        # factory and spawn a harness.
+        with patch("junction.session.JunctionConfig.load", return_value=boot_cfg):
+            await mgr.get_or_create("dashboard:live")
+        mgr.release("dashboard:live")
+        live = mgr._sessions["dashboard:live"].provider
+        new_cfg, new_factory = _persisted("codex")
+
+        with patch("junction.session.JunctionConfig.load", return_value=new_cfg):
+            provider, is_new, _ = await mgr.get_or_create("dashboard:live")
+
+        assert provider is live
+        assert not is_new
+        assert "dashboard:live" not in _keys(new_factory)
+
+    @pytest.mark.asyncio
+    async def test_unchanged_harness_keeps_the_factory(self):
+        mgr, factory = _adopting_manager("claude")
+        same_cfg, other_factory = _persisted("claude")
+
+        with patch("junction.session.JunctionConfig.load", return_value=same_cfg):
+            await mgr.get_or_create("dashboard:new")
+
+        assert mgr._provider_factory is factory
+        assert "dashboard:new" in _keys(factory)
+        other_factory.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_cold_starts_rebuild_once(self):
+        mgr, _ = _adopting_manager("claude")
+        new_cfg, _ = _persisted("codex")
+
+        with patch("junction.session.JunctionConfig.load", return_value=new_cfg):
+            await asyncio.gather(mgr.get_or_create("dashboard:a"), mgr.get_or_create("dashboard:b"))
+
+        new_cfg.create_provider_factory.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_manager_that_did_not_opt_in_keeps_its_factory(self):
+        # The eval runner and tests inject their own factory; a rebuild from
+        # config.json would silently replace it.
+        mgr, factory = _make_manager(pool_size=0)
+        mgr._cfg.agent.acp_backend = "claude"
+        new_cfg, new_factory = _persisted("codex")
+
+        with patch("junction.session.JunctionConfig.load", return_value=new_cfg):
+            await mgr.get_or_create("dashboard:new")
+
+        assert mgr._provider_factory is factory
+        new_factory.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_unreadable_config_does_not_fail_the_turn(self):
+        mgr, factory = _adopting_manager("claude")
+
+        with patch("junction.session.JunctionConfig.load", side_effect=OSError("gone")):
+            _, is_new, _ = await mgr.get_or_create("dashboard:new")
+
+        assert is_new
+        assert "dashboard:new" in _keys(factory)
+
+
+# ---------------------------------------------------------------------------
 # default_project_dir
 # ---------------------------------------------------------------------------
 

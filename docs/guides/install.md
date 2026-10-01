@@ -375,13 +375,16 @@ on loopback (default `http://127.0.0.1:5476`):
 
 ```text
 Junction compose
-  harness: auto (selected=<id or none installed>; vendor CLI optional)
+  harness: <agent.acp_backend> (selected=<id or none installed>; vendor CLI optional)
   model:   built-in catalog (provider translation is not bundled)
   roles:   orchestration=economy planning=capable execution=standard
 never paste provider keys into chat.
 ```
 
-`selected=` names an ACP runtime already on the machine, or `none installed`.
+The first value is `agent.acp_backend` (`auto` unless you set one).
+`selected=` is the harness a new session runs: for `auto`, the first ACP runtime
+already on the machine, or `none installed`; for a harness you named, that
+harness, marked `, not installed` when it is missing.
 The roles line is the unpinned cost classes. A pin in `agent.role_models`
 still wins.
 

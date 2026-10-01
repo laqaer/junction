@@ -1003,9 +1003,19 @@ class SessionManager:
         self,
         cfg: JunctionConfig,
         provider_factory: ProviderFactory | None = None,
+        *,
+        adopt_backend_changes: bool = False,
     ):
         self._cfg = cfg
         self._provider_factory = provider_factory
+        # Opt-in, because adopting rebuilds the factory from config.json and so
+        # replaces the one passed in. Only the gateway asks for it: its factory
+        # is ``build_provider_factory`` over the config it loaded, so a rebuild
+        # is the same factory over newer values. A caller that injects its own
+        # factory (the eval runner, tests) or a cfg that never came from disk
+        # must keep what it passed. See ``_adopt_persisted_backend``.
+        self._adopt_backend_changes = adopt_backend_changes
+        self._backend_adopt_lock = asyncio.Lock()
         self._sessions: dict[str, _Session] = {}
         self._lock = asyncio.Lock()
         # Set True (under _lock) at the top of close_all() so the multi-second
@@ -1168,13 +1178,14 @@ class SessionManager:
             ]
         )
 
-    async def refresh_defaults(self) -> None:
+    async def refresh_defaults(self, cfg: JunctionConfig | None = None) -> None:
         """Adopt config changes that only affect NEW sessions.
 
         For settings that are *defaults* — ``agent.model``,
-        ``agent.reasoning_effort`` — the new value must reach the next session
-        without a gateway restart, because the provider factory and ``_cfg``
-        both capture them when they are built.
+        ``agent.reasoning_effort``, ``agent.acp_backend`` — the new value must
+        reach the next session without a gateway restart, because the provider
+        factory and ``_cfg`` both capture them when they are built. *cfg* is a
+        config the caller already loaded; omitted, it is loaded here.
 
         Unlike :meth:`reload_provider_factory`, this deliberately does NOT touch
         ``_sessions``: a default is by definition not retroactive, and shutting
@@ -1184,7 +1195,8 @@ class SessionManager:
         the very next session — and unlike a live session, a pooled provider has
         no conversation to lose.
         """
-        cfg = JunctionConfig.load()
+        if cfg is None:
+            cfg = JunctionConfig.load()
         async with self._pool_fill_lock:
             async with self._lock:
                 self._cfg = cfg
@@ -1206,10 +1218,56 @@ class SessionManager:
             self._pool_health_task = None
         await self.start_pool(blocking=False)
         logger.info(
-            "Session defaults refreshed: model=%s effort=%r (live sessions untouched)",
+            "Session defaults refreshed: harness=%r model=%s effort=%r "
+            "(live sessions untouched)",
+            cfg.agent.acp_backend,
             cfg.agent.model,
             cfg.agent.reasoning_effort,
         )
+
+    async def _adopt_persisted_backend(self) -> None:
+        """Rebuild the factory when the persisted ``agent.acp_backend`` moved.
+
+        The provider factory serves the harness it was built with, and the only
+        rebuild triggers are dashboard handlers. ``warding config set
+        agent.acp_backend`` and a hand edit write ``config.json`` from outside
+        the gateway, so without this a running gateway keeps starting NEW
+        sessions on the previous harness until it restarts, while the CLI has
+        already reported success.
+
+        Called on the cold-start path, so it governs new sessions only: a live
+        session keeps the harness its process runs (an ACP session cannot be
+        moved to another agent), exactly as across a restart. The rebuild is
+        :meth:`refresh_defaults`, which also re-reads the model and effort
+        defaults from the SAME snapshot, so a model pinned for the previous
+        harness can never reach a session on the new one (H12).
+
+        The unlocked compare keeps the common no-change path to one cached
+        config read off the loop; the change itself is applied once, under a
+        lock, from a config re-read inside it, so two cold starts racing on the
+        same edit rebuild once and an older read can never overwrite a newer one.
+        """
+        if not self._adopt_backend_changes:
+            return
+        try:
+            cfg = await asyncio.to_thread(JunctionConfig.load)
+            if cfg.agent.acp_backend == self._cfg.agent.acp_backend:
+                return
+            async with self._backend_adopt_lock:
+                cfg = await asyncio.to_thread(JunctionConfig.load)
+                previous = self._cfg.agent.acp_backend
+                if cfg.agent.acp_backend == previous:
+                    return
+                await self.refresh_defaults(cfg)
+                logger.info(
+                    "agent.acp_backend changed on disk %r -> %r; new sessions use it",
+                    previous,
+                    cfg.agent.acp_backend,
+                )
+        except Exception:
+            # Best-effort: an unreadable config or a failed rebuild must not fail
+            # the turn. The session starts on the factory it would have used.
+            logger.warning("Could not adopt a changed agent.acp_backend", exc_info=True)
 
     async def reload_provider_factory(self) -> None:
         """Reload provider factory from current config (after provider switch)."""
@@ -2875,6 +2933,12 @@ class SessionManager:
             if not self._provider_factory:
                 raise RuntimeError("No provider factory configured")
             factory = self._provider_factory
+
+        # Cold start from here on, with no lock held. A harness switched on disk
+        # since the factory was built reaches THIS session (and the model tier
+        # below, which reads ``self._cfg``) instead of waiting for a restart.
+        await self._adopt_persisted_backend()
+        factory = self._provider_factory or factory
 
         # Resolve the session model here — on the cold-start path only.
         # Existing-session reuse returns above via the fast path without needing
