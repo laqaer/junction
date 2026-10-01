@@ -43,11 +43,10 @@ export const site = {
     domain: "",
     scriptSrc: "",
   },
-  // Feature flags for copy that is [COMING] until the linked backlog item ships.
+  // Feature flags for copy that is labelled in development until the linked backlog item ships.
   shipped: {
     dawnGrants: false, // "Allow until 07:00" without "in development"
-    auditVerify: false, // `warding audit verify` without [COMING]
-    charterCommand: false, // `warding charter` without [COMING]
+    charterCommand: false, // `warding charter` without the in-development label
     morningReport: false, // Morning Report card with counts
   },
 } as const;

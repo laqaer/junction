@@ -17,8 +17,11 @@ the NO-SAY list), [`../../../WORKING_BRIEF.md`](../../../WORKING_BRIEF.md),
 ## Rules
 
 - One sentence, everywhere long copy starts: Warding runs the coding agent
-  you already pay for, all night, on your own box, and asks you in chat
-  before anything risky — under a policy it cannot read or rewrite.
+  you already pay for, all night, on your own box, and can ask you in chat
+  before it acts when you enable approvals — under a policy it cannot read
+  or rewrite. Approvals are opt-in: `agent.approval_mode` defaults to `auto`;
+  set it to `interactive` or choose Interactive in the dashboard. Never restore
+  an unconditional promise that the default install asks before acting.
 - Line two of anything long: Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon.
   Elsewhere: the upstream project. The brand gate fails any added line that
   spells its retired product name in any joining, its hosts, its bundle id or

@@ -1623,3 +1623,101 @@ class TestPinnedInstallRefusals:
         assert seen["git_url"] == URL
         # The pin must reach BOTH fetch layers: the manifest preflight and the clone.
         assert manifest_seen.get("commit") == SHA
+
+
+class TestStockBuildListsShippedBuiltins:
+    """With no catalog configured, the shelf still lists the built-ins on disk.
+
+    The catalog is the one source that publishes built-in rows, and a stock build
+    names none, so without a disk fallback every disabled built-in is missing from
+    Discover with nothing to enable it from.
+    """
+
+    @staticmethod
+    def _builtin(name: str, **manifest: Any) -> dict[str, Any]:
+        return {
+            "name": name,
+            "origin": "builtin",
+            "enabled": False,
+            "version": "1.2.0",
+            "manifest": {"name": name, "version": "1.2.0", **manifest},
+        }
+
+    @pytest.mark.asyncio
+    async def test_disabled_ui_builtin_stays_discoverable_after_restart(
+        self, monkeypatch, tmp_path
+    ):
+        from junction.apps import manager
+
+        monkeypatch.setenv("JUNCTION_HOME", str(tmp_path / "home"))
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        manifest = {
+            "name": "optional-panel",
+            "version": "1.2.0",
+            "displayName": "Optional Panel",
+            "description": "An optional shipped panel.",
+            "author": "Junction",
+            "defaultEnabled": False,
+            "ui": {"entry": "index.js"},
+        }
+        monkeypatch.setattr(manager, "_BUILTIN_APPS", [manifest])
+        monkeypatch.setattr(manager, "discover_builtin_apps", lambda: [])
+        monkeypatch.setattr(manager, "_edition_builtin_apps", lambda: [])
+        monkeypatch.setattr(manager, "_orphaned_builtins_cache", None)
+        monkeypatch.setattr(reg, "_load_registry_file", lambda: [])
+
+        async def no_external():
+            return []
+
+        monkeypatch.setattr(reg, "_load_external_registries", no_external)
+        for origin in ("builtin", "local"):
+            manager.register_builtin_apps()
+            installed = manager.get_app("optional-panel")
+            assert installed["origin"] == origin
+            assert installed["source"] == "builtin"
+            rows = {row["name"]: row for row in await reg.list_registry()}
+            row = rows["optional-panel"]
+            assert row["installed"] is True and row["enabled"] is False
+            assert row["source"] == {"type": "builtin"}
+            assert row["provenance"] == "builtin" and row["verified"] is True
+            assert row["updateAvailable"] is False
+
+    def test_local_install_does_not_gain_builtin_shelf_or_provenance(self):
+        app = self._builtin("optional-panel")
+        app.update(origin="local", source="/home/user/panel")
+        assert reg._builtin_shelf_rows({"optional-panel": app}, set()) == []
+        rows = reg._apply_trust_fields(
+            reg._enrich_with_install_status([{"name": "optional-panel"}], {"optional-panel": app})
+        )
+        assert rows[0]["provenance"] == "official" and rows[0]["verified"] is False
+
+    @pytest.mark.asyncio
+    async def test_lists_visible_builtins_and_not_hidden_ones(self, monkeypatch):
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        installed = [
+            self._builtin(
+                "ops-board",
+                displayName="Ops Board",
+                description="Watches the overnight runs.",
+                iconUrl="/apps/ops-board/icon.svg",
+            ),
+            self._builtin("secret-panel", displayName="Secret Panel", hidden=True),
+        ]
+        monkeypatch.setattr(reg, "_load_registry_file", lambda: [])
+        monkeypatch.setattr(reg, "list_installed_apps", lambda: installed)
+
+        async def _no_external():
+            return []
+
+        monkeypatch.setattr(reg, "_load_external_registries", _no_external)
+
+        rows = {r["name"]: r for r in await reg.list_registry()}
+        assert "secret-panel" not in rows
+        row = rows["ops-board"]
+        assert row["source"] == {"type": "builtin"}
+        assert row["displayName"] == "Ops Board"
+        assert row["description"] == "Watches the overnight runs."
+        assert row["iconUrl"] == "/apps/ops-board/icon.svg"
+        assert row["provenance"] == "builtin"
+        # A built-in updates only with the wheel, so its row offers no update.
+        assert not row.get("updateAvailable")

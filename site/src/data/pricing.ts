@@ -1,10 +1,11 @@
 import { site } from "./site";
 
 /**
- * The seven offers (site-spec §3). Every item carries one of the three labels
- * the brief allows — Available now / Pre-order / Waitlist — or a dated
- * "Opens <month>" state while its checkout link is unset. `rail` names where
- * the money goes: Polar for digital goods, Stripe for services, GitHub for tips.
+ * The seven offers (site-spec §3). Every item carries exactly one of the three
+ * labels docs/business/pricing.md allows — Available now / Pre-order /
+ * Waitlist — so an offer whose checkout link is unset is a free waitlist, not
+ * an "opens soon" state. `rail` names where the money goes: Polar for digital
+ * goods, Stripe for services, GitHub for tips.
  */
 export type OfferStatus = "available" | "preorder" | "waitlist" | "opens" | "conversation";
 export type Rail = "none" | "polar" | "stripe" | "github" | "waitlist";
@@ -55,11 +56,11 @@ export const offers: Offer[] = [
     name: "Founding Supporter",
     price: "$96/yr",
     priceNote: "price locked while active · or $8/mo",
-    status: supporterOpen ? "available" : "opens",
-    label: supporterOpen ? "Available now" : "Opens November",
-    rail: "polar",
+    status: supporterOpen ? "available" : "waitlist",
+    label: supporterOpen ? "Available now" : "Waitlist (free)",
+    rail: supporterOpen ? "polar" : "waitlist",
     blurb:
-      "A numbered seal badge in your dashboard and, if you opt in, on the Supporters wall; The Vault Agent World scene; the Charter Paper and Warding Night theme pack; a Discord role; a roadmap vote. Future paid features are added to your key as they ship and are labelled 'in development' — they are not what you are buying.",
+      "A numbered seal badge in your dashboard and, if you opt in, on the Supporters wall; The Vault Agent World scene; the Charter Paper and Warding Night theme pack; a Discord role; a roadmap vote. None of it exists yet, so nothing is sold: the tier opens when every item on this card ships. Future paid features are added to your key as they ship and are labelled 'in development' — they are not what you are buying.",
     cta: "Become a Founding Supporter",
     href: site.links.supporterCheckout,
     preview: true,
@@ -69,9 +70,9 @@ export const offers: Offer[] = [
     name: "Late Desk Setup",
     price: "$199",
     priceNote: "one-time",
-    status: setupOpen ? "available" : "opens",
-    label: setupOpen ? "Available now" : "Setup opens soon",
-    rail: "stripe",
+    status: setupOpen ? "available" : "waitlist",
+    label: setupOpen ? "Available now" : "Waitlist (free)",
+    rail: setupOpen ? "stripe" : "waitlist",
     blurb:
       "Sixty minutes on your Mac mini or Linux box: install as a service, dock kiro-cli or Claude Code, connect one channel with buttons, write your first policy profile, run one scheduled job. Scope in writing; full refund if we don't get there.",
     cta: "Book a setup",
