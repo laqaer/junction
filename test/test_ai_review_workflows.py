@@ -9,6 +9,7 @@ aggregator that folds CI, Build, Code Review and CodeQL into one verdict.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -171,6 +172,27 @@ class TestPreparePrPreSubmitReview:
         assert "read from the base commit" in skill
         assert "REVIEWED_SHA=$(git rev-parse HEAD)" in skill
         assert '"$(git rev-parse HEAD)" = "$REVIEWED_SHA"' in skill
+
+    def test_each_review_stage_is_its_own_call(self) -> None:
+        """Both contracts' later stage judges candidates it did not produce
+        (`opus-validate.md`: "A previous, independent call generated
+        candidates"), so the skill must dispatch it as a separate call fed only
+        the earlier stage's report. Folding the stages into one pass lets the
+        later stage grade its own reasoning, and with no server reviewer left,
+        nothing else re-derives a candidate independently."""
+        skill = _prepare_pr_skill()
+        profile = json.loads(
+            (PREPARE_PR_SKILL.parent / "profiles" / "junction.json").read_text(encoding="utf-8")
+        )
+
+        assert "runs each stage as its own subagent call" in skill
+        assert "never as sections of one pass" in skill
+        assert "one pass" not in skill.replace("never as sections of one pass", "")
+        assert "independent call" in (ROOT / ".github/review-prompts/opus-validate.md").read_text(
+            encoding="utf-8"
+        )
+        for reviewer in profile["reviewers"]:
+            assert "separate" in reviewer["rubric"], reviewer["name"]
 
     def test_review_fixes_only_blockers_and_has_one_verifier(self) -> None:
         skill = _prepare_pr_skill()

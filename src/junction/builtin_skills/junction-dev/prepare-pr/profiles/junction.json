@@ -53,14 +53,14 @@
       "model": "gpt-5.6-sol",
       "model_tier": "gpt-5.x",
       "contract": null,
-      "rubric": "Apply the base-ref .github/review-prompts/gpt-diff-not-evidence.md, gpt-review-core.md and gpt-output-contract.md as a discovery pass, then a falsification pass per gpt-falsification-mandate.md and gpt-falsification-verdict.md over that pass's candidates."
+      "rubric": "Apply the base-ref .github/review-prompts/gpt-diff-not-evidence.md, gpt-review-core.md and gpt-output-contract.md as a discovery call, then a separate falsification call per gpt-falsification-mandate.md and gpt-falsification-verdict.md given only that call's candidates."
     },
     {
       "name": "opus",
       "model": "claude-opus-4.8",
       "model_tier": "claude-opus-4.7",
       "contract": null,
-      "rubric": "Apply the base-ref .github/review-prompts/opus-discovery.md, then opus-validate.md over the discovery candidates; the base-ref AUTOSDE.yaml and website/AUTOSDE.yaml outrank both."
+      "rubric": "Apply the base-ref .github/review-prompts/opus-discovery.md, then opus-validate.md in a separate call given only the discovery candidates; the base-ref AUTOSDE.yaml and website/AUTOSDE.yaml outrank both."
     }
   ],
   "readiness": {

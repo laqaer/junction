@@ -278,8 +278,8 @@ operator's own harness, and each applies a review contract kept in
 
 | Reviewer | Contract | Shape | Reads |
 |---|---|---|---|
-| `gpt` | `gpt-diff-not-evidence.md`, `gpt-review-core.md`, `gpt-output-contract.md`, then `gpt-falsification-mandate.md` + `gpt-falsification-verdict.md` | Two passes: discovery, then an authoritative falsification pass | The diff, the code, and the PR title and body as **UNTRUSTED** context |
-| `opus` | `opus-discovery.md`, then `opus-validate.md` | Two stages: discovery, then validation | **Code only**: the diff and the code, never PR prose or comment threads |
+| `gpt` | `gpt-diff-not-evidence.md`, `gpt-review-core.md`, `gpt-output-contract.md`, then `gpt-falsification-mandate.md` + `gpt-falsification-verdict.md` | Two separate calls: discovery, then an authoritative falsification call | The diff, the code, and the PR title and body as **UNTRUSTED** context |
+| `opus` | `opus-discovery.md`, then `opus-validate.md` | Two separate calls: discovery, then validation | **Code only**: the diff and the code, never PR prose or comment threads |
 
 Every contract and the AUTOSDE rule files are read from the PR's **base** commit,
 so a change cannot weaken the reviewer or the rules that judge it. The reviewers'
