@@ -273,7 +273,7 @@ async def test_run_moves_only_routed_lane_failures_and_shuts_down_each_provider(
         router.next_lane.assert_called_once_with("implement", ["first", "second"])
         assert router.record_dispatch.call_count == 2
         second_provider.shutdown.assert_awaited_once()
-        router.record_success.assert_called_once_with("second")
+        router.record_success.assert_called_once_with("second", harness="grok")
     else:
         router.next_lane.assert_not_called()
         router.record_success.assert_not_called()
@@ -285,7 +285,7 @@ async def test_notice_only_run_fails_and_resolution_errors_are_usage_errors(rout
     assert await cli._run(router, args()) == 2
     router.record_dispatch.assert_not_called()
     router.resolve.side_effect = None
-    lane = SimpleNamespace(id="codex", label="Codex")
+    lane = SimpleNamespace(id="codex", label="Codex", harness="codex")
     router.resolve.return_value = SimpleNamespace(
         lane=lane, routed=True, decision=SimpleNamespace(reason="best")
     )
@@ -304,7 +304,7 @@ async def test_notice_only_run_fails_and_resolution_errors_are_usage_errors(rout
 
 @pytest.mark.asyncio
 async def test_cancelled_run_is_not_recorded_as_a_lane_failure(router, monkeypatch):
-    lane = SimpleNamespace(id="codex", label="Codex")
+    lane = SimpleNamespace(id="codex", label="Codex", harness="codex")
     router.resolve.return_value = SimpleNamespace(lane=lane, routed=True, decision=None)
     router.settings.return_value = SimpleNamespace(max_failover=1)
     provider = SimpleNamespace(

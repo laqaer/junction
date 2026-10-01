@@ -3,7 +3,7 @@
     warding route                      lanes, windows, cooldowns, per-kind picks
     warding route pick KIND            rank every lane for one kind of work
     warding route run "PROMPT"         run one prompt on the routed harness
-    warding route check [LANE ...]     start each harness once: installed? logged in?
+    warding route check [LANE ...]     start each harness once: installed? starts? (no prompt)
     warding route init                 write routing.json from the installed harnesses
     warding route clear [LANE]         lift a cooldown early
 
@@ -63,7 +63,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         help="Deny tool permission requests instead of asking at the terminal",
     )
 
-    check = sub.add_parser("check", help="Start each harness once to verify install and login")
+    check = sub.add_parser(
+        "check", help="Start each harness once without a prompt: install and startup, not sign-in"
+    )
     check.add_argument("lanes", nargs="*", help="Lane ids (default: every enabled lane)")
 
     init = sub.add_parser("init", help="Write routing.json from the installed harnesses")
@@ -283,7 +285,7 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
         except (KeyboardInterrupt, asyncio.CancelledError):
             raise
         except Exception as exc:
-            failure = router.record_failure(lane.id, exc=exc)
+            failure = router.record_failure(lane.id, exc=exc, harness=lane.harness)
             can_move = (
                 resolution.routed
                 and failure in LANE_FAILURES
@@ -305,11 +307,16 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
             except Exception:
                 logger.debug("route run: provider shutdown failed", exc_info=True)
             gc.collect()
-        router.record_success(lane.id)
+        router.record_success(lane.id, harness=lane.harness)
         return 0
 
 
 # ── check ──
+
+# What `route check` prints for a probe that started the harness. The probe sends
+# no prompt, and a harness can open a session on an expired sign-in and fail only
+# at the first prompt, so a clean start is not evidence that the sign-in works.
+CHECK_AUTH_UNVERIFIED = "auth unverified"
 
 
 async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
@@ -321,6 +328,7 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
         probe_harness,
         setup_for,
     )
+    from junction.harness_router.limits import FAILURE_AUTH
 
     settings = router.settings()
     installed = router.installed(refresh=True)
@@ -328,23 +336,49 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
     if not lanes:
         print("no lanes to check (see `warding route status`)")
         return 1
+    usage = router.ledger.snapshot()
     worst = 0
+    unverified = False
     for lane in lanes:
         print(f"  {lane.id:<14} starting…", end="", flush=True)
         result = await probe_harness(
             lane.harness, installed=lane.harness in installed, model=lane.model
         )
         router.probes.save(result)
+        status = result.status
         detail = result.detail or (f"{result.models} models" if result.models else "")
-        print(f"\r  {lane.id:<14} {result.status:<14} {detail}")
-        if result.status == STATUS_CONNECTED:
+        if status == STATUS_CONNECTED:
+            # A success or `route clear` empties a lane's cooldown reason and a later
+            # lane failure replaces it, so an auth reason still on the lane means its
+            # last lane failure was a failed sign-in and no prompt has worked since,
+            # even once the rest is over. A clean start cannot contradict that. It
+            # counts only for the harness that recorded it: a lane id reassigned to
+            # another harness, or a record naming none, stays "auth unverified".
+            used = usage.get(lane.id)
+            if (
+                used is not None
+                and used.cooldown_reason == FAILURE_AUTH
+                and used.harness == lane.harness
+            ):
+                status = STATUS_NEEDS_LOGIN
+                detail = "the harness starts, but its last routed run failed sign-in"
+            else:
+                status = CHECK_AUTH_UNVERIFIED
+                detail = f"started, {detail}" if detail else "started"
+        print(f"\r  {lane.id:<14} {status:<16} {detail}")
+        if status == CHECK_AUTH_UNVERIFIED:
+            unverified = True
             continue
         worst = 1
         setup = setup_for(lane.harness)
-        if result.status == STATUS_NEEDS_LOGIN:
+        if status == STATUS_NEEDS_LOGIN:
             print(f"  {'':<14} log in: {setup.login if setup else login_hint(lane.harness)}")
-        elif result.status == STATUS_NOT_INSTALLED:
+        elif status == STATUS_NOT_INSTALLED:
             print(f"  {'':<14} install: {setup.install if setup else login_hint(lane.harness)}")
+    if unverified:
+        print(f"\n{CHECK_AUTH_UNVERIFIED}: the check sends no prompt, so it cannot see an")
+        print("expired sign-in. To verify a lane with one prompt:")
+        print('  warding route run --harness LANE "reply ok"')
     return worst
 
 
