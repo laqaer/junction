@@ -10,14 +10,20 @@ import asyncio
 import logging
 import time as _time
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from junction import git_coord, platform_compat, shutdown_event
 from junction.acp.client import AcpProcessDied
 from junction.config.loader import JunctionConfig
 from junction.executors import run_in_embed_pool
+from junction.harness_router.limits import HarnessLaneFailure, limit_notice_failure
 from junction.hooks import TOOL_AUTO_APPROVE, TOOL_DENY, fire_tool_hooks, get_global_hook_store
-from junction.llm_helpers import provider_last_turn_usage, stream_and_collect_json
+from junction.llm_helpers import (
+    parse_llm_json,
+    provider_last_turn_usage,
+    stream_and_collect,
+    stream_and_collect_json,
+)
 from junction.messaging.link import telemetry_channel_of
 from junction.providers.base import (
     EVENT_COMPLETE,
@@ -546,6 +552,15 @@ async def execute_task(
                     _complete_event = event
                     break
 
+            # A subscription harness can end a turn normally with its plan-limit
+            # or login notice as the whole reply. On a routed step that ran no
+            # tool, that reply is a lane failure, not a result, exactly as for a
+            # routed subagent: the lane rests and the step moves for free.
+            if lane is not None and not _tool_ran:
+                notice = limit_notice_failure(result_text)
+                if notice:
+                    raise HarnessLaneFailure(notice, result_text)
+
             final_result = result_prefix + result_text
             task.result = redact_credentials(redact_exfiltration_urls(final_result)[0])[0]
             sessions.record_success(session_key)
@@ -911,27 +926,46 @@ async def self_review(
                 'Respond with ONLY JSON: {"ok": true} or {"ok": false, "issue": "..."}\n'
             )
 
-        lane = await route.pick() if route is not None else None
-        client, *_ = await sessions.open_task_session(
-            f"{SESSION_PREFIX}:{run.task_id}:runtime",
-            review_key,
-            agent=agent or None,
-            cwd=str(run.work_dir) if run.work_dir else None,
-            **(
-                {"acp_backend_override": lane.harness, "model": lane.model}
-                if lane is not None
-                else {}
-            ),
-        )
         from junction.model_router.routing import ROLE_PLANNING, apply_role_model
 
-        if lane is None:
-            await apply_role_model(client, ROLE_PLANNING)
-        # Wall clock for the review turn (see execute_task): the acp provider
-        # reports no duration, so this local measurement is the fallback. Bracket
-        # ONLY the model stream, not open_task_session / diff fetch / prompt build.
-        _review_t0 = _time.monotonic()
-        result = await stream_and_collect_json(client, prompt)
+        moved = True
+        while moved:
+            moved = False
+            lane = await route.pick() if route is not None else None
+            try:
+                client, *_ = await sessions.open_task_session(
+                    f"{SESSION_PREFIX}:{run.task_id}:runtime",
+                    review_key,
+                    agent=agent or None,
+                    cwd=str(run.work_dir) if run.work_dir else None,
+                    **(
+                        {"acp_backend_override": lane.harness, "model": lane.model}
+                        if lane is not None
+                        else {}
+                    ),
+                )
+                if lane is None:
+                    await apply_role_model(client, ROLE_PLANNING)
+                # Wall clock for the review turn (see execute_task): the acp
+                # provider reports no duration, so this local measurement is the
+                # fallback. Bracket ONLY the model stream, not open_task_session /
+                # diff fetch / prompt build.
+                _review_t0 = _time.monotonic()
+                result = await _collect_review(client, prompt, routed=lane is not None)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if route is None:
+                    raise
+                # A lane-level failure moves the review to the next lane for free
+                # (within max_failover); any other failure stays non-blocking.
+                moved = await route.failed(exc, tool_ran=False)
+                if not moved:
+                    logger.debug("Self-review failed", exc_info=True)
+                    return True
+                logger.info("Self-review for task %d: moving to another agent", task.index)
+                sessions.release(review_key)
+                await sessions.reset(review_key)
 
         # ── Per-turn usage row: self-review is a separate model turn. ──
         try:
@@ -980,6 +1014,22 @@ async def self_review(
     finally:
         sessions.release(review_key)
         await sessions.reset(review_key)
+
+
+async def _collect_review(client: Any, prompt: str, *, routed: bool) -> dict | None:
+    """The review turn's JSON verdict.
+
+    On a routed lane a reply that is only the harness's limit or login notice
+    raises ``HarnessLaneFailure``, so the review moves instead of passing; a
+    real verdict is JSON and never matches a notice.
+    """
+    if not routed:
+        return await stream_and_collect_json(client, prompt)
+    text = await stream_and_collect(client, prompt)
+    notice = limit_notice_failure(text)
+    if notice:
+        raise HarnessLaneFailure(notice, text)
+    return parse_llm_json(text)
 
 
 def _lanes_for(harness: str) -> tuple[str, ...]:

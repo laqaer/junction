@@ -151,6 +151,12 @@ retried by the task runner rather than re-run from scratch:
   costs an attempt instead of being refused, because the task runner retries
   the step with the previous error in the prompt either way.
 
+As for routed subagents, a turn that ends normally with only the harness's
+limit or login notice as its reply (`limit_notice_failure`) and ran no tool is a
+lane failure (`HarnessLaneFailure`), not a result. A routed review that fails at
+lane level moves to the next lane for free in the same way; any other review
+failure stays non-blocking.
+
 A step keeps its lane across ordinary retries, runs on a dedicated provider for
 the lane's harness and model (`open_task_session(acp_backend_override=,
 model=)`), and never receives a role-model pin (H12). No eligible lane runs the

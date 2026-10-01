@@ -21,7 +21,7 @@ import pytest
 from junction import task_executor
 from junction.harness_router import service
 from junction.harness_router.service import HarnessRouter
-from junction.providers.base import EVENT_COMPLETE, EVENT_TOOL_CALL, LLMEvent
+from junction.providers.base import EVENT_COMPLETE, EVENT_TEXT_CHUNK, EVENT_TOOL_CALL, LLMEvent
 from junction.task_models import SESSION_PREFIX, Project, Task
 from junction.task_routing import StepRoute, route_tasks_enabled
 
@@ -135,17 +135,22 @@ def test_route_tasks_is_off_unless_switched_on(tmp_path: Path, monkeypatch) -> N
 
 
 class _Client:
-    """One scripted turn per instance: raise, or run a tool then complete."""
+    """One scripted turn per instance: raise, or run a tool, reply and complete."""
 
-    def __init__(self, error: Exception | None = None, *, tool: bool = False) -> None:
+    def __init__(
+        self, error: Exception | None = None, *, tool: bool = False, reply: str = ""
+    ) -> None:
         self._error = error
         self._tool = tool
+        self._reply = reply
 
     async def stream(self, _prompt: str):
         if self._tool:
             yield LLMEvent(kind=EVENT_TOOL_CALL, title="edit")
         if self._error is not None:
             raise self._error
+        if self._reply:
+            yield LLMEvent(kind=EVENT_TEXT_CHUNK, text=self._reply)
         yield LLMEvent(kind=EVENT_COMPLETE)
 
 
@@ -231,6 +236,35 @@ async def test_a_limit_after_tool_use_moves_on_the_next_attempt(
 
 
 @pytest.mark.asyncio
+async def test_a_limit_notice_reply_is_a_lane_failure_not_a_result(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _quiet_executor(monkeypatch)
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    sessions = _sessions([_Client(reply=_USAGE_LIMIT), _Client(reply="done")])
+    assert await _execute(_run(task, route_steps=True), task, sessions) is True
+    assert [o["acp_backend_override"] for o in sessions.opened] == ["codex", "claude"]
+    assert task.attempts == 1
+    assert task.result == "done"
+    usage = router.ledger.snapshot()
+    assert usage["codex"].cooldown_reason == "usage_limit"
+    assert usage["codex"].ok == 0
+
+
+@pytest.mark.asyncio
+async def test_a_notice_after_tool_use_is_the_steps_result(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The notice check applies only to a turn that did no work.
+    _quiet_executor(monkeypatch)
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    sessions = _sessions([_Client(tool=True, reply=_USAGE_LIMIT)])
+    assert await _execute(_run(task, route_steps=True), task, sessions) is True
+    assert [o["acp_backend_override"] for o in sessions.opened] == ["codex"]
+    assert router.ledger.snapshot()["codex"].ok == 1
+
+
+@pytest.mark.asyncio
 async def test_unrouted_runs_pass_no_override(router: Any, monkeypatch) -> None:
     _quiet_executor(monkeypatch)
     monkeypatch.setattr(
@@ -245,16 +279,7 @@ async def test_unrouted_runs_pass_no_override(router: Any, monkeypatch) -> None:
     assert router.ledger.snapshot() == {}
 
 
-@pytest.mark.asyncio
-async def test_a_routed_review_uses_its_own_lane_and_session(
-    router: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        task_executor, "stream_and_collect_json", AsyncMock(return_value={"ok": True})
-    )
-    task = Task(index=3, title="build it", description="d", harness="claude")
-    run = _run(task, route_steps=True)
-    run.branch_name = ""
+def _review_sessions() -> tuple[MagicMock, list[tuple[str, dict[str, Any]]]]:
     opened: list[tuple[str, dict[str, Any]]] = []
 
     async def _open(_parent: str, key: str, **kwargs: Any):
@@ -265,9 +290,69 @@ async def test_a_routed_review_uses_its_own_lane_and_session(
     sessions.open_task_session = _open
     sessions.release = MagicMock()
     sessions.reset = AsyncMock()
-    assert await task_executor.self_review(run, task, sessions, "") is True
+    return sessions, opened
+
+
+def _review_run(task: Task) -> Project:
+    run = _run(task, route_steps=True)
+    run.branch_name = ""
+    return run
+
+
+@pytest.mark.asyncio
+async def test_a_routed_review_uses_its_own_lane_and_session(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(task_executor, "stream_and_collect", AsyncMock(return_value='{"ok": true}'))
+    task = Task(index=3, title="build it", description="d", harness="claude")
+    sessions, opened = _review_sessions()
+    assert await task_executor.self_review(_review_run(task), task, sessions, "") is True
     key, kwargs = opened[0]
     assert key == f"{SESSION_PREFIX}:routed:review3"
     # Claude did the work, so the review goes to the other agent.
     assert kwargs["acp_backend_override"] == "codex"
     sessions.reset.assert_awaited_with(key)
+
+
+@pytest.mark.asyncio
+async def test_a_routed_review_moves_lanes_after_a_lane_failure(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    replies = AsyncMock(side_effect=[RuntimeError(_USAGE_LIMIT), '{"ok": false, "issue": "typo"}'])
+    monkeypatch.setattr(task_executor, "stream_and_collect", replies)
+    task = Task(index=2, title="build it", description="d", harness="claude")
+    sessions, opened = _review_sessions()
+    # The second agent's verdict counts: the review is not waved through.
+    assert await task_executor.self_review(_review_run(task), task, sessions, "") is False
+    assert [kw["acp_backend_override"] for _key, kw in opened] == ["codex", "claude"]
+    assert task.error == "Self-review: typo"
+    usage = router.ledger.snapshot()
+    assert usage["codex"].cooldown_reason == "usage_limit"
+    assert usage["claude"].ok == 1
+    # Every session the review opened is released.
+    assert sessions.release.call_count == len(opened)
+
+
+@pytest.mark.asyncio
+async def test_a_routed_review_treats_a_notice_reply_as_a_lane_failure(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    replies = AsyncMock(side_effect=[_USAGE_LIMIT, '{"ok": true}'])
+    monkeypatch.setattr(task_executor, "stream_and_collect", replies)
+    task = Task(index=2, title="build it", description="d", harness="claude")
+    sessions, opened = _review_sessions()
+    assert await task_executor.self_review(_review_run(task), task, sessions, "") is True
+    assert [kw["acp_backend_override"] for _key, kw in opened] == ["codex", "claude"]
+    assert router.ledger.snapshot()["codex"].ok == 0
+
+
+@pytest.mark.asyncio
+async def test_an_ordinary_review_failure_stays_non_blocking(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    replies = AsyncMock(side_effect=ValueError("bad json"))
+    monkeypatch.setattr(task_executor, "stream_and_collect", replies)
+    task = Task(index=2, title="build it", description="d", harness="claude")
+    sessions, opened = _review_sessions()
+    assert await task_executor.self_review(_review_run(task), task, sessions, "") is True
+    assert len(opened) == 1

@@ -484,7 +484,11 @@ steps.
   ledger and releases it, so the next attempt resolves another. Before any tool
   ran that move does not count as an attempt, up to `max_failover` moves per
   step; after a tool ran it costs one, because the step already changed the
-  workspace.
+  workspace. A turn that ran no tool and whose whole reply is the harness's
+  limit or login notice counts as such a failure, not as the step's result.
+- **Reviews move too.** A routed review that fails at lane level (including a
+  notice-only reply) moves to the next lane for free within `max_failover`, so
+  the step still gets a verdict; any other review failure stays non-blocking.
 - **Never worse than unrouted.** No eligible lane (all resting, none installed)
   runs the step on the configured agent. Every successful turn is recorded, so a
   step's work counts toward that lane's window like any routed subagent.
