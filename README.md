@@ -3,8 +3,8 @@
 </p>
 
 **Warding runs the coding agent you already pay for, all night, on your own
-box, and can ask you in chat before it acts — under a policy it cannot
-read or rewrite.**
+box, and can ask you in chat before it acts when you enable approvals —
+under a policy it cannot read or rewrite.**
 
 Built on Amazon's open-source Kiro agent workspace, published under
 Apache-2.0 in 2026. Most of the code is theirs; the attribution
