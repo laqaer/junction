@@ -16,6 +16,7 @@ from junction.harness_router.lanes import (
     RoutingConfigError,
     is_routable_harness,
     save_lane_edit,
+    save_settings_edit,
 )
 from junction.harness_router.service import check_harness, get_router
 
@@ -109,6 +110,26 @@ async def api_edit_lane(request: web.Request) -> web.Response:
     return web.json_response({"code": "ok", "lane": lane})
 
 
+async def api_edit_settings(request: web.Request) -> web.Response:
+    """PUT /api/routing/settings — change routing.json switches (``route_tasks``)."""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "invalid JSON", "code": "invalid_json"}, status=400)
+    if not isinstance(body, dict):
+        return web.json_response(
+            {"error": "expected an object of settings", "code": "invalid_settings_edit"},
+            status=400,
+        )
+    router = get_router()
+    try:
+        saved = await asyncio.to_thread(save_settings_edit, body, home=router.home)
+    except RoutingConfigError as exc:
+        return web.json_response({"error": str(exc), "code": "invalid_settings_edit"}, status=400)
+    logger.info("routing settings edited: %s", ",".join(sorted(body)))
+    return web.json_response({"code": "ok", "settings": saved})
+
+
 def register(app: web.Application) -> None:
     app.router.add_get("/api/routing/status", api_status)
     app.router.add_get("/api/routing/decide", api_decide)
@@ -116,3 +137,4 @@ def register(app: web.Application) -> None:
     app.router.add_get("/api/routing/harnesses", api_harnesses)
     app.router.add_post("/api/routing/harnesses/{harness}/check", api_check_harness)
     app.router.add_put("/api/routing/harnesses/{harness}/lane", api_edit_lane)
+    app.router.add_put("/api/routing/settings", api_edit_settings)

@@ -7659,7 +7659,8 @@
         "task_description": "Descripción de la tarea",
         "task_title": "Título de la tarea",
         "task_with_title": "Tarea {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "Esta barrera bloquea. force_approval=true."
+        "this_gate_blocks_force_approval_true": "Esta barrera bloquea. force_approval=true.",
+        "ran_on_agent": "Agente: {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12727,6 +12728,8 @@
         "resume_now": "Reanudar ahora",
         "who_gets_what": "Quién hace qué",
         "who_gets_what_description": "Adónde iría ahora la próxima tarea de cada tipo. Cambia a medida que los planes se llenan o descansan tras un límite.",
+        "route_task_steps": "Enrutar los pasos de Task Runner",
+        "route_task_steps_description": "Envía cada paso de Task Runner al agente más adecuado y pasa un paso a otro agente cuando uno alcanza un límite. Si está desactivado, todos los pasos se ejecutan en tu agente principal.",
         "no_agent_available": "Ningún agente disponible",
         "kind_plan": "Planificación",
         "kind_implement": "Programación",

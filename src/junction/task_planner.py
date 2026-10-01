@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from junction.executors import run_in_embed_pool
+from junction.harness_router.kinds import TASK_KINDS
 from junction.hooks import TOOL_DENY
 from junction.llm_helpers import _extract_json_of_type
 from junction.providers.base import EVENT_COMPLETE, EVENT_PERMISSION_REQUEST, EVENT_TEXT_CHUNK
@@ -218,9 +219,20 @@ def parse_tasks(text: str) -> list[Task]:
                     requires_approval=bool(item.get("requires_approval")),
                     force_approval=bool(item.get("force_approval")),
                     depends_on=valid_deps,
+                    kind=_step_kind(item.get("kind")),
                 )
             )
     return normalize_cross_group_deps(tasks)
+
+
+def _step_kind(raw: object) -> str:
+    """The planner's task kind for a step, or '' when absent or not a known kind.
+
+    Named by the planning model, never guessed from the step's text: the harness
+    router routes on it when step routing is on, and treats '' as implement.
+    """
+    value = raw.strip().lower() if isinstance(raw, str) else ""
+    return value if value in TASK_KINDS else ""
 
 
 # ── LLM Decomposition ──
@@ -260,7 +272,9 @@ async def decompose(
         '    "title": string, "description": string,\n'
         '    "depends_on": [step_indices] (optional, default []),\n'
         '    "requires_approval": bool (optional, default false),\n'
-        '    "force_approval": bool (optional, default false — always blocks)\n\n'
+        '    "force_approval": bool (optional, default false — always blocks),\n'
+        f'    "kind": one of {"|".join(TASK_KINDS)} (optional, default implement)'
+        " — what the step mostly is\n\n"
         "Example:\n"
         '{"steps": [\n'
         '  {"title": "Create foo.py", "description": "Create...",'
@@ -411,6 +425,7 @@ def plan_to_chat_context(run: Project) -> str:
             "depends_on": t.depends_on,
             "requires_approval": t.requires_approval,
             **({"force_approval": True} if t.force_approval else {}),
+            **({"kind": t.kind} if t.kind else {}),
         }
         for t in run.tasks
     ]
@@ -451,6 +466,11 @@ def update_plan_tasks(run: Project, tasks: list[dict]) -> Project:
             new_fa = bool(item["force_approval"])
         else:
             new_fa = existing_map[i].force_approval if i in existing_map else False
+        # Same rule for the routing kind: an editor that does not send it keeps it.
+        if "kind" in item:
+            new_kind = _step_kind(item["kind"])
+        else:
+            new_kind = existing_map[i].kind if i in existing_map else ""
         new_tasks.append(
             Task(
                 index=i,
@@ -459,6 +479,7 @@ def update_plan_tasks(run: Project, tasks: list[dict]) -> Project:
                 requires_approval=bool(item.get("requires_approval")),
                 force_approval=new_fa,
                 depends_on=valid_deps,
+                kind=new_kind,
             )
         )
     if not new_tasks:

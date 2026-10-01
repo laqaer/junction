@@ -26,6 +26,12 @@ from junction.taskrunner import (
 # ── Fixtures ──
 
 
+@pytest.fixture(autouse=True)
+def isolated_runner_work_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default runners must not reload another test's durable runs.json."""
+    monkeypatch.chdir(tmp_path)
+
+
 def _make_mock_sessions() -> MagicMock:
     """Create a mock SessionManager with the methods TaskRunner uses."""
     sessions = MagicMock()
@@ -720,10 +726,12 @@ class TestResourceManagement:
 
         # Simulate a long-running task that blocks until cancelled
         blocked = asyncio.Event()
+        registered = asyncio.Event()
 
         async def mock_execute(run, task, hk="", session_key=""):
             # Register the session so cleanup can find it
             sessions._sessions[session_key] = MagicMock()
+            registered.set()
             try:
                 await blocked.wait()  # blocks forever until cancelled
             except asyncio.CancelledError:
@@ -754,8 +762,10 @@ class TestResourceManagement:
         task = asyncio.create_task(_bg())
         runner._tasks["cancel1"] = task
 
-        # Let the task start and block
-        await asyncio.sleep(0.05)
+        # Cancel only once the step has registered its session: the run first
+        # reads the routing settings off the loop, which a slow host can stretch
+        # past any fixed sleep.
+        await asyncio.wait_for(registered.wait(), timeout=30.0)
 
         # Cancel it
         runner.cancel("cancel1")

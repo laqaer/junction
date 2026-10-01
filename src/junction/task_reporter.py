@@ -219,6 +219,7 @@ def build_status(
                 "tokens_used": run.tokens_used,
                 "replan_count": run.replan_count,
                 "auto_approve": getattr(run, "auto_approve", False),
+                "route_steps": getattr(run, "route_steps", None),
                 "auto_approve_remaining_secs": (
                     safety_override().scope_remaining_secs(
                         f"{SESSION_PREFIX}:{run.task_id}:autoapprove"
@@ -240,6 +241,8 @@ def build_status(
                         "depends_on": t.depends_on,
                         "requires_approval": t.requires_approval,
                         "force_approval": t.force_approval,
+                        "kind": t.kind,
+                        "harness": t.harness,
                         "created_at": t.created_at or None,
                         "started_at": t.started_at or None,
                         "finished_at": t.finished_at or None,
