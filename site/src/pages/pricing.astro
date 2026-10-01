@@ -32,11 +32,19 @@ const tipsHidden = offers.some((o) => o.id === "tips" && o.hiddenWhenUnset && o.
 const chipKind = (o: Offer) => (o.status === "available" ? "approved" : o.status === "waitlist" ? "pending" : o.status === "conversation" ? "info" : "coming");
 const trackFor = (id: string) => (id === "supporter" ? "supporter_click" : id === "setup" ? "setup_click" : id === "pilot" ? "pilot_call_click" : undefined);
 
+// "$24/user/mo" -> "$24" in clock type and "/user/mo" beside it, like "$96" and "/yr".
+const splitPrice = (price: string) => { const i = price.indexOf("/"); return i > 0 ? [price.slice(0, i), price.slice(i)] : [price, ""]; };
+const waitlistLabel = (o: Offer) =>
+  o.id === "supporter" ? "Tell me when Founding Supporter opens" : o.id === "setup" ? "Tell me when Setup opens" : `${o.name}: join the free waitlist`;
+
 const quickstart = [`git clone ${site.githubRepo}.git && cd junction`, "bash minimal_install.sh", `${site.cli} setup && ${site.cli} up`].join("\n");
+// The card is narrow, so the clone URL gets its own line (a shell continuation)
+// rather than wrapping mid-token; Copy still takes the three-line quickstart.
+const quickstartShown = [`git clone \\`, `  ${site.githubRepo}.git`, "cd junction", "bash minimal_install.sh", `${site.cli} setup && ${site.cli} up`].join("\n");
 const supporterMonthly = site.links.supporterMonthly;
 const supporterAnnual = site.links.supporterCheckout;
 ---
-<PageLayout title={title} description={description} h1="Free, all night." lead={lead} breadcrumbs={[{ label: "Pricing", href: "/pricing/" }]}>
+<PageLayout endBand={false} title={title} description={description} h1="Free, all night." lead={lead} breadcrumbs={[{ label: "Pricing", href: "/pricing/" }]}>
   <section class="offers" aria-label="Offers">
     {visible.map((o) => (
       <article class={`tile offer ${o.recommended ? "offer-rec" : ""}`} id={o.id} aria-labelledby={`offer-${o.id}`}>
@@ -63,7 +71,7 @@ const supporterAnnual = site.links.supporterCheckout;
           </>
         ) : (
           <p class="price">
-            <span class="clock clock-33">{o.price}</span>
+            <span class="clock clock-33">{splitPrice(o.price)[0]}</span>{splitPrice(o.price)[1] && <span class="per">{splitPrice(o.price)[1]}</span>}
             {o.priceNote && <span class="caption">{o.priceNote}</span>}
           </p>
         )}
@@ -71,7 +79,7 @@ const supporterAnnual = site.links.supporterCheckout;
         <p class="offer-blurb">{o.blurb}</p>
 
         {o.id === "free" && (
-          <pre class="terminal quickstart"><code>{quickstart}</code></pre>
+          <pre class="terminal quickstart" tabindex="0" role="region" aria-label="Quickstart commands"><code>{quickstartShown}</code></pre>
         )}
 
         <div class="offer-cta">
@@ -82,35 +90,25 @@ const supporterAnnual = site.links.supporterCheckout;
               <a class="quiet-link" href="/#install">Install steps <ArrowRight class="lucide lucide-inline" aria-hidden="true" /></a>
             </>
           )}
-          {o.id === "supporter" && (
+          {o.id === "supporter" && o.href && (
             <>
               <div data-plan-view="annual">
-                <Button href={supporterAnnual} disabledLabel={o.label} external track={trackFor(o.id)}>{o.cta}</Button>
+                <Button href={supporterAnnual} external track={trackFor(o.id)}>{o.cta}</Button>
               </div>
               <div data-plan-view="monthly" hidden>
                 <Button href={supporterMonthly} disabledLabel={o.label} external track={trackFor(o.id)}>{o.cta} monthly</Button>
               </div>
             </>
           )}
-          {o.id === "setup" && (
-            o.href ? (
-              <Button href={o.href} external track={trackFor(o.id)}>{o.cta}</Button>
-            ) : (
-              <>
-                <Button disabledLabel={o.label} />
-                <WaitlistForm client:visible list={o.list ?? o.id} label="Tell me when Setup opens" compact />
-              </>
-            )
-          )}
-          {(o.id === "pilot" || o.id === "tips") && (
-            <Button href={o.href} disabledLabel={o.label} external track={trackFor(o.id)}>{o.cta}</Button>
+          {o.id !== "free" && o.id !== "supporter" && o.href && (
+            <Button href={o.href} external track={trackFor(o.id)}>{o.cta}</Button>
           )}
           {o.status === "waitlist" && (
-            <WaitlistForm client:visible list={o.list ?? o.id} label={`${o.name}: join the free waitlist`} questions={o.id === "hosted" ? hostedQuestions : []} compact />
+            <WaitlistForm client:visible list={o.list ?? o.id} label={waitlistLabel(o)} questions={o.id === "hosted" ? hostedQuestions : []} compact />
           )}
         </div>
 
-        <p class="caption rail">Rail: {RAIL_LABEL[o.rail]}</p>
+        {o.rail !== "waitlist" && <p class="caption rail">{RAIL_LABEL[o.rail]}</p>}
       </article>
     ))}
   </section>
@@ -118,7 +116,7 @@ const supporterAnnual = site.links.supporterCheckout;
   <p class="caption offers-note measure">
     {pilotHidden && (
       <>
-        <strong>Design-partner pilots</strong> ({pilot?.price} / {pilot?.priceNote}) are available now, by conversation, for platform and security leads; the card appears here once the first is signed.{" "}
+        <strong>Design-partner pilots</strong> for platform and security leads are arranged by conversation; the card, with its terms, appears here once the first is signed.{" "}
         {site.links.calendar ? <a href={site.links.calendar} rel="noopener" data-track="pilot_call_click">Book a 30-minute call.</a> : "Calls open soon."}{" "}
       </>
     )}
@@ -128,11 +126,11 @@ const supporterAnnual = site.links.supporterCheckout;
   <section class="compare-wrap" aria-labelledby="compare-h">
     <WardBars align="left" />
     <h2 id="compare-h">What each one includes</h2>
-    <div class="table-scroll">
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Offer comparison table">
       <table class="matrix compare">
         <thead>
           <tr>
-            <th scope="col">&nbsp;</th>
+            <th scope="col"><span class="sr-only">Feature</span></th>
             {columns.map((o) => <th scope="col">{o.name}<br /><span class="caption">{o.label}</span></th>)}
           </tr>
         </thead>
@@ -173,28 +171,31 @@ const supporterAnnual = site.links.supporterCheckout;
   </section>
 
   <section class="installer" aria-labelledby="installer-h">
-    <h2 id="installer-h" class="h3">One more list</h2>
+    <h2 id="installer-h" class="h3">Want the one-line installer?</h2>
     <p class="measure">The install is a clone and a script today. The one-line installer is in development.</p>
     <WaitlistForm client:visible list="installer" label="Tell me when the one-line installer ships" compact />
   </section>
 </PageLayout>
 
 <style>
-  .offers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
-  .offer { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  /* Flex, not a 3-column grid: five cards would leave an empty cell, so the
+     last row's cards grow to share its width instead. */
+  .offers { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+  .offer { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .offer-cta { margin-top: auto; }
   .offer-rec { border-color: var(--seal); }
   .offer-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
   .offer h2 { font-size: 1.375rem; line-height: 1.2; }
   .price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; color: var(--fg); }
   .price .per { font-family: var(--font-clock); font-size: 18px; color: var(--fg-2); margin-left: -4px; }
   .offer-blurb { color: var(--fg-2); font-size: 0.9375rem; }
-  .quickstart { font-size: 0.8125rem; padding: 12px 14px; }
+  .quickstart { font-size: 0.75rem; padding: 12px 14px; }
   .offer-cta { display: grid; gap: 10px; justify-items: start; }
   .offer-cta :global(.waitlist) { width: 100%; }
-  .quiet-link { font-size: 0.9375rem; display: inline-flex; align-items: center; gap: 4px; }
-  .rail { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }
+  .quiet-link { font-size: 0.9375rem; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+  .rail { border-top: 1px solid var(--line); padding-top: 10px; }
   .plan-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-  .plan-btn { min-height: 36px; padding: 6px 14px; border: 0; background: transparent; color: var(--fg-2); font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+  .plan-btn { min-height: 44px; padding: 6px 14px; border: 0; background: transparent; color: var(--fg-2); font-size: 0.875rem; font-weight: 500; cursor: pointer; }
   .plan-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
   .offers-note { margin-top: 20px; }
   .compare-wrap, .faq-wrap, .installer { margin-top: 72px; display: grid; gap: 16px; }
@@ -209,8 +210,6 @@ const supporterAnnual = site.links.supporterCheckout;
   .installer .h3 { font-size: 1.5rem; }
   .installer :global(.waitlist) { max-width: 560px; }
   :global(.lucide-inline) { width: 16px; height: 16px; vertical-align: -3px; display: inline-block; }
-  @media (max-width: 1000px) { .offers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 640px) { .offers { grid-template-columns: 1fr; } }
 </style>
 
 <script>

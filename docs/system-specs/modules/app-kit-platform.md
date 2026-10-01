@@ -539,9 +539,10 @@ alone. An install that registered the app while it was still default-off keeps
 `enabled: false` through every restart, update and version bump, because the
 record lives in the user's data home and a code update does not touch it. For a
 builtin that replaces a host surface that is terminal rather than inconvenient:
-it has no page, so it is absent from the launcher's own app list, and it is
-absent from Discover unless the published catalog carries a row, which leaves a
-disabled row in Library as the only trace of an app the user never heard of.
+it has no page, so it is absent from the launcher's own app list, and on a
+catalog-backed store it is absent from Discover unless the published catalog
+carries a row, which leaves a disabled row in Library as the only trace of an app
+the user never heard of.
 
 `manager.backfill_default_on_builtins()` closes that gap, invoked from
 `agent.run_first_run_setup()`. It reads a SECOND set, `_DEFAULT_ON_BACKFILL`, and
@@ -770,6 +771,11 @@ returns `[]` and `inventory_for_install` returns `None` — a definite absence, 
 refusing — and a catalog-relative asset ref is dropped by `_resolve_ref` rather
 than emitted as a bare path. `GET /api/apps/registry` therefore renders the
 bundled seed plus the built-ins on disk with no network attempt and no warning.
+The built-ins come from `_builtin_shelf_rows` (`registry.py`): one `builtin` row
+per non-hidden built-in the manager registered and no other row names, carrying
+the manifest display fields and asset paths the generator bakes and, for the
+same reason as a published built-in row, no `version`. Without it a stock build
+lists only the seed, and every default-off built-in is missing from Discover.
 Setting the variable to a catalog you publish restores everything below; the
 test suite pins a reserved `.invalid` origin in `conftest.py` so its catalog
 tests describe the configured behaviour.

@@ -23,8 +23,11 @@ Lane map: [`docs/TASK_MAP.md`](docs/TASK_MAP.md).
 - **Tagline:** The lamp stays on. The rules stay shut. Short form: The lamp
   stays on.
 - **One sentence:** Warding runs the coding agent you already pay for, all
-  night, on your own box, and asks you in chat before anything risky — under
-  a policy it cannot read or rewrite.
+  night, on your own box, and can ask you in chat before it acts when you
+  enable approvals — under a policy it cannot read or rewrite.
+- **Approvals are opt-in:** `agent.approval_mode` defaults to `auto`.
+  Set it to `interactive` or choose Interactive in the dashboard to request
+  approval for gated calls. Never describe asking as the default.
 - **Lineage, line one of anything long:** Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon.
   Elsewhere call it the upstream project. The brand gate fails any added
   line that spells its retired product name (in any joining), its hosts, its

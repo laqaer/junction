@@ -30,6 +30,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from junction.acp.types import ACP_BACKEND_CLAUDE
 from junction.config import JunctionConfig
 from junction.config.loader import JunctionAgentConfig
 from junction.messaging.link import ChannelLink
@@ -385,7 +386,10 @@ class TestProviderBgSession:
 class TestGetBgSessionNonKiro:
     @pytest.mark.asyncio
     async def test_non_kiro_backend_gets_the_provider_backed_adapter(self, cfg) -> None:
-        cfg.agent.provider = "claude_code"
+        # The _bg dispatch reads the resolved harness, not agent.provider. Name a
+        # non-kiro backend explicitly: "auto" resolves to kiro on a host with no
+        # other harness on PATH, which would try to spawn kiro-cli here.
+        cfg.agent.acp_backend = ACP_BACKEND_CLAUDE
         mgr = SessionManager(cfg)
         sess = _register(mgr, BACKGROUND_KEY, provider=_StreamingProvider())
 
@@ -399,7 +403,7 @@ class TestGetBgSessionNonKiro:
     async def test_missing_background_session_is_a_named_error(self, cfg) -> None:
         """Silently returning None here surfaces much later as an
         AttributeError inside a chat-title turn."""
-        cfg.agent.provider = "bedrock"
+        cfg.agent.acp_backend = ACP_BACKEND_CLAUDE
         mgr = SessionManager(cfg)
 
         with patch.object(mgr, "_ensure_background", AsyncMock()):

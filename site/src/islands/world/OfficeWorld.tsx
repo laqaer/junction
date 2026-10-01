@@ -7,9 +7,10 @@ import { track } from "../../lib/analytics";
 /**
  * The live hero world: the shipping Office renderer fed a scripted timeline.
  *
- * - integer scaling only: always 2x, cropped to the column. The crop skips the
- *   wall band (the page's own clock and lit window carry the hour) and pans to
- *   the acting sprite's desk on each step (400 ms; instant under reduced motion)
+ * - integer scaling only: always 2x, cropped to the column. The crop keeps the
+ *   wall (its lit window, clock and whiteboard are the most legible part of the
+ *   scene) unless `showWall` is false, and pans to the acting sprite's desk on
+ *   each step (400 ms; instant under reduced motion)
  * - time-based tick at 30/s; paused off-screen, on hidden tabs, and by the
  *   visible 44 px Pause/Play control (state kept in localStorage, try/catch)
  * - prefers-reduced-motion draws once at 02:30 with the refused state; the
@@ -19,20 +20,23 @@ import { track } from "../../lib/analytics";
  *   simulated frame at 2x with the local time and the lit-window glyph stamped
  *   bottom-right
  */
-interface Props { label?: string }
+interface Props { label?: string; showWall?: boolean }
 
 const PAUSE_KEY = "warding.world.paused";
 const CYCLE_MS = 9000;
 const SCALE = 2;
-/** Logical y where the wall trim ends and the floor begins; the crop starts here. */
+/** Logical y where the wall trim ends and the floor begins; the floor-only crop starts here. */
 const FLOOR_Y = 80;
+/** Logical y the wall crop starts at: just above the window and whiteboard frames. */
+const WALL_Y = 6;
 
-type Layout = { frameW: number; frameH: number };
+type Layout = { frameW: number; frameH: number; top: number };
 type Point = { x: number; y: number };
 
-function measure(width: number): Layout {
+function measure(width: number, showWall: boolean): Layout {
+  const top = showWall ? WALL_Y : FLOOR_Y;
   const frameW = Math.max(240, Math.min(W * SCALE, Math.floor(width)));
-  return { frameW, frameH: (H - FLOOR_Y) * SCALE };
+  return { frameW, frameH: (H - top) * SCALE, top };
 }
 
 /** Offset of the 2x canvas inside the frame so `focus` (logical) sits centred, clamped to the floor. */
@@ -42,7 +46,7 @@ function panTo(layout: Layout, focus: Point | null): Point {
   const fy = focus ? focus.y * SCALE - layout.frameH / 2 : 0;
   return {
     x: Math.round(clamp(fx, 0, W * SCALE - layout.frameW)),
-    y: Math.round(clamp(fy, FLOOR_Y * SCALE, H * SCALE - layout.frameH)),
+    y: Math.round(clamp(fy, layout.top * SCALE, H * SCALE - layout.frameH)),
   };
 }
 
@@ -55,7 +59,7 @@ function localTime(): string {
   }
 }
 
-export default function OfficeWorld({ label = "Pixel-art night office: agent sprites at their desks, one waiting on an approval. A simulated demo drawn by the product's own renderer." }: Props) {
+export default function OfficeWorld({ label = "Pixel-art night office: agent sprites at their desks, one waiting on an approval. A simulated demo drawn by the product's own renderer.", showWall = true }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(createOffice(Math.floor(Math.random() * 1e6)));
@@ -65,7 +69,7 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
   const pausedRef = useRef(false);
   const reducedRef = useRef(false);
   const dprRef = useRef(1);
-  const [layout, setLayout] = useState<Layout>(() => measure(W * SCALE));
+  const [layout, setLayout] = useState<Layout>(() => measure(W * SCALE, showWall));
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
   const [time, setTime] = useState("");
@@ -97,12 +101,12 @@ export default function OfficeWorld({ label = "Pixel-art night office: agent spr
     const wrap = wrapRef.current;
     if (!wrap) return;
     dprRef.current = Math.min(2, Math.ceil(window.devicePixelRatio || 1));
-    const apply = () => setLayout(measure(wrap.clientWidth));
+    const apply = () => setLayout(measure(wrap.clientWidth, showWall));
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(wrap);
     return () => ro.disconnect();
-  }, []);
+  }, [showWall]);
 
   useEffect(() => {
     const c = canvasRef.current;

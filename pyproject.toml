@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "junction"
 version = "0.5.0"
-description = "Junction — local control plane that docks ACP coding agents and routes their models"
+description = "Warding runs your coding agent on your own machine, on a schedule, under a policy it cannot edit"
 readme = "README.md"
 # macOS (x86_64 + arm64) and Linux (x86_64 + aarch64), CPython 3.10-3.13.
 # Must be declared in this [project] table: when it exists, setuptools reads

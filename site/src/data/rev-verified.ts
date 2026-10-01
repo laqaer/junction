@@ -96,7 +96,7 @@ export const notYet: NotYet[] = [
     what: "Channels, schedules and approvals on a non-Kiro harness",
     status: "planned",
     detail:
-      "The gateway code is the same for every harness by construction, and nobody has run a channel round-trip, a scheduled job or an in-chat approval on Claude Code, Codex or the others at runtime.",
+      "The gateway and channel code is shared across harnesses, though each harness has its own capability flags (session sharing, steering, its own sandbox), and nobody has run a channel round-trip, a scheduled job or an in-chat approval on Claude Code, Codex or the others at runtime.",
   },
   {
     what: "The harness router: a subagent sent to another harness",
@@ -113,7 +113,7 @@ export const notYet: NotYet[] = [
     what: "“The default build contacts no server of ours”, checked with lsof",
     status: "planned",
     detail:
-      "The upstream-owned endpoints are out of the default build; the run that lists every outbound connection during a session has not been done. The embedding model is still fetched from a third-party CDN on first embedding use.",
+      "Upstream's update feed, app catalog and telemetry are off in the default build; the run that lists every outbound connection during a session has not been done. The embedding model is still fetched on first embedding use from a CDN address inherited from the upstream codebase.",
   },
 ];
 

@@ -32,12 +32,12 @@ What has been run on which harness is on <a href="/verified/">the verification l
 
 1. **Run the gateway on the Mac that is signed in to Messages** (macOS 14 or newer). The channel refuses to start anywhere else, because sends would fail.
 2. **Install the `imsg` bridge**, a small open-source CLI:
-   <pre><code>brew install steipete/tap/imsg</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>brew install steipete/tap/imsg</code></pre>
 3. **Grant two permissions** to whatever launches the gateway: Full Disk Access, to read the Messages database, and Automation → Messages, to send.
 4. **Allow your own handle** in `config.json`, a phone number or your Apple Account email:
-   <pre><code>{`"imessage": { "enabled": true, "allowed_handles": ["+15551234567"] }`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`"imessage": { "enabled": true, "allowed_handles": ["+15551234567"] }`}</code></pre>
 5. **Restart the gateway** and say hi:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 ## Who can reach it
 
