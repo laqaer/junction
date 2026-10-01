@@ -7659,7 +7659,8 @@
         "task_description": "Description de la tâche",
         "task_title": "Titre de la tâche",
         "task_with_title": "Tâche {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "Ce point de contrôle bloque. force_approval=true."
+        "this_gate_blocks_force_approval_true": "Ce point de contrôle bloque. force_approval=true.",
+        "ran_on_agent": "Agent : {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12727,6 +12728,8 @@
         "resume_now": "Reprendre maintenant",
         "who_gets_what": "Qui fait quoi",
         "who_gets_what_description": "Où irait maintenant la prochaine tâche de chaque type. Cela change à mesure que les abonnements se remplissent ou se reposent après une limite.",
+        "route_task_steps": "Router les étapes de Task Runner",
+        "route_task_steps_description": "Envoie chaque étape de Task Runner à l'agent le plus adapté, et passe une étape à un autre agent quand l'un atteint une limite. Désactivé, toutes les étapes s'exécutent sur ton agent principal.",
         "no_agent_available": "Aucun agent disponible",
         "kind_plan": "Planification",
         "kind_implement": "Code",

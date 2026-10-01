@@ -2592,7 +2592,8 @@
         "requires_approval_before_execution_2": "Requires approval before execution.",
         "save_failed_try_again": "Save failed — try again",
         "task_with_title": "Task {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "This gate blocks. force_approval=true."
+        "this_gate_blocks_force_approval_true": "This gate blocks. force_approval=true.",
+        "ran_on_agent": "Agent: {{agent}}"
       },
       "dagView": {
         "cancelling": "Cancelling",
@@ -4995,6 +4996,8 @@
         "resume_now": "Resume now",
         "who_gets_what": "Who gets what",
         "who_gets_what_description": "Where the next task of each kind would go right now. This changes as plans fill up or rest after a limit.",
+        "route_task_steps": "Route Task Runner steps",
+        "route_task_steps_description": "Send each Task Runner step to the agent best suited to it, and move a step to another agent when one hits a limit. When this is off, every step runs on your main agent.",
         "no_agent_available": "No agent available",
         "kind_plan": "Planning",
         "kind_implement": "Coding",
