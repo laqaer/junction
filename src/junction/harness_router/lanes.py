@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,6 +37,10 @@ logger = logging.getLogger(__name__)
 
 ROUTING_FILENAME = "routing.json"
 ROUTING_SCHEMA_VERSION = 1
+
+# Dashboard edits run in worker threads; keep their accepted updates in one
+# read-modify-write transaction, including edits to different fields.
+_edit_lock = threading.Lock()
 
 # Lane ids appear in CLI arguments, MCP tool arguments and ledger keys.
 LANE_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,47}$")
@@ -130,6 +135,10 @@ class RoutingSettings:
     enabled: bool = True
     # Failover hops a routed run may take after a lane-level failure.
     max_failover: int = 2
+    # Route task-runner steps across lanes. Off by default: a step otherwise
+    # runs on the configured agent (agent.acp_backend), the operator's explicit
+    # choice, and only an explicit opt-in may move it.
+    route_tasks: bool = False
     source: str = "auto"
     path: str = ""
     warnings: tuple[str, ...] = field(default_factory=tuple)
@@ -276,6 +285,7 @@ def parse_settings(data: object, *, path: str = "") -> RoutingSettings:
         lanes=tuple(lanes),
         enabled=bool(data.get("enabled", True)),
         max_failover=_as_int(data.get("max_failover"), 2),
+        route_tasks=data.get("route_tasks") is True,
         source="config",
         path=path,
         warnings=tuple(warnings),
@@ -344,6 +354,7 @@ def template_document(harnesses: Iterable[str]) -> dict[str, Any]:
         "version": ROUTING_SCHEMA_VERSION,
         "enabled": True,
         "max_failover": 2,
+        "route_tasks": False,
         "lanes": lanes,
     }
 
@@ -463,9 +474,50 @@ def save_lane_edit(
     """Apply *edits* to *harness*'s lane and write ``routing.json`` atomically."""
     from junction.atomic_write import atomic_write
 
-    document = current_document(home=home, which=which, env=env)
-    new_doc, lane = apply_lane_edit(document, harness, edits)
-    path = routing_path(home)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    atomic_write(path, json.dumps(new_doc, indent=2) + "\n")
+    with _edit_lock:
+        document = current_document(home=home, which=which, env=env)
+        new_doc, lane = apply_lane_edit(document, harness, edits)
+        path = routing_path(home)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(path, json.dumps(new_doc, indent=2) + "\n")
     return lane
+
+
+# Top-level routing.json switches the dashboard may change.
+EDITABLE_SETTINGS_FIELDS: frozenset[str] = frozenset({"route_tasks"})
+
+
+def save_settings_edit(
+    edits: Mapping[str, object],
+    *,
+    home: Path | None = None,
+    which: WhichFn | None = None,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """Change top-level switches in ``routing.json`` and write it atomically.
+
+    A missing file is materialized from the detected lanes first; a broken one
+    is refused (``current_document`` raises), never overwritten. Returns the
+    switches as stored.
+    """
+    from junction.atomic_write import atomic_write
+
+    unknown = set(edits) - EDITABLE_SETTINGS_FIELDS
+    if unknown or not edits:
+        raise RoutingConfigError(
+            f"{', '.join(sorted(unknown)) or 'nothing'} cannot be edited; "
+            f"editable: {', '.join(sorted(EDITABLE_SETTINGS_FIELDS))}"
+        )
+    for name, value in edits.items():
+        if not isinstance(value, bool):
+            raise RoutingConfigError(f"{name} must be true or false")
+    with _edit_lock:
+        document = dict(current_document(home=home, which=which, env=env))
+        document.update(edits)
+        document.setdefault("version", ROUTING_SCHEMA_VERSION)
+        document.setdefault("enabled", True)
+        parse_settings(document)  # refuse a result the loader would reject
+        path = routing_path(home)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(path, json.dumps(document, indent=2) + "\n")
+    return {name: document.get(name, False) for name in sorted(EDITABLE_SETTINGS_FIELDS)}

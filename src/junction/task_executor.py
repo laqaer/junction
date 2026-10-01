@@ -10,14 +10,20 @@ import asyncio
 import logging
 import time as _time
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from junction import git_coord, platform_compat, shutdown_event
 from junction.acp.client import AcpProcessDied
 from junction.config.loader import JunctionConfig
 from junction.executors import run_in_embed_pool
+from junction.harness_router.limits import HarnessLaneFailure, limit_notice_failure
 from junction.hooks import TOOL_AUTO_APPROVE, TOOL_DENY, fire_tool_hooks, get_global_hook_store
-from junction.llm_helpers import provider_last_turn_usage, stream_and_collect_json
+from junction.llm_helpers import (
+    parse_llm_json,
+    provider_last_turn_usage,
+    stream_and_collect,
+    stream_and_collect_json,
+)
 from junction.messaging.link import telemetry_channel_of
 from junction.providers.base import (
     EVENT_COMPLETE,
@@ -40,6 +46,7 @@ from junction.task_models import (
     TaskStatus,
 )
 from junction.task_planner import group_parallel_tasks
+from junction.task_routing import StepRoute
 
 _MID_STREAM_COMPACT_PCT = 90.0
 
@@ -185,6 +192,9 @@ async def execute_single_task(
             logger.warning("Task %d requires approval but no handler — auto-approving", task.index)
 
     run.current_task = task.index
+    # A failed self-review retries the same live execution conversation. Keep
+    # its route so headroom changes do not account that provider to a new lane.
+    route = StepRoute(task.kind) if run.route_steps else None
     success = await execute_task(
         run,
         task,
@@ -197,6 +207,7 @@ async def execute_single_task(
         work_dir,
         on_notify,
         session_key,
+        **({"step_route": route} if route is not None else {}),
     )
     run.last_task_time = _time.time()
 
@@ -230,6 +241,7 @@ async def execute_single_task(
                 work_dir,
                 on_notify,
                 session_key,
+                **({"step_route": route} if route is not None else {}),
             )
             if success and run.branch_name:
                 try:
@@ -285,15 +297,25 @@ async def execute_task(
     work_dir: Path,
     on_notify: Callable,
     session_key: str = "",
+    *,
+    step_route: StepRoute | None = None,
 ) -> bool:
     """Execute a single task with retries and process recovery.
 
     Separate budgets:
     - Logic/test failures: up to MAX_RETRIES attempts
-    - Process crashes (AcpProcessDied): up to MAX_RECOVERIES, not counted as attempts.
+    - Process crashes (AcpProcessDied): up to MAX_RECOVERIES, normally free.
+      Routed lane failures consume an attempt after tool use or exhausted free hops.
     """
     if not session_key:
         session_key = f"{SESSION_PREFIX}:{run.task_id}:task{task.index}"
+    # Harness-router lane for this step when the run routes its steps (see
+    # task_routing); None runs every attempt on the configured agent.
+    route = (
+        step_route
+        if step_route is not None
+        else (StepRoute(task.kind) if run.route_steps else None)
+    )
     recoveries = 0
     compactions = 0
     attempt = 0
@@ -315,19 +337,32 @@ async def execute_task(
         logger.info("Task %d/%d (attempt %d): %s", task.index, len(run.tasks), attempt, task.title)
 
         _acquired = False
+        # Whether this attempt ran a tool: a lane failure after that is not
+        # a free move to another lane (see task_routing).
+        _tool_ran = False
         try:
             await check_context(session_key, sessions)
 
+            lane = await route.pick() if route is not None else None
+            task.harness = lane.harness if lane is not None else ""
             client, is_new, _resumed = await sessions.open_task_session(
                 f"{SESSION_PREFIX}:{run.task_id}:runtime",
                 session_key,
                 agent=agent or None,
                 cwd=str(work_dir) if work_dir else None,
+                **(
+                    {"acp_backend_override": lane.harness, "model": lane.model}
+                    if lane is not None
+                    else {}
+                ),
             )
             _acquired = True
             from junction.model_router.routing import ROLE_EXECUTION, apply_role_model
 
-            await apply_role_model(client, ROLE_EXECUTION)
+            # A routed lane runs its own model, spelled for its own harness; the
+            # role pins are spelled for the configured agent (H12).
+            if lane is None:
+                await apply_role_model(client, ROLE_EXECUTION)
 
             task_prompt = await build_task_prompt(run, task, attempt, work_dir)
             if ctx:
@@ -507,6 +542,7 @@ async def execute_task(
                         },
                     )
                 elif event.kind == EVENT_TOOL_CALL:
+                    _tool_ran = True
                     # Fire PreToolUse hooks for auto-approved tools (informational only)
                     sel().log_tool_invocation(
                         session_key=session_key,
@@ -528,10 +564,21 @@ async def execute_task(
                     _complete_event = event
                     break
 
+            # A subscription harness can end a turn normally with its plan-limit
+            # or login notice as the whole reply. On a routed step that ran no
+            # tool, that reply is a lane failure, not a result, exactly as for a
+            # routed subagent: the lane rests and the step moves for free.
+            if lane is not None and not _tool_ran:
+                notice = limit_notice_failure(result_text)
+                if notice:
+                    raise HarnessLaneFailure(notice, result_text)
+
             final_result = result_prefix + result_text
             task.result = redact_credentials(redact_exfiltration_urls(final_result)[0])[0]
             sessions.record_success(session_key)
             sessions.check_context_usage(session_key, client)
+            if route is not None:
+                await route.succeeded()
 
             # ── Per-turn usage row: attribute task-runner spend. ──
             try:
@@ -566,7 +613,15 @@ async def execute_task(
             except Exception:
                 logger.debug("usage row (taskrunner) persist failed", exc_info=True)
 
-        except AcpProcessDied:
+        except AcpProcessDied as died:
+            free_recovery = True
+            if route is not None:
+                previous_lane = route.lane
+                free_move = await route.failed(died, tool_ran=_tool_ran)
+                if previous_lane is not None and route.lane is None:
+                    # A lane failure must pay for tool activity or exhausted
+                    # failover hops; ordinary process recovery stays free.
+                    free_recovery = free_move
             recoveries += 1
             partial = task.result or ""
             task.error = f"Process died (recovery {recoveries}/{MAX_RECOVERIES})"
@@ -595,7 +650,8 @@ async def execute_task(
                 run=run,
             )
             run.last_task_time = _time.time()
-            attempt -= 1
+            if free_recovery:
+                attempt -= 1
             continue
 
         except _ContextOverflow as cof:
@@ -640,6 +696,8 @@ async def execute_task(
             task.error = str(exc)
             logger.warning("Task %d attempt %d failed: %s", task.index, attempt, exc)
             await sessions.record_failure(session_key)
+            failed_harness = task.harness
+            moved = await route.failed(exc, tool_ran=_tool_ran) if route is not None else False
 
             # Reset session between retries to avoid StreamReader corruption
             # ("readuntil() called while another coroutine is already waiting")
@@ -647,6 +705,19 @@ async def execute_task(
                 await sessions.reset(session_key)
             except Exception:
                 logger.debug("Session reset between retries failed", exc_info=True)
+
+            if moved:
+                # Its lane hit a limit before doing anything: the next attempt
+                # runs on another agent and does not count against the step.
+                attempt -= 1
+                await on_notify(
+                    f"Task {task.index}: switching agent",
+                    f"{failed_harness} is unavailable ({task.error[:120]}); "
+                    "retrying on the next agent.",
+                    run=run,
+                )
+                run.last_task_time = _time.time()
+                continue
 
             if previous_error and task.error == previous_error:
                 consecutive_same_error += 1
@@ -826,8 +897,27 @@ async def self_review(
     agent: str,
     session_key: str = "",
 ) -> bool:
-    """Review task using a separate session that reads the actual git diff."""
+    """Review task using a separate session that reads the actual git diff.
+
+    In a run that routes its steps, the review is its own routed dispatch of
+    kind ``review``, preferring a different agent than the one that did the
+    work, on a per-step session key (parallel steps review at once, and each
+    review must run on the lane it was accounted to).
+    """
+    route = (
+        StepRoute("review", avoid=await asyncio.to_thread(_lanes_for, task.harness))
+        if run.route_steps
+        else None
+    )
     review_key = f"{SESSION_PREFIX}:{run.task_id}:review"
+    if route is not None:
+        review_key = f"{review_key}{task.index}"
+    _review_tool_ran = False
+
+    def track_review_tool(_title: str, approved: bool, _blocked: bool) -> None:
+        nonlocal _review_tool_ran
+        _review_tool_ran = _review_tool_ran or approved
+
     try:
         diff = ""
         if run.branch_name:
@@ -861,20 +951,49 @@ async def self_review(
                 'Respond with ONLY JSON: {"ok": true} or {"ok": false, "issue": "..."}\n'
             )
 
-        client, *_ = await sessions.open_task_session(
-            f"{SESSION_PREFIX}:{run.task_id}:runtime",
-            review_key,
-            agent=agent or None,
-            cwd=str(run.work_dir) if run.work_dir else None,
-        )
         from junction.model_router.routing import ROLE_PLANNING, apply_role_model
 
-        await apply_role_model(client, ROLE_PLANNING)
-        # Wall clock for the review turn (see execute_task): the acp provider
-        # reports no duration, so this local measurement is the fallback. Bracket
-        # ONLY the model stream, not open_task_session / diff fetch / prompt build.
-        _review_t0 = _time.monotonic()
-        result = await stream_and_collect_json(client, prompt)
+        moved = True
+        while moved:
+            moved = False
+            lane = await route.pick() if route is not None else None
+            _review_tool_ran = False
+            try:
+                client, *_ = await sessions.open_task_session(
+                    f"{SESSION_PREFIX}:{run.task_id}:runtime",
+                    review_key,
+                    agent=agent or None,
+                    cwd=str(run.work_dir) if run.work_dir else None,
+                    **(
+                        {"acp_backend_override": lane.harness, "model": lane.model}
+                        if lane is not None
+                        else {}
+                    ),
+                )
+                if lane is None:
+                    await apply_role_model(client, ROLE_PLANNING)
+                # Wall clock for the review turn (see execute_task): the acp
+                # provider reports no duration, so this local measurement is the
+                # fallback. Bracket ONLY the model stream, not open_task_session /
+                # diff fetch / prompt build.
+                _review_t0 = _time.monotonic()
+                result = await _collect_review(
+                    client, prompt, routed=lane is not None, on_tool_gate=track_review_tool
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if route is None:
+                    raise
+                # Only a review that has done no tool work may move for free.
+                # Other failures retain the existing non-blocking behavior.
+                moved = await route.failed(exc, tool_ran=_review_tool_ran)
+                if not moved:
+                    logger.debug("Self-review failed", exc_info=True)
+                    return True
+                logger.info("Self-review for task %d: moving to another agent", task.index)
+                sessions.release(review_key)
+                await sessions.reset(review_key)
 
         # ── Per-turn usage row: self-review is a separate model turn. ──
         try:
@@ -906,6 +1025,8 @@ async def self_review(
         except Exception:
             logger.debug("usage row (self_review) persist failed", exc_info=True)
 
+        if route is not None:
+            await route.succeeded()
         if result and not result.get("ok", True):
             issue = result.get("issue", "Review found issues")
             task.error = f"Self-review: {issue}"
@@ -913,12 +1034,54 @@ async def self_review(
             run.memory.blockers.append(f"Task {task.index} review: {issue}")
             return False
         return True
-    except Exception:
+    except Exception as exc:
         logger.debug("Self-review failed", exc_info=True)
+        if route is not None:
+            await route.failed(exc, tool_ran=_review_tool_ran)
         return True  # don't block on review failure
     finally:
         sessions.release(review_key)
         await sessions.reset(review_key)
+
+
+async def _collect_review(
+    client: Any,
+    prompt: str,
+    *,
+    routed: bool,
+    on_tool_gate: Callable[[str, bool, bool], None] | None = None,
+) -> dict | None:
+    """The review turn's JSON verdict.
+
+    On a routed lane a reply that is only the harness's limit or login notice
+    raises ``HarnessLaneFailure``, so the review moves instead of passing; a
+    real verdict is JSON and never matches a notice.
+    """
+    if not routed:
+        return await stream_and_collect_json(client, prompt)
+    # The gate observer includes upstream-approved tool calls and is delivered
+    # before errors propagate. Disable the inner transient replay: this caller
+    # owns lane failover and must retain all tool activity from this turn.
+    text = await stream_and_collect(
+        client, prompt, on_tool_gate=on_tool_gate, retry_transient=False
+    )
+    notice = limit_notice_failure(text)
+    if notice:
+        raise HarnessLaneFailure(notice, text)
+    return parse_llm_json(text)
+
+
+def _lanes_for(harness: str) -> tuple[str, ...]:
+    """Lane ids on *harness* (for a review to avoid the agent that did the work)."""
+    if not harness:
+        return ()
+    try:
+        from junction.harness_router.service import get_router
+
+        return tuple(lane.id for lane in get_router().settings().lanes_for_harness(harness))
+    except Exception:
+        logger.debug("routing settings unreadable for review lane avoidance", exc_info=True)
+        return ()
 
 
 # Grace period between SIGTERM and SIGKILL when reaping a timed-out test's
