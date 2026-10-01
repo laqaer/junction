@@ -671,6 +671,7 @@ class TaskRunner:
         # pause or a gateway restart keeps routing (or not) the way it started.
         if run.route_steps is None:
             run.route_steps = await asyncio.to_thread(route_tasks_enabled)
+            await self._apersist_runs()  # Fix the decision durably before the first dispatch.
         pending = [t for t in run.tasks if t.status == TaskStatus.PENDING]
         already_done = {
             t.index for t in run.tasks if t.status in (TaskStatus.PASSED, TaskStatus.SKIPPED)

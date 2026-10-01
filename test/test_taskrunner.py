@@ -26,6 +26,12 @@ from junction.taskrunner import (
 # ── Fixtures ──
 
 
+@pytest.fixture(autouse=True)
+def isolated_runner_work_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default runners must not reload another test's durable runs.json."""
+    monkeypatch.chdir(tmp_path)
+
+
 def _make_mock_sessions() -> MagicMock:
     """Create a mock SessionManager with the methods TaskRunner uses."""
     sessions = MagicMock()
