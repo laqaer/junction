@@ -1,7 +1,7 @@
 {
   "name": "junction-desktop",
   "version": "0.5.0",
-  "description": "Junction \u2014 local control plane for coding agents",
+  "description": "Warding \u2014 runs your coding agent on your own machine, under a policy it cannot edit",
   "homepage": "https://github.com/laqaer/junction",
   "desktopName": "junction-desktop.desktop",
   "main": "main.js",
@@ -23,7 +23,7 @@
     "electron-builder": "26.15.3"
   },
   "overrides": {
-    "fast-uri": "3.1.6",
+    "fast-uri": "3.1.8",
     "js-yaml": "4.3.2"
   },
   "build": {
