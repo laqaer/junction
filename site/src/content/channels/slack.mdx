@@ -34,7 +34,7 @@ The dashboard does most of it. Open **Settings → Channels → Slack** and clic
 2. **Paste the two tokens** into the same panel: the bot token (`xoxb-…`, from OAuth & Permissions) and the app-level token (`xapp-…`, for Socket Mode).
 3. **Set the owner**: your Slack member ID (it starts with U or W). That member is the only one the bot answers.
 4. **Restart the gateway**, then DM the bot:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 By hand, the same three values go in the data home's `.env` file as `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN` and `JUNCTION_OWNER_ID`.
 

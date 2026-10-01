@@ -15,7 +15,7 @@ const analytics = site.analytics.provider;
 const wl = site.waitlist;
 const updated = "2026-09-29";
 ---
-<PageLayout title={title} description={description} h1="Privacy" lead={`A plain-language summary, not a contract drafted by a lawyer. It covers this website and the ${site.name} software. Updated ${updated}.`} breadcrumbs={[{ label: "Privacy", href: "/privacy/" }]} ogSlug="privacy">
+<PageLayout endBand={false} title={title} description={description} h1="Privacy" lead={`A plain-language summary, not a contract drafted by a lawyer. It covers this website and the ${site.name} software. Updated ${updated}.`} breadcrumbs={[{ label: "Privacy", href: "/privacy/" }]} ogSlug="privacy">
   <div class="legal prose measure">
     <section aria-labelledby="site-h">
       <WardBars align="left" />
@@ -47,7 +47,7 @@ const updated = "2026-09-29";
       <h2 id="product-h">The software</h2>
       <p>{site.name} runs on your machine. Its data home, sessions, memory and audit log stay there. The default build sends nothing to us: there is no server of ours in the loop and no telemetry to us by default.</p>
       <p>It does talk to the services you point it at: your agent vendor, through the vendor's own CLI under your login, and the chat apps you connect. What those services do with the data is covered by their terms, not ours.</p>
-      <p>One download is not yours to choose by default: the embedding model is fetched from a third-party CDN the first time embeddings are used, and checked against a pinned hash. You can point <code>memory.embed_model_url</code> at a mirror, or supply your own model file, to avoid it.</p>
+      <p>One download is not yours to choose by default: the embedding model is fetched from a CDN address inherited from the upstream codebase the first time embeddings are used, and checked against a pinned hash. You can point <code>memory.embed_model_url</code> at a mirror, or supply your own model file, to avoid it.</p>
     </section>
 
     <section aria-labelledby="pay-h">

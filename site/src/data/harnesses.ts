@@ -37,7 +37,7 @@ export const harnesses: Harness[] = [
     command: "claude",
     name: "Claude Code",
     via: "the ACP project's claude-agent-acp adapter, fetched with npx on first run",
-    verified: { chat: "2026-09-26" },
+    verified: { chat: "2026-09-25" },
     upstreamMature: false,
     optional: false,
   },

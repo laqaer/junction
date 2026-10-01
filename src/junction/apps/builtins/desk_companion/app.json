@@ -2,7 +2,7 @@
   "name": "desk-companion",
   "version": "1.0.0",
   "displayName": "Companion",
-  "description": "A desktop companion for Junction that helps you pace your day: it nudges you to take breaks, holds the reminders you set in plain language, and runs a short breathing exercise when you need to reset. It also lets you know when a session finishes, fails, or needs your OK.",
+  "description": "A desktop companion for Warding that helps you pace your day: it nudges you to take breaks, holds the reminders you set in plain language, and runs a short breathing exercise when you need to reset. It also lets you know when a session finishes, fails, or needs your OK.",
   "author": "junction",
   "license": "MIT",
   "defaultEnabled": false,
@@ -58,7 +58,7 @@
     "Use a desktop companion for break nudges, plain-language reminders, breathing resets, and session notifications."
   ],
   "configuration": [
-    "Use Junction Desktop, enable the app, then set the break interval and completion notifications on its page; avatar choices live in the companion Gallery."
+    "Use Warding Desktop, enable the app, then set the break interval and completion notifications on its page; avatar choices live in the companion Gallery."
   ],
   "screenshots": [
     "/app-assets/desk-companion/screenshot-main.png"

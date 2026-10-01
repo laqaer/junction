@@ -34,7 +34,7 @@ const chatOnly = channels.filter((c) => c.approval === "chat-only");
 const steps = [
   { t: "The agent asks for a tool call.", d: "A shell command, a file write, an MCP call." },
   { t: `${site.name}'s own gate checks it first.`, d: "Keystone paths, the built-in deny rules and POLICY ∩ PROFILE. A refusal here is final and is logged; nobody is asked." },
-  { t: "Anything left that needs approval waits for you.", d: "With tool approval set to Interactive (the default), the call is held and the message goes to the chat the session is running in." },
+  { t: "Anything left that needs approval waits for you.", d: "With tool approval set to Interactive, the call is held and the message goes to the chat the session is running in. The default is Auto: a fresh install runs whatever the gate allows without asking, so switch it in the dashboard's approval picker or set agent.approval_mode to interactive." },
   { t: "You tap Approve or Deny.", d: "The call runs or it doesn't, and the decision is appended to the audit log." },
 ];
 ---
@@ -114,7 +114,7 @@ const steps = [
       <WardBars align="left" />
       <h2 id="auto-h">Auto-approve, and what it does not lift</h2>
       <div class="measure prose">
-        <p>Auto-approve is off by default. When you turn it on, from the dashboard or with <code>/yolo</code> in a chat that supports it, it is one grant for the whole process with one expiry, not a per-channel setting. It skips the question, not the gate: keystone paths, the policy ceiling and the deny rules still refuse.</p>
+        <p>Tool approval defaults to Auto: nothing is held for you until you choose Interactive, per session in the dashboard's approval picker or for every session with <code>agent.approval_mode: interactive</code>. The <code>/yolo</code> grant, in a chat that supports it, lifts the question again for the whole process with one expiry, not per channel. Either way it skips the question, not the gate: keystone paths, the policy ceiling and the deny rules still refuse.</p>
         <p class="allow-line"><StatusChip kind="coming" label="In development" /> <span>Allow until 07:00 is in development: a grant for one command that expires at dawn, then asks again.</span></p>
       </div>
     </section>

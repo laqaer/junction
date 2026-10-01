@@ -26,15 +26,15 @@ What has been run on which harness is on <a href="/verified/">the verification l
 
 ## Set it up
 
-The dashboard can do most of it: in any session, ask it to "set up the Webex channel". By hand:
+Set it up by hand; the token goes in a file the agent is not allowed to read or write, so asking the agent to do it is refused at the gate:
 
 1. **Create a bot** at developer.webex.com (My Webex Apps, Create a New App, Create a Bot) and copy the bot access token. It is shown once.
 2. **Save the token** in the data home's `.env`:
-   <pre><code>WEBEX_BOT_TOKEN=…</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>WEBEX_BOT_TOKEN=…</code></pre>
 3. **Allow yourself** in `config.json`:
-   <pre><code>{`"webex": { "enabled": true, "allowed_emails": ["you@example.com"] }`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`"webex": { "enabled": true, "allowed_emails": ["you@example.com"] }`}</code></pre>
 4. **Restart the gateway**, then find the bot by its username and DM it:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 ## Who can reach it
 

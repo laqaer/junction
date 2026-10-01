@@ -1,19 +1,20 @@
 ---
 import WardSeal from "./WardSeal.astro";
 import GithubMark from "./GithubMark.astro";
-import Sun from "@lucide/astro/icons/sun";
-import Moon from "@lucide/astro/icons/moon";
 import Menu from "@lucide/astro/icons/menu";
 import X from "@lucide/astro/icons/x";
 import { primaryNav } from "../data/nav";
 import { site } from "../data/site";
 
-interface Props { installHref?: string }
-const { installHref = "/#install" } = Astro.props;
+interface Props { installHref?: string; wide?: boolean }
+// The header shares the page's container so the seal lines up with the H1.
+const { installHref = "/#install", wide = false } = Astro.props;
 const path = Astro.url.pathname;
+// A section stays marked on its nested pages (/compare/openclaw/ under Compare).
+const current = (href: string) => (href.startsWith("/") && href !== "/" && path.startsWith(href) ? "page" : undefined);
 ---
 <header class="site-header">
-  <div class="wrap-wide nav-row">
+  <div class={`${wide ? "wrap-wide" : "wrap"} nav-row`}>
     <a class="brand" href="/" aria-label={`${site.name} home`}>
       <WardSeal size={24} />
       <span class="wordmark">warding</span>
@@ -22,17 +23,13 @@ const path = Astro.url.pathname;
       <ul>
         {primaryNav.map((l) => (
           <li>
-            <a href={l.href} aria-current={path === l.href ? "page" : undefined} rel={l.external ? "noopener" : undefined}>{l.label}</a>
+            <a href={l.href} aria-current={current(l.href)} rel={l.external ? "noopener" : undefined}>{l.label}</a>
           </li>
         ))}
       </ul>
     </nav>
     <div class="nav-right">
       <a class="btn btn-quiet star" href={site.githubRepo} rel="noopener" data-track="github_click" aria-label="Star on GitHub"><GithubMark size={18} /><span class="star-text">Star on GitHub</span></a>
-      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to the night theme" data-track="theme_toggle">
-        <Sun class="lucide sun" aria-hidden="true" />
-        <Moon class="lucide moon" aria-hidden="true" />
-      </button>
       <a class="btn btn-primary install-link" href={installHref}>Install</a>
       <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open menu">
         <Menu class="lucide open" aria-hidden="true" />
@@ -62,13 +59,7 @@ const path = Astro.url.pathname;
     background: transparent; cursor: pointer; color: var(--fg);
   }
   .icon-btn :global(.lucide) { width: 20px; height: 20px; stroke-width: 1.75; }
-  .icon-btn :global(.moon), .icon-btn :global(.close) { display: none; }
-  :root[data-theme="dark"] .icon-btn :global(.sun) { display: none; }
-  :root[data-theme="dark"] .icon-btn :global(.moon) { display: block; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .icon-btn :global(.sun) { display: none; }
-    :root:not([data-theme="light"]) .icon-btn :global(.moon) { display: block; }
-  }
+  .icon-btn :global(.close) { display: none; }
   .menu-btn { display: none; }
   .menu-btn[aria-expanded="true"] :global(.open) { display: none; }
   .menu-btn[aria-expanded="true"] :global(.close) { display: block; }
@@ -96,29 +87,24 @@ const path = Astro.url.pathname;
   import { track } from "../lib/analytics";
   const header = document.querySelector<HTMLElement>(".site-header");
   const menuBtn = document.getElementById("menu-btn");
-  menuBtn?.addEventListener("click", () => {
-    const open = header?.classList.toggle("open") ?? false;
-    menuBtn.setAttribute("aria-expanded", String(open));
-    menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  const firstLink = () => header?.querySelector<HTMLAnchorElement>(".primary-nav a");
+  const setOpen = (open: boolean, returnFocus = false) => {
+    header?.classList.toggle("open", open);
+    menuBtn?.setAttribute("aria-expanded", String(open));
+    menuBtn?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    // The panel sits above the page, so focus moves into it on open and back
+    // to the button when it closes from the keyboard.
+    if (open) firstLink()?.focus();
+    else if (returnFocus) menuBtn?.focus();
+  };
+  menuBtn?.addEventListener("click", () => setOpen(!header?.classList.contains("open")));
+  header?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && header.classList.contains("open")) { e.preventDefault(); setOpen(false, true); }
   });
-
-  const root = document.documentElement;
-  const toggle = document.getElementById("theme-toggle");
-  const effective = () => {
-    const forced = root.getAttribute("data-theme");
-    if (forced === "dark" || forced === "light") return forced;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  };
-  const relabel = () => {
-    toggle?.setAttribute("aria-label", effective() === "dark" ? "Switch to the paper theme" : "Switch to the night theme");
-  };
-  relabel();
-  toggle?.addEventListener("click", () => {
-    const next = effective() === "dark" ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    try { localStorage.setItem("warding.theme", next); } catch { /* private mode: the choice lasts for this page */ }
-    relabel();
-    track("theme_toggle", { theme: next });
+  // Tabbing out of the header closes the panel rather than leaving it over the page.
+  header?.addEventListener("focusout", (e) => {
+    const next = e.relatedTarget as Node | null;
+    if (header.classList.contains("open") && next && !header.contains(next)) setOpen(false);
   });
   document.querySelectorAll<HTMLElement>("[data-track='github_click']").forEach((el) => {
     el.addEventListener("click", () => track("github_click"));

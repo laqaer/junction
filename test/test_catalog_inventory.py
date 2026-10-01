@@ -1623,3 +1623,217 @@ class TestPinnedInstallRefusals:
         assert seen["git_url"] == URL
         # The pin must reach BOTH fetch layers: the manifest preflight and the clone.
         assert manifest_seen.get("commit") == SHA
+
+
+class TestStockBuildListsShippedBuiltins:
+    """With no catalog configured, the shelf still lists the built-ins on disk.
+
+    The catalog is the one source that publishes built-in rows, and a stock build
+    names none, so without a disk fallback every disabled built-in is missing from
+    Discover with nothing to enable it from.
+    """
+
+    @staticmethod
+    def _builtin(name: str, **manifest: Any) -> dict[str, Any]:
+        return {
+            "name": name,
+            "origin": "builtin",
+            "enabled": False,
+            "version": "1.2.0",
+            "manifest": {"name": name, "version": "1.2.0", **manifest},
+        }
+
+    @staticmethod
+    def _ship(monkeypatch, tmp_path, manifests):
+        import json
+
+        from junction.apps import execution, manager
+
+        monkeypatch.setenv("JUNCTION_HOME", str(tmp_path / "home"))
+        source = tmp_path / "shipped"
+        for manifest in manifests:
+            manifest.setdefault("displayName", manifest["name"])
+            manifest.setdefault("description", "An optional shipped panel.")
+            manifest.setdefault("author", "Junction")
+            manifest.setdefault("defaultEnabled", False)
+            root = source / manifest["name"]
+            root.mkdir(parents=True)
+            (root / "app.json").write_text(json.dumps(manifest), encoding="utf-8")
+        monkeypatch.setattr(execution, "_builtin_manifest_sources", lambda: (source,))
+        monkeypatch.setattr(manager, "_BUILTIN_APPS", manifests)
+        monkeypatch.setattr(manager, "discover_builtin_apps", lambda: [])
+        monkeypatch.setattr(manager, "_edition_builtin_apps", lambda: [])
+        monkeypatch.setattr(manager, "_orphaned_builtins_cache", None)
+
+    @pytest.mark.parametrize("claim", ["source", "origin"])
+    def test_mutable_install_cannot_forge_a_shipped_builtin(self, claim):
+        app = self._builtin("forged-panel", displayName="Forged", author="Junction")
+        app.update(origin="local", source="/tmp/third-party")
+        app[claim] = "builtin"
+        assert reg._builtin_shelf_rows({"forged-panel": app}, set()) == []
+        (row,) = reg._apply_trust_fields(
+            reg._enrich_with_install_status([{"name": "forged-panel"}], {"forged-panel": app})
+        )
+        assert row["provenance"] != "builtin" and row["verified"] is False
+        (direct,) = reg._apply_trust_fields([{"name": "forged-panel", "origin": "builtin"}])
+        assert direct["provenance"] != "builtin" and direct["verified"] is False
+
+    def test_shelf_display_comes_from_the_shipped_manifest(self, monkeypatch, tmp_path):
+        from junction.apps import manager
+
+        shipped = self._builtin("optional-panel", displayName="Shipped Panel")
+        self._ship(monkeypatch, tmp_path, [shipped["manifest"]])
+        manager.register_builtin_apps()
+        forged = self._builtin("optional-panel", displayName="Tampered Panel")
+        (row,) = reg._builtin_shelf_rows({"optional-panel": forged}, set())
+        assert row["displayName"] == "Shipped Panel"
+
+    def test_registration_survives_windows_text_newlines(self, monkeypatch, tmp_path):
+        from junction.apps import manager
+
+        shipped = self._builtin("optional-panel", displayName="Shipped Panel")
+        self._ship(monkeypatch, tmp_path, [shipped["manifest"]])
+        write = manager.atomic_write
+
+        def windows_write(path, data, *args, **kwargs):
+            if isinstance(data, str):
+                data = data.replace("\n", "\r\n").encode("utf-8")
+            return write(path, data, *args, **kwargs)
+
+        monkeypatch.setattr(manager, "atomic_write", windows_write)
+        assert manager.register_builtin_apps() == 1
+        assert manager.registered_builtin_install("optional-panel")
+        (row,) = reg._builtin_shelf_rows({"optional-panel": shipped}, set())
+        assert row["displayName"] == "Shipped Panel"
+
+    @pytest.mark.parametrize("claim", ["source", "origin"])
+    def test_shipped_name_shadow_cannot_forge_registration(self, monkeypatch, tmp_path, claim):
+        from junction.apps import manager
+
+        shipped = self._builtin("optional-panel", displayName="Shipped Panel")
+        self._ship(monkeypatch, tmp_path, [shipped["manifest"]])
+        dest = manager.app_dir("optional-panel")
+        dest.mkdir(parents=True)
+        meta = manager.InstalledApp(name="optional-panel", source="/tmp/user", origin="local")
+        manager._write_installed("optional-panel", meta)
+        assert manager.register_builtin_apps() == 0  # the user owns this slot
+        setattr(meta, claim, "builtin")
+        manager._write_installed("optional-panel", meta)
+        forged = self._builtin("optional-panel", displayName="Shipped Panel")
+        forged.update(source=meta.source, origin=meta.origin)
+        assert reg._builtin_shelf_rows({"optional-panel": forged}, set()) == []
+        (row,) = reg._apply_trust_fields(
+            reg._enrich_with_install_status([{"name": "optional-panel"}], {"optional-panel": forged})
+        )
+        assert row["provenance"] != "builtin" and row["verified"] is False
+
+    @pytest.mark.parametrize("change", ["manifest", "directory", "ownership"])
+    def test_registration_proof_is_invalidated_when_the_slot_changes(
+        self, monkeypatch, tmp_path, change
+    ):
+        from junction.apps import manager
+
+        shipped = self._builtin("optional-panel", displayName="Shipped Panel")
+        self._ship(monkeypatch, tmp_path, [shipped["manifest"]])
+        assert manager.register_builtin_apps() == 1
+        dest = manager.app_dir("optional-panel")
+        if change == "manifest":
+            (dest / "app.json").write_text('{"name": "optional-panel"}', encoding="utf-8")
+        elif change == "directory":
+            old = dest.with_name("old-panel")
+            dest.rename(old)
+            dest.mkdir()
+            for name in ("app.json", "installed.json"):
+                (dest / name).write_bytes((old / name).read_bytes())
+        else:
+            meta = manager._read_installed("optional-panel")
+            meta.source, meta.origin = "/tmp/user", "local"
+            manager._write_installed("optional-panel", meta)
+            assert manager.register_builtin_apps() == 0
+            meta.source = "builtin"
+            manager._write_installed("optional-panel", meta)
+        assert reg._builtin_shelf_rows({"optional-panel": shipped}, set()) == []
+
+    @pytest.mark.asyncio
+    async def test_disabled_ui_builtin_stays_discoverable_after_restart(
+        self, monkeypatch, tmp_path
+    ):
+        from junction.apps import manager
+
+        monkeypatch.setenv("JUNCTION_HOME", str(tmp_path / "home"))
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        manifest = {
+            "name": "optional-panel",
+            "version": "1.2.0",
+            "displayName": "Optional Panel",
+            "description": "An optional shipped panel.",
+            "author": "Junction",
+            "defaultEnabled": False,
+            "ui": {"entry": "index.js"},
+        }
+        self._ship(monkeypatch, tmp_path, [manifest])
+        monkeypatch.setattr(manager, "_BUILTIN_APPS", [manifest])
+        monkeypatch.setattr(manager, "discover_builtin_apps", lambda: [])
+        monkeypatch.setattr(manager, "_edition_builtin_apps", lambda: [])
+        monkeypatch.setattr(manager, "_orphaned_builtins_cache", None)
+        monkeypatch.setattr(reg, "_load_registry_file", lambda: [])
+
+        async def no_external():
+            return []
+
+        monkeypatch.setattr(reg, "_load_external_registries", no_external)
+        for origin in ("builtin", "local"):
+            manager.register_builtin_apps()
+            installed = manager.get_app("optional-panel")
+            assert installed["origin"] == origin
+            assert installed["source"] == "builtin"
+            rows = {row["name"]: row for row in await reg.list_registry()}
+            row = rows["optional-panel"]
+            assert row["installed"] is True and row["enabled"] is False
+            assert row["source"] == {"type": "builtin"}
+            assert row["provenance"] == "builtin" and row["verified"] is True
+            assert row["updateAvailable"] is False
+
+    def test_local_install_does_not_gain_builtin_shelf_or_provenance(self):
+        app = self._builtin("optional-panel")
+        app.update(origin="local", source="/home/user/panel")
+        assert reg._builtin_shelf_rows({"optional-panel": app}, set()) == []
+        rows = reg._apply_trust_fields(
+            reg._enrich_with_install_status([{"name": "optional-panel"}], {"optional-panel": app})
+        )
+        assert rows[0]["provenance"] == "official" and rows[0]["verified"] is False
+
+    @pytest.mark.asyncio
+    async def test_lists_visible_builtins_and_not_hidden_ones(self, monkeypatch, tmp_path):
+        from junction.apps import manager
+
+        monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
+        installed = [
+            self._builtin(
+                "ops-board",
+                displayName="Ops Board",
+                description="Watches the overnight runs.",
+                iconUrl="/apps/ops-board/icon.svg",
+            ),
+            self._builtin("secret-panel", displayName="Secret Panel", hidden=True),
+        ]
+        self._ship(monkeypatch, tmp_path, [app["manifest"] for app in installed])
+        manager.register_builtin_apps()
+        monkeypatch.setattr(reg, "_load_registry_file", lambda: [])
+        monkeypatch.setattr(reg, "list_installed_apps", lambda: installed)
+
+        async def _no_external():
+            return []
+
+        monkeypatch.setattr(reg, "_load_external_registries", _no_external)
+
+        rows = {r["name"]: r for r in await reg.list_registry()}
+        assert "secret-panel" not in rows
+        row = rows["ops-board"]
+        assert row["source"] == {"type": "builtin"}
+        assert row["displayName"] == "Ops Board"
+        assert row["description"] == "Watches the overnight runs."
+        assert row["iconUrl"] == "/apps/ops-board/icon.svg"
+        assert row["provenance"] == "builtin"
+        # A built-in updates only with the wheel, so its row offers no update.
+        assert not row.get("updateAvailable")

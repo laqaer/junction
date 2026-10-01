@@ -2376,7 +2376,18 @@ def _enrich_with_install_status(
             # beside it by ``_apply_trust_fields``. External rows keep whatever
             # the trust boundary decides for them instead.
             if not _is_external_row(entry):
-                entry["origin"] = existing.get("origin", "registry")
+                builtin = (
+                    existing.get("source") == "builtin" or existing.get("origin") == "builtin"
+                ) and _shipped_builtin_manifest(name) is not None
+                entry["origin"] = (
+                    "builtin"
+                    if builtin
+                    else (
+                        "local"
+                        if existing.get("origin") == "builtin"
+                        else existing.get("origin", "registry")
+                    )
+                )
             entry["resources"] = existing.get("resources", "gateway")
             entry["lifecycle"] = existing.get("lifecycle", "gateway")
             entry["updateAvailable"] = _version_newer(
@@ -2539,7 +2550,25 @@ def _apply_trust_fields(
             if entry.get("origin") != "external":
                 entry.pop("origin", None)
         else:
-            builtin = entry.get("origin") == "builtin"
+            shipped = (
+                _shipped_builtin_manifest(name)
+                if isinstance(name, str) and entry.get("origin") == "builtin"
+                else None
+            )
+            builtin = shipped is not None
+            if entry.get("origin") == "builtin" and not builtin:
+                entry["origin"] = "local"
+            if shipped is not None:
+                for key in _BUILTIN_SHELF_FIELDS:
+                    entry.pop(key, None)
+                    if shipped.get(key):
+                        entry[key] = shipped[key]
+                entry.pop("author", None)
+                author = shipped.get("author")
+                if isinstance(author, dict):
+                    author = author.get("name")
+                if isinstance(author, str) and author:
+                    entry["author"] = author
             entry["provenance"] = "builtin" if builtin else "official"
             if entry.get("_catalog"):
                 # A catalog row's author is curated copy from a document whose
@@ -3368,6 +3397,73 @@ async def _append_external_registry_apps(
     return rows, detected
 
 
+#: Manifest display fields a built-in's shelf row carries, matching what
+#: ``scripts/build_app_catalog.py`` bakes into a published catalog's built-in
+#: rows. ``version`` is left out on purpose: a built-in updates only with the
+#: wheel, so a version on the row would offer an update nothing can apply.
+_BUILTIN_SHELF_FIELDS = (
+    "displayName",
+    "description",
+    "tags",
+    "iconUrl",
+    "iconUrlDark",
+    "heroImage",
+)
+
+
+def _shipped_builtin_manifest(name: str) -> dict[str, Any] | None:
+    """Canonical display for a shipped builtin registered in this gateway."""
+    from junction.apps.execution import shipped_builtin_app_root
+    from junction.apps.manager import registered_builtin_install
+
+    if not registered_builtin_install(name):
+        return None
+    root = shipped_builtin_app_root(name)
+    if root is None:
+        return None
+    try:
+        manifest = json.loads((root / "app.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    return manifest if isinstance(manifest, dict) and manifest.get("name") == name else None
+
+
+def _builtin_shelf_rows(
+    installed_map: dict[str, dict[str, Any]], listed: set[Any]
+) -> list[dict[str, Any]]:
+    """Store rows for the built-ins this wheel ships that nothing else listed.
+
+    A built-in reaches the shelf only as a row, and the catalog is the one source
+    that publishes built-in rows. A stock build names no catalog, so without these
+    every disabled built-in would be missing from Discover, with nothing to
+    enable it from. Rows read immutable shipped manifests, never mutable installed
+    display metadata. Installed ownership can only narrow that shipped set, not
+    manufacture a built-in identity. They carry no install coordinates;
+    ``_apply_trust_fields`` stamps their
+    provenance from installed ownership like any other row. A ``hidden``
+    manifest is left out, as the catalog builder leaves it out.
+    """
+    rows: list[dict[str, Any]] = []
+    for name, app in sorted(installed_map.items()):
+        if (app.get("source") != "builtin" and app.get("origin") != "builtin") or name in listed:
+            continue
+        manifest = _shipped_builtin_manifest(name)
+        if manifest is None or manifest.get("hidden"):
+            continue
+        row: dict[str, Any] = {"name": name, "source": {"type": "builtin"}}
+        for key in _BUILTIN_SHELF_FIELDS:
+            value = manifest.get(key)
+            if value:
+                row[key] = value
+        author = manifest.get("author")
+        if isinstance(author, dict):
+            author = author.get("name")
+        if isinstance(author, str) and author:
+            row["author"] = author
+        rows.append(row)
+    return rows
+
+
 async def list_registry() -> list[dict[str, Any]]:
     """Return all registry apps with display info and install status.
 
@@ -3471,6 +3567,8 @@ async def list_registry() -> list[dict[str, Any]]:
     # can only ADD a name none of them claim — the precedence the inline dedup
     # here used to enforce.
     detected = await _detect_installed_probe(entries, installed_map)
+    # Before the external merge, so a built-in's name is reserved like a seed's.
+    entries.extend(_builtin_shelf_rows(installed_map, {e.get("name") for e in entries}))
     entries, external_detected = await _append_external_registry_apps(
         entries, {e.get("name") for e in entries}, installed_map
     )
