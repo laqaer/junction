@@ -4996,7 +4996,9 @@ class SubagentManager:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                failure = await asyncio.to_thread(router.record_failure, info.lane, exc=exc)
+                failure = await asyncio.to_thread(
+                    router.record_failure, info.lane, exc=exc, harness=info.harness
+                )
                 target = await self._failover_lane(info, failure, router)
                 if target is None:
                     raise
@@ -5034,9 +5036,11 @@ class SubagentManager:
                     logger.debug("SEL audit for harness failover failed", exc_info=True)
                 continue
             if info.error:
-                await asyncio.to_thread(router.record_failure, info.lane, text=info.error)
+                await asyncio.to_thread(
+                    router.record_failure, info.lane, text=info.error, harness=info.harness
+                )
             else:
-                await asyncio.to_thread(router.record_success, info.lane)
+                await asyncio.to_thread(router.record_success, info.lane, harness=info.harness)
             return
 
     async def _failover_lane(self, info: SubagentInfo, failure: str, router: Any) -> Any:
