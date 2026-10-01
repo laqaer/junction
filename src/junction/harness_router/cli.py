@@ -228,8 +228,9 @@ class _TurnProgress:
     """What a streamed turn has already done, readable after it raised.
 
     ``produced`` flips the moment text reaches stdout or a permission request
-    is answered (a tool may have run), so a lane that fails MID-stream is still
-    known to have done work and the turn is not re-run on another lane.
+    is approved (the tool may have run), so a lane that fails MID-stream is
+    still known to have done work and the turn is not re-run on another lane.
+    A refused request leaves it unset: nothing ran, so moving is safe.
     """
 
     produced: bool = False
@@ -254,10 +255,12 @@ async def _stream_once(
             reply.append(event.text)
             print(event.text, end="", flush=True)
         elif event.kind == EVENT_PERMISSION_REQUEST:
-            progress.produced = True
             if gate is None:
                 gate = _build_tool_gate("junction")
-            await _answer_permission(provider, event, interactive=interactive, gate=gate)
+            # A refused call never ran, so only an approval marks the turn as
+            # having done work.
+            if await _answer_permission(provider, event, interactive=interactive, gate=gate):
+                progress.produced = True
         elif event.kind == EVENT_COMPLETE:
             break
     print()

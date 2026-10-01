@@ -181,25 +181,46 @@ def test_route_run_does_not_move_once_the_turn_produced_output(
     assert code == 1 and "[route] pro failed (rate_limit)" in captured.err
 
 
-def test_route_run_does_not_move_once_a_permission_was_answered(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """An answered permission request means a tool may already have run, even
-    with no text streamed, so a mid-stream failure stays on the lane."""
+def _answer_with(monkeypatch: pytest.MonkeyPatch, approved: bool) -> None:
+    """Answer every permission request with *approved*, without the real gate."""
     import junction.cli_chat as cli_chat
 
+    async def answer(prov: Any, event: Any, *, interactive: bool, gate: Any = None) -> bool:
+        return approved
+
+    monkeypatch.setattr(cli_chat, "_build_tool_gate", lambda agent="": object())
+    monkeypatch.setattr(cli_chat, "_answer_permission", answer)
+
+
+def test_route_run_does_not_move_once_a_tool_was_approved(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An approved permission request means the tool may already have run, even
+    with no text streamed, so a mid-stream failure stays on the lane."""
     _router(monkeypatch, doc=_THREE_LANES)
     asked = _FakeProvider(
         [_event(EVENT_PERMISSION_REQUEST)], stream_error=RuntimeError("429 rate limit")
     )
     made = _providers(monkeypatch, asked, _FakeProvider(_reply("redone")))
+    _answer_with(monkeypatch, approved=True)
 
-    async def answer(prov: Any, event: Any, *, interactive: bool, gate: Any = None) -> None:
-        return None
-
-    monkeypatch.setattr(cli_chat, "_build_tool_gate", lambda agent="": object())
-    monkeypatch.setattr(cli_chat, "_answer_permission", answer)
-
-    assert _run_exit_code(_parse("run", "x", "--no-prompt")) == 1
+    assert _run_exit_code(_parse("run", "x")) == 1
     assert [lane for lane, _ in made] == ["pro"]
     assert "[route] pro failed (rate_limit)" in capsys.readouterr().err
+
+
+def test_route_run_still_moves_when_the_only_tool_call_was_refused(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A refused call (``--no-prompt``, the gate, or the user) never ran, so a
+    lane failure after it is as safe to move as one before any activity."""
+    _router(monkeypatch, doc=_THREE_LANES)
+    asked = _FakeProvider(
+        [_event(EVENT_PERMISSION_REQUEST)], stream_error=RuntimeError("429 rate limit")
+    )
+    made = _providers(monkeypatch, asked, _FakeProvider(_reply("done")))
+    _answer_with(monkeypatch, approved=False)
+
+    assert _run_exit_code(_parse("run", "x", "--no-prompt")) == 0
+    assert [lane for lane, _ in made] == ["pro", "max"]
+    assert "[route] pro unavailable (rate_limit); moving to max" in capsys.readouterr().err
