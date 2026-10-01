@@ -121,11 +121,11 @@ const selLine = `{"event_id":"6c1d0e9a7f3b2a54","timestamp":"2026-09-27T03:05:41
         <div class="article-text">
           <h3><span class="art">Article 3.</span> Tool decisions are appended to a hash-chained audit log you can verify.</h3>
           <p>The Security Event Log is append-only JSONL in the data home. Each entry carries an HMAC-SHA256 over the one before it, so an edited line breaks the chain at that line. The signing key lives in <code>trust/</code>, outside the log's directory, so something that can rewrite the log cannot also re-sign it.</p>
-          <p>The live log rotates at 32 MiB into independent segments, seven kept; each new log opens with a rotation record naming the closed segment's last hash. Retention defaults to 365 days and is configurable.</p>
+          <p>The live log rotates at 32 MiB into independent segments, seven kept; each new log opens with a rotation record naming the closed segment's last hash. Retention is a fixed 365 days.</p>
         </div>
         <div class="article-proof">
           <p class="caption proof-label">What an entry records</p>
-          <pre class="terminal"><code>timestamp · caller · source · operation
+          <pre class="terminal" tabindex="0" role="region" aria-label="Audit log fields"><code>timestamp · caller · source · operation
 tool_kind · outcome · resources (redacted)
 prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</code></pre>
         </div>
@@ -138,7 +138,7 @@ prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</
           <p>Next to it sit the built-in denied-command rules, grouped by category and enforced at the same gate. List them with <code>{site.cli} security deny-list</code>.</p>
         </div>
         <div class="article-proof">
-          <pre class="terminal"><code>effective = POLICY ∩ PROFILE
+          <pre class="terminal" tabindex="0" role="region" aria-label="How the effective policy is computed"><code>effective = POLICY ∩ PROFILE
 <span class="dim"># denied unless both grant it</span></code></pre>
           <p class="caption proof-label">Denied-command categories</p>
           <ul class="cat-list">{denyCategories.map((c) => <li class="mono">{c}</li>)}</ul>
@@ -147,7 +147,7 @@ prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</
 
       <div class="charter-cta">
         <Button disabledLabel="Render my charter · in development" />
-        <p class="caption"><code>{site.cli} charter</code> [COMING]: one page with your effective policy, profile by profile. Until it ships, <code>{site.cli} policy show</code> prints the active policy and the rule categories.</p>
+        <p class="caption"><code>{site.cli} charter</code> <StatusChip kind="coming" label="in development" />: one page with your effective policy, profile by profile. Until it ships, <code>{site.cli} policy show</code> prints the active policy and the rule categories.</p>
       </div>
 
       <div class="plate-wrap"><Plate num="I" title="The posture page" caption="Dashboard · Settings Security · 2026-09-26 · no agent connected" src={securityShot} alt="The dashboard's Security settings page listing the live posture: process sandbox, tool approval, sensitive path blocking, write-protected paths, denied commands, output redaction and credential patterns." crop={0.5} cropTop={0.48} sizes="(min-width: 1200px) 880px, 92vw" /></div>
@@ -158,7 +158,7 @@ prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</
       <WardBars align="left" />
       <h2 id="scope-h">Scope: what is enforced where</h2>
       <p class="measure">"Fails closed" means that when the control cannot decide, the call is refused. "Fails open" means it is allowed. Both are listed.</p>
-      <div class="table-scroll">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="What is enforced where">
         <table class="matrix scope-table">
           <thead>
             <tr><th scope="col">Control</th><th scope="col">Where</th><th scope="col">Fails</th></tr>
@@ -214,9 +214,8 @@ prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</
       <WardBars align="left" />
       <div class="head-row">
         <h2 id="verify-h">Verify the log</h2>
-        <StatusChip kind="coming" label="In development" />
       </div>
-      <p class="measure"><code>{site.cli} audit verify</code> [COMING] will walk the chain and name the first entry that does not match.</p>
+      <p class="measure"><code>{site.cli} security verify</code> checks the chain today: it reports how many entries verify, how many were tampered with, and says so plainly when a rotated segment could not be checked.</p>
       <p class="measure">What a green chain will mean: nothing without the key edited the log after the fact. What it will not mean: that every action was logged. The nested-sandbox passthrough row in <a href="#scope">the scope table</a> is a case where a failed write logs loudly and carries on.</p>
     </section>
 
@@ -227,7 +226,7 @@ prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</
       <p class="measure">A built-in deny rule refuses a call before any human is asked. At 03:05 the agent tries <code>git push origin main</code>; the git-publish rule refuses it at the gate, no Approve button is sent, and one line lands in the log:</p>
       <div class="refusal">
         <div class="stamp-seal"><Ban class="lucide" aria-hidden="true" /> Refused · built-in rule · 03:05:41</div>
-        <pre class="terminal sel-line"><code>{JSON.stringify(JSON.parse(selLine), null, 2)}</code></pre>
+        <pre class="terminal sel-line" tabindex="0" role="region" aria-label="One audit log entry"><code>{JSON.stringify(JSON.parse(selLine), null, 2)}</code></pre>
         <p class="caption">The fields are the log's real ones (<code>SecurityEvent</code> in <code>sel.py</code>); the values are illustrative. <code>agent</code> reads <span class="mono" data-alias>junction</span>, the package's internal name.</p>
       </div>
       <p><a href="/approvals/">What does reach your phone, per chat app <ArrowRight class="lucide lucide-inline" aria-hidden="true" /></a></p>
@@ -255,7 +254,8 @@ prev_hash <Link2 class="lucide lucide-inline" aria-hidden="true" /> entry_hash</
   .sec { display: grid; gap: 72px; position: relative; }
   .sec-stamp { position: absolute; top: -96px; right: 0; }
   .sec-toc { display: flex; flex-wrap: wrap; gap: 6px 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; }
-  .sec-toc a { color: var(--fg-2); }
+  .sec-toc a { color: var(--fg-2); display: inline-flex; align-items: center; min-height: 44px; }
+  .sec-toc { padding-block: 0; }
   .block { display: grid; gap: 16px; min-width: 0; }
   .head-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .article { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; padding: 32px; }

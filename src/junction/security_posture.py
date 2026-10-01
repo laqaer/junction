@@ -131,6 +131,23 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
         "redacts at the source rather than at either boundary.",
     ),
     (
+        "Harness probe failures",
+        "harness_router/connect.py",
+        "The error a harness raises while `warding route check` probes whether it "
+        "is logged in and which models it advertises. It is stored in the probe "
+        "result and printed beside the lane on stdout, and a failed login can quote "
+        "a token, an auth URL or a config path back, so the detail goes through "
+        "redact() and is truncated before it is kept.",
+    ),
+    (
+        "Harness usage-ledger errors",
+        "harness_router/ledger.py",
+        "The last error a routed lane hit, persisted in the routing ledger beside "
+        "its cooldown and shown by `warding route status`. Usage-limit and login "
+        "failures can echo credentials or provider URLs, so the text goes through "
+        "redact() and is truncated before it is written to disk.",
+    ),
+    (
         "Azure DevOps comment bodies",
         "apps/builtins/issue_radar/backend/azure_client.py",
         "The text Issue Radar posts as a work-item or pull-request comment on Azure "

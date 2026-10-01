@@ -37,7 +37,7 @@ const registryOffered = ""; // ISO date once the registry has been offered upstr
         </li>
         <li>
           <h3>Endpoint removal</h3>
-          <p>The default build contacts no server of the upstream project's and no server of ours. The embedding model is still fetched from a third-party CDN on first embedding use; the run that lists every outbound connection is on <a href="/verified/">the verification log</a> as planned.</p>
+          <p>The upstream project's update feed, app catalog and telemetry are off in the default build, and nothing contacts a server of ours. One inherited address remains: the embedding model is fetched on first embedding use from a CDN the upstream codebase shipped with, checked against a pinned hash; point <code>memory.embed_model_url</code> at your own mirror to avoid it. The run that lists every outbound connection is on <a href="/verified/">the verification log</a> as planned.</p>
         </li>
         <li>
           <h3>The brand</h3>

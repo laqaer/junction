@@ -6,10 +6,11 @@ import { track } from "../lib/analytics";
 
 /**
  * The install block (site-spec §2.1). Until a package is published
- * (`site.installOneLiner === ""`) every tab shows the honest three-line source
- * quickstart and the CTA reads "Copy the quickstart"; the pipx/uv/npm tabs say
- * so instead of pretending. The version chip renders only when a tagged release
- * exists (`version` is the tag); an untagged pyproject version is never shown.
+ * (`site.installOneLiner === ""`) there is one way in, so the block shows the
+ * three-line source quickstart with no pipx/uv/npm tabs to click into a "not
+ * published yet" note, and the CTA reads "Copy the quickstart". The version
+ * chip renders only when a tagged release exists (`version` is the tag); an
+ * untagged pyproject version is never shown.
  */
 type Tab = "pipx" | "uv" | "npm" | "source";
 const TABS: Tab[] = ["pipx", "uv", "npm", "source"];
@@ -31,9 +32,11 @@ interface Props {
   version?: string;
   /** Render the "Star on GitHub" outline button next to Copy. */
   star?: boolean;
+  /** The block's fragment id; "" omits it where the page already has its own #install. */
+  anchor?: string;
 }
 
-export default function InstallTabs({ version = "", star = false }: Props) {
+export default function InstallTabs({ version = "", star = false, anchor = "install" }: Props) {
   const published = site.installOneLiner !== "";
   const [tab, setTab] = useState<Tab>(published ? "pipx" : "source");
   const [copied, setCopied] = useState(false);
@@ -61,14 +64,16 @@ export default function InstallTabs({ version = "", star = false }: Props) {
   };
 
   const onKey = (e: React.KeyboardEvent) => {
+    if (!published) return;
     const i = TABS.indexOf(tab);
     if (e.key === "ArrowRight") { e.preventDefault(); setTab(TABS[(i + 1) % TABS.length]); }
     if (e.key === "ArrowLeft") { e.preventDefault(); setTab(TABS[(i - 1 + TABS.length) % TABS.length]); }
   };
 
   return (
-    <div className="install" id="install">
+    <div className="install" id={anchor || undefined}>
       <div className="install-top">
+        {published ? (
         <div role="tablist" aria-label="Install method" className="tabs" onKeyDown={onKey}>
           {TABS.map((t) => (
             <button
@@ -86,15 +91,18 @@ export default function InstallTabs({ version = "", star = false }: Props) {
             </button>
           ))}
         </div>
+        ) : (
+          <p className="ui install-label">From source</p>
+        )}
         {version && <span className="chip">{version}</span>}
       </div>
-      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${tab}`} className="panel">
+      <div role={published ? "tabpanel" : undefined} id={`${id}-panel`} aria-labelledby={published ? `${id}-tab-${tab}` : undefined} className="panel">
         {!published && tab !== "source" && (
           <p className="caption panel-note">
             <code>{tab === "npm" ? "npm i -g" : tab === "uv" ? "uv tool install" : "pipx install"} {site.cli}</code> is not published yet. From source, today:
           </p>
         )}
-        <pre className="install-pre" tabIndex={0}><code>{lines.map((l, i) => (
+        <pre className="install-pre" tabIndex={0} role="region" aria-label="Install commands"><code>{lines.map((l, i) => (
           <span className="line" key={i}><span className="prompt" aria-hidden="true">$ </span>{l}{"\n"}</span>
         ))}</code></pre>
         <p className="caption">

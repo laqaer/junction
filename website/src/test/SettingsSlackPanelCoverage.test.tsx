@@ -48,7 +48,7 @@ type SaveResult = Awaited<ReturnType<typeof api.saveSlackConfig>>
 
 const MANIFEST = {
   alias: 'tester',
-  manifest: 'display_information:\n  name: Junction-tester\n',  // brand-ok: product emits Junction-<alias> (slack-manifest.yaml)
+  manifest: 'display_information:\n  name: Warding-tester\n',
   create_url: 'https://example.invalid/apps/new',
 }
 
@@ -189,7 +189,7 @@ describe('SlackPanel manifest card', () => {
     await hydrated()
 
     expect(screen.getByRole('link', { name: 'Create Slack app' })).toHaveAttribute('href', MANIFEST.create_url)
-    expect(screen.getByText(/named Junction-tester/)).toBeInTheDocument()  // brand-ok: product emits Junction-<alias> (slack-manifest.yaml)
+    expect(screen.getByText(/named Warding-tester/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy manifest YAML' }))
     expect(writeText).toHaveBeenCalledWith(MANIFEST.manifest)
@@ -221,7 +221,7 @@ describe('SlackPanel manifest card', () => {
 
     const copy = screen.getByRole('button', { name: 'Copy manifest YAML' })
     expect(copy).toBeDisabled()
-    expect(screen.getByText(/named Junction-you/)).toBeInTheDocument()  // brand-ok: product emits Junction-<alias> (slack-manifest.yaml)
+    expect(screen.getByText(/named Warding-you/)).toBeInTheDocument()
 
     fireEvent.click(copy)
     expect(writeText).not.toHaveBeenCalled()

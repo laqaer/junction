@@ -15,8 +15,16 @@ import plexWoff2 from "@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-la
 interface Props {
   title: string;
   description: string;
-  /** Page register: "night" paints the header in the vault; "paper" is the default. */
+  /**
+   * Page register: "night" or "paper" (the default). It fixes the page's scheme,
+   * header and footer included: the day/night split is the brand, so a page is
+   * never recoloured by the visitor's OS setting.
+   */
   register?: "paper" | "night";
+  /** The footer's register when a page ends in the other one (the homepage ends on paper). */
+  footerRegister?: "paper" | "night";
+  /** The header spans the wide container; only pages whose content does (the homepage stage). */
+  navWide?: boolean;
   ogSlug?: string;
   ogAlt?: string;
   jsonLd?: Record<string, unknown>[];
@@ -25,9 +33,11 @@ interface Props {
   bodyClass?: string;
 }
 const {
-  title, description, register = "paper", ogSlug = ogSlugForPath(Astro.url.pathname),
+  title, description, register = "paper", footerRegister, navWide = false, ogSlug = ogSlugForPath(Astro.url.pathname),
   ogAlt, jsonLd = [], installHref = "/#install", noindex = false, bodyClass = "",
 } = Astro.props;
+const scheme = register === "night" ? "dark" : "light";
+const footerWrap = footerRegister && footerRegister !== register ? (footerRegister === "night" ? "vault" : "paper") : "";
 if (title.length > 60) throw new Error(`<title> over 60 chars: ${title}`);
 if (description.length > 155) throw new Error(`description over 155 chars for ${Astro.url.pathname}`);
 const canonical = new URL(Astro.url.pathname, site.domain).toString();
@@ -36,7 +46,7 @@ const alt = ogAlt ?? `${title} — ${site.name}`;
 const analytics = site.analytics.provider !== "" && site.analytics.scriptSrc !== "";
 ---
 <!doctype html>
-<html lang="en" data-register={register}>
+<html lang="en" data-register={register} data-theme={scheme}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -44,9 +54,8 @@ const analytics = site.analytics.provider !== "" && site.analytics.scriptSrc !==
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3EEE3" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0E14" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content={register === "night" ? "#0B0E14" : "#F3EEE3"} />
+    <meta name="color-scheme" content={scheme} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" as="font" type="font/woff2" href={frauncesWoff2} crossorigin />
     <link rel="preload" as="font" type="font/woff2" href={plexWoff2} crossorigin />
@@ -68,28 +77,15 @@ const analytics = site.analytics.provider !== "" && site.analytics.scriptSrc !==
     <link rel="alternate" type="application/rss+xml" title={`${site.name} releases`} href="/rss.xml" />
     {jsonLd.map((obj) => <script type="application/ld+json" set:html={JSON.stringify(obj)} />)}
     <slot name="head" />
-    <script is:inline>
-      // Theme choice, applied before first paint. try/catch: storage can throw.
-      (function () {
-        try {
-          var t = localStorage.getItem("warding.theme");
-          if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
-        } catch (e) {}
-      })();
-    </script>
     {analytics && <script defer data-domain={site.analytics.domain} src={site.analytics.scriptSrc}></script>}
   </head>
   <body class={bodyClass}>
     <a class="skip-link" href="#main">Skip to content</a>
-    {register === "night" ? (
-      <div class="vault"><Nav installHref={installHref} /></div>
-    ) : (
-      <Nav installHref={installHref} />
-    )}
+    <Nav installHref={installHref} wide={navWide} />
     <main id="main" tabindex="-1">
       <slot />
     </main>
-    <Footer />
+    {footerWrap ? <div class={footerWrap}><Footer /></div> : <Footer />}
     <script>
       // Reveals arm only once JS is here, and anything already in view is
       // marked visible in the same tick so nothing flashes.

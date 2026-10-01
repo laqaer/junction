@@ -128,11 +128,10 @@ describe("forbidden claims (site-spec §11)", () => {
         if (!site.shipped.dawnGrants) {
           for (const m of text.matchAll(/Allow until 07:00/g)) expect(text.slice(m.index ?? 0, (m.index ?? 0) + 60)).toMatch(/in development/i);
         }
-        if (!site.shipped.auditVerify) {
-          for (const m of text.matchAll(/warding audit verify/g)) expect(text.slice(m.index ?? 0, (m.index ?? 0) + 80)).toMatch(/coming/i);
-        }
+        // The chain check ships as `security verify`; `audit verify` was never a command.
+        expect(text).not.toMatch(/warding audit verify/);
         if (!site.shipped.charterCommand) {
-          for (const m of text.matchAll(/warding charter\b/g)) expect(text.slice(m.index ?? 0, (m.index ?? 0) + 80)).toMatch(/coming/i);
+          for (const m of text.matchAll(/warding charter\b/g)) expect(text.slice(m.index ?? 0, (m.index ?? 0) + 80)).toMatch(/coming|in development/i);
         }
         if (!site.shipped.morningReport) expect(text).not.toMatch(/\bMorning report:\s*\d/i);
       });

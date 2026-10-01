@@ -19,7 +19,7 @@ export async function GET(context: APIContext) {
   const lines = [
     `# ${site.name}`,
     "",
-    `> ${site.name} runs the coding agent you already pay for on your own machine, on a schedule, reports into chat, and asks first before anything risky — under a policy the agent cannot read or rewrite. Apache-2.0, self-hosted.`,
+    `> ${site.name} runs the coding agent you already pay for on your own machine, on a schedule, reports into chat, and can ask you in chat before it acts (approvals are opt-in) — under a policy the agent cannot read or rewrite. Apache-2.0, self-hosted.`,
     "",
     "## What is true",
     "",

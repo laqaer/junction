@@ -7,6 +7,7 @@ import Plate from "../components/Plate.astro";
 import PhoneCard from "../components/PhoneCard.astro";
 import CharterSheet from "../components/CharterSheet.astro";
 import ClockHead from "../components/ClockHead.astro";
+import VerifyLedger from "../components/VerifyLedger.astro";
 import LinkButton from "../components/LinkButton.astro";
 import GithubMark from "../components/GithubMark.astro";
 import InstallTabs from "../islands/InstallTabs";
@@ -15,12 +16,11 @@ import OfficeWorld from "../islands/world/OfficeWorld";
 import Drollery from "../islands/world/Drollery";
 import { site } from "../data/site";
 import { channels, channelCounts } from "../data/channels";
-import { harnesses, CAPABILITIES } from "../data/harnesses";
+import { harnesses } from "../data/harnesses";
 import { previewOffers } from "../data/pricing";
 import { collectMetrics } from "../lib/metrics";
 import { organization, softwareApplication, webSite } from "../lib/seo";
 import Ban from "@lucide/astro/icons/ban";
-import Check from "@lucide/astro/icons/check";
 import Activity from "@lucide/astro/icons/activity";
 import Moon from "@lucide/astro/icons/moon";
 import Sunrise from "@lucide/astro/icons/sunrise";
@@ -41,16 +41,14 @@ const h1 = pre ? "One coding agent, all night, on your own box." : "Your coding 
 // Two lines on wide screens, broken after the subject ("One coding agent,").
 const h1Lines = pre ? ["One coding agent,", "all night, on your own box."] : [h1];
 const metrics = collectMetrics();
+// Counts in prose are words, derived from the registry so they cannot drift.
+const countWord = (n: number) => ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"][n] ?? String(n);
 const releases = `${site.githubRepo}/releases`;
 const nf = new Intl.NumberFormat("en-US");
 const docs = `${site.githubRepo}/tree/main/docs`;
 const quickstart = [`git clone ${site.githubRepo}.git && cd junction`, "bash minimal_install.sh", `${site.cli} setup && ${site.cli} up`].join("\n");
 // The fold shows the clone+install step on one line; Copy takes the whole quickstart.
 const installLine = `git clone ${site.githubRepo}.git && cd junction && bash minimal_install.sh`;
-// Claude Code first: it is the one harness with a dated row.
-const matrixRows = [...harnesses].sort((a, b) => Number(b.id === "claude") - Number(a.id === "claude"));
-const cellsTotal = harnesses.length * CAPABILITIES.length;
-const cellsVerified = harnesses.reduce((n, h) => n + CAPABILITIES.filter((c) => h.verified[c.key]).length, 0);
 const freeOffer = previewOffers.find((o) => o.id === "free");
 const otherOffers = previewOffers.filter((o) => o.id !== "free");
 // The collapsed offers line is dated with the build: every status in it is read from data at build time.
@@ -90,7 +88,7 @@ const bento = [
   { title: "12 languages", body: "The dashboard ships translated, dates and numbers included.", href: `${site.githubRepo}/blob/main/website/docs/i18n-catalog.md`, demo: "langs" },
 ];
 ---
-<BaseLayout title={title} description={description} register="night" ogSlug="home" installHref="#install" jsonLd={[softwareApplication(metrics.latestTag), organization(), webSite()]} bodyClass="home">
+<BaseLayout title={title} description={description} register="night" footerRegister="paper" navWide ogSlug="home" installHref="#install" jsonLd={[softwareApplication(metrics.latestTag), organization(), webSite()]} bodyClass="home">
   <div class="vault night" id="night">
     <!-- 1–6. The hero is step 0 of the night: the world sits in its right column
          and stays pinned while the clock-time steps scroll beside it on desktop;
@@ -115,20 +113,15 @@ const bento = [
         <h1 id="hero-h1">{h1Lines.map((l, i) => (i === 0 ? <span class="h1-line">{l}</span> : <> <span class="h1-line">{l}</span></>))}</h1>
       </header>
 
-      <aside class="stage-world" aria-label="The night office, simulated">
-        <OfficeWorld client:idle />
-        <p class="caption plate-cap"><span class="plate-num">Plate I.</span> The Night Office — every sprite is a live session in the product; this one is scripted.</p>
-      </aside>
-
       <div class="steps">
         <section class="step step-hero" data-step="0" aria-labelledby="hero-h1">
           <div class="hero-lead">
             <p class="lead">
-              Warding runs the coding agent you already pay for on your own machine, on a schedule, reports into Telegram or Slack, and asks first before anything risky — under a policy it can't read or rewrite.
+              Warding runs the coding agent you already pay for on your own machine, on a schedule, reports into Telegram or Slack, and can ask you there before it acts — under a policy it can't read or rewrite.
             </p>
             <p class="caption qualifier">
               {pre ? (
-                <>Claude Code is verified for chat. Schedules, channels and overnight runs are still being verified on every harness — <a href="/verified/">see the dated log</a>. Your model plan's limits still apply; we add none.</>
+                <>One Claude Code chat reply is on record. Schedules, channels and overnight runs are not yet verified on any harness — <a href="/verified/">see the dated log</a>. Your model plan's limits still apply; we add none.</>
               ) : (
                 <>Verified overnight on Claude Code (Mac mini and Ubuntu VPS, dates on <a href="/verified/">/verified</a>); other harnesses as their rows land. Your model plan's limits still apply; we add none.</>
               )}
@@ -143,11 +136,19 @@ const bento = [
               <LinkButton href={site.githubRepo} external track="github_click"><GithubMark /> Star on GitHub</LinkButton>
               <span class="caption copied" data-copy-status aria-live="polite"></span>
             </div>
-            <p class="caption strip-note">Then <code>{site.cli} setup && {site.cli} up</code> · <a class="quiet-link nowrap" href="#install">pipx · uv · npm · source</a></p>
+            <p class="caption strip-note">Then <code>{site.cli} setup && {site.cli} up</code>. Needs Python 3.10+, Node 22+ and your agent's CLI on your PATH · <a class="quiet-link nowrap" href="#install">install notes</a></p>
             <p class="caption"><a class="nowrap" href="/security/">See the rules it can't open <ArrowRight class="lucide-inline" aria-hidden="true" /></a></p>
-            <p class="caption microcopy">Runs Claude Code, Codex, Goose, Cursor, kiro-cli and five more · Apache-2.0 · macOS and Linux · no account with us</p>
+            <p class="caption microcopy">Runs Claude Code, Codex, Goose, Cursor, kiro-cli and {countWord(harnesses.length - 5)} more · Apache-2.0 · macOS and Linux · no account with us</p>
           </div>
         </section>
+
+        <!-- The world follows the hero in the markup, so on one column it sits
+             between the install and 22:40 in reading and tab order alike; on
+             desktop it is placed in the right column beside every step. -->
+        <aside class="stage-world" aria-label="The night office, simulated">
+          <OfficeWorld client:idle />
+          <p class="caption plate-cap"><span class="plate-num">Plate I.</span> The Night Office — every sprite is a live session in the product; this one is scripted.</p>
+        </aside>
 
         <section class="step" data-step="1" aria-labelledby="s1">
           <ClockHead time="22:40" title="Hand it the work from the chat you already use." id="s1" />
@@ -211,6 +212,7 @@ const bento = [
         <section class="step" data-step="4" aria-labelledby="s4">
           <ClockHead time="03:05" title="It asks first." id="s4" />
           <p class="step-body">It needs <code>git push</code>. The message reaches your phone with two buttons. Tap one.</p>
+          <p class="caption">Approvals are opt-in: a fresh install auto-approves whatever the gate allows. Switch the session to <em>Interactive</em> in the dashboard, or set <code>agent.approval_mode</code> to <code>interactive</code>, and gated calls wait for you.</p>
           <ApproveFromChatDemo client:visible />
           <ul class="channel-strip" id="channels-matrix" aria-label="Chat channels and how approvals arrive">
             {channels.map((c) => (
@@ -256,50 +258,25 @@ const bento = [
           <p class="caption">No Gemini yet. <a href="/registry/">Registry</a>.</p>
         </div>
         <figure class="plate reveal" data-shot>
-          <pre class="terminal planes"><code><span class="prompt">$ </span>{site.cli} planes
+          <pre class="terminal planes" tabindex="0" role="region" aria-label="warding planes output"><code><span class="prompt">$ </span>{site.cli} planes
 {planesLines.map((l, i) => (i === 0 ? <span class="amber">{l}{"\n"}</span> : <span>{l}{"\n"}</span>))}</code></pre>
           <figcaption><span class="plate-num">Plate III.</span> <code>{site.cli} planes</code> — CLI · 2026-09-26 · claude docked · one harness selected · one line listing model roles is left out</figcaption>
         </figure>
       </div>
-      <div class="matrix-wrap reveal">
-        <table class="matrix">
-          <caption class="caption">
-            <span class="chip matrix-chip"><Check class="lucide" aria-hidden="true" /> {cellsVerified} of {cellsTotal} cells verified, dated</span>
-            Compatibility, as verified. <Check class="lucide-inline" aria-hidden="true" /> and a date: a dated row on <a href="/verified/">/verified</a>. <span aria-hidden="true">–</span> registered, not yet verified.
-          </caption>
-          <thead>
-            <tr><th scope="col">Harness</th>{CAPABILITIES.map((c) => <th scope="col">{c.label}</th>)}</tr>
-          </thead>
-          <tbody>
-            {matrixRows.map((h) => (
-              <tr>
-                <th scope="row"><span class="mono">{h.command}</span>{h.upstreamMature && <sup><a href="#matrix-note" aria-label="note">*</a></sup>} <span class="caption">{h.name.toLowerCase() !== h.command ? h.name : ""}{h.optional ? " · optional" : ""}</span></th>
-                {CAPABILITIES.map((c) => {
-                  const date = h.verified[c.key];
-                  return date ? (
-                    <td><a href={`/verified/#${h.id}-${c.key}`} class="status status-approved"><Check class="lucide" aria-hidden="true" /> {date}</a></td>
-                  ) : (
-                    <td class="unv" aria-label="registered, not yet verified">–</td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p class="caption matrix-note" id="matrix-note">* kiro-cli is upstream's first-class harness: scheduled runs are upstream's mature path there, and still unverified here.</p>
-      </div>
+      <VerifyLedger class="reveal" />
+      <p class="caption matrix-note">kiro-cli is upstream's first-class harness: scheduled runs are upstream's mature path there, and still unverified here.</p>
     </section>
 
     <!-- 8. The charter -->
     <section class="section wrap" id="charter" aria-labelledby="h8">
-      <WardBars />
-      <h2 id="h8" class="center">The rules it can't open.</h2>
-      <p class="lead center measure mx">Four articles. Each one names the mechanism that holds it.</p>
+      <WardBars align="left" />
+      <h2 id="h8">The rules it can't open.</h2>
+      <p class="lead measure">Four articles. Each one names the mechanism that holds it.</p>
       <CharterSheet foil class="charter">
         <article class="spread">
           <div class="spread-text reveal">
             <h3><span class="art">Article 1.</span> The agent cannot read or write its own policy.</h3>
-            <p>The policy, its profiles and the admission and computer-use files live on paths that are on the deny list at Warding's own gate and inside the OS sandbox. Not "is not allowed to": the paths are refused at the gate and excluded by the sandbox's bind rules.</p>
+            <p>The policy, its profiles and the admission and computer-use files live on the keystone list: Warding's own gate refuses any tool call that names them, read or write, before any approval is asked. The OS sandbox does not also hide them; where the gate can be bypassed is written down on <a href="/security/#scope">/security</a>.</p>
           </div>
           <div class="spread-proof">
             <ul class="keystone-list">{keystone.map((k) => <li>{k}</li>)}</ul>
@@ -312,7 +289,7 @@ const bento = [
             <p>Credential shapes are replaced at one chokepoint before anything is written. It is always on; there is no policy key to turn it off.</p>
           </div>
           <div class="spread-proof">
-            <pre class="terminal"><code><span class="dim"># tool output, as the agent saw it</span>
+            <pre class="terminal" tabindex="0" role="region" aria-label="Tool output, as the agent saw it"><code><span class="dim"># tool output, as the agent saw it</span>
 aws_access_key_id = <span class="redact">{exampleKey}</span>
 <span class="dim"># as the log received it</span>
 aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pre>
@@ -323,7 +300,7 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
           <div class="spread-text reveal">
             <h3><span class="art">Article 3.</span> Tool decisions are appended to a hash-chained audit log you can verify.</h3>
             <p>Each decision the gate records is an entry whose hash covers the one before it. Edit one line and the chain breaks at that line.</p>
-            <p class="caption"><code>{site.cli} audit verify</code> {site.shipped.auditVerify ? "" : <StatusChip kind="coming" label="[COMING]" />}</p>
+            <p class="caption"><code>{site.cli} security verify</code> checks the chain.</p>
           </div>
           <div class="spread-proof">
             <ol class="chain" reversed>
@@ -356,7 +333,7 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
               <text x="252" y="40" font-size="12" font-family="IBM Plex Mono, monospace" fill="var(--fg)">PROFILE</text>
               <text x="160" y="94" font-size="10" text-anchor="middle" font-family="IBM Plex Mono, monospace" fill="var(--fg)">effective</text>
             </svg>
-            <pre class="terminal"><code>effective = POLICY ∩ PROFILE
+            <pre class="terminal" tabindex="0" role="region" aria-label="How the effective policy is computed"><code>effective = POLICY ∩ PROFILE
 <span class="dim"># denied unless BOTH grant it; adding a scope is data, never an evaluator edit</span></code></pre>
           </div>
         </article>
@@ -370,8 +347,8 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
 
     <!-- 9. Bento -->
     <section class="section wrap" id="desk" aria-labelledby="h9">
-      <WardBars />
-      <h2 id="h9" class="center">Everything else on the desk.</h2>
+      <WardBars align="left" />
+      <h2 id="h9">Everything else on the desk.</h2>
       <div class="bento">
         {bento.map((b) => (
           <a class="tile bento-tile reveal" href={b.href} rel="noopener" data-demo={b.demo}>
@@ -406,7 +383,7 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
           <li>The OS sandbox fails closed — it refuses to run rather than run unconfined — on Windows, in containers without user namespaces, and on Ubuntu ≥ 23.10 until <code>{site.cli} service install</code> (it asks for sudo to install the AppArmor profile); you can opt in to unsandboxed execution with a loud warning.</li>
           <li>Unaudited by a third party. Single owner. No hosted service. No signed installers yet.</li>
           <li>Your vendor's terms and any future metering of unattended use apply and may change.</li>
-          <li>The default build contacts no server of ours; the embedding model is still fetched from a third-party CDN on first embedding use. The <code>lsof</code> run: <a href="/verified/">/verified</a>.</li>
+          <li>The default build contacts no server of ours. One address inherited from the upstream codebase remains: the embedding model is fetched from it on first embedding use, checked against a pinned hash. The <code>lsof</code> run: <a href="/verified/">/verified</a>.</li>
         </ul>
         <p class="caption">How to report a bypass: <a href={site.links.securityMd} rel="noopener">SECURITY.md</a>.</p>
         <p class="signature">Last checked against the code on 2026-09-30.</p>
@@ -419,22 +396,22 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
       <div class="two-col">
         <div class="reveal">
           <h2 id="h11">Built on Amazon's Kiro workspace. Here is what we changed.</h2>
-          <p class="step-body">Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon. What we added: kiro-cli optional and last, a registry of nine non-Kiro harnesses (five that upstream does not dock), no vendor account in the door, no upstream endpoints in the default build, and the proof pages on this site.</p>
+          <p class="step-body">Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon. What we added: kiro-cli optional and last, a registry of {countWord(harnesses.length - 1)} non-Kiro harnesses (five that upstream does not dock), no vendor account in the door, upstream's update feed, app catalog and telemetry off by default, and the proof pages on this site.</p>
           <p class="caption"><a href={site.links.notice} rel="noopener">NOTICE</a> · <a href="/lineage/">Lineage</a> · <a href="/compare/upstream/">Compared with upstream</a></p>
         </div>
         <dl class="metrics">
           <div><dt>Commits, last 30 days</dt><dd class="clock clock-44">{nf.format(metrics.commits30d)}</dd></div>
           <div><dt>Test files in the tree</dt><dd class="clock clock-44">{nf.format(metrics.testFiles)}</dd></div>
           <div><dt>Latest release tag</dt><dd class={metrics.latestTag ? "clock clock-44" : "no-tag"}>{metrics.latestTag || "no tagged release yet"}</dd></div>
-          <p class="caption">Measured from the repository at build time{metrics.live ? "" : ` (snapshot of ${metrics.measuredOn})`}.</p>
         </dl>
+        <p class="caption">Measured from the repository at build time{metrics.live ? "" : ` (snapshot of ${metrics.measuredOn})`}.</p>
       </div>
     </section>
 
     <!-- 12. Pricing preview -->
     <section class="section wrap" id="pricing" aria-labelledby="h12">
-      <WardBars />
-      <h2 id="h12" class="center">Free, and what funds the rest.</h2>
+      <WardBars align="left" />
+      <h2 id="h12">Free, and what funds the rest.</h2>
       {freeOffer && (
         <div class="tile offer offer-free">
           <div class="offer-main">
@@ -481,17 +458,20 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
      body, then the clock-time steps) scrolls beside the pinned world. */
   .stage {
     display: grid; grid-template-columns: minmax(480px, 5fr) minmax(0, 7fr); column-gap: 48px;
-    grid-template-areas: "head head" "steps world"; align-items: start; padding-top: 24px; padding-bottom: 96px;
+    align-items: start; padding-top: 24px; padding-bottom: 96px;
   }
-  .hero-head { grid-area: head; display: grid; gap: 20px; padding-bottom: 28px; }
+  .hero-head { grid-column: 1 / -1; display: grid; gap: 20px; padding-bottom: 28px; }
   .hero-head h1 { font-size: clamp(2.75rem, 1.5rem + 4.6vw, 4.5rem); line-height: 1; letter-spacing: -0.02em; }
   .h1-line { display: inline; }
   @media (min-width: 721px) { .h1-line { display: block; } }
   .eyebrow { display: flex; align-items: center; gap: 14px; }
   .eyebrow svg { flex: none; color: var(--fg-2); }
   .eyebrow .clock { min-width: 5ch; display: inline-block; }
-  .stage-world { grid-area: world; position: sticky; top: 24px; display: grid; gap: 10px; min-width: 0; }
-  .steps { grid-area: steps; display: grid; gap: 0; min-width: 0; }
+  /* The steps dissolve into the stage grid: each takes the left column and the
+     world spans their six rows on the right, pinned while they scroll past. */
+  .steps { display: contents; }
+  .step { grid-column: 1; }
+  .stage-world { grid-column: 2; grid-row: 2 / span 6; align-self: start; position: sticky; top: 24px; display: grid; gap: 10px; min-width: 0; }
   .step { display: grid; gap: 20px; padding-block: 80px; border-top: 1px solid var(--line); }
   .step > * { min-width: 0; max-width: 100%; }
   .refusal > * { min-width: 0; max-width: 100%; }
@@ -515,16 +495,12 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
   .step-dawn { padding-bottom: 0; }
   .plate-cap { max-width: 60ch; }
   @media (max-width: 1100px) {
-    /* One column: the hero, then the world, then the steps. The step column
-       dissolves into the grid so the world can sit between the hero and 22:40. */
-    .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; row-gap: 0; }
-    .hero-head, .stage-world, .steps { grid-area: auto; }
-    .steps, .step-hero { display: contents; }
-    .hero-head { order: 0; }
-    .hero-install { order: 1; padding-bottom: 28px; }
-    .stage-world { order: 2; position: static; padding-bottom: 28px; }
-    .hero-lead { order: 3; padding-bottom: 16px; }
-    .step:not(.step-hero) { order: 4; padding-block: 56px; }
+    /* One column in markup order: the hero (what it is, then the install),
+       the world, then the steps. */
+    .stage { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+    .stage-world { grid-column: 1; grid-row: auto; position: static; padding-bottom: 28px; }
+    .step-hero { padding-bottom: 28px; }
+    .step:not(.step-hero) { padding-block: 56px; }
     .step[data-step="1"] { border-top: 0; }
   }
   @media (max-width: 720px) {
@@ -584,10 +560,7 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
   .center { text-align: center; }
   .mx { margin-inline: auto; margin-top: 12px; }
   .planes { font-size: 0.9375rem; }
-  .matrix-wrap { margin-top: 48px; overflow-x: auto; }
   .matrix caption { text-align: left; padding-bottom: 12px; caption-side: top; }
-  .matrix-chip { margin-right: 8px; color: var(--granted); border-color: var(--granted); }
-  .matrix td.unv { color: var(--fg-3); }
   .matrix sup a { text-decoration: none; padding-inline: 2px; }
   .matrix-note { margin-top: 12px; }
   .matrix .status a, .matrix a.status { text-decoration: none; }
@@ -609,9 +582,10 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
   .chain-hash :global(.lucide) { width: 14px; height: 14px; }
   .venn { width: 100%; max-width: 320px; }
   .charter-foot { display: grid; gap: 16px; padding: 24px 40px 32px; border-top: 1px solid var(--line); justify-items: start; }
-  :global(.posture-plate) { margin: 48px auto 0; max-width: 720px; }
-  /* Screenshots on paper read as printed plates (brand-book §12). */
-  .paper :global(.plate-crop img) { filter: grayscale(1) contrast(1.15); mix-blend-mode: multiply; }
+  /* The dashboard is dark, so on paper its screenshot is framed as a lit window
+     rather than printed through a multiply filter (which turns it to a black slab). */
+  :global(.posture-plate) { margin: 48px auto 0; max-width: 880px; }
+  .paper :global(.posture-plate .plate-frame) { background: #0b0e14; border-color: #2a3244; padding: 12px; }
   @media (max-width: 900px) { .spread { grid-template-columns: 1fr; padding: 28px 20px; } .margin-drollery { margin-right: 0; } .charter-foot { padding: 20px; } }
 
   .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
@@ -667,31 +641,6 @@ aws_access_key_id = <span class="amber">[REDACTED: credential]</span></code></pr
   .final-install { width: 100%; max-width: 640px; text-align: left; }
   .release-note { text-align: inherit; }
 
-  /* Islands' shared styles */
-  :global(.install) { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; }
-  :global(.install-top) { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  :global(.tabs) { display: flex; gap: 4px; }
-  :global(.tab) { min-height: 36px; padding: 6px 12px; border-radius: 4px; border: 1px solid transparent; background: transparent; cursor: pointer; font-family: var(--font-mono); font-size: 0.875rem; color: var(--fg-2); }
-  :global(.tab.on) { background: var(--raised); color: var(--fg); border-color: var(--line); }
-  :global(.install-pre) { background: var(--raised); padding: 14px 16px; font-size: 0.9375rem; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
-  :global(.install-pre .line) { display: block; }
-  :global(.install-pre .prompt) { color: var(--fg-3); user-select: none; }
-  :global(.panel) { display: grid; gap: 10px; }
-  :global(.panel-note) { margin: 0; }
-  :global(.install-actions) { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  :global(.copied) { color: var(--granted); }
-  :global(.approve-actions) { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
-  :global(.approve-demo .bubble p) { margin: 0; }
-  :global(.waitlist) { display: grid; gap: 8px; }
-  :global(.waitlist-row) { display: flex; gap: 8px; flex-wrap: wrap; }
-  :global(.waitlist input[type="email"]), :global(.waitlist input[type="text"]) {
-    flex: 1; min-width: 200px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px;
-    background: var(--surface); color: var(--fg); font: inherit;
-  }
-  :global(.waitlist-error) { color: var(--seal); font-weight: 500; }
-  :global(.waitlist-q) { display: grid; gap: 4px; }
-  :global(.copybox) { display: grid; gap: 8px; }
-  :global(.copybox pre) { background: var(--raised); padding: 12px; font-size: 0.875rem; }
 </style>
 
 <script>

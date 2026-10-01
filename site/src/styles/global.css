@@ -82,7 +82,7 @@
     --raised: #1c2333;
     --fg: #ece8e1;
     --fg-2: #9aa3b5;
-    --fg-3: #7d869a;
+    --fg-3: #8b93a7;
     --line: #2a3244;
     --seal: #ff7a5c;
     --granted: #5ee6a0;
@@ -107,7 +107,7 @@
   --raised: #1c2333;
   --fg: #ece8e1;
   --fg-2: #9aa3b5;
-  --fg-3: #7d869a;
+  --fg-3: #8b93a7;
   --line: #2a3244;
   --seal: #ff7a5c;
   --granted: #5ee6a0;
@@ -260,6 +260,8 @@ button { font: inherit; color: inherit; }
 .lead { font-size: 1.25rem; line-height: 1.5; color: var(--fg-2); }
 .ui { font-size: 0.9375rem; line-height: 1.4; font-weight: 500; }
 .caption { font-size: 0.8125rem; line-height: 1.4; color: var(--fg-3); }
+/* Code inside a caption sits on a tinted chip, which drops fg-3 under 4.5:1. */
+.caption code, figcaption code { color: var(--fg-2); }
 .mono { font-family: var(--font-mono); }
 .clock {
   font-family: var(--font-clock);
@@ -288,6 +290,13 @@ button { font: inherit; color: inherit; }
 .wrap { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 24px; box-sizing: border-box; }
 .wrap-wide { width: 100%; max-width: 1360px; margin-inline: auto; padding-inline: 24px; box-sizing: border-box; }
 .section { padding-block: 96px; position: relative; }
+/* A grid column sized to its widest item lets one long <pre> push every line of
+   prose past a phone's edge; pin the track to the container instead. */
+.prose, .block, .reg, .vlog, .appr { grid-template-columns: minmax(0, 1fr); }
+.prose > *, .refusal > * { min-width: 0; }
+.refusal { grid-template-columns: minmax(0, 1fr); }
+/* Positioned so a visually hidden span inside a scrolled table stays clipped by it. */
+.table-scroll { position: relative; }
 .section-tight { padding-block: 64px; }
 @media (max-width: 720px) {
   .wrap, .wrap-wide { padding-inline: 16px; }
@@ -313,7 +322,13 @@ button { font: inherit; color: inherit; }
 .btn-outline:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .btn-quiet { background: transparent; color: var(--fg-2); border-color: var(--line); }
 .btn-quiet:hover { color: var(--fg); border-color: var(--fg-2); }
-.btn[aria-disabled="true"], .btn:disabled { opacity: 0.55; cursor: not-allowed; filter: none; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; filter: none; }
+/* A "coming soon" state: legible text on a dashed outline, so it reads as a
+   status rather than a broken primary button. */
+.btn-soon, .btn-soon:hover {
+  background: transparent; color: var(--fg-2); cursor: default; filter: none; transform: none;
+  border: 1px dashed color-mix(in srgb, var(--fg) 30%, transparent);
+}
 .btn .lucide { width: 18px; height: 18px; stroke-width: 1.75; }
 
 .chip {
@@ -372,8 +387,9 @@ button { font: inherit; color: inherit; }
 }
 .bubble-you { background: var(--lamp-glow); border-color: transparent; }
 .bubble-time { display: block; margin-top: 4px; font-family: var(--font-clock); font-size: 11px; color: var(--fg-3); }
+.bubble-you .bubble-time { color: var(--fg-2); }
 .pill {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 16px;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 16px;
   border-radius: 999px; border: 1px solid transparent; font-weight: 600; font-size: 0.9375rem; cursor: pointer;
 }
 .pill .lucide { width: 16px; height: 16px; }
@@ -391,6 +407,13 @@ button { font: inherit; color: inherit; }
 .terminal .dim { color: var(--fg-3); }
 .terminal .amber { color: var(--lamp); }
 .paper .terminal { background: var(--surface); }
+/* Lamp amber is 3.9:1 on paper; held is the paper-safe amber. */
+.paper .terminal .amber { color: var(--held); }
+/* One-line evidence (an audit line, a rule excerpt, the quickstart) wraps rather
+   than hiding its tail behind a scrollbar nobody sees on a phone. */
+.terminal.sel-line code, .terminal.rule-block code { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* CLI output with prose values wraps at spaces rather than clipping. */
+.terminal.planes code { white-space: pre-wrap; }
 
 .stamp-seal {
   display: inline-flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap; max-width: 100%; box-sizing: border-box;
@@ -399,6 +422,9 @@ button { font: inherit; color: inherit; }
   transform-origin: center; text-transform: uppercase;
 }
 .stamp-seal .lucide { width: 22px; height: 22px; stroke-width: 2; }
+@media (max-width: 480px) {
+  .stamp-seal { white-space: normal; flex-wrap: wrap; row-gap: 2px; }
+}
 
 .redact { position: relative; display: inline-block; }
 .redact::after {
@@ -428,6 +454,40 @@ details.faq .faq-body { padding: 0 0 18px; color: var(--fg-2); max-width: 68ch; 
 .keystone-list { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.7; margin: 0; padding: 0; list-style: none; }
 .keystone-list li { overflow-wrap: anywhere; }
 .keystone-list li::before { content: "deny  "; color: var(--seal); white-space: pre; }
+
+/* The Night Office frame: a faint lamp glow over the upper-left of the room,
+   drawn above the canvas and ignored by the pointer. */
+.world-frame::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(55% 45% at 30% 28%, rgba(255, 181, 71, 0.12), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* Islands (install tabs, approve demo, waitlist) — shared by every page that renders one. */
+.install { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; }
+.install-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; }
+.tab { min-height: 44px; padding: 6px 12px; border-radius: 4px; border: 1px solid transparent; background: transparent; cursor: pointer; font-family: var(--font-mono); font-size: 0.875rem; color: var(--fg-2); }
+.tab.on { background: var(--raised); color: var(--fg); border-color: var(--line); }
+.install-pre { background: var(--raised); padding: 14px 16px; font-size: 0.9375rem; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.install-pre .line { display: block; }
+.install-pre .prompt { color: var(--fg-3); user-select: none; }
+.panel { display: grid; gap: 10px; }
+.panel-note { margin: 0; }
+.install-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.copied { color: var(--granted); }
+.approve-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+.approve-demo .bubble p { margin: 0; }
+.waitlist { display: grid; gap: 8px; }
+.waitlist-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.waitlist input[type="email"], .waitlist input[type="text"] {
+  flex: 1; min-width: 200px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--fg); font: inherit;
+}
+.waitlist-error { color: var(--seal); font-weight: 500; }
+.waitlist-q { display: grid; gap: 4px; }
+.copybox { display: grid; gap: 8px; }
+.copybox pre { background: var(--raised); padding: 12px; font-size: 0.875rem; }
 
 /* ---------------------------------------------------------------------------
    Motion (brand-book §10). Nothing is at opacity 0 before JS: reveals only
