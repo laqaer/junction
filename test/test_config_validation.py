@@ -185,6 +185,23 @@ class TestValidateConfigData:
         assert warnings and "totally_unknown_key" in warnings[0]
         assert "meta" not in warnings[0]
 
+    def test_deprecated_field_with_a_value_warns(self, caplog: pytest.LogCaptureFixture) -> None:
+        data = {"telegram": {"accounts": {"ops": {"bot_token": "x"}}}}
+        with caplog.at_level(logging.WARNING, logger="junction.config.loader"):
+            validation.validate_config_data(data)
+        assert any("deprecated field 'telegram.accounts'" in r.message for r in caplog.records)
+
+    @pytest.mark.parametrize("empty", [{}, None])
+    def test_deprecated_field_left_empty_by_save_is_silent(
+        self, caplog: pytest.LogCaptureFixture, empty: object
+    ) -> None:
+        # save() round-trips the deprecated map as {} on every fresh install;
+        # warning on it printed a deprecation notice before every CLI command.
+        data = {"telegram": {"accounts": empty}}
+        with caplog.at_level(logging.WARNING, logger="junction.config.loader"):
+            validation.validate_config_data(data)
+        assert not [r for r in caplog.records if "deprecated field" in r.message]
+
     def test_warning_logger_name_is_loader_not_validation(self) -> None:
         # Pin the deliberate logger-name choice so an accidental
         # getLogger(__name__) refactor is caught.
