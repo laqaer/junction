@@ -53,6 +53,13 @@ from junction.task_routing import StepRoute
 
 _MID_STREAM_COMPACT_PCT = 90.0
 
+# How many distinct blocked tool titles a headless-block error names, and how
+# much of each title it keeps. The full record of every rejection is the SEL
+# row (reason ``headless_no_authorization``); the error only has to tell the
+# operator which titles to allowlist.
+_BLOCKED_TITLES_SHOWN = 3
+_BLOCKED_TITLE_CHARS = 80
+
 
 class _ContextOverflow(Exception):
     """Raised when context usage exceeds threshold mid-stream."""
@@ -108,6 +115,26 @@ async def _check_error_loop(
             run=run,
         )
     return False
+
+
+def _headless_block_error(titles: list[str]) -> str:
+    """Name the tool calls a headless run had no authority to approve.
+
+    Titles are agent-authored (a shell title can be the command itself), so
+    the text is redacted before it reaches ``task.error`` / ``run.error``,
+    which are persisted and broadcast.
+    """
+    shown = list(dict.fromkeys(t[:_BLOCKED_TITLE_CHARS] for t in titles))
+    more = len(shown) - _BLOCKED_TITLES_SHOWN
+    names = ", ".join(shown[:_BLOCKED_TITLES_SHOWN]) + (f" (+{more} more)" if more > 0 else "")
+    text = (
+        f"Blocked: {len(titles)} tool call(s) needed approval and this run has no "
+        f"approver: {names}. Allowlist them in hooks.auto_approve_tools, or run "
+        "the task from the dashboard to approve interactively."
+    )
+    text, _ = redact_exfiltration_urls(text)
+    text, _ = redact_credentials(text)
+    return text
 
 
 async def execute_single_task(
@@ -280,11 +307,26 @@ async def execute_single_task(
                 session_key,
                 **route_kwargs,
             )
-            if success and run.branch_name:
-                try:
-                    await git_coord.commit_step(run, task)
-                except Exception:
-                    pass
+            if success:
+                retry_committed = False
+                if run.branch_name:
+                    try:
+                        retry_committed = bool(await git_coord.commit_step(run, task))
+                    except Exception:
+                        logger.debug("Git commit after retry failed", exc_info=True)
+                # The retry exists because the reviewer rejected the first
+                # attempt, so it is reviewed as well. Accepting it unreviewed is
+                # how a run reported "completed" for work the reviewer had just
+                # said was missing.
+                task.status = TaskStatus.REVIEWING
+                if not await self_review(run, task, sessions, agent, session_key):
+                    if retry_committed:
+                        try:
+                            await git_coord.revert_step(run)
+                        except Exception:
+                            logger.debug("Git revert after failed re-review failed", exc_info=True)
+                    task.status = TaskStatus.FAILED
+                    success = False
 
         if success:
             task.status = TaskStatus.PASSED
@@ -298,7 +340,7 @@ async def execute_single_task(
                 f"{task.title}\n\n{result_preview}" if result_preview else task.title,
                 run=run,
             )
-    else:
+    if not success:
         await on_notify(
             f"❌ Task {task.index}/{len(run.tasks)} failed",
             f"{task.title}\n{task.error}",
@@ -378,6 +420,11 @@ async def execute_task(
 
         logger.info("Task %d/%d (attempt %d): %s", task.index, len(run.tasks), attempt, task.title)
 
+        # Titles of tool calls this turn rejected for want of any approver. A
+        # turn that ends after one is not evidence the task was done: the agent
+        # stopped because it was refused, and nothing in this process can grant
+        # the permission, so a retry or replan would be refused the same way.
+        headless_rejected: list[str] = []
         _acquired = False
         # Whether this attempt ran a tool: a lane failure after that is not
         # a free move to another lane (see task_routing).
@@ -573,6 +620,7 @@ async def execute_task(
                             event,
                             metadata={"reason": "headless_no_authorization"},
                         )
+                        headless_rejected.append(event.title or event.tool_kind or "tool")
                         continue
 
                     await client.approve_tool(event.request_id)
@@ -808,6 +856,19 @@ async def execute_task(
         finally:
             if _acquired:
                 sessions.release(session_key)
+
+        if headless_rejected:
+            task.status = TaskStatus.FAILED
+            task.error = _headless_block_error(headless_rejected)
+            # Fail the run, not just the task, so the runner neither retries nor
+            # replans around a permission no one in this process can grant (the
+            # same reason a force_approval gate without a handler fails the run).
+            # The first task to fail it names the cause; a parallel sibling
+            # blocked a moment later does not overwrite that.
+            if run.status != "failed":
+                run.status = "failed"
+                run.error = f"Task {task.index} failed: {task.error}"
+            return False
 
         # Run tests if configured
         if auto_test and test_cmd:

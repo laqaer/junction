@@ -1338,6 +1338,7 @@ Examples:
   warding run TASK.md                  # Run task with auto-resume
   warding run TASK.md --fresh          # Start from scratch
   warding run TASK.md --no-test        # Skip test verification
+  warding run TASK.md --workspace .    # Work in this folder, not a per-spec one
   warding run TASK.md --timeout 3600   # 1 hour timeout
 """,
         formatter_class=_fmt,
@@ -1358,6 +1359,14 @@ Examples:
         "--fresh",
         action="store_true",
         help="Ignore checkpoint, start task from scratch",
+    )
+    run_parser.add_argument(
+        "--workspace",
+        default="",
+        help=(
+            "Folder the task works in (default: taskrunner.workspace_dir, else a "
+            "per-spec folder under the workspace root, not the spec's own folder)"
+        ),
     )
     run_parser.add_argument(
         "--timeout",

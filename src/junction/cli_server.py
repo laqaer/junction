@@ -1750,7 +1750,15 @@ async def _run_task(args: argparse.Namespace) -> None:
     else:
         print(f"Running spec: {spec_path}")
     task_name = getattr(args, "name", "")
-    result = await runner.run(spec_path, name=task_name)
+    try:
+        result = await runner.run(
+            spec_path, name=task_name, workspace_dir=getattr(args, "workspace", "")
+        )
+    except ValueError as exc:
+        # Refusals raised before the run starts: an empty spec, or a
+        # --workspace that resolves to a sensitive/credential path.
+        print(f"❌ {exc}", file=sys.stderr)
+        sys.exit(1)
 
     label = result.name or result.task_id
     if result.status == "completed":

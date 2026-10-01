@@ -372,7 +372,16 @@ async def test_failed_self_review_keeps_the_execution_lane_and_accounting(
     client = _Client()
     sessions = _sessions([client, client])
 
+    reviews = 0
+
     async def reject_review(*args):
+        # The first review rejects the attempt and the retry's review accepts it:
+        # a retried step is reviewed again, so a rejection of the retry would
+        # fail the step, and this test is about the lane the retry runs on.
+        nonlocal reviews
+        reviews += 1
+        if reviews > 1:
+            return True
         # Another turn can change lane headroom during the review. A new route
         # would now pick Claude, while this step's live provider remains Codex.
         if fallback:

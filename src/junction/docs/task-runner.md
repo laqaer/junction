@@ -67,7 +67,13 @@ To let `junction run` use tools, allowlist them in `~/.junction/config.json`:
 }
 ```
 
-Patterns match the tool title with or without the `Running: `/`Reading ` prefix and support `*` globs. Scope it to the tools the task needs — a blanket `*` re-opens the gap. Or run from the dashboard to approve interactively instead.
+Patterns match the tool title with or without the `Running: `/`Reading ` prefix and support `*` globs. Titles differ by harness: Claude Code, for example, titles a file write `Write <path>` and a shell call with the command itself, so `fs_write` does not match it but `Write *` does. The exact title of every refused call is the `operation` field of its `headless_no_authorization` row in `security_events.jsonl`. Scope it to the tools the task needs — a blanket `*` re-opens the gap. Or run from the dashboard to approve interactively instead.
+
+A refused call fails the step and the run: the agent cannot finish work it was not allowed to do, and nothing in a headless run can grant the permission, so the runner neither retries nor re-plans. The error names the refused titles.
+
+### Where the work happens
+
+`junction run TASK.md` does not work in the spec's folder. Unless `taskrunner.workspace_dir` is set, each spec gets its own folder under the workspace root (`<workspace>/taskrunner_main/<spec name>/`), and the completion summary prints it. Pass `--workspace DIR` to work in a folder of your choosing; a folder that resolves to a credential location is refused. Progress (`TASK_PROGRESS.md`) is still written next to the spec.
 
 ## Progress Tracking
 

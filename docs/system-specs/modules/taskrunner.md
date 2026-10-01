@@ -291,7 +291,7 @@ Loaded on `__init__` — survives gateway restarts.
 
 | Path | Entry Point | Behavior |
 |------|-------------|----------|
-| CLI | `junction run TASK.md` | Blocking, stdout progress, `--no-test` flag |
+| CLI | `junction run TASK.md` | Blocking, stdout progress, `--no-test` and `--workspace DIR` flags (`--workspace` is the per-run `workspace_dir`, validated by `_resolve_workspace_dir`) |
 | Slack | `run <path>`, `run status`, `run cancel` | Keyword interception in handler |
 | Dashboard | REST API + Tasks UI panel | See API Endpoints below |
 
@@ -549,7 +549,9 @@ Independent review using separate session (`taskrunner:{task_id}:review`):
 - Reads actual `git diff HEAD~1` (not LLM's self-report)
 - Separate session = no bias from having written the code
 - Falls back to generic review prompt when no git diff available
-- Review failure → revert commit → retry step → re-commit on success
+- Review failure → revert commit → retry step → re-commit on success → review the
+  retry. A retry the reviewer rejects again is reverted and the step FAILS; a retry is
+  never accepted unreviewed
 - Review exceptions are non-fatal (returns True to avoid blocking)
 
 ## Tool Approval
@@ -649,6 +651,21 @@ rule mandates, with no independent approval state living on the run:
   the *live* grant (`auto_approve_remaining_secs > 0`), not stale persisted intent —
   so resuming a paused/planned run shows the toggle UNCHECKED and requires an
   affirmative re-grant rather than a click on a pre-checked box.
+
+### A headless rejection fails the step and the run
+
+A turn whose stream ends normally is not evidence the step was done. When the
+deny-by-default branch rejects a tool (`headless_no_authorization`), the agent stops
+and reports it is waiting for approval, and the stream still completes. So
+`execute_task` records every title it rejected that way; if the turn had any, the
+step is FAILED with an error naming them (redacted, capped at
+`_BLOCKED_TITLES_SHOWN` titles of `_BLOCKED_TITLE_CHARS` chars), and the run is set
+`failed`. Nothing in a headless process can grant the permission, so the step is not
+retried, and `_try_replan` refuses a run that is already `failed` rather than routing
+a new plan around the refusal (the same rule a `force_approval` gate without a
+handler follows). Hook denials and interactive rejections are not counted here: a
+person or a deny rule made that call, and the agent may legitimately finish another
+way, which the review then judges.
 
 ### Scope limitation (cron / MCP unattended runs)
 
