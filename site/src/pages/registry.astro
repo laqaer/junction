@@ -24,7 +24,7 @@ const verifiedCells = harnesses.reduce((n, h) => n + Object.keys(h.verified).len
     <section class="block" aria-labelledby="matrix-h">
       <WardBars align="left" />
       <h2 id="matrix-h">Compatibility, as verified</h2>
-      <div class="table-scroll">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Harness registry">
         <table class="matrix">
           <caption class="caption">Every cell links to its row on <a href="/verified/">/verified/</a>. "Registered" means the runtime has a spawn spec in the registry; it does not mean the feature has been run on it.</caption>
           <thead>
@@ -75,7 +75,7 @@ const verifiedCells = harnesses.reduce((n, h) => n + Object.keys(h.verified).len
       <WardBars align="left" />
       <h2 id="add-h">How a harness gets added</h2>
       <div class="prose measure">
-        <p>One adapter in the runtime registry: the command line that starts the agent over stdio, which protocol family it speaks, a one-line login hint, and the binaries it needs on the path. That is the whole entry. The gateway, the channels, the schedules and the sandbox are the same for every runtime; nothing is written per harness above that line.</p>
+        <p>One adapter in the runtime registry: the command line that starts the agent over stdio, which protocol family it speaks, a one-line login hint, and the binaries it needs on the path. That is the whole entry. The gateway, the channels and the schedules are shared code. What differs per harness is a short list of capability flags: whether it can share or steer a session, and whether it brings its own sandbox (kiro-cli does, so Warding's own is not layered on top of it).</p>
         <p>A harness adapts to the seams the first-class path already runs through. It cannot add a step, a flag or a failure mode to that path, and a harness that cannot fit does not land. What each one can do is then a matter of record, not of the registry: a cell above turns into a check only when a dated row exists on <a href="/verified/">the verification log</a>.</p>
         <p>{notDockedLine}. If you run one of those, <a href={site.githubRepo} rel="noopener">say so in an issue</a>; the list of runtimes people ask for sets the order. <StatusChip kind="coming" label="Adding one is a small change, not a promise" /></p>
       </div>

@@ -7,10 +7,10 @@ import type { Rail } from "./pricing";
  */
 export const RAIL_LABEL: Record<Rail, string> = {
   none: "No payment. Apache-2.0.",
-  polar: "Polar, merchant of record for digital goods",
-  stripe: "Stripe Payment Link",
-  github: "GitHub Sponsors",
-  waitlist: "Free waitlist; nothing is charged",
+  polar: "Paid through Polar, which handles tax and receipts",
+  stripe: "Paid through a Stripe checkout",
+  github: "Through GitHub Sponsors",
+  waitlist: "Free list; nothing is charged",
 };
 
 /** Cell states for the comparison table. */
@@ -65,7 +65,7 @@ export const faq: { q: string; a: string }[] = [
   },
   {
     q: "What exactly does the Supporter money buy today?",
-    a: "The items listed on the card, delivered on day one through Polar. Nothing that isn't shipped.",
+    a: "Nothing yet, because nothing is sold yet. The tier is a free waitlist until every item on its card exists; the day it opens, those items are delivered through Polar.",
   },
   {
     q: "Is Founding Supporter a pre-order?",

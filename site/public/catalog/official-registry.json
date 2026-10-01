@@ -7,7 +7,7 @@
         "type": "builtin"
       },
       "displayName": "Agent Worlds",
-      "summary": "Turns your running agents into characters in an animated pixel-art scene, so a glance tells you how busy Junction is. Each active agent appears as a sprite that reacts as work starts and finishes, across themed scenes from a classic office to a wizard tower or an underwater lab. Pop it out into its own window to keep it on a second screen while you work.",
+      "summary": "Turns your running agents into characters in an animated pixel-art scene, so a glance tells you how busy Warding is. Each active agent appears as a sprite that reacts as work starts and finishes, across themed scenes from a classic office to a wizard tower or an underwater lab. Pop it out into its own window to keep it on a second screen while you work.",
       "tags": [
         "visualization",
         "agents"
@@ -61,8 +61,8 @@
       "source": {
         "type": "builtin"
       },
-      "displayName": "Junction Auto Triage Pipeline",
-      "summary": "A read-only, three-level view of Junction's own auto-triage pipeline: the six steps and their throughput, the issues inside a step, and what each issue's agent sessions cost.",
+      "displayName": "Warding Auto Triage Pipeline",
+      "summary": "A read-only, three-level view of Warding's own auto-triage pipeline: the six steps and their throughput, the issues inside a step, and what each issue's agent sessions cost.",
       "tags": [
         "pipeline",
         "stewards",
@@ -160,7 +160,7 @@
         "type": "builtin"
       },
       "displayName": "Companion",
-      "summary": "A desktop companion for Junction that helps you pace your day: it nudges you to take breaks, holds the reminders you set in plain language, and runs a short breathing exercise when you need to reset. It also lets you know when a session finishes, fails, or needs your OK.",
+      "summary": "A desktop companion for Warding that helps you pace your day: it nudges you to take breaks, holds the reminders you set in plain language, and runs a short breathing exercise when you need to reset. It also lets you know when a session finishes, fails, or needs your OK.",
       "tags": [
         "companion",
         "desktop-companion",
@@ -180,7 +180,7 @@
         "type": "builtin"
       },
       "displayName": "Dev Fleet",
-      "summary": "A control panel for working on Junction itself. Lists every feature worktree alongside its pull request state, commit count, and disk usage, and can bring any of them up as a pod: a complete preview instance on its own port with its own data directory, so you can click through an unfinished change without disturbing your live gateway. It also handles the chores around that — pulling main and rebuilding, rebasing a branch, streaming pod logs, and pruning worktrees whose work has already merged.",
+      "summary": "A control panel for working on Warding itself. Lists every feature worktree alongside its pull request state, commit count, and disk usage, and can bring any of them up as a pod: a complete preview instance on its own port with its own data directory, so you can click through an unfinished change without disturbing your live gateway. It also handles the chores around that — pulling main and rebuilding, rebasing a branch, streaming pod logs, and pruning worktrees whose work has already merged.",
       "tags": [
         "dev",
         "pods",
@@ -198,7 +198,7 @@
         "type": "builtin"
       },
       "displayName": "Files",
-      "summary": "Browse and read files on the machine running Junction without leaving the dashboard. Keep several files open in tabs, walk the directory tree with each file's git status shown beside it, search a whole folder for a string, and read markdown rendered rather than raw. It is read-only by design: it opens and searches files but never edits, moves, or deletes them, and it can only reach your home directory plus /tmp and /opt.",
+      "summary": "Browse and read files on the machine running Warding without leaving the dashboard. Keep several files open in tabs, walk the directory tree with each file's git status shown beside it, search a whole folder for a string, and read markdown rendered rather than raw. It is read-only by design: it opens and searches files but never edits, moves, or deletes them, and it can only reach your home directory plus /tmp and /opt.",
       "tags": [
         "files",
         "explorer",
@@ -320,7 +320,7 @@
         "type": "builtin"
       },
       "displayName": "Papyrus",
-      "summary": "A LaTeX paper editor with live PDF preview and an AI co-author. Write in a split-pane editor, press Cmd+S (Ctrl+S on Windows and Linux) to compile with pdflatex or tectonic, and read the rendered PDF beside your source. Compilation errors are parsed into a clickable list that jumps to the offending line. Clone an existing paper from any git remote, then commit and push from the toolbar. The co-author panel is a real Junction chat session scoped to the paper, so the agent can read and edit your LaTeX while you watch the PDF update.",
+      "summary": "A LaTeX paper editor with live PDF preview and an AI co-author. Write in a split-pane editor, press Cmd+S (Ctrl+S on Windows and Linux) to compile with pdflatex or tectonic, and read the rendered PDF beside your source. Compilation errors are parsed into a clickable list that jumps to the offending line. Clone an existing paper from any git remote, then commit and push from the toolbar. The co-author panel is a real Warding chat session scoped to the paper, so the agent can read and edit your LaTeX while you watch the PDF update.",
       "tags": [
         "latex",
         "writing",
@@ -398,7 +398,7 @@
         "type": "builtin"
       },
       "displayName": "Spec Builder",
-      "summary": "Spec-driven development inside Junction: turn a feature idea into Requirements → Design → Tasks with an embedded agent, review the markdown in-app, then hand the approved plan off to an autonomous execution session.",
+      "summary": "Spec-driven development inside Warding: turn a feature idea into Requirements → Design → Tasks with an embedded agent, review the markdown in-app, then hand the approved plan off to an autonomous execution session.",
       "tags": [
         "specs",
         "kiro",

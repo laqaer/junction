@@ -5,7 +5,7 @@
  */
 export type EventName =
   | "install_copy" | "approve_tap" | "github_click" | "waitlist_submit" | "waitlist_fallback"
-  | "supporter_click" | "setup_click" | "pilot_call_click" | "wallpaper_save" | "pause_toggle" | "theme_toggle";
+  | "supporter_click" | "setup_click" | "pilot_call_click" | "wallpaper_save" | "pause_toggle";
 
 declare global {
   interface Window {

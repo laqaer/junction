@@ -49,9 +49,9 @@ This channel speaks the unofficial WhatsApp Web protocol. Automating a personal 
 ## Set it up
 
 1. **Install the WhatsApp extra** into the gateway's environment. From a source checkout:
-   <pre><code>pip install -e '.[whatsapp]'</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{".venv/bin/pip install -e '.[whatsapp]'"}</code></pre>
 2. **Enable the channel.** This reports whether the extra is installed and turns `whatsapp.enabled` on; there is no token to collect:
-   <pre><code>{`${site.cli} setup --whatsapp`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} setup --whatsapp`}</code></pre>
 3. **Restart the gateway.** With the channel enabled and no session on disk, it starts pairing and holds a rotating code.
 4. **Pair.** In the dashboard, open **Settings → Channels → WhatsApp** and click **Show pairing code**. On your phone: WhatsApp, Settings, Linked devices, Link a device. The code rotates about every 20 seconds and the panel follows it.
 5. **Check the badge.** It reads **Connected** once the scan lands. The pairing is kept in the data home, so you scan once, not on every restart.
