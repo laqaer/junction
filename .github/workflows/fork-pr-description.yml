@@ -23,8 +23,7 @@ name: Fork PR Description
 #     immediately in the trusted base context.
 #   - `_target` runs report against the BASE sha, so they do not appear in the
 #     PR's own check list. Creating the check-run explicitly against
-#     `head.sha` puts it beside the other checks (same idiom as the Stage-2
-#     fork AI reviewers).
+#     `head.sha` puts it beside the other checks.
 #
 # TRUST MODEL: nothing here checks out, builds, or executes fork code. The only
 # fork-controlled value read is the PR body, which is passed through the
@@ -36,7 +35,7 @@ name: Fork PR Description
 #
 # LIMIT, stated plainly: this verifies that the required HEADINGS are present,
 # not that they are filled in. A PR that keeps the template verbatim passes.
-# Judging whether the prose actually explains the change is the AI reviewers'
+# Judging whether the prose actually explains the change is the reviewer's
 # job; this gate only catches the description that was replaced wholesale or
 # never written.
 

@@ -4,7 +4,7 @@ name: PR Readiness Self-Heal Sweep
 #
 # `pr-readiness.yml` publishes a live "PR Readiness" commit status, then relies
 # on the `workflow_run: completed` event from each monitored workflow (CI,
-# Build, Code Review, the AI reviewers) to re-fire and flip the status from the
+# Build, Code Review, CodeQL) to re-fire and flip the status from the
 # mid-flight `pending` to its terminal verdict (`success` for a same-repository
 # PR, `failure`/maintainer-review for a fork PR). GitHub does NOT guarantee
 # delivery of `workflow_run` events and silently drops them under Actions load.

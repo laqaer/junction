@@ -421,81 +421,10 @@ The command contacts npm's registry/advisory service. Unit tests mock the subpro
 cover malformed output, operational failures, report resolution, schema constraints, expiry, and
 exact-match exception behavior without network access.
 
-### GitHub AI Review Human Overrides (`.github/workflows/`)
-
-Human judgment is the final authority over the Fable 5 and GPT 5.6
-AI-review results. A repository member with `write`, `maintain`, or `admin`
-permission can record a false-positive, not-applicable, or accepted-risk
-decision with:
-
-```text
-/ai-review override <fable|gpt|all> <current-sha>: <reason>
-```
-
-The decision is intentionally explicit and commit-scoped. The handler resolves
-the current PR head and accepts a 7–40-character SHA prefix only when it matches
-that head; the trusted record stores the full SHA. Any subsequent push therefore
-invalidates the decision and causes normal AI review on the new commit.
-
-**Trust boundary** — `.github/workflows/ai-review-human-override.yml` runs on
-`issue_comment`, so GitHub loads it from the default branch. It never checks out
-or executes PR-controlled code. Before changing a result it requires:
-
-1. The exact command shape above and a non-empty, at-most-500-character reason.
-2. A current-head SHA match.
-3. The commenter to have `write`, `maintain`, or `admin` collaborator
-   permission. PR authors receive no exemption.
-
-After validation it posts a `github-actions[bot]` comment whose hidden marker
-binds `{target, full head SHA, actor, source comment id}`. Reviewer workflows
-trust only this bot-authored marker; a raw author or third-party comment cannot
-turn a gate green. The handler has only review-control permissions
-(`actions:write`, `checks:write`, `pull-requests:write`, and
-`contents:read`), and receives no `id-token` or `contents:write`.
-`pull-requests:write` is required for the handler to create the trusted record
-on a pull request; `issues:write` alone does not make that write reliable for a
-GitHub Actions installation token.
-
-For Fable 5 and GPT 5.6, the handler re-runs the existing PR workflow. The
-re-run resolves the trusted marker before acquiring AWS credentials, skips the
-model invocation, updates the existing summary with a human-override banner,
-and exits its original gate successfully. Either event ordering — an override
-recorded before a reviewer starts, or one arriving during model execution —
-leaves the SHA-scoped human decision authoritative.
-
-The marker-keyed comments expose the override command to repository
-writers. GPT 5.6 also normalizes each current-commit result into a
-top verdict plus one sentence: `✅ no blocking findings`,
-`🔴 changes requested (blocking)`, an incomplete state, or a human-override
-state, so a green verdict from the previous commit is never left looking
-current.
-
-When no current-SHA override is active, GPT 5.6 injects a bounded
-ADJUDICATION LEDGER into the review prompt: the bot-authored override
-records, plus the marker and finding-title lines of review-disposition
-comments whose authors' current collaborator permission is `write`,
-`maintain`, or `admin` (verified per login against the collaborators
-permission API — the same check the override handler applies to its actor).
-Prior review bodies are never injected. The ledger is nonce-delimited,
-capped at 6,000 bytes, and explicitly untrusted data: it can downgrade the
-repetition of an adjudicated finding class to advisory, and it can never
-waive a new defect or authorize a green verdict.
-
-GPT makes exactly two model calls. Pass 1 discovers candidates across the
-full diff; pass 2 attempts to falsify each candidate and emits the only
-verdict exposed to the comment and gate. Pass 2 also drops or downgrades a
-candidate whose proposed fix violates the FIX BAR, a BLOCKING candidate that
-cannot be anchored to an AUTOSDE rule or residual defect class, and a
-relocated variant of a ledger-adjudicated class; an adjudication goes stale
-for lines the current head materially changed. A prior disposition never
-hides a currently provable new defect. Any failed call makes the review
-incomplete and leaves no current-SHA reviewed marker, so the gate fails
-closed.
-
 ### Pull Request Readiness (`.github/workflows/` + `prepare-pr`)
 
 `.github/workflows/pr-readiness.yml` publishes one current-revision answer for
-the repository's fan-out of CI and AI reviews. The commit status context is
+the repository's fan-out of CI checks. The commit status context is
 `PR Readiness`; the PR carries exactly one matching managed label:
 `readiness: checking`, `readiness: action required`, or `readiness: passed`.
 The workflow creates missing labels idempotently, replaces the prior readiness
@@ -504,23 +433,15 @@ the automated lanes passed for that SHA; it does not represent human approval.
 Making `PR Readiness` a required status remains an explicit branch-protection
 or ruleset setting outside the workflow.
 
-The aggregate covers the latest PR run for CI, Build,
-Code Review, Opus 4.8 Review, GPT 5.6 Review (the reconciled result of its three
-calls), and Design Review, plus the managed dynamic CodeQL workflow conclusion.
-Grading the CodeQL
+The aggregate covers the latest PR run for CI, Build and Code Review, plus the
+managed dynamic CodeQL workflow conclusion. No AI reviewer runs in CI, and no
+monitored lane needs a repository secret or OIDC credential. Grading the CodeQL
 workflow conclusion, rather than its neutral summary check, preserves failures
-from any managed Analyze job. Fork PRs cannot receive repository secrets or
-OIDC credentials, and this repository's managed default-setup CodeQL workflow
-is not scheduled for fork heads. The secret-backed AI reviews therefore run for
-forks from the trusted base branch via the `fork-*` pipeline and are graded from
-the head SHA's check-runs, leaving CodeQL as the only lane explicitly ineligible
-for a fork. Missing or running eligible lanes
+from any managed Analyze job. This repository's managed default-setup CodeQL
+workflow is not scheduled for fork heads, so CodeQL is the only lane explicitly
+ineligible for a fork. Missing or running eligible lanes
 produce `checking`; blocking workflow/check failures produce
-`action required`; drafts remain `checking`.
-Design Review completion is required, but its verdict and
-infrastructure conclusion are advisory. It emits one `PASS | CONCERNS | BLOCK`
-verdict and no separate blast-radius rating, and it owns the long-term
-reversibility (one-way-door) lens. Mergeability, behind-base state,
+`action required`; drafts remain `checking`. Mergeability, behind-base state,
 and human review decisions are not part of this event-driven aggregate because
 they can change without an aggregate refresh event; branch protection and the
 live `prepare-pr` status check own them.
@@ -532,28 +453,20 @@ updates same-repository and fork PRs from the trusted base workflow. Actions
 that start or restart validation for the same SHA, including a PR description
 edit that re-runs Code Review, force the aggregate to `checking` before run
 lookup so an older successful same-SHA run cannot keep readiness green. Trusted
-base-repository `workflow_run` events refresh it as eligible lanes finish,
-including the `fork-*` reviewer completions that carry a fork's verdicts.
-Readiness-label events cannot recursively rerun or cancel a review: ignored label
-events use a per-run concurrency key, so they cannot cancel an
-active review or replace a pending authoritative reviewer event.
+base-repository `workflow_run` events refresh it as eligible lanes finish.
 
-The bundled `prepare-pr` skill front-loads the same review contract before the
-first push. Description/diff reconciliation and every allowed commit mutation
-happen before review. After local gates, it dispatches two independent,
-read-only subagents over the finished base-to-head diff: one owns correctness,
-security, and platform compatibility; the other owns contracts, tests, error
-paths, and the user workflow. Both use the canonical severity and output rules
-from `.github/workflows/codex-review.yml`. Legitimate Critical/High findings are
-fixed before publication; Medium/Low findings remain advisory unless a human
-escalates them. If a blocker fix changes code, one focused verifier
-checks that fix. The skill records the verifier-cleared SHA and fails closed if
-HEAD changes before push; it does not start an unbounded local review loop.
-During a post-submit round, it records one concise, marker-keyed GPT disposition
-comment before re-pushing whenever findings were fixed or rebutted. That record
-names the prior reviewed SHA, finding identity, outcome, and evidence so the
-next reconciliation call can distinguish a real delta from a repeated argument;
-the record remains untrusted evidence and does not carry an override forward.
+The bundled `prepare-pr` skill runs the AI review before the first push.
+Description/diff reconciliation and every allowed commit mutation happen before
+review. After local gates, it dispatches one read-only subagent per profile
+reviewer over the finished base-to-head diff. In this repository those are two
+reviewers on different models, each applying its review contract from
+`.github/review-prompts/` plus the AUTOSDE rule files, all read from the base
+commit so a change cannot weaken the rules that review it. Legitimate
+Critical/High findings are fixed before publication; Medium/Low findings remain
+advisory unless a human escalates them. If a blocker fix changes code, one
+focused verifier checks that fix. The skill records the verifier-cleared SHA
+and fails closed if HEAD changes before push; it does not start an unbounded
+local review loop.
 
 `prepare-pr/scripts/pr_status.py` treats the aggregate status as authoritative
 when present, including over stale failed or pending duplicate checks in

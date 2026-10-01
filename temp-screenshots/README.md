@@ -15,21 +15,11 @@ with a commit-SHA-pinned URL is reachable from a script:
 https://github.com/<owner>/<repo>/raw/<sha>/temp-screenshots/<feature>/<name>.png
 ```
 
-Committing also puts the PR in scope for automated UX review, which an
-attachment cannot do because an attachment is not a file in the repository.
-Both `ux-review.yml` (:70) and `fork-ux-review.yml` (:205) gate on the changed
-paths:
-
-```bash
-grep -qE '^(website/|temp-screenshots/|\.github/screenshots/)'
-```
-
-Whether the reviewer can then *see* the image depends on the lane. A same-repo
-PR's reviewer reads the files the diff adds. A fork PR's reviewer runs against
-the base tree, so it can open screenshots already on `main` but not ones the PR
-itself adds — those are judged from the diff and surrounding code, as
-`fork-ux-review.yml:236` and `:275` note. The trigger works either way, so the
-images remain the durable record for human reviewers.
+Committing also makes the image part of the change, so anything that reviews
+the PR from the repository can open it: a reviewer browsing the files, or a
+local reviewer reading the checkout. An attachment cannot offer that because it
+is not a file in the repository. The images remain the durable record for human
+reviewers.
 
 ## Naming
 

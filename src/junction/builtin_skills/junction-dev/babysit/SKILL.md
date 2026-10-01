@@ -413,10 +413,9 @@ open review threads still exits `0`. Before you declare review-ready and call
    check the threads yourself with `pr_findings.py`;
 3. every reviewer that raised something has an answer from you on the PR. An
    **advisory** reviewer posts its concerns *and* passes its own check, so its
-   verdict appears in neither the exit code nor the aggregate. In this repo that
-   is `Design Review` / `UX Review` reporting `🟡 CONCERNS` while green; in
-   another repo it is whatever non-blocking bots and human reviewers comment
-   there. See `prepare-pr`'s "Answer every concern".
+   verdict appears in neither the exit code nor the aggregate: whatever
+   non-blocking bots and human reviewers comment on the PR. See `prepare-pr`'s
+   "Answer every concern".
 4. its `mergeable=` / `mergeState=` / `reviewDecision=` line (the script prints
    all three) shows no conflict, no `BEHIND`, and no `CHANGES_REQUESTED` — exit 0
    already implies this, so read the line to know *which* to report, not to
@@ -443,8 +442,8 @@ open review threads still exits `0`. Before you declare review-ready and call
    reviewer, so read it before treating the exit code as a fix signal. What stays yours is the judgment half: the script prints
    each fresh reviewer's advisory `FINDING` count but deliberately never gates
    on it, so read those from `pr_findings.py` (which lists each one with a
-   stable `span=` identity), subtract the ones your own `ai-review-disposition`
-   comments already answer, and disposition what remains.
+   stable `span=` identity), subtract the ones your own replies already answer,
+   and disposition what remains.
 
 **Never call `autonudge_stop` while an un-dispositioned finding exists for the
 current head SHA.** If you must stop for another reason, post the open-finding

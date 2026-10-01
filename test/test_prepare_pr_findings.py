@@ -159,41 +159,6 @@ class TestMarkerRegexParity:
         assert "\x85" not in cleaned
         assert "safe" in cleaned and "also" in cleaned
 
-    def test_emitting_workflows_still_carry_the_marker_grammar(self) -> None:
-        """Pin the EMITTERS to the consumers, not just the two consumer copies
-        to each other: a review-workflow prompt tweak that drops or renames a
-        stamp would silently orphan the parsers -- the freshness gate would see
-        no stamps and stop gating. This drift is exactly what the marker-
-        grammar spec (docs/ci/prepare-pr-portability.md §5.9) exists to stop."""
-        workflows = {
-            ".github/workflows/codex-review.yml": (
-                "[GPT-REVIEWED]",
-                "[BLOCK-MERGE]",
-                "<!-- codex-ai-review -->",
-            ),
-            ".github/workflows/claude-review.yml": (
-                "[OPUS-REVIEWED]",
-                "[BLOCK-MERGE]",
-                "<!-- claude-ai-review -->",
-            ),
-            ".github/workflows/design-review.yml": (
-                "[DESIGN-REVIEWED]",
-                "<!-- design-review -->",
-            ),
-            ".github/workflows/ux-review.yml": (
-                "[UX-REVIEWED]",
-                "<!-- ux-review -->",
-            ),
-        }
-        for rel, markers in workflows.items():
-            text = (ROOT / rel).read_text(encoding="utf-8")
-            for marker in markers:
-                assert marker in text, (
-                    f"{rel} no longer emits {marker}; update the parsers in "
-                    "pr_status.py/pr_findings.py and §5.9 of "
-                    "docs/ci/prepare-pr-portability.md together"
-                )
-
 
 class TestSpanHash:
     def test_deterministic_and_line_number_independent(self) -> None:

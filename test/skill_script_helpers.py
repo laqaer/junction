@@ -5,7 +5,7 @@ the ordinary way drops a ``__pycache__`` entry beside it that outlives the run -
 a persistent mutation of the working copy, which the no-test-side-effects rule
 forbids.
 
-Five test modules each grew their own loader and none of them carried the guard.
+Four test modules each grew their own loader and none of them carried the guard.
 Measured one file at a time from a clean tree, they left this in
 ``src/junction/builtin_skills/junction-dev/prepare-pr/scripts/__pycache__/``:
 
@@ -15,11 +15,10 @@ test module                          residue
 ``test_push_guard``                  ``push_guard.pyc``
 ``test_prepare_pr_status``           ``pr_status.pyc``
 ``test_prepare_pr_profiles``         ``pr_status.pyc``, ``resolve_profile.pyc``
-``test_prepare_pr_local_review``     ``local_review.pyc``, ``resolve_profile.pyc``
 ``test_prepare_pr_findings``         ``pr_findings.pyc``, ``pr_status.pyc``
 ===================================  ==========================================
 
-One helper rather than six copies of a three-line guard, because a guard that has
+One helper rather than five copies of a three-line guard, because a guard that has
 to be remembered at each call site is one that will be missing at the seventh.
 ``test_prepare_pr_prove`` had it and the others did not, which is exactly how
 that shape fails.

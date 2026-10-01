@@ -352,18 +352,7 @@ class TestReusableWorkflowPermissions:
         }
 
 
-class TestAiReviewOverridePermissions:
-    def test_override_handler_has_only_review_control_permissions(self) -> None:
-        """The trusted comment handler can re-run reviews and update their
-        checks/comments, but must never inherit model credentials or repository
-        contents write access."""
-        assert _workflow_permissions("ai-review-human-override.yml") == {
-            "actions": "write",
-            "checks": "write",
-            "contents": "read",
-            "pull-requests": "write",
-        }
-
+class TestPrReadinessPermissions:
     def test_readiness_has_only_aggregation_and_label_permissions(self) -> None:
         assert _workflow_permissions("pr-readiness.yml") == {
             "actions": "read",

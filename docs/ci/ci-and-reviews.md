@@ -25,12 +25,6 @@ pull_request
   |-- code-review.yml   "Code Review"  grep rules, woke, Semgrep, PR hygiene, dep audit
   |-- dependency-review.yml            license allowlist
   |-- docker-smoke.yml                 container contract (paths-filtered)
-  |-- claude-review.yml "Opus 4.8 Review"     line-level, code-only, blocking
-  |-- codex-review.yml  "GPT 5.6 Review"    line-level + PR intent, blocking
-  |-- design-review.yml "Design Review"     design shape, advisory
-  |-- ux-review.yml     "UX Review"         rendered experience, advisory
-  |-- first-principles-review.yml
-  |                     "First Principles Review"  why it exists, advisory
   |-- CodeQL                                GitHub default setup, not a checked-in file
   |
   '-> pr-readiness.yml  "PR Readiness"  one commit status + one readiness: label
@@ -214,7 +208,8 @@ packaged analogue of the wheel lane's `--version`.
 ## `code-review.yml`: the deterministic pre-gate
 
 No model, no secrets, so it is safe on forks and always runs. It is the grep-half
-of the AUTOSDE rules; the semantic half is delegated to the line reviewers.
+of the AUTOSDE rules; the semantic half is left to review, including the
+`prepare-pr` skill's local reviewers (see [AI review](#ai-review)).
 
 - **`autosde-rules`** blocks unambiguous frontend violations on added lines: an
   inline `<svg viewBox>` outside third-party brand-logo components (`*Logo.tsx`;
@@ -273,265 +268,46 @@ HEALTHCHECK depends on it), that kiro-cli runs inside the image, and that channe
 credentials passed as container env are moved into the data home's `.env` and
 scrubbed from every long-lived process environ.
 
-## The AI review ladder
+## AI review
 
-Five reviewers, each with a distinct question and a distinct trust posture. The
-design axis is **what each is allowed to read** (its prompt-injection surface) and
-**whether it can block**.
+No AI reviewer runs in CI, and `PR Readiness` waits on none. AI review happens
+before a push, in the `prepare-pr` skill's local review gate: the bundled Junction
+profile dispatches two read-only reviewers on different models through the
+operator's own harness, and each applies a review contract kept in
+`.github/review-prompts/`:
 
-| Reviewer | Check name | Harness | Reads | Question | Blocks? |
-|---|---|---|---|---|---|
-| Opus 4.8 | `Opus 4.8 Review` | Agentic, `--max-turns 120` per stage, **two real invocations** (discovery -> validation) | **Code only**: `Read`, `Grep`, `Glob`, `Bash(gh pr diff:*)` | Line-level correctness, security, AUTOSDE | Yes, fail-closed |
-| GPT 5.6 | `GPT 5.6 Review` | Non-agentic, **two** invocations (discovery, then authoritative falsification), `reasoning_effort: medium` | Code plus PR title and body as nonce-wrapped **UNTRUSTED** context | Line-level second perspective, plus description-versus-diff consistency (advisory) | Yes, fail-closed |
-| Design Review | `Design Review` | Agentic Fable 5, with an Opus fallback model | Code plus `gh pr view` (it must judge intent) | Should we build this, and is it the right *shape*? | Advisory; red only on a genuine `BLOCK` |
-| UX Review | `UX Review` | Agentic Fable 5, with the same fallback | Code plus committed screenshot PNGs, read directly | Does the shipped experience read correctly? | Advisory; red only on a genuine `BLOCK` |
-| First Principles | `First Principles Review` | Agentic Fable 5, same fallback, `--max-turns 120` (inventorying and counting is grep-heavy) | Code, the whole repository, and `gh pr view` | What is the author trying to do, and does each thing this ships *deserve to exist*, already exist, or only patch a symptom? | Advisory; red only on a genuine `BLOCK` |
+| Reviewer | Contract | Shape | Reads |
+|---|---|---|---|
+| `gpt` | `gpt-diff-not-evidence.md`, `gpt-review-core.md`, `gpt-output-contract.md`, then `gpt-falsification-mandate.md` + `gpt-falsification-verdict.md` | Two separate calls: discovery, then an authoritative falsification call | The diff, the code, and the PR title and body as **UNTRUSTED** context |
+| `opus` | `opus-discovery.md`, then `opus-validate.md` | Two separate calls: discovery, then validation | **Code only**: the diff and the code, never PR prose or comment threads |
 
-### Why a first-principles lane is not a second Design Review
+Every contract and the AUTOSDE rule files are read from the PR's **base** commit,
+so a change cannot weaken the reviewer or the rules that judge it. The reviewers'
+findings are fixed or answered before the push; nothing about them reaches CI.
 
-Design Review takes the PR's **stated problem as its frame** and judges the shape of
-the solution. Two blind spots survive that. The first is **plurality**: a change
-with one stated purpose routinely ships several observable differences — a control
-that moved, a relabelled button, a flipped default, a new knob, a retry — and only
-the one named in the description gets examined. The second is **depth**: a fix aimed
-at the symptom the author happened to trip over passes every lane, because each line
-is correct, the shape fits and the surface renders.
+### One binary contract
 
-So this lane is defined by a method rather than a topic. It states the author's
-**intent** in one sentence and whether the change is a fix or an addition, then
-**inventories** it into the **observable differences** it ships — written the way a
-person would notice them, not the way the code expresses them — and runs every
-remaining question **per item**:
-
-A new capability is only one of the kinds that count. A **move, reorder or regroup**
-is its own item, and it is the kind that goes unexamined most often precisely because
-nothing became newly possible, so nothing reads as "added". The same applies to a
-rename, a changed default, an added or removed confirmation, a change in what is
-visible by default, and a change in when something happens. If the change is a *fix*,
-every item that is not the fix is called out as **riding along**.
-
-A move also carries a **higher** bar than an addition, not a lower one: the capability
-already existed, so the only harm available is that people could not find it, and the
-review must name who was failing and how that is known. "It groups better" is analogy,
-and it does not outweigh the relearning cost every existing user pays.
-
-- **Does it deserve to exist?** The zero option (what observably breaks if this item
-  ships nothing), the delete option (could the same harm be removed by deleting code
-  or a concept instead of adding one), and provenance — is the requirement *derived*
-  from a constraint you can point at, or *inherited* from convention, symmetry, "for
-  flexibility"? Reasoning by analogy is named and rejected explicitly, because
-  analogy is how an unnecessary feature enters a codebase looking reasonable.
-- **Does it already exist?** A grep for the mechanism that already does this job. A
-  second spelling of one capability is a finding even when no code is duplicated,
-  because both spellings must then be maintained and will diverge.
-- **Does it fix the cause?** Each item is placed on a named chain — **symptom**
-  (patched where it was observed), **mechanism** (the code that produced it), or
-  **cause** (the decision or invariant gap that let it misbehave). Symptom-level
-  with a reachable in-scope cause is a finding. Generality is then decided by
-  *counting* unfixed sibling instances of the same cause, so "this is a point patch"
-  has to come with paths.
-
-Three constraints keep it honest:
-
-- **One contract, read from the base ref.** The lenses live in
-  `.github/review-prompts/first-principles.md`, and both lanes `git show` it from the
-  PR's **base** commit — the same mechanism the Opus lanes use for their two prompts.
-  That removes the second copy entirely, and it means a pull request cannot edit the
-  reviewer that judges it. A contract *absent* from the base is not an error — it is
-  what happens on the pull request that introduces or moves the contract, so the lane
-  reports a non-blocking "no contract on the base commit" and produces no verdict. It
-  never falls back to the head's copy, because a rename would then let a change hand
-  the reviewer its own rubric.
-- **Count before you claim.** Every duplication, consumer-count and unfixed-sibling
-  finding must state the count and the pattern grepped; an uncounted claim is a
-  fabrication and must be dropped. This is what stops the lane drifting into taste.
-- **Every suggestion is a subtraction.** It may propose only deletions, shrinks,
-  deferrals, or "use the thing that already exists" — it may not even ask for a doc
-  or an RFC. A reviewer allowed to propose additions becomes a source of the exact
-  surface it exists to remove.
-- **The inventory is printed, even on a PASS.** A `PASS` here is a claim about *every*
-  item, so the item list is the evidence a human needs to check that claim. This is
-  a deliberate divergence from the sibling lanes, whose clean verdict collapses to
-  one line.
-
-It runs whenever a diff touches product or CI surface — **including a plain bug
-fix**, which is where the root-cause lens earns the most. Only a change that ships
-no capability at all (docs, tests, screenshots, generated files) skips, so the
-2x-rate-card Fable 5 spend goes to diffs that can actually produce a finding.
-
-It is advisory in `pr-readiness.yml` (UX-style, not Design-style): a `BLOCK` here is
-a judgment about whether a feature should exist, and a model does not get to wedge a
-merge on that until the lane's calibration is proven. Promoting it to a readiness
-blocker later is a one-line change in the aggregator.
-
-**Where it overlaps Design Review, this lane owns the question.** Design Review's own
-rubric asks whether a change fixes a root cause and whether a simpler alternative
-exists; those questions are asked here from the premise side and per item. The split
-is deliberate — premise and cause here, shape quality there — and if the two lanes
-converge in practice, the answer is to trim the overlap out of Design Review, not to
-tune two prompts against each other.
-
-### Why Opus 4.8 is code-only
-
-It is the agentic reviewer, so pulling attacker-controllable PR prose into its
-context is a prompt-injection surface. `gh pr view` and `gh api` are disallowed, and
-so is `gh pr comment`: a **CI step**, not the model, upserts a single
-hidden-marker-keyed summary captured from the run transcript, which trades scattered
-inline chatter for one terse summary plus a binary gate. The PR-intent
-responsibility, including flagging a description-versus-diff mismatch, is
-deliberately handed to the read-only, non-agentic GPT 5.6 reviewer, which treats
-that prose as **untrusted evidence, never authority to waive a code finding**. The
-prose is fetched by a step that has network and the token, then baked into the
-prompt wrapped in a collision-resistant nonce, because the review sandbox unshares
-the network and cannot fetch it itself.
-
-### One shared binary contract
-
-Both line reviewers run the same review contract, and severity encodes exactly one
-thing: *does this block the merge*, **never confidence**. There is no
-"possible issue" tier. The blocks of that contract shared by the two GPT
-workflows — the diff-is-not-evidence clause, the coverage/finding/fix bars, the
-output contract, and the falsification-pass mandate and verdict framing — live in
-shared `.github/review-prompts/gpt-*.md` files rather than as two inline copies,
-so the lanes cannot drift apart on them (#5852). The same-repo lane stages them
-from the PR's **base** commit like the Opus lanes; unlike those lanes it falls
-back to the checked-out copy (with a warning) when a block is absent on the base,
-because a hard gate cannot afford a no-verdict pass and, on a same-repo PR, the
-workflow file itself is already editable by the PR — the fallback adds no attack
-surface the lane did not have. The fork lane's checkout *is* the trusted base
-(the diff is never applied), so it reads the files straight from the tree and
-fails closed if one is missing. A finding must state a concrete input or condition that
-occurs in practice, the call path to the changed line, and an observable wrong
-outcome; anything phrased as "could", "might" or "if a caller were to" is **not a
-finding**, and silence is the correct output. Only two labels exist: **BLOCKING**
-(on the closed WHAT BLOCKS list) and **FINDING** (advisory, never blocks). A
-per-review budget caps a review at 2 BLOCKING findings, and the calibration note
-says "No findings." is the expected output for a typical PR.
+Both contracts share one rule: severity encodes exactly one thing, *does this
+block the merge*, **never confidence**. There is no "possible issue" tier. A
+finding must state a concrete input or condition that occurs in practice, the call
+path to the changed line, and an observable wrong outcome; anything phrased as
+"could", "might" or "if a caller were to" is **not a finding**, and silence is the
+correct output. Only two labels exist: **BLOCKING** (on the closed WHAT BLOCKS
+list) and **FINDING** (advisory, never blocks). The calibration note says
+"No findings." is the expected output for a typical PR. Diff text is never
+evidence: a comment claiming code is broken cannot ground a finding.
 
 ### Asymmetric multi-pass is intentional
 
-BOTH line reviewers now run **two real invocations**: a discovery pass that
-generates candidates, then an **authoritative falsification** pass whose primary
-job is to *kill* them. The Opus lane used to run one pass with two internal phases; that
-was measured on this repo to suppress findings the same model reports reliably
-without the precision clauses, because a prompt asked to discover AND to police
-its own precision stops discovering. Its discovery half therefore carries no
-precision gates, and its validation half applies a confidence floor and the closed
-blocking list. A
-candidate survives only if pass 2 re-derived the input, the call path and the
-observable outcome itself from code it opened in that pass. Pass 2 may also *add* a
-defect discovery missed, in both lanes, but only under that same three-part
-grounding and the same confidence floor — killing a candidate stays its primary
-job, and a self-found finding gets no second opinion, so it earns no cheaper path
-in. In both lanes such a finding is tagged `(origin: validation)` in the posted
-review, because it is un-falsified by construction: the tag is what lets a reader
-weight it accordingly, and what lets the precision of self-added findings be
-compared against survivors' rather than assumed equal. Pass 2 is the only
-gated verdict. Falsification raises precision *within a single run*, which is why
-neither reviewer carries cross-round state: each judges only the current SHA's code
-and therefore cannot contradict itself across rounds.
-
-### Verdicts are structured markers
-
-The markers are the **only** gate:
-
-- Opus 4.8 emits `[OPUS-REVIEWED] <sha>` always, and `[BLOCK-MERGE] <sha>` only when a
-  blocking finding exists. Both are parsed out of the action's `execution_file`
-  transcript rather than a `--json-schema` structured output, because the harness's
-  internal structured-output tool is unreliable when other tools are enabled:
-  reviews completed with a success result yet returned no structured output,
-  failing this gate closed on healthy reviews.
-- GPT 5.6 emits `[GPT-REVIEWED] <sha>` / `[BLOCK-MERGE] <sha>`.
-- Design and UX emit `Design-Verdict:` / `UX-Verdict: PASS | CONCERNS | BLOCK`,
-  parsed from a header line.
-
-A missing reviewed-marker for the current head fails the gate closed, because a
-no-output review must not look clean. A BLOCKING-labelled finding without the
-`[BLOCK-MERGE]` marker is only a non-gating **advisory warning**, since a coherence
-check on that pairing mis-fires whenever the model quotes prior text.
-
-### Security posture of the reviewer jobs
-
-- Explicit fork guards (`head.repo.full_name == github.repository`), so the job
-  **skips** on a fork rather than failing an unsatisfiable credential step. GitHub
-  treats a skipped required check as satisfied, which is why fork coverage needs
-  the separate `fork-*` pipeline below.
-- `persist-credentials: false` on checkout, so `actions/checkout` never writes the
-  token into `.git/config` where a reviewer reading untrusted PR content could find
-  it.
-- AUTOSDE rules are extracted from the **base** commit, not the PR head, so a PR
-  cannot weaken the rules that govern it.
-- Bedrock credentials are assumed late, after dependency installation, so a
-  compromised or version-drifted release never observes them.
-- The GPT reviewer runs in a read-only, network-unshared sandbox (which is why the
-  job clears `kernel.apparmor_restrict_unprivileged_userns` first: the sandbox's
-  bubblewrap fails at netns setup otherwise).
-- Review output is redacted for AWS key ids, ARNs, 12-digit account numbers and
-  secret-key or session-token shapes before any public comment.
-- Dependabot PRs skip the review work and let the gate pass, since they run with a
-  read-only token and no credential access.
-- A 90-minute job timeout is a runaway backstop, not a review budget: a healthy
-  review self-terminates well before it, so the timeout exists solely to fail the
-  gate closed on a true hang.
-
-### Advisory means advisory, with one exception
-
-Design Review and UX Review are non-blocking as a rule: their suggestions must be
-proportionate ("never recommend extra layers, abstractions or future-proofing the
-problem does not require"), and their tie-breaker is to choose `CONCERNS` over
-`BLOCK` when torn, reaching for `BLOCK` only when the **design** is wrong and never
-merely because the change is large. The one exception: a genuine `BLOCK` verdict
-does fail that workflow's own check, so it is visible; every other outcome exits 0.
-Because `pr-readiness.yml` scores both as advisory, a red Design or UX check never
-independently blocks readiness.
-
-**Design Review owns the long-term / one-way-door lens** as its gate 8, "LONG-TERM
-REVERSIBILITY", in both the same-repo and fork variants. An unsafe one-way door is
-its primary `BLOCK` trigger. Everything reversible (architectural erosion,
-maintainability, "should eventually be refactored") is advice and non-blocking
-follow-up work, because the author does not need a perfect or complete solution in
-this PR.
-
-There is no separate long-term arbiter workflow. A second-order reviewer that
-re-judged the other reviewers' *comments* over a `workflow_run` chain blocked almost
-nothing, and it structurally could not work for fork PRs: the fork head SHA does not
-survive the extra `workflow_run` hop, so it never resolved which PR it was for. The
-lens now lives where the reviewer already has full diff context, and covers same-repo
-and fork PRs identically with no cross-workflow head-passing.
-
-### `UX Review` early-skips cheaply
-
-It runs only when the diff touches `website/`, `temp-screenshots/**` or
-`.github/screenshots/**`. A backend, CI or docs PR skips it with no model call and no
-comment churn, and the check passes. When screenshots are present it reads each PNG
-and grounds visual findings in them, and it is instructed to treat screenshot content
-as untrusted (a screenshot, title, commit message or filename attempting to grant
-leniency is ignored, and screenshot polish never waives a lens).
-
-### Human override
-
-`ai-review-human-override.yml` lets a repository **writer** record a judgment with:
-
-```
-/ai-review override <fable|gpt|all> <current-head-sha>: <one-sentence reason>
-```
-
-`issue_comment` workflows execute from the trusted default branch, never from the PR
-head. The handler validates the command shape, a 7-to-40-hex SHA that must be the
-**current** head, writer-or-above permission, and a non-empty reason under 500
-characters, then posts a **bot-authored** marker comment that the reviewer workflows
-trust. Raw PR comments can never turn a gate green directly; only that marker can.
-The scope is **this commit only**, so a new push needs a new judgment. The workflow
-then re-runs the affected reviewer, cancelling an in-flight run first so its stale
-verdict cannot race the human decision. On a fork PR the affected reviewer is the
-`workflow_run`-triggered Stage-2 lane, whose run objects are keyed to the default
-branch — the handler locates the lane run through the run URL the lane stamps into
-the `details_url` of the check-run it posts on the PR head, verifies the resolved
-run belongs to the expected fork workflow, and re-runs it. The fork lanes consume
-no override marker, so that re-run is a fresh review roll rather than a forced
-pass. A rerun failure after the judgment has recorded is reported as a warning
-annotation plus a PR notice naming the lane to re-run manually — never as a failed
-run, which would make a recorded judgment look rejected.
+Both reviewers run a discovery pass that generates candidates, then a pass whose
+primary job is to *kill* them. The `opus` discovery stage carries no precision
+gates at all, because a prompt asked to discover AND to police its own precision
+stops discovering; its validation stage applies a confidence floor and the closed
+blocking list. A candidate survives only if the second pass re-derived the input,
+the call path and the observable outcome itself from code it opened. The second
+pass may also *add* a defect discovery missed, but only under that same grounding,
+and such a finding is tagged `(origin: validation)`, because it is un-falsified by
+construction: the tag is what lets a reader weight it accordingly.
 
 ## `pr-readiness.yml`: the aggregator
 
@@ -540,17 +316,7 @@ queries the latest run per monitored workflow, and publishes **one `PR Readiness
 commit status plus one `readiness:` label**.
 
 - **Always required:** CI, Build, Code Review.
-- **Additionally required on a same-repo PR:** CodeQL, Opus 4.8 Review, GPT 5.6
-  Review, and completion of Design Review, UX Review and First Principles Review.
-- **UX Review and First Principles Review are completion-required but advisory:**
-  once complete they score as `"(advisory)"` whatever their conclusion, so neither
-  their opinion nor an infrastructure failure becomes an independent blocker.
-  Completion is still required so the verdict is not premature.
-- **Design Review is completion-required AND blocks on a genuine `BLOCK`:** the
-  aggregator scores its `failure` conclusion as a readiness blocker. That is safe
-  because the lane fails its own check *only* on a `BLOCK` verdict — an errored,
-  throttled or verdict-less run exits 0 — so a `failure` here can only mean a
-  design judged wrong, never infrastructure noise.
+- **Additionally required on a same-repo PR:** CodeQL.
 - **CodeQL is not a checked-in workflow.** It runs via GitHub default setup and is
   resolved by `path == "dynamic/github-code-scanning/codeql"`. `skipped` counts as
   passed for it.
@@ -569,9 +335,8 @@ Two subtleties:
   whose lane is failing at that moment. `requested` is the type that carries nothing: it
   fires at run CREATION, when no lane can have a verdict yet and readiness has already
   published `checking` from the `pull_request_target` path. Since every type fires once per
-  monitored workflow per revision, listing all three dispatched up to 42 readiness runs per
-  head update and made readiness ~67% of every workflow run this repository created; two
-  types put the ceiling at 28. The `pr+sha` concurrency group collapses the burst for
+  monitored workflow per revision, each listed type adds one readiness run per monitored
+  workflow to every head update. The `pr+sha` concurrency group collapses the burst for
   execution, but a collapsed run has already consumed its dispatch slot, so the group does
   not bound that cost.
 - **A `pull_request_target` run gets its own isolated concurrency group.** Those are
@@ -619,8 +384,7 @@ Two subtleties:
   failed POST fails the step loud and a re-run republishes. The label writes
   keep only the narrow 404/already-exists race tolerance they already have.
 - **Nothing keys off `workflow_run.pull_requests`.** That array is empty whenever the
-  head repository is a fork, the same GitHub behaviour the `fork-*` workflows already
-  work around. The job gate admits every `pull_request` and `dynamic` run and lets the
+  head repository is a fork. The job gate admits every `pull_request` and `dynamic` run and lets the
   head SHA resolve to a PR via `repos/:repo/commits/:sha/pulls`, and a monitored run is
   bound back to the PR by `(head_repository.full_name, head_branch)` on top of the
   `head_sha=` query — a pair that is populated on a fork run, and unique because only
@@ -632,43 +396,13 @@ Two subtleties:
 
 ## Fork PRs
 
-A fork PR gets no repository OIDC credentials or secrets, and this repository's
-managed CodeQL workflow is not scheduled for fork heads. Two consequences.
-
-**A fork PR can still reach `readiness: passed`.** The `fork-*` pipeline below runs
-the AI reviews from the trusted base branch and posts them as check-runs under the
-same names the same-repo lanes use, so `pr-readiness.yml` evaluates a fork from
-those check-runs and a fully green fork is fully validated. CodeQL is the single
-ineligible lane, reported as a non-blocking "Not eligible" note rather than a
-blocker. Readiness therefore says the same thing on a fork as anywhere else: the
-eligible automated validation passed for this revision. Human approval and branch
-protection remain separate gates.
-
-**The `fork-*` pipeline gives fork PRs AI review anyway, in two stages.**
-`fork-opus-review.yml`, `fork-gpt-review.yml`, `fork-design-review.yml` and
-`fork-ux-review.yml` each trigger on the **completion of CI** (stage 1) and run
-privileged from the default branch (stage 2), gated on
-`workflow_run.head_repository.full_name != github.repository`. Each posts a check-run
-named exactly like its same-repo twin (`Opus 4.8 Review`, `GPT 5.6 Review`,
-`Design Review`, `UX Review`), so branch protection is satisfied on either path, and
-it opens that check-run as early as possible keyed to `head_sha` so a job that dies
-still leaves a fail-closed result.
-
-Nothing the fork controls can influence these reviews:
-
-- `workflow_run` **always** runs the workflow definition from the **default branch**,
-  so a fork editing these files in its PR has no effect on what runs.
-- `github.event.workflow_run.head_sha` is set by GitHub and is the only authoritative
-  input taken from the trigger. The PR is resolved by matching an open PR whose head
-  SHA equals it, because `workflow_run.pull_requests` is empty for forks.
-- The base SHA is re-fetched from the PR via the API and the diff is re-derived from
-  GitHub's compare endpoint pinned to `(base_sha...head_sha)`. Stage 1's artifact is
-  an untrusted **hint** only, so a fork faking it changes nothing.
-- The fork's code is only **read** (the trusted base tree plus the authentic diff as
-  a data file), never built, installed or executed.
-- `step-security/harden-runner` with `egress-policy: block` and a narrow endpoint
-  allowlist, plus short-lived Bedrock-only OIDC credentials, bound the blast radius
-  of any prompt injection.
+A fork PR gets no repository OIDC credentials or secrets. No PR lane needs them, so
+every lane runs on a fork PR except CodeQL: this repository's managed default-setup
+CodeQL workflow is not scheduled for fork heads. **A fork PR can still reach
+`readiness: passed`**: `pr-readiness.yml` reports CodeQL as a non-blocking "Not
+eligible" note rather than a blocker, so readiness says the same thing on a fork as
+anywhere else: the eligible automated validation passed for this revision. Human
+approval and branch protection remain separate gates.
 
 **`fork-workflow-guard.yml`** blocks a fork PR that modifies anything under
 `.github/**`, the vector a fork would use to fake basic-CI results (rewrite `ci.yml`
@@ -688,19 +422,18 @@ AI-native coding skews toward over-engineering, and a naive AI reviewer compound
 by demanding still more mechanisms, which produces unending review loops. Every layer
 resists this:
 
-- **Both line reviewers share an identical FIX BAR:** every finding must carry a fix
+- **Both review contracts share an identical FIX BAR:** every finding must carry a fix
   expressible as an edit to lines **this PR changed**. If the fix would need a new
   function, module, abstraction, config knob, dependency, or an edit to untouched
-  code, it is out of scope for the bot. GPT 5.6 drops such a finding; Opus 4.8
-  **demotes it to advisory instead of dropping it** -- the author cannot land the
+  code, it is out of scope for the reviewer. The `gpt` contract drops such a finding;
+  the `opus` contract **demotes it to advisory instead of dropping it** -- the author cannot land the
   remedy in this PR, so it must not gate the merge, but the signal is real and a
   human decides. A regression the diff itself introduces still blocks either way,
   since reverting the hunk is an in-diff fix. **The absence of a
   mechanism is never a finding.** This makes "add mechanism X" structurally
   un-reportable: the demand fails the bar before it can become a finding. A scope cap
-  complements it: Opus 4.8 stays within the evident scope of the diff (it is code-only),
-  and GPT 5.6 stays within the PR's stated purpose, flagging a
-  description-versus-diff mismatch as an **advisory** finding rather than a block.
+  complements it: the `opus` reviewer stays within the evident scope of the diff (it is
+  code-only).
 - **The WHAT BLOCKS list is closed:** exhaustive, never extended, never reasoned about
   by analogy, with no "and other serious issues" clause. A finding blocks only if it
   is a `blocking: true` AUTOSDE-rule violation on a changed file (or this PR
@@ -708,9 +441,6 @@ resists this:
   security hole with a named trigger, a crash or data loss or corruption on a path
   this diff changes, or a removed guard with no compensating replacement. Style,
   naming, speculative performance and hypotheticals never block.
-- **Design and UX suggestions must be proportionate,** and Design carries the
-  simpler-alternative ethos: actively flag when a materially simpler solution exists,
-  but always advisory.
 - **`prepare-pr`'s severity gate closes the loop:** validate each finding's
   legitimacy first, fix the true Critical and High ones, **rebut a false positive with
   evidence rather than appeasing it by changing correct code**, and defer the low ones.
