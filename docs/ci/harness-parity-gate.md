@@ -13,7 +13,7 @@ judgment-only ones it cannot, are catalogued in
 |---|---|---|
 | CI job `harness-parity` in `ci.yml` | `check_harness_parity.py --test` then the diff-scoped run | yes — `CI` is a required check, so every job in it is blocking |
 | CI job `test` (ordinary pytest) | `test/test_harness_parity.py` | yes — 22 structural pins, groups A and C |
-| The four AI review lanes | the `harness-parity` rule in `AUTOSDE.yaml`, `blocking: true` | yes — a violation of a blocking rule blocks |
+| Local review (`prepare-pr`) | the `harness-parity` rule in `AUTOSDE.yaml`, `blocking: true` | no — a violation is a BLOCKING finding fixed before the push |
 | Locally | `HARNESS_BASE_REF=origin/main python3 scripts/check_harness_parity.py` | exit 1 on any violation |
 
 The self-test runs **first**, in the same step. A gate that has silently stopped

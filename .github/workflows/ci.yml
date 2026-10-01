@@ -188,7 +188,7 @@ jobs:
     timeout-minutes: 10
     # Deliberately NOT gated behind the `changes` job's surface outputs:
     # everything under src/junction/_vendor is excluded from semgrep and the
-    # AI reviewers' diff, so this checksum gate is the only content review the
+    # lint/format configs, so this checksum gate is the only content review the
     # vendored tree gets. Hashing the ~26MB tree takes seconds, and an
     # always-on job cannot be dodged by a path-filter edge case.
     steps:
@@ -777,7 +777,7 @@ jobs:
 
   # The one job where the sandbox-dependent tests EXECUTE rather than skip. They need
   # unprivileged user namespaces (unshare NEWNS), which ubuntu-24.04 restricts via
-  # AppArmor -- the same restriction codex-review.yml clears for its bwrap sandbox.
+  # AppArmor (kernel.apparmor_restrict_unprivileged_userns, cleared below).
   # Without this job the ~/.junction sensitive-path keystone has no CI coverage at all,
   # even though branch protection treats breaking it as a blocking offence.
   #

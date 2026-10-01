@@ -170,7 +170,6 @@ src/junction/artifacts.py
 src/junction/atomic_write.py
 src/junction/builtin_skills/browser-recording/scripts/record_browser.py
 src/junction/builtin_skills/ios-simulator-preview/scripts/sim_mirror.py
-src/junction/builtin_skills/junction-dev/prepare-pr/scripts/local_review.py
 src/junction/builtin_skills/junction-dev/prepare-pr/scripts/pr_findings.py
 src/junction/builtin_skills/junction-dev/prepare-pr/scripts/pr_status.py
 src/junction/changelog.py
@@ -996,7 +995,6 @@ test/test_pr_readiness_evaluate.py
 test/test_pr_readiness_publish.py
 test/test_pr_readiness_sweep.py
 test/test_prepare_pr_findings.py
-test/test_prepare_pr_local_review.py
 test/test_prepare_pr_profiles.py
 test/test_prepare_pr_status.py
 test/test_previous_result_read_off_loop.py

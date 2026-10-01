@@ -21,26 +21,12 @@ on:
       - CI
       - Build
       - Code Review
-      - Opus 4.8 Review
-      - GPT 5.6 Review
-      - Design Review
-      - UX Review
-      - First Principles Review
       - CodeQL
-      # Stage-2 fork AI reviewers. They run from the default branch via
-      # `workflow_run` (on CI's completion), so their own completion must
-      # re-trigger this job to publish the fork PR's real verdict once the
-      # reviews land -- otherwise the fork verdict freezes at `checking`.
-      - Fork Opus 4.8 Review
-      - Fork GPT 5.6 Review
-      - Fork Design Review
-      - Fork UX Review
-      - Fork First Principles Review
     # `completed` publishes the real verdict. `in_progress` is kept as a merge
     # guard, and `requested` is deliberately absent.
     #
     # Why `requested` carries nothing: it fires when a run is CREATED, which on
-    # a head update happens for all 14 workflows above before any of them can
+    # a head update happens for every workflow above before any of them can
     # have a verdict -- and readiness has already published `checking` for that
     # revision via the `pull_request_target: synchronize` path. Its only other
     # occasion is a brand-new run, whose eventual `completed` is the fire that
@@ -58,12 +44,11 @@ on:
     # trade a merge-safety guard for dispatch, which is the wrong direction.
     #
     # The dispatch problem this addresses: every type fires once per monitored
-    # workflow per revision, so all three dispatched up to 42 readiness runs per
-    # head update and made this workflow the majority of the repository's run
-    # creation. Two types put the ceiling at 28. The per-revision concurrency
+    # workflow per revision, so each listed type adds one readiness run per
+    # monitored workflow to every head update. The per-revision concurrency
     # group below collapses the burst for EXECUTION, but a collapsed run has
-    # already consumed its dispatch slot, so the group never bounded this cost.
-    # Measurements and the queue-saturation mechanism: docs/ci/ci-and-reviews.md.
+    # already consumed its dispatch slot, so the group never bounds this cost.
+    # Rationale: the `pr-readiness.yml` section of docs/ci/ci-and-reviews.md.
     types: [in_progress, completed]
   workflow_dispatch:
     inputs:
@@ -133,17 +118,10 @@ jobs:
     # key, and the step below resolves it to a PR (skipping cleanly when no
     # open PR owns it), so admitting every pull_request run is correct and the
     # non-PR events are already excluded by the event check.
-    #
-    # `workflow_run.event == 'workflow_run'` is admitted so the Stage-2 fork AI
-    # reviewers (fork-*-review.yml, themselves triggered by CI's workflow_run)
-    # re-trigger this job when they complete -- that is how a fork PR's verdict
-    # refreshes to "passed" once its reviews land. Which workflows can fire this
-    # is already fenced by the `on.workflow_run.workflows` allowlist above.
     if: >-
       github.event_name != 'workflow_run'
       || github.event.workflow_run.event == 'pull_request'
       || github.event.workflow_run.event == 'dynamic'
-      || github.event.workflow_run.event == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -424,40 +402,18 @@ jobs:
             )
           fi
 
-          # Code Review and the AI reviewers trigger on `pull_request` with no
-          # base-branch filter, so they run on every PR regardless of base.
+          # Code Review triggers on `pull_request` with no base-branch filter,
+          # so it runs on every PR regardless of base.
           workflow_specs+=("code-review.yml|Code Review")
 
           if [ "$FORK" = "true" ]; then
             # A fork head cannot run the repository's managed default-setup
-            # CodeQL, so that lane stays ineligible. The AI code reviews DO run
-            # on forks: the privileged Stage-2 fork-*-review.yml pipeline fires
-            # on CI completion from the default branch and posts a check-run
-            # named exactly like the same-repo lane ("Opus 4.8 Review", etc.).
-            # Read those results from the head SHA's check-runs (checkrun:
-            # specs) so a fully-reviewed green fork can reach "passed" instead
-            # of being forced to a maintainer-review verdict.
+            # CodeQL, so that lane is ineligible rather than pending.
             skipped+=("CodeQL (fork PR)")
-            workflow_specs+=(
-              "checkrun:Opus 4.8 Review|Opus 4.8 Review"
-              "checkrun:GPT 5.6 Review|GPT 5.6 Review"
-              "checkrun:Design Review|Design Review"
-              "checkrun:UX Review|UX Review"
-              "checkrun:First Principles Review|First Principles Review"
-            )
+          elif [ "$stacked" = "true" ]; then
+            skipped+=("CodeQL (only runs on PRs to $DEFAULT_BRANCH)")
           else
-            if [ "$stacked" = "true" ]; then
-              skipped+=("CodeQL (only runs on PRs to $DEFAULT_BRANCH)")
-            else
-              workflow_specs+=("dynamic/github-code-scanning/codeql|CodeQL")
-            fi
-            workflow_specs+=(
-              "claude-review.yml|Opus 4.8 Review"
-              "codex-review.yml|GPT 5.6 Review"
-              "design-review.yml|Design Review"
-              "ux-review.yml|UX Review"
-              "first-principles-review.yml|First Principles Review"
-            )
+            workflow_specs+=("dynamic/github-code-scanning/codeql|CodeQL")
           fi
           passed=()
           pending=()
@@ -466,72 +422,6 @@ jobs:
           for spec in "${workflow_specs[@]}"; do
             file="${spec%%|*}"
             label="${spec#*|}"
-            if [[ "$file" == checkrun:* ]]; then
-              # Fork AI-review lane: the verdict lives in the head SHA's
-              # check-runs, not a PR-bound workflow run (the fork reviewer runs
-              # via workflow_run from the default branch, so its workflow-run
-              # head ref does not bind back to the fork). The same-repo lane
-              # posts a `skipped` check-run under this same name on a fork, and
-              # the GPT lane posts several passes -- so collapse ALL check-runs
-              # of this name: any still running -> pending; any failure-class
-              # -> fail; else any success/neutral -> pass; only skipped (the
-              # real review has not posted yet) -> pending.
-              cname="${file#checkrun:}"
-              enc="$(jq -rn --arg v "$cname" '$v | @uri')"
-              cruns="$(gh_retry gh api --method GET \
-                "repos/$REPO/commits/$SHA/check-runs?check_name=$enc&per_page=100")" || {
-                rc=$?
-                # 22 = permanent HTTP error (misconfiguration): fail loud so it
-                # is diagnosed, never diluted into "transient network trouble".
-                if [ "$rc" -eq 22 ]; then exit 1; fi
-                transport_failed=true
-                break
-              }
-              total="$(jq '.check_runs | length' <<<"$cruns")"
-              incomplete="$(jq '[.check_runs[]
-                | select(.status != "completed")] | length' <<<"$cruns")"
-              fail="$(jq '[.check_runs[]
-                | select(.status == "completed"
-                    and (.conclusion | IN("failure","timed_out","cancelled",
-                                           "action_required","stale",
-                                           "startup_failure")))] | length' <<<"$cruns")"
-              pass="$(jq '[.check_runs[]
-                | select(.status == "completed"
-                    and (.conclusion | IN("success","neutral")))] | length' <<<"$cruns")"
-              if [ "$total" -eq 0 ] || [ "$incomplete" -gt 0 ]; then
-                pending+=("$label (not started)")
-              elif [ "$label" = "Design Review" ] || [ "$label" = "UX Review" ] || [ "$label" = "First Principles Review" ]; then
-                # Design, UX and First Principles all BLOCK on a real BLOCK
-                # verdict, so a contributor cannot merge past a design judged
-                # wrong, an experience judged broken/misleading, or a surface
-                # judged unjustified. Safe to treat a failure as a blocker
-                # because each fork-*-review.yml fails the check ONLY on BLOCK
-                # -- an errored, throttled or verdict-less run resolves NEUTRAL
-                # and exits 0 -- so `failure` here can only mean a judged-wrong
-                # verdict, never infrastructure noise. NOTE: `/ai-review
-                # override` records the judgment and re-runs the Stage-2 fork
-                # lane (located via the run URL its check-run carries), but the
-                # fork lanes consume no override marker, so the re-run is a
-                # fresh review roll -- a fork false BLOCK clears via a clean
-                # re-roll or a new commit, never a forced pass -- identical to
-                # the fork Opus / GPT / Design lanes, which already block a
-                # fork PR the same way.
-                if [ "$fail" -gt 0 ]; then
-                  failed+=("$label (BLOCK)")
-                elif [ "$pass" -gt 0 ]; then
-                  passed+=("$label")
-                else
-                  pending+=("$label (not started)")
-                fi
-              elif [ "$fail" -gt 0 ]; then
-                failed+=("$label (failure)")
-              elif [ "$pass" -gt 0 ]; then
-                passed+=("$label")
-              else
-                pending+=("$label (not started)")
-              fi
-              continue
-            fi
             if [ "$file" = "dynamic/github-code-scanning/codeql" ]; then
               runs="$(gh_retry gh api --method GET \
                 "repos/$REPO/actions/runs?event=dynamic&head_sha=$SHA&per_page=100")" || {
@@ -581,24 +471,6 @@ jobs:
                 case "$conclusion" in
                   success|skipped) passed+=("$label") ;;
                   *) failed+=("$label ($conclusion)") ;;
-                esac
-              elif [ "$label" = "Design Review" ] || [ "$label" = "UX Review" ] || [ "$label" = "First Principles Review" ]; then
-                # Design, UX and First Principles all BLOCK on a real BLOCK
-                # verdict. The "gates on BLOCK" step exits 0 for PASS/CONCERNS,
-                # the Dependabot skip, and any overloaded/throttled/verdict-less
-                # run, so those never fail the run -- a `failure` conclusion is
-                # therefore almost always a judged-wrong verdict. One residual:
-                # a HARD model-step error (OIDC / action crash) has no
-                # continue-on-error, so it also fails the run and reddens the
-                # lane. That is rare, deliberate (a review that never ran must
-                # not read as green), identical to the Design / Opus / GPT
-                # lanes, and cleared by a one-comment `/ai-review override`
-                # (current-SHA scoped) -- so treating a `failure` as a blocker
-                # is safe. (The fork reader below never sees this: fork
-                # *-review.yml maps a hard error to a NEUTRAL check-run.)
-                case "$conclusion" in
-                  success|neutral|skipped) passed+=("$label") ;;
-                  *) failed+=("$label (BLOCK)") ;;
                 esac
               else
                 case "$conclusion" in
@@ -695,8 +567,8 @@ jobs:
           # Only add it when the live evaluation above still found at least one
           # monitored workflow genuinely incomplete; in that case the verdict is
           # already pending and the sentinel is merely a human-readable note.
-          # (A legitimate reviewer re-run arrives via workflow_run and shows up
-          # as an in_progress workflow above, so it keeps producing "checking"
+          # (A legitimate re-run arrives via workflow_run and shows up as an
+          # in_progress workflow above, so it keeps producing "checking"
           # through this same real-pending path.)
           case "$TRIGGER_EVENT:$TRIGGER_ACTION" in
             pull_request_target:opened|pull_request_target:synchronize|pull_request_target:reopened|pull_request_target:edited)
@@ -705,10 +577,6 @@ jobs:
               fi
               ;;
           esac
-
-          # (The long-term "Arbiter — judge from comments" gate was retired: its
-          # one-way-door / long-term-reversibility lens now lives in Design
-          # Review. Readiness no longer waits on any API-owned external check.)
 
           blockers=()
           waiting=()
@@ -733,12 +601,10 @@ jobs:
             status_state="pending"
             description="${#waiting[@]} readiness check(s) still pending"
           else
-            # Fork PRs reach this branch too: the AI code reviews run on forks
-            # via the Stage-2 fork-*-review.yml pipeline and are evaluated above
-            # from the head SHA's check-runs, so a fully-green fork is fully
-            # validated (CodeQL is the only ineligible lane, listed as a
-            # non-blocking "Not eligible" note) and earns "passed" like any
-            # same-repo PR.
+            # Fork PRs reach this branch too: every monitored lane except
+            # CodeQL runs on a fork head, so a fully-green fork is fully
+            # validated (CodeQL is listed as a non-blocking "Not eligible"
+            # note) and earns "passed" like any same-repo PR.
             state="passed"
             label="readiness: passed"
             status_state="success"
