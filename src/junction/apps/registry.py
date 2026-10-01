@@ -2376,7 +2376,11 @@ def _enrich_with_install_status(
             # beside it by ``_apply_trust_fields``. External rows keep whatever
             # the trust boundary decides for them instead.
             if not _is_external_row(entry):
-                entry["origin"] = existing.get("origin", "registry")
+                entry["origin"] = (
+                    "builtin"
+                    if existing.get("source") == "builtin"
+                    else existing.get("origin", "registry")
+                )
             entry["resources"] = existing.get("resources", "gateway")
             entry["lifecycle"] = existing.get("lifecycle", "gateway")
             entry["updateAvailable"] = _version_newer(
@@ -3393,12 +3397,12 @@ def _builtin_shelf_rows(
     enable it from. The rows are read from the manifests on disk -- the code they
     describe ships in this wheel -- so they carry no install coordinates and claim
     nothing the installed app does not; ``_apply_trust_fields`` stamps their
-    provenance from the installed origin like any other row. A ``hidden``
+    provenance from installed ownership like any other row. A ``hidden``
     manifest is left out, as the catalog builder leaves it out.
     """
     rows: list[dict[str, Any]] = []
     for name, app in sorted(installed_map.items()):
-        if app.get("origin") != "builtin" or name in listed:
+        if (app.get("source") != "builtin" and app.get("origin") != "builtin") or name in listed:
             continue
         manifest = app.get("manifest")
         if not isinstance(manifest, dict) or manifest.get("hidden"):
