@@ -220,7 +220,7 @@ def prepare_embedder(*, timeout_s: float = DEFAULT_EMBED_TIMEOUT_S) -> EmbedFn:
             "fall back to FTS5 keyword LIKE matching. That measures substring "
             "overlap, not memory retrieval.\n"
             f"Waited {timeout_s:.0f}s for the model. Check that the embedding "
-            "model file is present (junction doctor) before benchmarking."
+            "model file is present (warding doctor) before benchmarking."
         )
     return embed_fn
 

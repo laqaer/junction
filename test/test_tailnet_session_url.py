@@ -200,7 +200,7 @@ class TestTheTokenIsNotHandedToAForeignService:
         out = _run(
             monkeypatch, capsys, name="box.example-tailnet.ts.net", published=False
         )
-        assert "junction tailnet up" in out.err
+        assert "warding tailnet up" in out.err
 
     def test_a_published_dashboard_still_gets_its_url(self, home, monkeypatch, capsys):
         """The guard must not break the case it exists to protect."""

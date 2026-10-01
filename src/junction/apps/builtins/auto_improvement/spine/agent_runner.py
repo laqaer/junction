@@ -1283,7 +1283,7 @@ class SessionAgentRunner:
             )
         if factory is None:
             return AgentResult(
-                ok=False, error="no Junction provider configured", duration_s=time.monotonic() - t0
+                ok=False, error="no Warding provider configured", duration_s=time.monotonic() - t0
             )
         try:
             return asyncio.run(

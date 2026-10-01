@@ -305,7 +305,7 @@ export function InstancesPanel() {
             i18nKey="pages.settings.instancesPanel.enable_via_setting"
             components={{
               settingRef: <SettingRef configKey="instances.enabled" />,
-              restartCmd: <code className="text-text">junction restart</code>,
+              restartCmd: <code className="text-text">warding restart</code>,
             }}
           />
         </p>

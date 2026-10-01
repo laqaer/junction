@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "Incolla l'URL del token o il token grezzo…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "Limitazione della frequenza applicata dall'edge del tunnel (HTTP 429) — troppe richieste ravvicinate. La dashboard riprova automaticamente; se il problema persiste, attendi qualche secondo e ricarica.",
       "session_expired": "Sessione scaduta.",
-      "session_expired_sign_in_again": "Sessione scaduta. Esegui junction token in un terminale, quindi incolla l'URL nel banner in cima a questa pagina per accedere di nuovo.",
+      "session_expired_sign_in_again": "Sessione scaduta. Esegui warding token in un terminale, quindi incolla l'URL nel banner in cima a questa pagina per accedere di nuovo.",
       "stale_owner_session": "Questa sessione è precedente al proprietario configurato. Accedi di nuovo.",
-      "stale_owner_session_sign_in_again": "Questa sessione è precedente al proprietario configurato (l'accesso è avvenuto prima che JUNCTION_OWNER_ID fosse impostato). Esegui junction token in un terminale, quindi incolla l'URL nel banner in cima a questa pagina per accedere di nuovo.",
+      "stale_owner_session_sign_in_again": "Questa sessione è precedente al proprietario configurato (l'accesso è avvenuto prima che JUNCTION_OWNER_ID fosse impostato). Esegui warding token in un terminale, quindi incolla l'URL nel banner in cima a questa pagina per accedere di nuovo.",
       "stream_ended_without_completion": "Lo stream è terminato senza completarsi",
       "unexpected_server_response": "Risposta del server inaspettata"
     }
@@ -539,10 +539,10 @@
         "highlight_2": "Nessuna messaggistica privata tra agenti — ogni scambio avviene nel canale",
         "highlight_3": "Resti tu l’ultimo ad approvare qualsiasi operazione che modifica lo stato",
         "highlight_4": "Gli agenti restano nel canale finché non vengono congedati o scadono",
-        "highlight_5": "Nascosta dalla griglia dell’App Store; attivala con `junction app enable channels`",
+        "highlight_5": "Nascosta dalla griglia dell’App Store; attivala con `warding app enable channels`",
         "page_label": "Canali",
         "use_case_1": "Gestisci risposta agli incidenti, ricerca o revisione del codice con più ruoli agente nominati in una trascrizione condivisa e verificabile.",
-        "configuration_1": "Attiva l'app nascosta con junction app enable channels, crea un canale da un modello o con Custom, assegna agenti e modalità di ascolto, quindi usa le @menzioni per passare il lavoro."
+        "configuration_1": "Attiva l'app nascosta con warding app enable channels, crea un canale da un modello o con Custom, assegna agenti e modalità di ascolto, quindi usa le @menzioni per passare il lavoro."
       }
     },
     "codeReviewSage": {
@@ -4601,7 +4601,7 @@
         "highlight_5": "Include esempi eseguibili da cui partire",
         "page_label": "Workflow",
         "use_case_1": "Convalida e ispeziona script di workflow limitati oppure monitora fase per fase le esecuzioni principali di workflow multi-agente.",
-        "configuration_1": "Attiva l'app nascosta con junction app enable workflows; convalida Python DSL in Author oppure usa gli strumenti di workflow della chat o MCP per una vera orchestrazione degli agenti e monitorala in Runs."
+        "configuration_1": "Attiva l'app nascosta con warding app enable workflows; convalida Python DSL in Author oppure usa gli strumenti di workflow della chat o MCP per una vera orchestrazione degli agenti e monitorala in Runs."
       },
       "workflowRunTree": {
         "agent_many": "{{count}} agenti",
@@ -5054,7 +5054,6 @@
         "install_failed": "Installazione non riuscita",
         "install_from_path": "Installa da percorso",
         "installing": "Installazione in corso…",
-        "junction_app_install_path": "junction app install <percorso>",
         "manage_app_sources": "Gestisci le origini delle app",
         "path_to_app_directory": "/percorso/della/directory-app"
       },
@@ -9253,7 +9252,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "avvia qualsiasi worktree come\n              gateway isolato e temporaneo, così puoi testare un branch di funzionalità senza toccare la tua istanza attiva.",
       "branch": "Branch:",
       "build_pending": "build in attesa",
-      "build_pending_restart_gateway_to_apply_junction": "build in attesa — riavvia il gateway per applicare (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "build in attesa — riavvia il gateway per applicare (warding restart)",
       "building": "Build in corso…",
       "build_finished_restarting_gateway": "Build completata — riavvio del gateway…",
       "built": "build pronta",
@@ -9297,7 +9296,7 @@
       "force_remove_confirm_title": "Forzare la rimozione dei worktree?",
       "force_remove_warning": "I worktree selezionati hanno lavoro non unito — la rimozione è permanente e irreversibile.",
       "force_remove": "Forza rimozione di {{name}}",
-      "gateway_did_not_come_back_within_60s_reload_the": "Il gateway non è tornato disponibile entro 60s — ricarica la pagina manualmente oppure controlla `junction logs`.",
+      "gateway_did_not_come_back_within_60s_reload_the": "Il gateway non è tornato disponibile entro 60s — ricarica la pagina manualmente oppure controlla `warding logs`.",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "il gateway si è riavviato durante la sincronizzazione — esecuzione perduta; controlla lo stato di git e riesegui Pull+Build",
       "git_status_failed": "git status non riuscito",
       "has_unmerged_work_removing_deletes_permanently": "Contiene lavoro non unito — la rimozione ELIMINA in modo permanente.",
@@ -10149,7 +10148,7 @@
         "path_placeholder": "/percorso/del/tuo-modello.gguf",
         "reembed_done": "Ricalcolo completato",
         "reembed_failed": "Ricalcolo non riuscito",
-        "reembed_failed_hint": "Non è stato possibile applicare il modello. Passa il mouse per i dettagli o esegui 'junction doctor'.",
+        "reembed_failed_hint": "Non è stato possibile applicare il modello. Passa il mouse per i dettagli o esegui 'warding doctor'.",
         "reembedding": "Ricalcolo degli embedding…",
         "subtitle": "Gira in locale. Cambiarlo ricalcola gli embedding delle memorie in background.",
         "title": "Modello di embedding",
@@ -10312,7 +10311,7 @@
         "no_lessons": "Nessuna lezione",
         "no_lessons_yet": "Nessuna lezione ancora",
         "no_sessions_to_consolidate_start_a_chat_first": "Nessuna sessione da consolidare — avvia prima una chat",
-        "persistent_lessons_injected_into_every_session_a": "Lezioni persistenti inserite in ogni sessione. Estratte automaticamente dagli errori del task runner. Aggiungile manualmente con 'junction learn add'. Quando la memoria vettoriale è attiva, le lezioni sono gestite nella scheda Semantica come voci lesson.*.",
+        "persistent_lessons_injected_into_every_session_a": "Lezioni persistenti inserite in ogni sessione. Estratte automaticamente dagli errori del task runner. Aggiungile manualmente con 'warding learn add'. Quando la memoria vettoriale è attiva, le lezioni sono gestite nella scheda Semantica come voci lesson.*.",
         "preference": "preferenza",
         "preferences": "Preferenze",
         "projects": "Progetti",
@@ -11761,7 +11760,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "istanze remote restano calde (tunnel attivo) contemporaneamente; le altre si riconnettono su\n                richiesta. Regola con",
         "is_installed_somewhere_non_standard_on_the_remot": "è installato in una posizione\n            non standard sul remoto. Lascia vuoto per una normale installazione pip in PATH. Per trovarlo,\n            esegui sull'host remoto:",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "Caricamento…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "La gestione delle istanze remote è",

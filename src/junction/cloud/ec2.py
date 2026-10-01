@@ -298,7 +298,7 @@ def discover_network(
         return vpc_id, igw[0]["SubnetId"], "igw"
     raise aws.AWSError(
         f"no subnet in VPC {vpc_id} has a verified internet egress route (internet "
-        "gateway or NAT). Junction needs outbound access to install packages and "
+        "gateway or NAT). Warding needs outbound access to install packages and "
         "reach SSM. Add an internet gateway + public route (or a NAT), or pass a "
         "subnet that has one via `--subnet`, then retry.",
         action="ec2:DescribeRouteTables",
@@ -349,7 +349,7 @@ def resolve_explicit_subnet(
     if subnet_id not in egress:
         raise aws.AWSError(
             f"subnet {subnet_id} has no verified internet egress route (NAT or "
-            "internet gateway). Junction needs outbound access to install "
+            "internet gateway). Warding needs outbound access to install "
             "packages and reach SSM — add a NAT (or IGW) default route to the "
             "subnet's route table, then retry.",
             action="ec2:DescribeRouteTables",
@@ -703,7 +703,7 @@ def find_stack(tag: str, profile: str = "", region: str = "") -> Optional[dict[s
         raise aws.AWSError(
             f"a CloudFormation stack named {stack_name(tag)} already exists but is "
             f"NOT tagged {MANAGED_TAG_KEY}=true — refusing to touch it (it wasn't "
-            "created by Junction). Use a different --tag, or remove that stack.",
+            "created by Warding). Use a different --tag, or remove that stack.",
             action="cloudformation:DescribeStacks",
         )
     # Also require the instance tag to match THIS tag. A managed stack that
@@ -944,7 +944,7 @@ def list_stacks(profile: str = "", region: str = "") -> list[dict[str, Any]]:
 def _instance_id_for(tag: str, profile: str, region: str) -> str:
     st = describe(tag, profile, region)
     if not st.get("exists"):
-        raise aws.AWSError(f"no Junction instance found for tag '{tag}'")
+        raise aws.AWSError(f"no Warding instance found for tag '{tag}'")
     iid = st.get("instance_id", "")
     if not iid:
         raise aws.AWSError(f"instance for '{tag}' has no instance id (stack still creating?)")

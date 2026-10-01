@@ -150,7 +150,7 @@ def _model_line(model: Mapping[str, Any]) -> str:
     if status == "healthy":
         return "  model:   healthy"
     if status == "unreachable":
-        return "  model:   down (starts with junction up; gateway still works)"
+        return f"  model:   down (starts with {CLI_BIN} up; gateway still works)"
     return "  model:   degraded (gateway still works)"
 
 

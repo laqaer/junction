@@ -6680,7 +6680,7 @@ async def install_from_registry(
                     "ok": False,
                     "name": name,
                     "error": f"{name} is already installed on this machine. "
-                    f"Launch it to register with Junction automatically.",
+                    f"Launch it to register with Warding automatically.",
                 }
         except (asyncio.TimeoutError, OSError):
             pass

@@ -46,7 +46,7 @@ from junction.config.paths import (
     project_agents_dir,
 )
 from junction.config.superseded_defaults import render_doctor_section
-from junction.constants import MIN_NODE_MAJOR, PRODUCT_NAME
+from junction.constants import CLI_BIN, MIN_NODE_MAJOR, PRODUCT_NAME
 from junction.dashboard.crash_dump_store import (
     dump_age_seconds,
     dump_first_stack_lines,
@@ -333,7 +333,7 @@ def _doctor_effective_model(cfg: JunctionConfig, project_dir: str, issues: list[
         flag = "" if pinned_agent == "junction" else f" --agent {_safe_display(pinned_agent)}"
         global_shown = _safe_display(cfg.agent.model) if cfg.agent.model else "unset"
         print(f"  ⚠️  the spec pin decides because the global is {global_shown}")
-        print(f"      Fix: junction agent reset-model{flag}   (clears the pin, tracks the default)")
+        print(f"      Fix: warding agent reset-model{flag}   (clears the pin, tracks the default)")
 
 
 def _os_fix_hint(mac: str, linux: str, windows: str | None = None) -> str:
@@ -509,7 +509,7 @@ def _doctor_mcp_tools(agent_path: Path, issues: list[str]) -> None:
         # every .get() below would raise. Doctor exists to diagnose a broken
         # config, not die on one — treat it like the unparseable case, but say
         # what is actually wrong so the missing-server lines below make sense.
-        print("  ❌ agent spec is not a JSON object — re-run `junction setup`")
+        print("  ❌ agent spec is not a JSON object — re-run `warding setup`")
         agent_data = {}
 
     tools = agent_data.get("tools", [])
@@ -535,7 +535,7 @@ def _doctor_mcp_tools(agent_path: Path, issues: list[str]) -> None:
                         "— add the server entry, or drop the ref"
                     )
                 continue
-            print(f"  {ref}: ❌ missing from mcpServers (re-run `junction setup`)")
+            print(f"  {ref}: ❌ missing from mcpServers (re-run `warding setup`)")
             issues.append(f"{ref} config")
             continue
         if not isinstance(mcps.get(name), dict):
@@ -758,7 +758,7 @@ def _doctor_mcp_governance(agent_path: Path, issues: list[str]) -> None:
         else:
             print("  ❌ registry markers are present on the spec without the declaration")
         print(f"      affected: {', '.join(marked) if marked else names}")
-        print("      fix:  junction config set agent.mcp_registry_mode false")
+        print("      fix:  warding config set agent.mcp_registry_mode false")
         issues.append("MCP registry mode on non-IDC account")
         return
 
@@ -766,7 +766,7 @@ def _doctor_mcp_governance(agent_path: Path, issues: list[str]) -> None:
     if declared:
         print(f"  registry mode: on — {len(marked)}/{len(expected)} managed servers marked")
         if len(marked) < len(expected):
-            print("  ❌ markers missing — re-run `junction setup --agent-only`")
+            print("  ❌ markers missing — re-run `warding setup --agent-only`")
             issues.append("MCP registry markers")
             return
         # Deliberately not a success line. Whether the administrator actually
@@ -776,7 +776,7 @@ def _doctor_mcp_governance(agent_path: Path, issues: list[str]) -> None:
         print(f"      these names must be allow-listed, exactly: {names}")
         print(
             "      if tools are still missing in sessions, the account may no longer be "
-            "registry-governed — try `junction config set agent.mcp_registry_mode false`"
+            "registry-governed — try `warding config set agent.mcp_registry_mode false`"
         )
         return
 
@@ -786,7 +786,7 @@ def _doctor_mcp_governance(agent_path: Path, issues: list[str]) -> None:
         "administrator has configured an MCP Registry URL. In that mode kiro-cli "
         "connects only to servers marked 'type': \"registry\"."
     )
-    print("      Declare it:  junction config set agent.mcp_registry_mode true")
+    print("      Declare it:  warding config set agent.mcp_registry_mode true")
     print(f"      Then have your admin allow-list, by these exact names: {names}")
 
 
@@ -817,7 +817,7 @@ def _doctor_path_launcher() -> None:
     if not on_path:
         # Not an error on its own: the desktop app runs its bundled backend
         # directly, and a user who never wanted a terminal command is fine.
-        print("  junction CLI: ⏹ not on PATH (run `junction setup` to link it)")
+        print("  junction CLI: ⏹ not on PATH (run `warding setup` to link it)")
         return
     running = _resolve_junction_bin()
     if not os.path.isabs(running) or os.path.realpath(on_path) == os.path.realpath(running):
@@ -831,7 +831,7 @@ def _doctor_path_launcher() -> None:
     _print_wrapped(
         "Both can coexist — the wheel keeps its own updates — but `junction` in a "
         "terminal runs the one on PATH, which may be a different version or "
-        "channel. Run `junction setup` from the install you want to own the name."
+        "channel. Run `warding setup` from the install you want to own the name."
     )
 
 
@@ -986,7 +986,7 @@ def _doctor_sandbox_apparmor(reason: str, issues: list[str]) -> None:
         _print_wrapped(
             f"This host restricts unprivileged user namespaces and the "
             f"{apparmor.PROFILE_NAME} AppArmor profile is not installed, so no context "
-            f"on this host can build the sandbox. Run `junction service install` to "
+            f"on this host can build the sandbox. Run `warding service install` to "
             f"install the profile and confine the gateway service with it."
         )
         issues.append("sandbox: AppArmor profile not installed")
@@ -1000,7 +1000,7 @@ def _doctor_sandbox_apparmor(reason: str, issues: list[str]) -> None:
         _print_wrapped(
             f"This process already runs confined by {apparmor.PROFILE_NAME}, which "
             f"should grant user namespaces, yet the probe still failed. Re-run "
-            f"`junction service install` to re-render and reload the profile."
+            f"`warding service install` to re-render and reload the profile."
         )
         issues.append("sandbox: probe failed under the AppArmor profile")
         return
@@ -1010,7 +1010,7 @@ def _doctor_sandbox_apparmor(reason: str, issues: list[str]) -> None:
         _print_wrapped(
             f"The {apparmor.PROFILE_NAME} AppArmor profile is installed, but no systemd "
             f"unit applies it, so nothing on this host runs confined by it. Run "
-            f"`junction service install` to (re)install the gateway service with the "
+            f"`warding service install` to (re)install the gateway service with the "
             f"profile applied."
         )
         issues.append("sandbox: AppArmor profile installed but not applied")
@@ -1076,8 +1076,8 @@ def _doctor_sandbox(issues: list[str]) -> None:
     if kind == "foreign_sandbox":
         print("  backend:     ⚠️  an outer sandbox already confines this process")
         _print_wrapped(
-            "Junction cannot nest its own sandbox inside it. Launch the gateway "
-            "outside that sandbox to hand isolation back to Junction's own profile."
+            "Warding cannot nest its own sandbox inside it. Launch the gateway "
+            "outside that sandbox to hand isolation back to Warding's own profile."
         )
         return
 
@@ -1287,7 +1287,7 @@ def _doctor_pod_session_bus(issues: list[str]) -> None:
     sock = session_bus_socket()
     if not has_session_bus():
         print(f"  session bus: ❌ none for uid {uid} (looked for {sock})")
-        print("               Pods are systemd --user units, so `junction pod` is")
+        print("               Pods are systemd --user units, so `warding pod` is")
         print("               unavailable until one exists. Everything else works.")
         print(f"               Fix: loginctl enable-linger {user}")
         return
@@ -1514,7 +1514,7 @@ def _doctor_cli_installer_residue(issues: list[str]) -> None:
     print(f"  files:       ⚠️  {count_label} in {temp_dir}")
     print(f"  reclaimable: {size_label}")
     print("               Auto-update downloads that could not be applied while")
-    print("               kiro-cli was running, and are not cleaned up. Junction starts")
+    print("               kiro-cli was running, and are not cleaned up. Warding starts")
     print("               a kiro-cli per session, so one accumulates per start.")
     print(f"               Fix: delete {_CLI_INSTALLER_GLOB} from {temp_dir}, then stop")
     print("               the gateway and run `kiro-cli update` deliberately.")
@@ -1763,7 +1763,7 @@ def _discord_msg_content_line(
         print("  msg content: ❌ OFF, so thread and channel messages arrive empty")
         print(f"{_INDENT}and Discord can close the connection with code 4014.")
         print(f"{_INDENT}Fix: Developer Portal → Bot → Message Content Intent,")
-        print(f"{_INDENT}then `junction restart`.")
+        print(f"{_INDENT}then `warding restart`.")
         issues.append("discord: Message Content Intent off with threads allow-listed")
     else:
         print(f"  msg content: ⚠️  cannot verify ({grants.error or 'no answer'})")
@@ -1780,7 +1780,7 @@ def _discord_unused_intent_line(label: str, name: str, state: str) -> None:
     """
     if state in intent_probe.GRANTED_STATES:
         print(f"  {label + ':':<13}⚠️  {name} Intent is on but unused")
-        print(f"{_INDENT}Turn it off in the Developer Portal → Bot: nothing in Junction")
+        print(f"{_INDENT}Turn it off in the Developer Portal → Bot: nothing in Warding")
         print(f"{_INDENT}reads it, and it widens what Discord sends this bot.")
 
 
@@ -1822,7 +1822,7 @@ def _doctor_discord(
         print("  status:      ⏭  not enabled (optional)")
         print("  setup:       enable it in the dashboard → Settings → Discord, or set")
         print(f"{_INDENT}discord.enabled in config.json and DISCORD_BOT_TOKEN in")
-        print(f"{_INDENT}{env_path()}, then `junction restart`")
+        print(f"{_INDENT}{env_path()}, then `warding restart`")
         return
 
     print("  status:      ✅ enabled")
@@ -1835,7 +1835,7 @@ def _doctor_discord(
     else:
         print("  token:       ❌ missing, so the channel never starts")
         print(f"{_INDENT}Fix: paste the bot token in Settings → Discord, or add")
-        print(f"{_INDENT}DISCORD_BOT_TOKEN=<token> to {env_path()}, then `junction restart`")
+        print(f"{_INDENT}DISCORD_BOT_TOKEN=<token> to {env_path()}, then `warding restart`")
         issues.append("discord: enabled without a bot token")
 
     users = [str(u) for u in dc.allowed_user_ids]
@@ -1847,7 +1847,7 @@ def _doctor_discord(
         print("  users:       ❌ allow-list empty, so EVERY message is denied")
         print(f"{_INDENT}Fix: add your numeric user ID under Settings → Discord")
         print(f"{_INDENT}(Discord → Settings → Advanced → Developer Mode, then")
-        print(f"{_INDENT}right-click your name → Copy User ID), then `junction restart`")
+        print(f"{_INDENT}right-click your name → Copy User ID), then `warding restart`")
         issues.append("discord: empty user allow-list denies every message")
 
     # A server allow-list of either kind is what makes the privileged intent
@@ -1880,11 +1880,11 @@ def _doctor_discord(
         print(f"  connection:  ❌ not connected: {reason}")
         print(f"{_INDENT}Fix: 4014 = enable Message Content Intent (or clear the")
         print(f"{_INDENT}thread and channel allow-lists); 4004 = reset the bot")
-        print(f"{_INDENT}token. Then `junction restart`.")
+        print(f"{_INDENT}token. Then `warding restart`.")
         issues.append("discord: channel not connected")
     else:
         print("  connection:  ⚠️  not connected, and no reason was recorded")
-        print(f"{_INDENT}Discord settings are read at startup: run `junction")
+        print(f"{_INDENT}Discord settings are read at startup: run `warding")
         print(f"{_INDENT}restart` after changing them.")
 
     _discord_install_line(grants.application_id, dm_only=not needs_content)
@@ -1918,7 +1918,7 @@ def _doctor_whatsapp(cfg: JunctionConfig, issues: list[str]) -> None:
     wa = cfg.whatsapp
     if not wa.enabled:
         print("  status:      ⏭  not enabled (optional)")
-        print("  setup:       run 'junction setup --whatsapp', or enable it from")
+        print("  setup:       run 'warding setup --whatsapp', or enable it from")
         print("               the dashboard (Settings → Channels → WhatsApp)")
         return
 
@@ -2007,7 +2007,7 @@ def _doctor(
     setup is its job — and reports the failure here instead of aborting.
     """
 
-    print("Junction Doctor\n")
+    print(f"{PRODUCT_NAME} Doctor\n")
     issues: list[str] = []
 
     # ── Diagnostics bundle (--bundle) ──
@@ -2044,7 +2044,7 @@ def _doctor(
     # Compose-only: both planes + the role DAG. The full probe stays behind
     # a plain ``junction doctor`` so first-run triage is one screen, not eighty.
     if quick:
-        print("Quick compose (full probe: junction doctor)\n")
+        print(f"Quick compose (full probe: {CLI_BIN} doctor)\n")
         _doctor_planes()
         return
 
@@ -2132,7 +2132,7 @@ def _doctor(
     if git:
         print(f"  git:         ✅ {git}")
     else:
-        print("  git:         ❌ not found (needed for junction update)")
+        print("  git:         ❌ not found (needed for warding update)")
         issues.append("git")
 
     node = shutil.which("node")
@@ -2195,7 +2195,7 @@ def _doctor(
         else:
             print("  git repo:    ⚠️  not a git repo")
     elif not stale_project:
-        print("  project dir: ⚠️  not set (run junction setup from project root)")
+        print("  project dir: ⚠️  not set (run warding setup from project root)")
 
     cfg = JunctionConfig.load()
 
@@ -2205,7 +2205,7 @@ def _doctor(
     if agent_path.exists():
         print(f"  config:      ✅ {agent_path}")
     else:
-        print("  config:      ❌ not found (run junction setup)")
+        print("  config:      ❌ not found (run warding setup)")
         issues.append("agent config")
 
     # Model pins across ALL specs, not just the default one. A pin kiro-cli
@@ -2350,7 +2350,7 @@ def _doctor(
                 issues.append("python deps")
     else:
         print(f"  python:      ✅ {sys.executable} ({sys.version.split()[0]})")
-        print(f"  junction:   ✅ {_mc_version}")
+        print(f"  warding:     ✅ {_mc_version}")
         try:
             import aiohttp  # noqa: F401
             import slack_sdk  # noqa: F401
@@ -2523,7 +2523,7 @@ def _doctor(
             + _os_fix_hint(
                 "brew install ffmpeg",
                 "drop a static ffmpeg build into ~/.local/bin "
-                "(not in AL2023 repos; Junction auto-detects it)",
+                "(not in AL2023 repos; Warding auto-detects it)",
                 windows="winget install Gyan.FFmpeg",
             )
         )
@@ -2626,7 +2626,7 @@ def _doctor(
                 issues.append("slack workspace: not in allowlist")
     else:
         print("  status:      ⏭  not configured (optional)")
-        print("  setup:       run 'junction setup --slack', or connect any channel")
+        print("  setup:       run 'warding setup --slack', or connect any channel")
         print("               (Slack, Discord, Telegram, …) from the dashboard")
 
     # ── Discord (optional) ──
@@ -2757,7 +2757,7 @@ def _doctor(
             mh = machine_hostname() or "this-host"
             print("\n  💡 Remote access: Run on your LOCAL machine:")
             print(f"     ssh -NL {_port}:localhost:{_port} {mh}")
-            print("     Then run: junction token")
+            print("     Then run: warding token")
 
     # Verify token auth is enforced on non-loopback (security check)
     if _port and not _local:

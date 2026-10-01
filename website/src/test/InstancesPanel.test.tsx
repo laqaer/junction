@@ -47,7 +47,7 @@ describe('InstancesPanel', () => {
     ;vi.mocked(api.listInstances).mockResolvedValue({ active: false, instances: [], warm_set_cap: 5 })
     renderWithProviders(<InstancesPanel />)
     expect(await screen.findByText(/not active yet/i)).toBeInTheDocument()
-    expect(screen.getByText(/junction restart/i)).toBeInTheDocument()
+    expect(screen.getByText(/warding restart/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Disable remote instance management/i })).toBeInTheDocument()
   })
 

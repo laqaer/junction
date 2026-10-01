@@ -1569,7 +1569,7 @@ def _emit_mcp_oauth_request(
             f"🚫 {label} sent an authentication URL containing a credential "
             "pattern (rejected). If this is a self-hosted or otherwise "
             "unlisted identity provider, its authorization endpoint may need "
-            "adding to oauth_endpoints.json in the Junction data home; "
+            "adding to oauth_endpoints.json in the Warding data home; "
             "otherwise ask the server owner to fix the URL.",
             "msg msg-warn",
             meta={

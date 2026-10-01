@@ -1207,7 +1207,7 @@ def test_session_run_reports_no_configured_provider(monkeypatch):
     )
     res = R.SessionAgentRunner().run("prompt")
     assert res.ok is False
-    assert res.error == "no Junction provider configured"
+    assert res.error == "no Warding provider configured"
 
 
 def test_session_run_drives_the_provider_and_returns_the_assembled_text():

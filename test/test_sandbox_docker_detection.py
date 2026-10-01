@@ -282,4 +282,4 @@ class TestWrapArgvDockerGuidance:
         message = str(exc_info.value)
         assert "apparmor_restrict_unprivileged_userns" in message
         # The profile is offered before the opt-out, and the opt-out is still named.
-        assert message.index("junction service install") < message.index("last resort")
+        assert message.index("warding service install") < message.index("last resort")

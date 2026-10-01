@@ -852,8 +852,8 @@ class TestStatusOutput:
         )
         expected_optout = f"""  To opt out, choose one:
 
-    1. Junction CLI (recommended)
-       junction telemetry disable
+    1. Warding CLI (recommended)
+       warding telemetry disable
 
     2. Environment variable (choose your shell)
        macOS / Linux

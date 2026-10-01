@@ -64,7 +64,7 @@ def register_bench_parser(sub: argparse._SubParsersAction) -> None:
         sub,
         "bench",
         description=(
-            "Measures the Junction memory layer against published benchmarks. The "
+            "Measures the Warding memory layer against published benchmarks. The "
             "retrieval ruler is deterministic, so a delta between two commits is "
             "exact and needs a single pass -- unlike an end-to-end answer score, "
             "which is a random variable because sampling cannot be pinned."
@@ -206,7 +206,7 @@ def _bench_dispatch(args: argparse.Namespace) -> int:
     """Route to a subcommand. Returns a process exit code."""
     action = getattr(args, "bench_action", None)
     if action is None:
-        print("usage: junction bench {list,fetch,retrieval,compare}")
+        print("usage: warding bench {list,fetch,retrieval,compare}")
         return 2
 
     # Deferred deliberately, and measured. `cli.py` imports this module at module
@@ -299,7 +299,7 @@ def _load_report(path: str, label: str) -> dict:
         print(
             f"error: the {label} report is not valid JSON. A report truncated by "
             "an interrupted run is the usual cause -- re-run "
-            "'junction bench retrieval' to regenerate it."
+            "'warding bench retrieval' to regenerate it."
         )
         raise _BenchError(1) from None
 

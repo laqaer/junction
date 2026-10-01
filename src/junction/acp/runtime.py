@@ -274,7 +274,7 @@ def _format_runtime_rpc_error(error: object) -> str:
             return (
                 f"Agent spec '{name}' is not installed: kiro-cli found no "
                 f"'{name}.json' in {kiro_agents_dir()}. Every turn fails until it "
-                f"is restored — repair with `junction setup --agent-only --clean`, "
+                f"is restored — repair with `warding setup --agent-only --clean`, "
                 f"then restart the gateway."
             )
     return f"RPC error: {error}"
@@ -2715,7 +2715,7 @@ class AcpRuntime:
                 f"(advertised modes: {_ids or 'none'}); its "
                 f"~/.kiro/agents/{mode_agent}.json is likely missing. Refusing to run "
                 f"the backend default mode {_current or '(unknown)'} in its place. "
-                f"Run `junction setup --agent-only` to materialize the agent config."
+                f"Run `warding setup --agent-only` to materialize the agent config."
             )
 
         # Drain MCP-server-init / oauth / config notifications before the first
@@ -2884,7 +2884,7 @@ class AcpRuntime:
                 f"{resume_sid} (advertised modes: {_ids or 'none'}); its "
                 f"~/.kiro/agents/{agent}.json is likely missing. Refusing to run "
                 f"the backend default mode {_current or '(unknown)'} in its place. "
-                f"Run `junction setup --agent-only` to materialize the agent config."
+                f"Run `warding setup --agent-only` to materialize the agent config."
             )
 
         # Drain MCP-init / oauth / config notifications before the first prompt

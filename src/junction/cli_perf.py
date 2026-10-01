@@ -331,7 +331,7 @@ def perf_cmd(args: argparse.Namespace) -> int:
     """Dispatch a ``perf`` subcommand."""
     if args.perf_action == "sample":
         return _perf_sample(args)
-    print("Usage: junction perf sample [--pid PID | --call module:callable]", file=sys.stderr)
+    print("Usage: warding perf sample [--pid PID | --call module:callable]", file=sys.stderr)
     return 2
 
 

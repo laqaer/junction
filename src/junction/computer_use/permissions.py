@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 # users to System Settings to fix something that is not broken.
 HINT_RESPONSIBLE = (
     "macOS attributes Accessibility and Screen Recording grants to the process "
-    "that launched Junction, not to Junction itself. Grant them to {process} — "
+    "that launched Warding, not to Warding itself. Grant them to {process} — "
     "and note that 'not detected' does not always mean unavailable."
 )
 HINT_UNSUPPORTED = "computer use requires macOS; there is nothing to grant on this platform."
@@ -76,7 +76,7 @@ KEY_SCREEN_RECORDING = "screen_recording"
 KEY_RESPONSIBLE_HINT = "responsible_hint"
 
 # Fallback label when the responsible process cannot be named.
-_UNKNOWN_PROCESS = "the application that launched Junction"
+_UNKNOWN_PROCESS = "the application that launched Warding"
 
 
 def probe() -> PermissionProbe:

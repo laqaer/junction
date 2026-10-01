@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "Cole a URL do token ou o token bruto…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "Limite de taxa aplicado pela borda do túnel (HTTP 429) — muitas solicitações em rajada. O painel repete a tentativa automaticamente; se isso persistir, aguarde alguns segundos e recarregue.",
       "session_expired": "Sessão expirada.",
-      "session_expired_sign_in_again": "A sessão expirou. Execute junction token em um terminal e cole o URL no banner no topo desta página para entrar novamente.",
+      "session_expired_sign_in_again": "A sessão expirou. Execute warding token em um terminal e cole o URL no banner no topo desta página para entrar novamente.",
       "stale_owner_session": "Esta sessão é anterior ao proprietário configurado. Entre novamente.",
-      "stale_owner_session_sign_in_again": "Esta sessão é anterior ao proprietário configurado (o login ocorreu antes de JUNCTION_OWNER_ID ser definido). Execute junction token em um terminal e cole o URL no banner no topo desta página para entrar novamente.",
+      "stale_owner_session_sign_in_again": "Esta sessão é anterior ao proprietário configurado (o login ocorreu antes de JUNCTION_OWNER_ID ser definido). Execute warding token em um terminal e cole o URL no banner no topo desta página para entrar novamente.",
       "stream_ended_without_completion": "Stream encerrado sem conclusão",
       "unexpected_server_response": "Resposta inesperada do servidor"
     }
@@ -539,10 +539,10 @@
         "highlight_2": "Sem mensagens privadas entre agentes — toda troca acontece no canal",
         "highlight_3": "Você continua sendo o aprovador final de qualquer operação que altere o estado",
         "highlight_4": "Os agentes permanecem no canal até serem dispensados ou expirarem",
-        "highlight_5": "Oculto na grade da App Store; ative com `junction app enable channels`",
+        "highlight_5": "Oculto na grade da App Store; ative com `warding app enable channels`",
         "page_label": "Canais",
         "use_case_1": "Conduza resposta a incidentes, pesquisa ou revisão de código com vários papéis de agente nomeados em uma transcrição compartilhada e auditável.",
-        "configuration_1": "Ative o app oculto com junction app enable channels, crie um canal a partir de um modelo ou com Custom, atribua agentes e modos de escuta e use @menções para repassar o trabalho."
+        "configuration_1": "Ative o app oculto com warding app enable channels, crie um canal a partir de um modelo ou com Custom, atribua agentes e modos de escuta e use @menções para repassar o trabalho."
       }
     },
     "codeReviewSage": {
@@ -4601,7 +4601,7 @@
         "highlight_5": "Já vem com exemplos executáveis para você partir deles",
         "page_label": "Workflows",
         "use_case_1": "Valide e inspecione scripts restritos de workflow ou monitore fase a fase as principais execuções de workflows multiagente.",
-        "configuration_1": "Ative o app oculto com junction app enable workflows; valide Python DSL em Author ou use as ferramentas de workflow do chat ou MCP para uma orquestração real de agentes e monitore-a em Runs."
+        "configuration_1": "Ative o app oculto com warding app enable workflows; valide Python DSL em Author ou use as ferramentas de workflow do chat ou MCP para uma orquestração real de agentes e monitore-a em Runs."
       },
       "workflowRunTree": {
         "agent_many": "{{count}} agentes",
@@ -5054,7 +5054,6 @@
         "install_failed": "Falha ao instalar",
         "install_from_path": "Instalar a partir do caminho",
         "installing": "Instalando…",
-        "junction_app_install_path": "junction app install <path>",
         "manage_app_sources": "Gerenciar fontes de apps",
         "path_to_app_directory": "/path/to/app-directory"
       },
@@ -9253,7 +9252,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "inicia qualquer worktree como um\n              gateway isolado e descartável, para você testar uma branch de feature sem tocar na sua instância ativa.",
       "branch": "Branch:",
       "build_pending": "build pendente",
-      "build_pending_restart_gateway_to_apply_junction": "build pendente — reinicie o gateway para aplicar (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "build pendente — reinicie o gateway para aplicar (warding restart)",
       "building": "Compilando…",
       "build_finished_restarting_gateway": "Build concluída — reiniciando o gateway…",
       "built": "compilada",
@@ -9297,7 +9296,7 @@
       "force_remove_confirm_title": "Forçar remoção das worktrees?",
       "force_remove_warning": "As worktrees selecionadas têm trabalho não mesclado — a remoção é permanente e não pode ser desfeita.",
       "force_remove": "Forçar remoção de {{name}}",
-      "gateway_did_not_come_back_within_60s_reload_the": "O gateway não voltou em 60s — recarregue a página manualmente ou verifique `junction logs`.",
+      "gateway_did_not_come_back_within_60s_reload_the": "O gateway não voltou em 60s — recarregue a página manualmente ou verifique `warding logs`.",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "gateway reiniciado durante a sincronização — execução perdida; verifique o estado do git e execute o Pull+Build novamente",
       "git_status_failed": "git status falhou",
       "has_unmerged_work_removing_deletes_permanently": "Tem trabalho não mesclado — remover EXCLUI permanentemente.",
@@ -10149,7 +10148,7 @@
         "path_placeholder": "/caminho/para/seu-modelo.gguf",
         "reembed_done": "Regeneração concluída",
         "reembed_failed": "A regeneração falhou",
-        "reembed_failed_hint": "Não foi possível aplicar o modelo. Passe o mouse para detalhes ou execute 'junction doctor'.",
+        "reembed_failed_hint": "Não foi possível aplicar o modelo. Passe o mouse para detalhes ou execute 'warding doctor'.",
         "reembedding": "Regenerando embeddings…",
         "subtitle": "Roda localmente. Alterá-lo regenera os embeddings das memórias em segundo plano.",
         "title": "Modelo de embeddings",
@@ -10312,7 +10311,7 @@
         "no_lessons": "Nenhuma lição",
         "no_lessons_yet": "Nenhuma lição ainda",
         "no_sessions_to_consolidate_start_a_chat_first": "Nenhuma sessão para consolidar — inicie um chat primeiro",
-        "persistent_lessons_injected_into_every_session_a": "Lições persistentes injetadas em todas as sessões. Extraídas automaticamente das falhas do Task Runner. Adicione manualmente com 'junction learn add'. Quando a memória vetorial está ativa, as lições são gerenciadas na aba Semântica como entradas lesson.*.",
+        "persistent_lessons_injected_into_every_session_a": "Lições persistentes injetadas em todas as sessões. Extraídas automaticamente das falhas do Task Runner. Adicione manualmente com 'warding learn add'. Quando a memória vetorial está ativa, as lições são gerenciadas na aba Semântica como entradas lesson.*.",
         "preference": "preferência",
         "preferences": "Preferências",
         "projects": "Projetos",
@@ -11761,7 +11760,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "instâncias remotas permanecem aquecidas (túnel ativo) ao mesmo tempo; as demais reconectam sob\n                demanda. Ajuste com",
         "is_installed_somewhere_non_standard_on_the_remot": "estiver instalado em um local\n            fora do padrão no host remoto. Deixe em branco para uma instalação pip normal no PATH. Para\n            encontrá-lo, execute no host remoto:",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "Carregando…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "O gerenciamento de instâncias remotas está",

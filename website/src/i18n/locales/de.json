@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "Token-URL oder Roh-Token einfügen…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "Vom Tunnel-Edge gedrosselt (HTTP 429) — zu viele Anfragen in kurzer Folge. Das Dashboard versucht es automatisch erneut; falls das anhält, warte ein paar Sekunden und lade die Seite neu.",
       "session_expired": "Sitzung abgelaufen.",
-      "session_expired_sign_in_again": "Die Sitzung ist abgelaufen. Führen Sie junction token in einem Terminal aus und fügen Sie die URL in das Banner oben auf dieser Seite ein, um sich erneut anzumelden.",
+      "session_expired_sign_in_again": "Die Sitzung ist abgelaufen. Führen Sie warding token in einem Terminal aus und fügen Sie die URL in das Banner oben auf dieser Seite ein, um sich erneut anzumelden.",
       "stale_owner_session": "Diese Sitzung stammt aus der Zeit vor dem konfigurierten Besitzer. Melden Sie sich erneut an.",
-      "stale_owner_session_sign_in_again": "Diese Sitzung stammt aus der Zeit vor dem konfigurierten Besitzer (die Anmeldung erfolgte, bevor JUNCTION_OWNER_ID gesetzt wurde). Führen Sie junction token in einem Terminal aus und fügen Sie die URL in das Banner oben auf dieser Seite ein, um sich erneut anzumelden.",
+      "stale_owner_session_sign_in_again": "Diese Sitzung stammt aus der Zeit vor dem konfigurierten Besitzer (die Anmeldung erfolgte, bevor JUNCTION_OWNER_ID gesetzt wurde). Führen Sie warding token in einem Terminal aus und fügen Sie die URL in das Banner oben auf dieser Seite ein, um sich erneut anzumelden.",
       "stream_ended_without_completion": "Stream endete ohne Abschluss",
       "unexpected_server_response": "Unerwartete Serverantwort"
     }
@@ -532,10 +532,10 @@
         "highlight_2": "Keine private Kommunikation zwischen Agenten — jeder Austausch findet im Kanal statt",
         "highlight_3": "Du bleibst die letzte Instanz für jede Operation, die den Zustand verändert",
         "highlight_4": "Agenten bleiben im Kanal, bis sie entlassen werden oder ihre Zeit abläuft",
-        "highlight_5": "Im App-Store-Raster ausgeblendet; aktivieren mit `junction app enable channels`",
+        "highlight_5": "Im App-Store-Raster ausgeblendet; aktivieren mit `warding app enable channels`",
         "page_label": "Kanäle",
         "use_case_1": "Bearbeite Vorfälle, Recherchen oder Code-Reviews mit mehreren benannten Agentenrollen in einem gemeinsamen, nachvollziehbaren Transkript.",
-        "configuration_1": "Aktiviere die ausgeblendete App mit junction app enable channels, erstelle einen Kanal aus einer Vorlage oder mit Custom, weise Agenten und Zuhörmodi zu und übergib Arbeit per @-Erwähnung."
+        "configuration_1": "Aktiviere die ausgeblendete App mit warding app enable channels, erstelle einen Kanal aus einer Vorlage oder mit Custom, weise Agenten und Zuhörmodi zu und übergib Arbeit per @-Erwähnung."
       }
     },
     "codeReviewSage": {
@@ -4568,7 +4568,7 @@
         "highlight_5": "Bringt ausführbare Beispiele mit, um damit zu starten",
         "page_label": "Workflows",
         "use_case_1": "Validiere und untersuche eingeschränkte Workflow-Skripte oder überwache zentrale Multi-Agenten-Workflow-Läufe Phase für Phase.",
-        "configuration_1": "Aktiviere die ausgeblendete App mit junction app enable workflows; validiere DSL-Python unter Author oder nutze Chat- beziehungsweise MCP-Workflow-Werkzeuge für echte Agentenorchestrierung und überwache sie unter Runs."
+        "configuration_1": "Aktiviere die ausgeblendete App mit warding app enable workflows; validiere DSL-Python unter Author oder nutze Chat- beziehungsweise MCP-Workflow-Werkzeuge für echte Agentenorchestrierung und überwache sie unter Runs."
       },
       "workflowRunTree": {
         "agent_one": "{{count}} Agent",
@@ -4970,7 +4970,6 @@
         "install_failed": "Installation fehlgeschlagen",
         "install_from_path": "Aus Pfad installieren",
         "installing": "Wird installiert…",
-        "junction_app_install_path": "junction app install <pfad>",
         "manage_app_sources": "App-Quellen verwalten",
         "path_to_app_directory": "/pfad/zum/app-verzeichnis"
       },
@@ -9112,7 +9111,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "startet jeden Worktree als\n              isoliertes Einweg-Gateway, damit Sie einen Feature-Branch prüfen können, ohne Ihre Live-Instanz zu berühren.",
       "branch": "Branch:",
       "build_pending": "Build ausstehend",
-      "build_pending_restart_gateway_to_apply_junction": "Build ausstehend — Gateway neu starten zum Anwenden (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "Build ausstehend — Gateway neu starten zum Anwenden (warding restart)",
       "building": "Build läuft…",
       "build_finished_restarting_gateway": "Build abgeschlossen — Gateway wird neu gestartet…",
       "built": "gebaut",
@@ -9155,7 +9154,7 @@
       "force_remove_confirm_title": "Worktrees zwangsweise entfernen?",
       "force_remove_warning": "Ausgewählte Worktrees haben nicht zusammengeführte Änderungen — das Entfernen ist dauerhaft und kann nicht rückgängig gemacht werden.",
       "force_remove": "{{name}} erzwungen entfernen",
-      "gateway_did_not_come_back_within_60s_reload_the": "Gateway ist nicht innerhalb von 60 s zurückgekehrt — lade die Seite manuell neu oder prüfe `junction logs`.",
+      "gateway_did_not_come_back_within_60s_reload_the": "Gateway ist nicht innerhalb von 60 s zurückgekehrt — lade die Seite manuell neu oder prüfe `warding logs`.",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "Gateway wurde mitten in der Synchronisierung neu gestartet — Ausführung verloren; Git-Status prüfen und Pull+Build erneut ausführen",
       "git_status_failed": "git status fehlgeschlagen",
       "has_unmerged_work_removing_deletes_permanently": "Enthält nicht zusammengeführte Arbeit — Entfernen LÖSCHT sie endgültig.",
@@ -10003,7 +10002,7 @@
         "path_placeholder": "/pfad/zu/deinem-modell.gguf",
         "reembed_done": "Neuberechnung abgeschlossen",
         "reembed_failed": "Neuberechnung fehlgeschlagen",
-        "reembed_failed_hint": "Das Modell konnte nicht angewendet werden. Für Details hovern oder 'junction doctor' ausführen.",
+        "reembed_failed_hint": "Das Modell konnte nicht angewendet werden. Für Details hovern oder 'warding doctor' ausführen.",
         "reembedding": "Embeddings werden neu berechnet…",
         "subtitle": "Läuft lokal. Ein Wechsel berechnet die Embeddings gespeicherter Erinnerungen im Hintergrund neu.",
         "title": "Embedding-Modell",
@@ -10164,7 +10163,7 @@
         "no_lessons": "Keine Lektionen",
         "no_lessons_yet": "Noch keine Lektionen",
         "no_sessions_to_consolidate_start_a_chat_first": "Keine Sitzungen zum Konsolidieren — starten Sie zuerst einen Chat",
-        "persistent_lessons_injected_into_every_session_a": "Dauerhafte Lektionen, die in jede Sitzung eingefügt werden. Werden automatisch aus Fehlern des Task Runners extrahiert. Manuell hinzufügen über „junction learn add“. Wenn die Vektor-Erinnerung aktiv ist, werden Lektionen im Semantik-Tab als lesson.*-Einträge verwaltet.",
+        "persistent_lessons_injected_into_every_session_a": "Dauerhafte Lektionen, die in jede Sitzung eingefügt werden. Werden automatisch aus Fehlern des Task Runners extrahiert. Manuell hinzufügen über „warding learn add“. Wenn die Vektor-Erinnerung aktiv ist, werden Lektionen im Semantik-Tab als lesson.*-Einträge verwaltet.",
         "preference": "Präferenz",
         "preferences": "Präferenzen",
         "projects": "Projekte",
@@ -11602,7 +11601,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "Remote-Instanzen bleiben gleichzeitig warm (aktiver Tunnel); die übrigen verbinden sich bei\n                Bedarf neu. Anpassen mit",
         "is_installed_somewhere_non_standard_on_the_remot": "an einem nicht standardmäßigen Ort\n            auf dem Remote installiert ist. Für eine normale pip-Installation in PATH leer lassen. Um es zu finden,\n            führen Sie auf dem Remote-Host aus:",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "Wird geladen…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "Die Verwaltung der Remote-Instanzen ist",

@@ -680,7 +680,7 @@ class AcpProvider(LLMProvider):
             "Resume of kiro session %s failed after %d attempts (lock still "
             "active in another process — a stale lock from an uncleanly-killed "
             "holder, or a rare same-gateway session-key alias miss); migrating "
-            "to a fresh session with Junction history replay",
+            "to a fresh session with Warding history replay",
             resume_sid,
             _RESUME_MAX_ATTEMPTS,
         )

@@ -56,7 +56,7 @@ describe('SettingRef file-mode with useConfigSchema hook', () => {
     const button = screen.getByRole('button')
     await user.click(button)
     // After click, popover should show the CLI command with boolean placeholder
-    expect(await screen.findByText(/junction config set instances\.enabled true/)).toBeTruthy()
+    expect(await screen.findByText(/warding config set instances\.enabled true/)).toBeTruthy()
   })
 
   it('instances.warm_set_cap resolves to file mode (not unknown)', () => {

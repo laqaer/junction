@@ -150,8 +150,8 @@ _DASHBOARD_HTML_NOT_FOUND = (
     " the package before starting the gateway.</p>"
     f"<p><strong>Try restarting {PRODUCT_NAME}.</strong> The exact restart step"
     " depends on your environment: if you installed it as a service use"
-    " <code>junction service restart</code> (systemd / launchd); otherwise"
-    " stop the running <code>junction up</code> process and start it"
+    " <code>warding restart</code> (systemd / launchd); otherwise"
+    " stop the running <code>warding up</code> process and start it"
     " again.</p>"
 )
 

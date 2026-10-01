@@ -113,7 +113,7 @@ def _npm_bin() -> str | None:
     if npm:
         return npm
     _say(
-        "FATAL: npm not found. Junction looks for a Node toolchain in "
+        "FATAL: npm not found. Warding looks for a Node toolchain in "
         "<data-home>/node-bin-dir (written by ensure-node.sh), then in "
         "mise / asdf / nvm / fnm / volta install dirs, then on PATH.\n"
         "  Fix: run `bash ensure-node.sh` in the main checkout to install "
@@ -246,5 +246,5 @@ def provision(checkout: Path, build: bool = True) -> bool:
         return True
     if not build_dist(checkout):
         return False
-    _say(f"[provision] {checkout.name} is ready — `junction pod up {checkout.name}`")
+    _say(f"[provision] {checkout.name} is ready — `warding pod up {checkout.name}`")
     return True

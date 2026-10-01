@@ -133,7 +133,7 @@ def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     revisions."""
     p = argparse.ArgumentParser(
         prog="junction-mcp-stub",
-        description="Junction MCP shim: proxies kiro-cli stdio to the local gateway",
+        description="Warding MCP shim: proxies kiro-cli stdio to the local gateway",
     )
     p.add_argument("--server", required=True)
     p.add_argument("--agent", required=True)

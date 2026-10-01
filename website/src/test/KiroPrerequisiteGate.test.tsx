@@ -414,7 +414,7 @@ describe('KiroPrerequisiteGate', () => {
     expect(screen.getByText(/Rewrite the specs from scratch/)).toBeInTheDocument()
     // The command must NOT come from a catalog value: a translator must not be
     // able to alter a string the user pastes into a shell.
-    const command = screen.getByText('junction setup --agent-only --clean')
+    const command = screen.getByText('warding setup --agent-only --clean')
     expect(command.tagName).toBe('CODE')
     // The label the copy names must be the label actually rendered.
     expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument()
@@ -919,7 +919,7 @@ describe('KiroPrerequisiteGate', () => {
     // A momentary failure identifies nothing to reconfigure, so the host
     // remedies must stay hidden — they would be advice to break a working setup.
     expect(screen.queryByText('How to fix')).not.toBeInTheDocument()
-    expect(screen.queryByText('junction service install')).not.toBeInTheDocument()
+    expect(screen.queryByText('warding service install')).not.toBeInTheDocument()
   })
 
   it('offers the cap remedy on a transient verdict without telling the user to act now', async () => {
@@ -968,7 +968,7 @@ describe('KiroPrerequisiteGate', () => {
     )
 
     expect(await screen.findByText('How to fix')).toBeInTheDocument()
-    expect(screen.getByText('junction service install')).toBeInTheDocument()
+    expect(screen.getByText('warding service install')).toBeInTheDocument()
     // `aa-exec -p` must NOT be offered: entering a named profile is not
     // permitted for an unconfined user and aa-exec execs unconfined instead of
     // failing, so the command looks applied and changes nothing.
@@ -978,7 +978,7 @@ describe('KiroPrerequisiteGate', () => {
     expect(screen.queryByText(/provides no OS-level sandbox/)).not.toBeInTheDocument()
     expect(screen.getByText(/allows user namespaces/)).toBeInTheDocument()
     // The reporter's explicit ask: tell me to run doctor.
-    expect(screen.getByText('junction doctor')).toBeInTheDocument()
+    expect(screen.getByText('warding doctor')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Linux sandbox guide/ })).toHaveAttribute(
       'href',
       expect.stringContaining('docs/guides/install.md'),
@@ -1002,7 +1002,7 @@ describe('KiroPrerequisiteGate', () => {
       <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
     )
 
-    const command = await screen.findByText('junction service install')
+    const command = await screen.findByText('warding service install')
     const button = command.closest('button')
     expect(button).not.toBeNull()
     fireEvent.click(button!)
@@ -1010,7 +1010,7 @@ describe('KiroPrerequisiteGate', () => {
     // Read out of the DOM, so what is copied is exactly what is shown — not a
     // duplicated prop that could drift from the rendered text.
     await waitFor(() =>
-      expect(copyToClipboard).toHaveBeenCalledWith('junction service install'),
+      expect(copyToClipboard).toHaveBeenCalledWith('warding service install'),
     )
   })
 
@@ -1031,7 +1031,7 @@ describe('KiroPrerequisiteGate', () => {
       <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
     )
 
-    const command = await screen.findByText('junction service install')
+    const command = await screen.findByText('warding service install')
     const list = command.closest('ul, ol')
     expect(list).not.toBeNull()
     expect(list!.querySelectorAll('li')).toHaveLength(1)
@@ -1057,9 +1057,9 @@ describe('KiroPrerequisiteGate', () => {
       <KiroPrerequisiteGate><div>Dashboard loaded</div></KiroPrerequisiteGate>,
     )
 
-    expect(await screen.findByText('junction doctor')).toBeInTheDocument()
+    expect(await screen.findByText('warding doctor')).toBeInTheDocument()
     expect(screen.queryByText('How to fix')).not.toBeInTheDocument()
-    expect(screen.queryByText('junction service install')).not.toBeInTheDocument()
+    expect(screen.queryByText('warding service install')).not.toBeInTheDocument()
     // Unclassified means the generic body is the honest one.
     expect(screen.getByText(/provides no OS-level sandbox/)).toBeInTheDocument()
   })

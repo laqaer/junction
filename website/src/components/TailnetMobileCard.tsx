@@ -435,7 +435,7 @@ export function TailnetMobileCard() {
               to read. */}
           {step === 'occupied' ? (
             <p className="mt-2 text-muted">
-              <code className="select-all">junction tailnet up</code>
+              <code className="select-all">warding tailnet up</code>
             </p>
           ) : null}
 

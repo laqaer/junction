@@ -197,7 +197,7 @@ def _resolve_target(*, for_main_home_check: bool = False) -> Path:
     if not raw:
         raise SeedError(
             "$JUNCTION_HOME is not set. Point it at a dev directory "
-            "(e.g. JUNCTION_HOME=~/.junction-dev junction gateway --seed empty).",
+            "(e.g. JUNCTION_HOME=~/.junction-dev warding gateway --seed empty).",
             guardrail=SeedError.GUARDRAIL_UNSET_HOME,
         )
     target = Path(raw).expanduser()

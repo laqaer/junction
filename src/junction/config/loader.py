@@ -1556,7 +1556,7 @@ class AgentConfig:
             "applies to IAM Identity Center and API-key sign-ins). In registry "
             "mode the client connects ONLY to mcpServers entries carrying "
             "'type': \"registry\" that resolve to a catalog entry of the same "
-            "name, so Junction stamps that marker on the servers it manages. "
+            "name, so Warding stamps that marker on the servers it manages. "
             "Leave false on a personal account: with no registry configured the "
             "filter inverts and registry-marked entries are the ones dropped. "
             "The administrator must also allow-list junction-core, junction-cron "
@@ -1600,7 +1600,7 @@ class AgentConfig:
             "Sweep foreign agent backups",
             "When true, the agents-directory janitor also deletes aged backup "
             "files (*.bak-<digits> / *.json.bak.<digits>, older than 14 days) "
-            "from the shared kiro agents directory. OFF by default: Junction "
+            "from the shared kiro agents directory. OFF by default: Warding "
             "does not author those backups, so every one it would delete belongs "
             "to another tool whose retention policy is not ours to decide. The "
             "orphaned atomic-write TEMP sweep (24h) always runs and reclaims most "
@@ -1616,7 +1616,7 @@ class AgentConfig:
             "isolation (namespace on Linux, sandbox-exec on macOS) and "
             "automatically defers to kiro-cli's internal sandbox on macOS when "
             "it is enabled (kiro-cli >= 2.13; nested seatbelt causes EPERM). "
-            "Set to 'off' to skip Junction's own OS-level sandbox — delegation "
+            "Set to 'off' to skip Warding's own OS-level sandbox — delegation "
             "to kiro-cli's internal sandbox still fires on macOS if it is "
             "enabled, and a SECURITY warning is logged when neither layer is "
             "active.",
@@ -1727,7 +1727,7 @@ class AgentConfig:
             "How long auto-approve (YOLO) lasts when it is enabled AD HOC — from "
             "the dashboard picker, Slack, or the API. Every one of those surfaces "
             "uses this same duration. Accepts 30m / 1h / 6h / 12h / 24h, or "
-            "until_shutdown to keep it on with no timed expiry until Junction "
+            "until_shutdown to keep it on with no timed expiry until Warding "
             "restarts. Timed values are capped at 24h. Does NOT apply to a grant "
             "declared via 'dangerously_skip_permissions' above, which persists.",
             enum=["30m", "1h", "6h", "12h", "24h", "until_shutdown"],
@@ -2211,7 +2211,7 @@ class MessagingConfig:
             "Use Transport",
             "Route inbound Slack messages through the SlackTransport → TurnDriver → "
             "SlackRenderer channel-neutral path instead of the native handle_message "
-            "monolith. Default ON in Junction (the transport abstraction is the canonical "
+            "monolith. Default ON in Warding (the transport abstraction is the canonical "
             "path, shared with future channels). Set to false to fall back to the legacy "
             "native handler.",
         ),
@@ -2317,7 +2317,7 @@ class MemoryConfig:
         metadata=_meta(
             "Embedding Model URL",
             "Override HTTPS URL for the embedding model GGUF download (mirrored/airgapped "
-            "deployments). Empty uses the public Junction CDN default; the "
+            "deployments). Empty uses the public Warding CDN default; the "
             "JUNCTION_EMBED_MODEL_URL env var wins over both. The download is "
             "sha256-verified regardless of source.",
         ),
@@ -2503,7 +2503,7 @@ class KnowledgeConfig:
             "Let the agent add documents it comes across during normal work to the "
             "Knowledge Library, so they become searchable later. The agent reads the "
             "document with its own tools, under your approval, and hands over the "
-            "text -- Junction fetches nothing itself, so the doc-ingest host "
+            "text -- Warding fetches nothing itself, so the doc-ingest host "
             "allowlist below does not apply. Added documents appear in a single "
             "aggregate 'Auto-added' source you can remove in one click. Off by "
             "default: the Library should only hold what you asked it to hold. "
@@ -2572,7 +2572,7 @@ class KnowledgeConfig:
             "Empty = fetch nothing (SSRF-safe deny-by-default). This governs only "
             "that server-fetch path -- it does NOT gate 'Auto-Add Documents' "
             "above, where the agent has already fetched the content under its own "
-            "approval and Junction fetches nothing. Applying it there would make "
+            "approval and Warding fetches nothing. Applying it there would make "
             "the feature ingest nothing on a default config while its toggle "
             "reads on.",
         ),
@@ -3095,7 +3095,7 @@ class DashboardConfig:
         default=True,
         metadata=_meta(
             "Use Built-in Browser",
-            "When on, the browser tool opens pages in Junction's built-in panel "
+            "When on, the browser tool opens pages in Warding's built-in panel "
             "(desktop app only). When off, the agent browses via playwright-cli.",
         ),
     )
@@ -3887,7 +3887,7 @@ class TelemetryConfig:
         default=False,
         metadata=_meta(
             "Enabled",
-            "Main switch for Junction metrics telemetry. Off by default: metric "
+            "Main switch for Warding metrics telemetry. Off by default: metric "
             "call sites are no-ops and nothing is written. When on, a local-first "
             "JSONL sink under ~/.junction/metrics is enabled (no network egress).",
         ),
@@ -3967,7 +3967,7 @@ class TelemetryConfig:
         metadata=_meta(
             "Beacon Endpoint",
             "HTTPS base URL that receives the anonymous heartbeat. Empty by "
-            "default: Junction ships without a collector, so no beacon is ever "
+            "default: Warding ships without a collector, so no beacon is ever "
             "sent, regardless of the toggle above, until you set one. Must be "
             "https:// (a plaintext heartbeat would reveal which hosts run this "
             "software to any on-path observer); a non-https value is cleared.",
@@ -5135,7 +5135,7 @@ class McpConfig:
             "Extra MCP Binary Directories",
             "Additional directories to search for MCP server binaries, ahead of "
             "the built-in locations. Add one when a package manager installs its "
-            "MCP launchers somewhere Junction does not know about: a server "
+            "MCP launchers somewhere Warding does not know about: a server "
             "declared by bare name that resolves nowhere never starts, and the "
             "session just comes up short of tools. Each entry must be a single "
             "absolute directory (``~`` is expanded); anything else is ignored "
@@ -5167,7 +5167,7 @@ class InstancesConfig:
         metadata=_meta(
             "Enabled",
             "Enable multi-instance management — lets this gateway open SSH tunnels "
-            "to remote Junctions and embed their dashboards. Default off (opt-in). "
+            "to remote Warding instances and embed their dashboards. Default off (opt-in). "
             "Enabling also scopes a CSP frame-src relaxation to active tunnel ports.",
         ),
     )
@@ -6743,7 +6743,8 @@ class JunctionConfig:
     instances: InstancesConfig = field(
         default_factory=InstancesConfig,
         metadata=_meta(
-            "Instances", "Multi-instance management — manage/switch remote Junctions over SSH."
+            "Instances",
+            "Multi-instance management — manage/switch remote Warding instances over SSH.",
         ),
     )
     heartbeat: HeartbeatConfig = field(
@@ -6845,11 +6846,11 @@ class JunctionConfig:
     )
     agents: dict[str, JunctionAgentConfig] = field(
         default_factory=dict,
-        metadata=_meta("Agents", "Named Junction agent definitions."),
+        metadata=_meta("Agents", "Named Warding agent definitions."),
     )
     default_agent: str = field(
         default="",
-        metadata=_meta("Default Agent", "Active Junction agent name from the agents section."),
+        metadata=_meta("Default Agent", "Active Warding agent name from the agents section."),
     )
     workspaces: dict[str, WorkspaceConfig] = field(
         default_factory=dict,
@@ -6915,7 +6916,7 @@ class JunctionConfig:
         default="",
         metadata=_meta(
             "Snapshot Directory",
-            "Directory for junction snapshot output. "
+            "Directory for `warding snapshot` output. "
             "Defaults to ~/.junction/snapshots if empty.",
         ),
     )
@@ -9235,7 +9236,7 @@ def validate_kiro_agent_references(
     for mc_name, mc_agent in config.agents.items():
         if mc_agent.kiro_agent and mc_agent.kiro_agent not in installed_names:
             logger.warning(
-                "Junction agent '%s' references kiro agent '%s' " "which is not installed",
+                "Warding agent '%s' references kiro agent '%s' " "which is not installed",
                 mc_name,
                 mc_agent.kiro_agent,
             )

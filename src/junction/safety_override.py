@@ -942,7 +942,7 @@ def grant_declared_yolo() -> ActivationResult:
 
 # ── User-facing grant-lifetime text (channel-neutral) ──
 
-NO_EXPIRY_TEXT = "stays on until Junction restarts"
+NO_EXPIRY_TEXT = "stays on until Warding restarts"
 
 
 def fmt_grant_duration(secs: int) -> str:

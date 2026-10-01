@@ -67,7 +67,7 @@ describe('stale pre-owner session re-auth prompt', () => {
     // Only a re-sign-in recovers, so call sites must drop retry affordances.
     expect(isAuthExpiredError(apiErr)).toBe(true)
     // The display message is the recovery instruction, not the raw label.
-    expect(apiErr.message).toContain('junction token')
+    expect(apiErr.message).toContain('warding token')
     expect(apiErr.message.toLowerCase()).toContain('owner')
 
     // The banner names the stale-owner cause, not plain expiry.

@@ -68,7 +68,7 @@ STEP_CONNECT = "connect"
 
 _STEP_LABELS: tuple = (
     (STEP_PREFLIGHT, "Check your AWS setup"),
-    (STEP_PROVISION, "Create the instance and install Junction"),
+    (STEP_PROVISION, "Create the instance and install Warding"),
     (STEP_SIGNIN, "Sign in to Kiro"),
     (STEP_CONNECT, "Connect"),
 )
@@ -375,7 +375,7 @@ class LaunchJobStore:
                     step.state = STEP_FAILED
             job.status = FAILED
             job.error = (
-                "Interrupted — Junction restarted while this setup was running. "
+                "Interrupted — Warding restarted while this setup was running. "
                 "The EC2 stack may still exist; check your instances before retrying."
             )
             job.signin = None

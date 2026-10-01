@@ -225,7 +225,7 @@ def resolve_checkout(
     raise PodError(
         f"no git worktree {name!r}. Create one for your branch:\n"
         f"  git worktree add ../{name} -b feat/{name} main\n"
-        f"  (run `junction pod up {name}` from inside a junction checkout, "
+        f"  (run `warding pod up {name}` from inside a junction checkout, "
         f"or set JUNCTION_POD_REPO to point at one)"
     )
 
@@ -600,7 +600,7 @@ def _refresh_stale_unit(cfg: PodConfig) -> subprocess.CompletedProcess | None:
             f"refreshed the pod template unit but `systemctl --user daemon-reload` "
             f"failed (rc={cp.returncode}), so systemd would still run the previous "
             "definition — which deletes a pod's HOME from a stop hook. Refusing to "
-            "start or stop a pod until the unit is loaded: run `junction pod install` "
+            "start or stop a pod until the unit is loaded: run `warding pod install` "
             f"and retry.{detail}"
         ),
     )
@@ -775,7 +775,7 @@ def stop_pod(cfg: PodConfig, name: str) -> subprocess.CompletedProcess:
                     f"pod stopped but {len(survivors)} pod process(es) are still in "
                     f"its cgroup (pid {shown}) after {DRAIN_TIMEOUT_SECS:.0f}s, so "
                     f"its isolated HOME at {leftover} was NOT deleted — this pod is "
-                    f"NOT zero-residue. Reclaim it with `junction pod down {name}` "
+                    f"NOT zero-residue. Reclaim it with `warding pod down {name}` "
                     "once nothing is writing there."
                 ),
             )
@@ -788,7 +788,7 @@ def stop_pod(cfg: PodConfig, name: str) -> subprocess.CompletedProcess:
                 stderr=(
                     f"pod stopped but its isolated HOME is still at {leftover} — "
                     f"teardown is incomplete, so this pod is NOT zero-residue. "
-                    f"Reclaim it with `junction pod down {name}` once nothing is "
+                    f"Reclaim it with `warding pod down {name}` once nothing is "
                     "writing there."
                 ),
             )
@@ -909,7 +909,7 @@ def install_backend(cfg: PodConfig) -> tuple[str, subprocess.CompletedProcess | 
     if IS_MACOS:
         return (
             "nothing to install on macOS: launchd has no template units, so each "
-            "pod's agent plist is written at `junction pod up <worktree>`.",
+            "pod's agent plist is written at `warding pod up <worktree>`.",
             None,
         )
     dst = unit_mod.unit_path(cfg)
@@ -1257,7 +1257,7 @@ def pod_context(cfg: PodConfig, name: str) -> tuple[Path, dict[str, str]]:
     checkout_str = read_env_file(cfg, name).get("CHECKOUT")
     if not checkout_str:
         raise PodError(
-            f"pod {name!r} has no pinned checkout — run `junction pod up {name}` "
+            f"pod {name!r} has no pinned checkout — run `warding pod up {name}` "
             f"from inside a junction checkout first"
         )
     checkout = Path(checkout_str).expanduser()
@@ -1373,10 +1373,10 @@ _POD_SAFE_VERBS = frozenset(
 
 # The pod-native equivalent to suggest for the verbs users are most likely to try.
 _POD_EQUIVALENT: dict[str, str] = {
-    "stop": "junction pod down {name}",
-    "restart": "junction pod down {name} && junction pod up {name}",
-    "gateway": "junction pod up {name}",
-    "logs": "junction pod logs {name}",
+    "stop": "warding pod down {name}",
+    "restart": "warding pod down {name} && warding pod up {name}",
+    "gateway": "warding pod up {name}",
+    "logs": "warding pod logs {name}",
 }
 
 
@@ -1447,7 +1447,7 @@ def boot(cfg: PodConfig, name: str) -> int:
     if not checkout_str:
         print(
             f"FATAL: pod {name!r} has no pinned checkout — run "
-            f"`junction pod up {name}` from inside a junction checkout first"
+            f"`warding pod up {name}` from inside a junction checkout first"
         )
         return 3
     checkout = Path(checkout_str).expanduser()

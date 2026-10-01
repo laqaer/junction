@@ -3656,7 +3656,7 @@ class AcpClient:
                     f"(advertised modes: {self._available_mode_ids or 'none'}); its "
                     f"~/.kiro/agents/{self._agent}.json is likely missing. Refusing "
                     f"to run the backend default mode in its place. Run "
-                    f"`junction setup --agent-only` to materialize the agent config."
+                    f"`warding setup --agent-only` to materialize the agent config."
                 )
 
         # 5. Set model — override if Junction config specifies non-default.

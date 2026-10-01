@@ -2169,7 +2169,7 @@ class SshTunnelManager:
                             # user cannot act on.
                             return False, {
                                 "error": (
-                                    "instance is running an older Junction that cannot "
+                                    "instance is running an older Warding that cannot "
                                     "receive sessions — update it, then reconnect"
                                 ),
                                 "code": "transfer_peer_too_old",

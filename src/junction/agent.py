@@ -2989,7 +2989,7 @@ def _decline_shared_agent_home(*, audit: bool = True) -> Path | None:
             "servers at this instance's venv and data home, and break them outright "
             "when it is torn down. This instance will use the existing specs instead. "
             "Deliberately no remedy is suggested here: redirecting the agent home via "
-            "KIRO_HOME also relocates kiro-cli's session storage, which Junction still "
+            "KIRO_HOME also relocates kiro-cli's session storage, which Warding still "
             "reads from the host path -- see kiro_home()'s scope caveat.",
             target,
             Path(__file__).resolve().parents[2],

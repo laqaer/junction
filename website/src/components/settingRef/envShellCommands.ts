@@ -49,8 +49,20 @@ export const ENV_SHELLS: readonly EnvShellEntry[] = [
  * in eslint.i18n.config.js with rationale.
  */
 export function configSetCommand(key: string, placeholder: string): string {
-  return `junction config set ${key} ${placeholder}`
+  return `warding config set ${key} ${placeholder}`
 }
+
+/**
+ * The CLI twins of the Privacy panel's telemetry toggle, shown verbatim for
+ * headless hosts. Terminal input, so they live behind this boundary too.
+ */
+export const TELEMETRY_COMMANDS = ['warding telemetry status', 'warding telemetry disable'] as const
+
+/** The command that prints a fresh dashboard sign-in URL. */
+export const TOKEN_COMMAND = 'warding token'
+
+/** The developer install of a local app directory, as typed in a terminal. */
+export const APP_INSTALL_COMMAND = 'warding app install <path>'
 
 /**
  * Value placeholder for a file-mode CLI command: explicit prop override wins,

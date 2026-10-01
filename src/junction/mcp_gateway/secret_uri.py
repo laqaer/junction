@@ -50,7 +50,7 @@ def resolve_secret_uris(env: dict[str, str], config_dir: Path) -> tuple[dict[str
             raise ValueError(
                 f"MCP server env var {key!r} references secret://{secret_name} "
                 f"but no secret named {secret_name!r} exists in the vault. "
-                f"Run `junction secrets set {secret_name}` to store it."
+                f"Run `warding secrets set {secret_name}` to store it."
             )
         resolved[key] = secret_value.reveal()
         secret_keys.add(key)

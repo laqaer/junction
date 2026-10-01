@@ -732,7 +732,7 @@ async def test_refresh_flags_rollback(store, fake_client):
     }
     refreshed = await publish_sync.refresh_publication(art.slug)
     assert refreshed.publication is not None
-    assert refreshed.publication.last_error.startswith("The remote copy changed outside Junction")
+    assert refreshed.publication.last_error.startswith("The remote copy changed outside Warding")
 
 
 @pytest.mark.asyncio

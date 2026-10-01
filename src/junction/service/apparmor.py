@@ -441,7 +441,7 @@ def install(sudo_install_file, sudo_run, sudo_capture, uid: int, gid: int) -> Pr
     return ProfileOutcome(
         True,
         f"AppArmor profile installed at {PROFILE_PATH} — grants unprivileged "
-        "userns to the junction service only, and enforcement is confirmed",
+        "userns to the Warding gateway service only, and enforcement is confirmed",
     )
 
 
@@ -662,7 +662,7 @@ def validate_exec_path(raw: str) -> tuple[Path | None, str]:
             f"{resolved} is a shared system interpreter. Attaching the profile "
             "there would grant unprivileged user namespaces to every program on "
             "this host that runs it. Point this at the AppImage file instead, or "
-            "use `junction service install`, which confines a single systemd unit.",
+            "use `warding service install`, which confines a single systemd unit.",
         )
     bad_chars = sorted({ch for ch in text if ch in _GLOB_METACHARS} | {
         ch for ch in text if ord(ch) < 0x20 or ord(ch) == 0x7F
@@ -799,7 +799,7 @@ def install_launcher(
             False,
             "Could not tell which executable to attach the profile to: $APPIMAGE "
             "is not set, so this does not look like an AppImage launch. Pass "
-            "--path with the app's executable, or run `junction service install` "
+            "--path with the app's executable, or run `warding service install` "
             "to confine the gateway as a systemd unit instead.",
             ok=False,
         )
@@ -894,13 +894,13 @@ def launcher_status(exec_path: str | None = None) -> tuple[bool, str]:
             return (
                 False,
                 "no launcher profile is installed, and $APPIMAGE is not set so this "
-                "is not an AppImage launch. Use `junction service install` to "
+                "is not an AppImage launch. Use `warding service install` to "
                 "confine the gateway as a systemd unit.",
             )
         return (
             False,
             f"no launcher profile is installed, so {target} runs unconfined and the "
-            "agent sandbox cannot be built. Run `junction sandbox install-profile`.",
+            "agent sandbox cannot be built. Run `warding sandbox install-profile`.",
         )
     if not target:
         return (True, f"launcher profile is installed and attached to {attached}")
@@ -912,6 +912,6 @@ def launcher_status(exec_path: str | None = None) -> tuple[bool, str]:
             f"the installed launcher profile attaches to {attached}, but this app "
             f"is running from {current}, so the profile does not apply"
             + (f" ({problem})" if problem else "")
-            + ". Re-run `junction sandbox install-profile` to re-point it.",
+            + ". Re-run `warding sandbox install-profile` to re-point it.",
         )
     return (True, f"launcher profile is installed and attached to {current}")

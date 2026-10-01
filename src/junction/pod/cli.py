@@ -101,7 +101,7 @@ def _up(cfg: PodConfig, args: argparse.Namespace) -> None:
             _die(
                 f"no built dist for {name!r}.\n"
                 f"  Build it (slow, one-time):  cd {checkout / 'website'} && npm run build\n"
-                f"  Or let pod do the full chain: junction pod up {name} --provision"
+                f"  Or let pod do the full chain: warding pod up {name} --provision"
             )
 
     port = rt.derive_port(cfg, name)
@@ -152,7 +152,7 @@ def _up(cfg: PodConfig, args: argparse.Namespace) -> None:
             print(
                 f"pod: note: {joined} recorded for {name!r}, but that pod is already "
                 f"running, so it applies on the next boot "
-                f"(junction pod down {name} && junction pod up {name} {joined}).",
+                f"(warding pod down {name} && warding pod up {name} {joined}).",
                 file=sys.stderr,
             )
         # Record boot-time settings: a pod in `yolo` auto-approves every tool and
@@ -188,7 +188,7 @@ def _up(cfg: PodConfig, args: argparse.Namespace) -> None:
             if code == -1:
                 _die(
                     f"{name}: the worktree's gateway failed to start (see journal above). "
-                    f"This is the worktree build, not pod — fix it, then `junction pod up {name}` again."
+                    f"This is the worktree build, not pod — fix it, then `warding pod up {name}` again."
                 )
             _die(
                 f"{name}: gateway never became healthy on :{port} within timeout "
@@ -220,7 +220,7 @@ def _up(cfg: PodConfig, args: argparse.Namespace) -> None:
         print(f"  base_url : {base}")
         print(f"  token    : {token}")
         print(f"  open     : {base}/?token={token}")
-        print(f"  stop     : junction pod down {name}")
+        print(f"  stop     : warding pod down {name}")
 
 
 def _down(cfg: PodConfig, args: argparse.Namespace) -> None:
@@ -322,8 +322,8 @@ def _print_orphans(cfg: PodConfig, orphans: list[str]) -> None:
             age = _relative_age(now - _orphan_last_alive(cfg, n))
         except OSError:
             age = "age unknown"
-        print(f"  {n:<26} {age:<12} reclaim: junction pod down {n}")
-    print("  bulk reclaim: junction pod prune [--all] [--dry-run] (default keeps the last 3d)")
+        print(f"  {n:<26} {age:<12} reclaim: warding pod down {n}")
+    print("  bulk reclaim: warding pod prune [--all] [--dry-run] (default keeps the last 3d)")
 
 
 def _orphan_last_alive(cfg: PodConfig, name: str) -> float:
@@ -615,7 +615,7 @@ def _exec(cfg: PodConfig, args: argparse.Namespace) -> None:
     name = rt.validate_name(args.name)
     argv = list(args.argv or [])
     if not argv:
-        _die("nothing to run — usage: junction pod exec <name> -- <args…>")
+        _die("nothing to run — usage: warding pod exec <name> -- <args…>")
     # Validate BEFORE auditing: emitting "allowed" and then having the runtime
     # refuse the verb would record the opposite of the decision actually taken,
     # which is worse than no audit trail at all — SEL would attest that a denied
@@ -665,7 +665,7 @@ def _install(cfg: PodConfig, args: argparse.Namespace) -> None:
         _die(f"systemctl --user daemon-reload failed: {(reload_cp.stderr or '').strip()}")
     _audit("pod.install", "allowed", msg.splitlines()[0][:120])
     print(msg)
-    print("ready. Next: junction pod up <worktree>")
+    print("ready. Next: warding pod up <worktree>")
 
 
 def _provision(cfg: PodConfig, args: argparse.Namespace) -> None:
@@ -728,7 +728,7 @@ def dispatch(args: argparse.Namespace) -> None:
     action = getattr(args, "pod_action", None)
     if not action:
         print(
-            "Usage: junction pod "
+            "Usage: warding pod "
             "{up|down|ls|prune|status|token|url|logs|exec|install|provision} …"
         )
         sys.exit(2)

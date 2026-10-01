@@ -265,8 +265,8 @@ def social_login_hint(prompt: Optional[LoginPrompt]) -> str:
     ports = ", ".join(str(p) for p in (prompt.ports if prompt else [])) or "the printed port"
     return (
         "For Google/GitHub sign-in, kiro-cli needs a forwarded callback port. "
-        f"Junction could not automate the SSM port-forward for {ports}; "
-        "run `junction cloud connect` and retry sign-in from the instance."
+        f"Warding could not automate the SSM port-forward for {ports}; "
+        "run `warding cloud connect` and retry sign-in from the instance."
     )
 
 
@@ -434,7 +434,7 @@ def _start_callback_login(
             _close_process(proc)
             out.error = out.error or (
                 "Kiro social sign-in did not return a callback URL — retry "
-                "`junction cloud login`."
+                "`warding cloud login`."
             )
             return out
         out.port_forward = proc

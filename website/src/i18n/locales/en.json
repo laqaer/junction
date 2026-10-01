@@ -411,10 +411,10 @@
         "highlight_2": "No private agent-to-agent messaging — every exchange happens in the channel",
         "highlight_3": "You stay the final approver for any operation that mutates state",
         "highlight_4": "Agents persist in the channel until dismissed or timed out",
-        "highlight_5": "Hidden from the App Store grid; enable with `junction app enable channels`",
+        "highlight_5": "Hidden from the App Store grid; enable with `warding app enable channels`",
         "page_label": "Channels",
         "use_case_1": "Run incident response, research, or code review with several named agent roles in one auditable shared transcript.",
-        "configuration_1": "Enable the hidden app with junction app enable channels, create a channel from a preset or Custom, assign agents and listen modes, then use @mentions to hand off work."
+        "configuration_1": "Enable the hidden app with warding app enable channels, create a channel from a preset or Custom, assign agents and listen modes, then use @mentions to hand off work."
       }
     },
     "codeReviewSage": {
@@ -3491,7 +3491,7 @@
         "highlight_5": "Ships with runnable examples to start from",
         "page_label": "Workflows",
         "use_case_1": "Validate and inspect restricted workflow scripts or monitor core multi-agent workflow runs phase by phase.",
-        "configuration_1": "Enable the hidden app with junction app enable workflows; validate DSL Python in Author, or use chat or MCP workflow tools when you need real agent orchestration and monitor it in Runs."
+        "configuration_1": "Enable the hidden app with warding app enable workflows; validate DSL Python in Author, or use chat or MCP workflow tools when you need real agent orchestration and monitor it in Runs."
       },
       "workflowRunTree": {
         "agent_one": "{{count}} agent",
@@ -3722,7 +3722,6 @@
       "sourcesPopover": {
         "developer_install_of_a_local_app_directory_equiv": "Developer install of a local app directory (equivalent to",
         "install_from_path": "Install from Path",
-        "junction_app_install_path": "junction app install <path>",
         "manage_app_sources": "Manage app sources",
         "path_to_app_directory": "/path/to/app-directory"
       }
@@ -6062,7 +6061,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "boots any worktree as an\n              isolated throwaway gateway so you can QA a feature branch without touching your live instance.",
       "branch": "Branch:",
       "build_pending": "build pending",
-      "build_pending_restart_gateway_to_apply_junction": "build pending — restart gateway to apply (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "build pending — restart gateway to apply (warding restart)",
       "cancel": "Cancel",
       "close": "Close",
       "commits": "Commits:",
@@ -6521,7 +6520,7 @@
         "path_placeholder": "/path/to/your-model.gguf",
         "reembed_done": "Re-embedding complete",
         "reembed_failed": "Re-embedding failed",
-        "reembed_failed_hint": "The model could not be applied. Hover for details, or run 'junction doctor'.",
+        "reembed_failed_hint": "The model could not be applied. Hover for details, or run 'warding doctor'.",
         "reembedding": "Re-embedding memories…",
         "subtitle": "Runs locally. Changing it re-embeds stored memories in the background.",
         "title": "Embedding Model",
@@ -7471,7 +7470,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "remote instances stay warm (live tunnel) at once; the rest reconnect on\n                demand. Tune with",
         "is_installed_somewhere_non_standard_on_the_remot": "is installed somewhere\n            non-standard on the remote. Leave blank for a normal pip install on PATH. To find\n            it, run on the remote host:",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "Loading…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "Remote instance management is",

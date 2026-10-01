@@ -227,7 +227,7 @@ class TestSpawnCli:
 
     def test_unknown_action_prints_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         cc._spawn(_ns(spawn_action="bogus", port=1))
-        assert "Usage: junction spawn" in capsys.readouterr().out
+        assert "Usage: warding spawn" in capsys.readouterr().out
 
     def test_run_fire_and_forget_prints_id_and_returns(
         self, capsys: pytest.CaptureFixture[str]
@@ -331,7 +331,7 @@ class TestAppCli:
             cc._handle_app(_ns(app_action="install", source="/pkg"))
         out = capsys.readouterr().out
         assert "Agents: a" in out and "Skills: s" in out and "Crons:  c" in out
-        assert "partial" in out and "junction app enable demo" in out
+        assert "partial" in out and "warding app enable demo" in out
 
     def test_install_failure_exits_1(self, capsys: pytest.CaptureFixture[str]) -> None:
         with (
@@ -504,7 +504,7 @@ class TestAppCli:
 
     def test_unknown_action_prints_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         cc._handle_app(_ns(app_action=None))
-        assert "Usage: junction app" in capsys.readouterr().out
+        assert "Usage: warding app" in capsys.readouterr().out
 
 
 class TestRunAppMcpServer:
@@ -764,7 +764,7 @@ class TestAgentCli:
     def test_unknown_action_prints_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch.object(JunctionConfig, "load", return_value=_cfg_with()):
             cc._handle_agent(_ns(agent_action=None))
-        assert "Usage: junction agent" in capsys.readouterr().out
+        assert "Usage: warding agent" in capsys.readouterr().out
 
 
 # ── workspace create --copy-from ──
@@ -1055,7 +1055,7 @@ class TestSecurityCli:
 
     def test_unknown_action_prints_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         cc._security(_ns(sec_action="nope"))
-        assert "Usage: junction security" in capsys.readouterr().out
+        assert "Usage: warding security" in capsys.readouterr().out
 
 
 # ── policy subcommands ──
@@ -1385,7 +1385,7 @@ class TestPolicyCli:
             return_value=SimpleNamespace(governance=None),
         ):
             cc._policy(_ns(policy_action=None))
-        assert "Usage: junction policy" in capsys.readouterr().out
+        assert "Usage: warding policy" in capsys.readouterr().out
 
 
 # ── learn subcommands ──
@@ -1529,7 +1529,7 @@ class TestLearnCli:
         with _LearnHarness() as h:
             cc._learn(_ns(learn_action=None))
         h.vs.close.assert_called_once()
-        assert "Usage: junction learn" in capsys.readouterr().out
+        assert "Usage: warding learn" in capsys.readouterr().out
 
 
 # ── memory subcommands ──
@@ -1668,7 +1668,7 @@ class TestMemoryCli:
     def test_import_requires_a_file_argument(self, capsys: pytest.CaptureFixture[str]) -> None:
         with _MemHarness():
             cc._memory_cmd(_ns(mem_action="import", file=None))
-        assert "Usage: junction memory import" in capsys.readouterr().out
+        assert "Usage: warding memory import" in capsys.readouterr().out
 
     def test_import_missing_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         with _MemHarness():
@@ -1692,7 +1692,7 @@ class TestMemoryCli:
         with _MemHarness() as h:
             cc._memory_cmd(_ns(mem_action="bogus"))
         h.store.close.assert_called_once()
-        assert "Usage: junction memory" in capsys.readouterr().out
+        assert "Usage: warding memory" in capsys.readouterr().out
 
 
 # ── artifact subcommands ──
@@ -1945,7 +1945,7 @@ class TestArtifactCli:
         with _ArtifactHarness([]), pytest.raises(SystemExit) as exc:
             cc._artifact(_ns(artifact_action="bogus"))
         assert exc.value.code == 2
-        assert "Usage: junction artifact" in capsys.readouterr().err
+        assert "Usage: warding artifact" in capsys.readouterr().err
 
 
 class TestPodDispatch:

@@ -214,7 +214,7 @@ class TestGuidanceProse:
 
     def test_apparmor_guidance_names_the_command_that_fixes_it(self) -> None:
         guidance = sb._linux_remedy_guidance(sb.REMEDY_APPARMOR_USERNS)
-        assert "junction service install" in guidance
+        assert "warding service install" in guidance
         # Naming the sysctl WITHOUT warning against setting it to 0 would invite
         # disabling a kernel-wide protection to satisfy one application.
         assert "Do NOT set the sysctl to 0" in guidance
@@ -383,4 +383,4 @@ class TestWrapArgvWiring:
 
         assert caught.value.kind == "transient"
         assert caught.value.remedy == ""
-        assert "junction service install" not in str(caught.value)
+        assert "warding service install" not in str(caught.value)

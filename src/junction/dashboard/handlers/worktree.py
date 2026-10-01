@@ -137,7 +137,7 @@ _FILTER_PROBE_FAILED = "unreadable git config"
 
 
 _SANDBOX_REFUSAL = (
-    "This host has no OS sandbox backend, so Junction will not run git for you. "
+    "This host has no OS sandbox backend, so Warding will not run git for you. "
     "Create the worktree manually."
 )
 
