@@ -159,8 +159,10 @@ failure stays non-blocking.
 
 A step keeps its lane across ordinary retries, runs on a dedicated provider for
 the lane's harness and model (`open_task_session(acp_backend_override=,
-model=)`), and never receives a role-model pin (H12). No eligible lane runs the
-step on the configured agent. Dispatches and outcomes go to the same ledger as
+model=)`), and never receives a role-model pin (H12). Initially no eligible lane
+runs the step on the configured agent. After a lane failure, exhausting the
+eligible lanes fails the step rather than retrying a cooling harness without
+lane accounting. Dispatches and outcomes go to the same ledger as
 subagents, so a limit hit by a step rests that lane for every later decision.
 Contract for the runner side: [taskrunner](taskrunner.md) § Step Routing.
 

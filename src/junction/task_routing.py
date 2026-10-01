@@ -16,9 +16,9 @@ run. The rules mirror routed subagents (``SubagentManager._run_accounted``):
   Before any tool ran that move is free (the attempt is not counted), up to
   ``max_failover`` free hops per step; after a tool ran it costs an attempt,
   since the step already changed the workspace.
-* No eligible lane (every one resting, none installed) is not an error: the
-  step runs on the configured agent, and routing never makes a run worse than
-  running unrouted.
+* Initially no eligible lane (every one resting, none installed) falls back to
+  the configured agent. Once a step has encountered a lane failure, exhaustion
+  fails the step instead of retrying a cooling harness without lane accounting.
 """
 
 from __future__ import annotations
@@ -109,10 +109,16 @@ class StepRoute:
                 logger.info("task step (%s): no lane excluding %s: %s", self.kind, exclude, exc)
                 continue
             except Exception:
+                if self.tried:
+                    raise
                 logger.warning("task step routing failed; running unrouted", exc_info=True)
                 return None
             self.tried.append(resolution.lane.id)
             return resolution.lane
+        if self.tried:
+            raise RoutingError(
+                "No eligible task lane remains after lane failure", code="no_eligible_lane"
+            )
         logger.warning(
             "task step (%s): no eligible lane; running on the configured agent", self.kind
         )

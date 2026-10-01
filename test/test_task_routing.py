@@ -103,12 +103,20 @@ async def test_free_moves_are_bounded_by_max_failover(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_no_eligible_lane_runs_unrouted(tmp_path: Path) -> None:
+async def test_exhausted_lanes_do_not_retry_the_configured_agent(tmp_path: Path) -> None:
     router = _router(tmp_path, harnesses=("codex",))
     route = StepRoute("implement", router=router)
     await route.pick()
     await route.failed(RuntimeError(_USAGE_LIMIT), tool_ran=False)
-    assert await route.pick() is None  # the configured agent takes it
+    with pytest.raises(service.RoutingError, match="No eligible task lane remains"):
+        await route.pick()
+
+
+@pytest.mark.asyncio
+async def test_initially_no_eligible_lane_runs_unrouted(tmp_path: Path) -> None:
+    router = _router(tmp_path, harnesses=("codex",))
+    router.record_failure("codex", exc=RuntimeError(_USAGE_LIMIT))
+    assert await StepRoute("implement", router=router).pick() is None
 
 
 @pytest.mark.asyncio
@@ -250,6 +258,19 @@ async def test_a_limit_notice_reply_is_a_lane_failure_not_a_result(
     usage = router.ledger.snapshot()
     assert usage["codex"].cooldown_reason == "usage_limit"
     assert usage["codex"].ok == 0
+
+
+@pytest.mark.asyncio
+async def test_exhausting_all_lanes_cannot_pass_a_limit_notice(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _quiet_executor(monkeypatch)
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    sessions = _sessions([_Client(reply=_USAGE_LIMIT) for _ in range(8)])
+    assert await _execute(_run(task, route_steps=True), task, sessions) is False
+    assert [o["acp_backend_override"] for o in sessions.opened] == ["codex", "claude"]
+    assert task.result != _USAGE_LIMIT
+    assert all(usage.ok == 0 for usage in router.ledger.snapshot().values())
 
 
 @pytest.mark.asyncio
