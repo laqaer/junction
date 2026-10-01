@@ -68,6 +68,7 @@ from junction.task_reporter import (  # noqa: F401  (NotifyCallback re-exported)
     notify,
     save_progress,
 )
+from junction.task_routing import route_tasks_enabled
 
 if TYPE_CHECKING:
     from junction.context import ContextBuilder
@@ -666,6 +667,10 @@ class TaskRunner:
         return run
 
     async def _execute_tasks(self, run: Project, history_key: str) -> None:
+        # Fixed once per run, at its first execution, so a run resumed after a
+        # pause or a gateway restart keeps routing (or not) the way it started.
+        if run.route_steps is None:
+            run.route_steps = await asyncio.to_thread(route_tasks_enabled)
         pending = [t for t in run.tasks if t.status == TaskStatus.PENDING]
         already_done = {
             t.index for t in run.tasks if t.status in (TaskStatus.PASSED, TaskStatus.SKIPPED)
@@ -1478,6 +1483,7 @@ class TaskRunner:
                         "source": run.source,
                         "spec_content": run.spec_content,
                         "auto_approve": run.auto_approve,
+                        "route_steps": run.route_steps,
                         "task_details": [
                             {
                                 "index": t.index,
@@ -1490,6 +1496,8 @@ class TaskRunner:
                                 "error": t.error or "",
                                 "result": (t.result or "")[:2000],
                                 "attempts": t.attempts,
+                                "kind": t.kind,
+                                "harness": t.harness,
                             }
                             for t in run.tasks
                         ],
@@ -1596,6 +1604,8 @@ class TaskRunner:
                         depends_on=t.get("depends_on", []),
                         requires_approval=t.get("requires_approval", False),
                         force_approval=t.get("force_approval", False),
+                        kind=str(t.get("kind") or ""),
+                        harness=str(t.get("harness") or ""),
                     )
                     for t in item.get("task_details", item.get("tasks", []))
                 ]
@@ -1615,6 +1625,9 @@ class TaskRunner:
                     source=item.get("source", ""),
                     tasks=tasks,
                     auto_approve=item.get("auto_approve", False),
+                    route_steps=(
+                        item["route_steps"] if isinstance(item.get("route_steps"), bool) else None
+                    ),
                 )
                 self._runs[run.task_id] = run
                 # Compensating control: never let per-run trust silently survive a

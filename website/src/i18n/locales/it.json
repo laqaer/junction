@@ -7659,7 +7659,8 @@
         "task_description": "Descrizione dell'attività",
         "task_title": "Titolo dell'attività",
         "task_with_title": "Attività {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "Questo gate blocca. force_approval=true."
+        "this_gate_blocks_force_approval_true": "Questo gate blocca. force_approval=true.",
+        "ran_on_agent": "Agente: {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12726,6 +12727,8 @@
         "resume_now": "Riprendi ora",
         "who_gets_what": "Chi fa cosa",
         "who_gets_what_description": "Dove andrebbe adesso la prossima attività di ogni tipo. Cambia man mano che i piani si esauriscono o si fermano dopo un limite.",
+        "route_task_steps": "Instrada i passaggi di Task Runner",
+        "route_task_steps_description": "Invia ogni passaggio di Task Runner all'agente più adatto e sposta un passaggio su un altro agente quando uno raggiunge un limite. Se è disattivato, tutti i passaggi vengono eseguiti sul tuo agente principale.",
         "no_agent_available": "Nessun agente disponibile",
         "kind_plan": "Pianificazione",
         "kind_implement": "Programmazione",

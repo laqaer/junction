@@ -7553,7 +7553,8 @@
         "task_description": "कार्य विवरण",
         "task_title": "कार्य शीर्षक",
         "task_with_title": "कार्य {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "यह गेट रोकता है। force_approval=true।"
+        "this_gate_blocks_force_approval_true": "यह गेट रोकता है। force_approval=true।",
+        "ran_on_agent": "एजेंट: {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12567,6 +12568,8 @@
         "resume_now": "अभी फिर शुरू करो",
         "who_gets_what": "किसे क्या मिलता है",
         "who_gets_what_description": "अभी हर प्रकार का अगला काम कहाँ जाएगा। प्लान भरने या सीमा के बाद विराम लेने पर यह बदलता है।",
+        "route_task_steps": "Task Runner के चरणों को रूट करो",
+        "route_task_steps_description": "Task Runner का हर चरण उस एजेंट को भेजो जो उसके लिए सबसे सही हो, और किसी एजेंट की सीमा पूरी होने पर चरण को दूसरे एजेंट पर ले जाओ। बंद होने पर हर चरण तुम्हारे मुख्य एजेंट पर चलता है।",
         "no_agent_available": "कोई एजेंट उपलब्ध नहीं",
         "kind_plan": "योजना",
         "kind_implement": "कोडिंग",

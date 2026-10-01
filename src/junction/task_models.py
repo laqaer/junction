@@ -48,6 +48,11 @@ class Task:
     priority: str = "medium"
     story_points: int = 0
     task_type: str = "original"  # 'original' | 'fix'
+    # Harness-router task kind the planner named for this step ('' = unnamed,
+    # routed as implement), and the harness that last ran it ('' = the
+    # configured agent). Only a routed run fills ``harness``.
+    kind: str = ""
+    harness: str = ""
     created_at: float = 0.0
     started_at: float = 0.0
     finished_at: float = 0.0
@@ -121,6 +126,10 @@ class Project:
     source_spec: str = ""  # original input text or spec content
     skip_planning: bool = False  # true = plan + execute immediately
     auto_approve: bool = False  # per-run trust intent (UI flag); the live, expiring, audited grant is held in SafetyOverride (scope taskrunner:{task_id}:autoapprove)
+    # Whether this run's steps go through the harness router. ``None`` until the
+    # run first executes, when it is fixed from routing.json's ``route_tasks``
+    # (or the start request's override) so a paused run resumes the same way.
+    route_steps: bool | None = None
 
 
 # ``NotifyCallback`` moved to ``task_reporter``, which owns the notification

@@ -7553,7 +7553,8 @@
         "task_description": "টাস্কের বিবরণ",
         "task_title": "টাস্কের শিরোনাম",
         "task_with_title": "টাস্ক {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "এই গেট আটকে দেয়। force_approval=true।"
+        "this_gate_blocks_force_approval_true": "এই গেট আটকে দেয়। force_approval=true।",
+        "ran_on_agent": "এজেন্ট: {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12567,6 +12568,8 @@
         "resume_now": "এখনই আবার চালু করুন",
         "who_gets_what": "কে কী পায়",
         "who_gets_what_description": "এই মুহূর্তে প্রতিটি ধরনের পরের কাজ কোথায় যাবে। প্ল্যান ভরে গেলে বা সীমার পরে বিরতি নিলে এটি বদলায়।",
+        "route_task_steps": "Task Runner-এর ধাপগুলো রাউট করুন",
+        "route_task_steps_description": "Task Runner-এর প্রতিটি ধাপ সবচেয়ে উপযুক্ত এজেন্টের কাছে পাঠান, আর কোনো এজেন্ট সীমায় পৌঁছালে ধাপটি অন্য এজেন্টে সরিয়ে দিন। বন্ধ থাকলে প্রতিটি ধাপ আপনার মূল এজেন্টে চলে।",
         "no_agent_available": "কোনো এজেন্ট উপলব্ধ নেই",
         "kind_plan": "পরিকল্পনা",
         "kind_implement": "কোডিং",
