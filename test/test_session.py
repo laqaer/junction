@@ -4598,6 +4598,46 @@ class TestTaskRunnerOnPerProcessHarness:
         await mgr.close_all()
 
 
+class TestRoutedTaskStep:
+    """A routed task step names its harness and model: it gets a dedicated
+    provider on that harness, whatever the configured one is, and the run's
+    shared runtime is never bootstrapped for it."""
+
+    @pytest.mark.asyncio
+    async def test_override_takes_a_dedicated_provider_on_the_lane(self, cfg):
+        cfg.agent.acp_backend = ACP_BACKEND_KIRO
+        built: list[dict] = []
+        base = _mock_provider_factory()
+
+        def factory(session_key=None, agent=None, channel_id=None, **kwargs):
+            built.append({"key": session_key, **kwargs})
+            return base(session_key, agent, channel_id, **kwargs)
+
+        mgr = SessionManager(cfg, provider_factory=factory)
+        parent = "taskrunner:run11:runtime"
+        key = "taskrunner:run11:task1"
+        with patch("junction.acp.runtime.AcpRuntime") as bare_runtime:
+            provider, is_new, _ = await mgr.open_task_session(
+                parent, key, acp_backend_override="codex", model="gpt-x"
+            )
+        bare_runtime.assert_not_called()
+        assert is_new is True
+        assert [b["key"] for b in built] == [key]
+        assert built[0]["acp_backend_override"] == "codex"
+        assert built[0]["model_override"] == "gpt-x"
+        assert parent not in mgr._subagent_runtimes
+        # A routed step does not decide the rest of the run's steps.
+        assert parent not in mgr._dedicated_task_runs
+        mgr.release(key)
+        # A live step session is reused as is: its conversation stays put.
+        again, is_new_again, _ = await mgr.open_task_session(
+            parent, key, acp_backend_override="claude"
+        )
+        assert again is provider and is_new_again is False
+        mgr.release(key)
+        await mgr.close_all()
+
+
 class TestBackgroundOnConfiguredHarness:
     """``_bg`` one-liners (titles, suggestions) run on the configured harness."""
 

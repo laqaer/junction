@@ -1769,6 +1769,8 @@ export interface RoutingHarnessRow {
 export interface RoutingHarnessesView {
   code: string
   enabled: boolean
+  /** Task Runner steps go through the router. Optional: older gateways omit it. */
+  route_tasks?: boolean
   source: 'auto' | 'config'
   path: string
   warnings: string[]
@@ -2517,6 +2519,11 @@ export const api = {
     put(`/api/routing/harnesses/${encodeURIComponent(harness)}/lane`, fields).then(j) as Promise<{
       code: string
       lane: RoutingLane
+    }>,
+  editRoutingSettings: (fields: { route_tasks: boolean }) =>
+    put('/api/routing/settings', fields).then(j) as Promise<{
+      code: string
+      settings: { route_tasks: boolean }
     }>,
   clearRoutingCooldown: (lane?: string) =>
     post('/api/routing/cooldown/clear', lane ? { lane } : {}).then(j) as Promise<{ code: string; cleared: string[] }>,
