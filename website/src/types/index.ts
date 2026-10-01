@@ -1006,6 +1006,9 @@ export interface TaskDetail {
   index: number; title: string; description: string; status: string; error: string; result: string; attempts: number
   depends_on: number[]; requires_approval: boolean; force_approval?: boolean; task_type?: string
   created_at?: number; started_at?: number; finished_at?: number
+  /** Harness-router kind the planner named, and the agent that ran the step
+   *  when the run routes its steps ('' = the main agent). */
+  kind?: string; harness?: string
 }
 export type RunStatus = 'planning' | 'planned' | 'running' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'pausing';
 export interface ProjectRun {

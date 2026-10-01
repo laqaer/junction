@@ -14,7 +14,9 @@ import json
 import threading
 import time
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from junction.taskrunner import Step, StepStatus, TaskRun, TaskRunner
 
@@ -67,6 +69,28 @@ class TestPersistRoundTrip:
         assert "t1" in reloaded._runs
         assert reloaded._runs["t1"].status == "paused"
         assert reloaded._runs["t1"].tasks[0].title == "step one"
+
+    def test_round_trip_keeps_step_routing(self, tmp_path: Path) -> None:
+        """A routed run resumes routed, and each step keeps its kind and agent."""
+        runner = _make_runner(tmp_path)
+        run = _make_run()
+        run.route_steps = True
+        run.tasks[0].kind = "review"
+        run.tasks[0].harness = "claude"
+        runner._runs["t1"] = run
+        undecided = _make_run("t2")
+        runner._runs["t2"] = undecided
+        runner._persist_runs()
+
+        reloaded = _make_runner(tmp_path)
+        reloaded._load_runs()
+        assert reloaded._runs["t1"].route_steps is True
+        assert (reloaded._runs["t1"].tasks[0].kind, reloaded._runs["t1"].tasks[0].harness) == (
+            "review",
+            "claude",
+        )
+        # Not yet executed: still decided from routing.json at first execution.
+        assert reloaded._runs["t2"].route_steps is None
 
 
 class TestLoadRunsResilience:
@@ -253,3 +277,27 @@ class TestBackgroundStartAdmission:
             await asyncio.gather(*background_tasks)
 
         asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("route_steps", [False, True])
+def test_first_dispatch_has_durable_routing_decision(tmp_path: Path, monkeypatch, route_steps: bool) -> None:
+    from junction import taskrunner
+
+    runner = _make_runner(tmp_path)
+    run = _make_run()
+    run.status = "running"
+    runner._runs[run.task_id] = run
+    runner._persist_runs()  # The preceding start snapshot has no decision.
+    monkeypatch.setattr(taskrunner, "route_tasks_enabled", lambda: route_steps)
+    monkeypatch.setattr(taskrunner, "shutdown_event", asyncio.Event())
+    runner._sessions.reset = AsyncMock()
+
+    async def crash_during_first_task(*args, **kwargs):
+        reloaded = _make_runner(tmp_path)
+        reloaded._load_runs()
+        assert reloaded._runs[run.task_id].route_steps is route_steps
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(runner, "_execute_single_task", crash_during_first_task)
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(runner._execute_tasks(run, "history"))
