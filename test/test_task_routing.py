@@ -59,6 +59,36 @@ async def test_a_step_takes_the_best_lane_for_its_kind_and_keeps_it(router: Any)
 
 
 @pytest.mark.asyncio
+async def test_parallel_steps_reserve_usage_before_the_next_choice(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+    import threading
+
+    doc = json.loads((router.home / "routing.json").read_text(encoding="utf-8"))
+    for lane in doc["lanes"]:
+        lane["window_limit"] = 1
+    (router.home / "routing.json").write_text(json.dumps(doc), encoding="utf-8")
+    original = router.resolve
+    parallel = threading.Barrier(2)
+
+    def slow_resolve(*args, **kwargs):
+        resolution = original(*args, **kwargs)
+        # Concurrent resolvers share a snapshot; a reserved dispatch prevents
+        # the second resolver from entering until this bounded wait completes.
+        try:
+            parallel.wait(timeout=1)
+        except threading.BrokenBarrierError:
+            pass
+        return resolution
+
+    monkeypatch.setattr(router, "resolve", slow_resolve)
+    lanes = await asyncio.gather(*(StepRoute("implement", router=router).pick() for _ in range(2)))
+    assert {lane.id for lane in lanes} == {"codex", "claude"}
+    assert all(usage.count_since(0) == 1 for usage in router.ledger.snapshot().values())
+
+
+@pytest.mark.asyncio
 async def test_a_limit_before_any_tool_is_a_free_move(router: Any) -> None:
     route = StepRoute("implement", router=router)
     await route.pick()

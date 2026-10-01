@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from collections.abc import Collection
 from typing import Any
 
@@ -37,6 +38,11 @@ logger = logging.getLogger(__name__)
 _ROUTE_TARGET = "route"
 # Role whose default kind a step without a named kind routes as.
 _STEP_ROLE = "execution"
+
+# Parallel task steps must publish the selected lane's usage before another
+# step scores the ledger. Only selection and dispatch accounting hold this
+# process-local lock; model execution remains parallel.
+_dispatch_lock = threading.Lock()
 
 
 def route_tasks_enabled() -> bool:
@@ -84,14 +90,18 @@ class StepRoute:
 
         Sticky: an attempt after an ordinary failure reuses the current lane.
         """
-        if not self._resolved:
-            self.lane = await self._resolve()
-            self._resolved = True  # A configured-agent fallback is sticky too.
-        if self.lane is not None:
-            await asyncio.to_thread(self._get_router().record_dispatch, self.lane.id, self.kind)
-        return self.lane
+        return await asyncio.to_thread(self._pick_and_record)
 
-    async def _resolve(self) -> Any:
+    def _pick_and_record(self) -> Any:
+        with _dispatch_lock:
+            if not self._resolved:
+                self.lane = self._resolve()
+                self._resolved = True  # A configured-agent fallback is sticky too.
+            if self.lane is not None:
+                self._get_router().record_dispatch(self.lane.id, self.kind)
+            return self.lane
+
+    def _resolve(self) -> Any:
         from junction.harness_router.service import RoutingError
 
         router = self._get_router()
@@ -102,9 +112,7 @@ class StepRoute:
         )
         for exclude in attempts:
             try:
-                resolution = await asyncio.to_thread(
-                    router.resolve, _ROUTE_TARGET, kind=self.kind, exclude=exclude
-                )
+                resolution = router.resolve(_ROUTE_TARGET, kind=self.kind, exclude=exclude)
             except RoutingError as exc:
                 logger.info("task step (%s): no lane excluding %s: %s", self.kind, exclude, exc)
                 continue
