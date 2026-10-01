@@ -7553,7 +7553,8 @@
         "task_description": "Aufgabenbeschreibung",
         "task_title": "Aufgabentitel",
         "task_with_title": "Aufgabe {{n}} ({{title}})",
-        "this_gate_blocks_force_approval_true": "Dieses Gate blockiert. force_approval=true."
+        "this_gate_blocks_force_approval_true": "Dieses Gate blockiert. force_approval=true.",
+        "ran_on_agent": "Agent: {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12566,6 +12567,8 @@
         "resume_now": "Jetzt fortsetzen",
         "who_gets_what": "Wer bekommt was",
         "who_gets_what_description": "Wohin die nächste Aufgabe jeder Art gerade gehen würde. Das ändert sich, wenn sich Abos füllen oder nach einem Limit pausieren.",
+        "route_task_steps": "Schritte von Task Runner routen",
+        "route_task_steps_description": "Schickt jeden Schritt von Task Runner an den dafür am besten geeigneten Agenten und gibt einen Schritt an einen anderen Agenten weiter, wenn einer ein Limit erreicht. Aus: Jeder Schritt läuft auf deinem Hauptagenten.",
         "no_agent_available": "Kein Agent verfügbar",
         "kind_plan": "Planung",
         "kind_implement": "Programmierung",

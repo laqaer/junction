@@ -113,6 +113,10 @@ export default function TaskDetailPanel({ task, allTasks = [], onClose, onRetry,
             {task.status.replace('_', ' ')}
           </Badge>
           <span className="text-[12px] text-muted">{i18nT('pages.aidlc.taskDetailPanel.attempts')} {task.attempts}/3</span>
+          {/* Set only when the run routes its steps: which agent ran this one. */}
+          {task.harness && (
+            <span className="text-[12px] text-muted">{i18nT('pages.aidlc.taskDetailPanel.ran_on_agent', { agent: task.harness })}</span>
+          )}
         </div>
 
         {/* Timestamps */}

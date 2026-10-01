@@ -49,6 +49,16 @@ export const SETTINGS_REGISTRY: SettingEntry[] =
     "occurrence": 1
   },
   {
+    "id": "agents.route-task-runner-steps",
+    "label": "Route Task Runner steps",
+    "labelKey": "pages.settings.agentsPanel.route_task_steps",
+    "description": "Send each Task Runner step to the agent best suited to it, and move a step to another agent when one hits a limit. When this is off, every step runs on your main agent.",
+    "tab": "agents",
+    "type": "toggle",
+    "occurrence": 1,
+    "configKey": "routing.route_tasks"
+  },
+  {
     "id": "agents.use-for-routing",
     "label": "Use for routing",
     "labelKey": "pages.settings.agentsPanel.use_for_routing",
