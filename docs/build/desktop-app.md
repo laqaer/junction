@@ -30,7 +30,7 @@ The electron-builder configuration lives in
 
 - **appId:** `dev.junction.desktop`
 - **productName:** `Junction`
-- macOS display name: `Junction` via `CFBundleDisplayName`; `CFBundleName`
+- macOS display name: `Warding` via `CFBundleDisplayName`; `CFBundleName`
   remains aligned with `productName` because Electron uses it to locate the
   `Junction Helper` app bundles during startup
 - mac target: `dmg` (category `public.app-category.developer-tools`). The DMG

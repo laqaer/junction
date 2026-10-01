@@ -41,7 +41,7 @@ the product whose story is that the lamp stays on.
 | Tagline | The lamp stays on. The rules stay shut. |
 | Mark | the Ward Seal (`assets/brand/ward-seal*.svg`, `assets/banner.svg`, `website/public/logo.svg`, `website/public/favicon.svg`) |
 | Site | https://getjunction.dev until the owner registers the Warding domain, then a path-for-path 301 |
-| Electron `productName` | Warding (package name stays `junction-desktop`, `appId` unchanged) |
+| Electron display name | Warding via `CFBundleDisplayName` (`productName` stays `Junction` for bundle and executable names; package name and `appId` unchanged) |
 
 Availability at decision time: `warding.dev` unregistered, PyPI `warding`
 free, npm `warding` free, no product named Warding in AI or developer tools.

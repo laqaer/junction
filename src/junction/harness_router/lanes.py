@@ -29,8 +29,8 @@ from junction.acp.types import (
     ACP_BACKENDS_SELECTABLE,
 )
 from junction.harness_router.kinds import TASK_KINDS
-from junction.model_router.catalog import MODEL_ID_MAX_LEN, MODEL_ID_PATTERN
 from junction.harness_router.profiles import BILLING_TYPES, HarnessProfile, profile_for
+from junction.model_router.catalog import MODEL_ID_MAX_LEN, MODEL_ID_PATTERN
 
 logger = logging.getLogger(__name__)
 

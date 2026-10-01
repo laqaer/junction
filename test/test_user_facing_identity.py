@@ -338,7 +338,10 @@ def test_dashboard_and_electron_chrome_are_warding() -> None:
     i18n = (_REPO_ROOT / "website" / "src" / "i18n" / "index.ts").read_text(encoding="utf-8")
     assert "const DEFAULT_PRODUCT_NAME = 'Warding'" in i18n
     electron = (_REPO_ROOT / "website" / "electron" / "package.json").read_text(encoding="utf-8")
-    assert '"productName": "Warding"' in electron
+    # productName names the bundle and executable; AGENTS.md preserves that
+    # identifier. The display name carries the user-facing product identity.
+    assert '"productName": "Junction"' in electron
+    assert '"CFBundleDisplayName": "Warding"' in electron
     assert '"name": "junction-desktop"' in electron
     for name in ("favicon.svg", "logo.svg"):
         svg = (_REPO_ROOT / "website" / "public" / name).read_text(encoding="utf-8")
