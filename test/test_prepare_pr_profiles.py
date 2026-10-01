@@ -84,21 +84,21 @@ def test_autodetect_package_json_no_scripts_emits_no_npm_gate(tmp_path):
 def test_autodetect_reviewers_from_workflows(tmp_path):
     wf = tmp_path / ".github" / "workflows"
     wf.mkdir(parents=True)
-    (wf / "codex-review.yml").write_text("name: codex\n")
+    (wf / "ai-review.yml").write_text("name: ai\n")
     (tmp_path / "go.mod").write_text("module x\n")
     prof = resolve_profile.resolve(str(tmp_path))
     assert prof["source"] == "auto-detect"
     names = [r["name"] for r in prof["reviewers"]]
-    assert "codex-review" in names
-    assert prof["reviewers"][0]["contract"].endswith("codex-review.yml")
+    assert "ai-review" in names
+    assert prof["reviewers"][0]["contract"].endswith("ai-review.yml")
 
 
 def test_junction_markers_load_bundled_profile(tmp_path):
     (tmp_path / "AUTOSDE.yaml").write_text("rules: []\n")
-    wf = tmp_path / ".github" / "workflows"
-    wf.mkdir(parents=True)
-    (wf / "codex-review.yml").write_text("name: codex\n")
-    (wf / "claude-review.yml").write_text("name: claude\n")
+    prompts = tmp_path / ".github" / "review-prompts"
+    prompts.mkdir(parents=True)
+    (prompts / "gpt-review-core.md").write_text("core\n")
+    (prompts / "opus-validate.md").write_text("validate\n")
     prof = resolve_profile.resolve(str(tmp_path))
     assert prof["source"] == "junction"
     assert prof["single_commit"] is True
@@ -109,52 +109,35 @@ def test_junction_markers_load_bundled_profile(tmp_path):
     assert models["opus"] == "claude-opus-4.8"
 
 
-def test_opus_profile_model_matches_the_ci_workflow():
-    """The local reviewer must mirror the model CI actually runs.
-
-    prepare-pr's whole value is that local-green predicts server-green. When the
-    profile pinned claude-opus-5 while claude-review.yml had moved to
-    opus-4-8, the local gate was reviewing with a different model than the gate
-    it claims to mirror. This test fails the next time they diverge.
-
-    The ids differ by namespace on purpose -- CI uses the Bedrock regional
-    inference profile (`us.anthropic.claude-opus-4-8`), the local harness uses
-    the kiro-cli id (`claude-opus-4.8`) -- so compare the normalized version.
-    """
-    workflow = (REPO_ROOT / ".github" / "workflows" / "claude-review.yml").read_text(
-        encoding="utf-8"
-    )
-    # Match the real claude_args entry -- a line whose content IS the flag --
-    # not the prose mention of "--model below" in the comment above the job.
-    ci_models = re.findall(r"(?m)^\s*--model\s+(\S+)\s*$", workflow)
-    assert ci_models, "could not find the --model argument in claude-review.yml"
-    # The lane runs two stages (discovery, then validation), so there is one
-    # --model per stage. They must agree with each other -- a lane that
-    # discovers with one model and validates with another has no single model
-    # for the local gate to mirror -- and that one value must match the profile.
-    assert len(set(ci_models)) == 1, (
-        f"claude-review.yml's stages disagree on the model: {ci_models}"
-    )
-    ci_model = ci_models[0]
-
+def test_junction_reviewers_apply_the_review_prompts():
+    """The bundled reviewers are standalone: each rubric names the review
+    prompts it applies, every named prompt exists, and every prompt in
+    `.github/review-prompts/` is named by a reviewer, so neither side can be
+    renamed or deleted without the other."""
     data = json.loads((PROFILES_DIR / "junction.json").read_text(encoding="utf-8"))
-    local_model = next(r["model"] for r in data["reviewers"] if r["name"] == "opus")
+    prompts_dir = REPO_ROOT / ".github" / "review-prompts"
+    named = set()
+    for reviewer in data["reviewers"]:
+        assert reviewer["contract"] is None, reviewer["name"]
+        files = re.findall(r"[a-z][a-z-]*\.md", reviewer["rubric"] or "")
+        assert files, f"the {reviewer['name']} rubric names no review prompt"
+        for name in files:
+            assert (prompts_dir / name).is_file(), f"{reviewer['name']} names missing {name}"
+        named.update(files)
+    assert named == {p.name for p in prompts_dir.glob("*.md")}
 
-    def _normalize(model_id: str) -> str:
-        # us.anthropic.claude-opus-4-8 -> claude-opus-4.8
-        tail = model_id.rsplit(".", 1)[-1] if "anthropic." in model_id else model_id
-        return re.sub(r"-(\d)-(\d)$", r"-\1.\2", tail)
 
-    assert _normalize(ci_model) == _normalize(local_model), (
-        f"prepare-pr opus reviewer ({local_model}) no longer mirrors "
-        f"claude-review.yml ({ci_model})"
-    )
+def test_junction_markers_are_the_files_the_profile_needs():
+    """The bundled profile is selected only where its reviewers' contracts exist."""
+    for marker in resolve_profile._JUNCTION_MARKERS:
+        assert (REPO_ROOT / marker).is_file(), marker
+    assert resolve_profile.detect_junction(str(REPO_ROOT))
 
 
-def test_charter_budgets_match_the_ci_workflows():
-    """The budget numbers restated in SKILL.md must match the workflows.
+def test_charter_budgets_match_the_review_prompts():
+    """The budget numbers restated in SKILL.md must match the review prompts.
 
-    The charter hand-copies CI's budgets. That copy is exactly what drifted
+    The charter hand-copies the contracts' budgets. That copy is exactly what drifted
     before -- the skill still claimed ≤2 BLOCKING long after CI moved to 5 --
     so pin the wording rather than trusting prose to be kept in sync. The Opus
     lane still carries a numeric cap; the GPT lane's budget is report-ALL (a
@@ -163,8 +146,8 @@ def test_charter_budgets_match_the_ci_workflows():
     """
     skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
-    # The Opus lane's budgets live with the contract that applies them -- the
-    # validation prompt -- not in the workflow that merely invokes it.
+    # The Opus reviewer's budgets live with the stage that applies them -- the
+    # validation prompt.
     opus_contract = REPO_ROOT / ".github" / "review-prompts" / "opus-validate.md"
     claude = opus_contract.read_text(encoding="utf-8")
     opus_match = re.search(r"At most (\d+) BLOCKING", claude)
@@ -178,12 +161,12 @@ def test_charter_budgets_match_the_ci_workflows():
     assert (
         f"≤{opus_blocking} BLOCKING, ≤{opus_advisory} advisory FINDING" in skill
     ), (
-        "the opus charter's budget no longer matches claude-review.yml "
+        "the opus charter's budget no longer matches opus-validate.md "
         f"({opus_blocking} BLOCKING / {opus_advisory} advisory)"
     )
 
-    # The GPT lane's budget lives with the contract that applies it -- the
-    # shared review-core prompt (#5852) -- not in the workflow that splices it.
+    # The GPT reviewer's budget lives with the contract that applies it -- the
+    # shared review-core prompt.
     gpt_contract = (
         REPO_ROOT / ".github" / "review-prompts" / "gpt-review-core.md"
     ).read_text(encoding="utf-8")
@@ -193,12 +176,12 @@ def test_charter_budgets_match_the_ci_workflows():
     )
     assert re.search(r"BUDGET: at most \d+ BLOCKING", gpt_contract) is None
     assert "report-ALL" in skill, (
-        "the gpt charter's budget no longer matches codex-review.yml "
+        "the gpt charter's budget no longer matches gpt-review-core.md "
         "(expected the report-ALL wording)"
     )
     assert re.search(r"≤\d+ BLOCKING\*\* budget", skill) is None, (
         "the gpt charter still restates a numeric BLOCKING cap that "
-        "codex-review.yml no longer has"
+        "gpt-review-core.md no longer has"
     )
 
 

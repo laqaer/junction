@@ -74,7 +74,7 @@ Everything project-specific is prose the agent reads, not code:
 The profile is the single home for everything that varies per repo. The review bots are just the most visible slice:
 
 1. **Local gates** — the test/lint/type commands the Phase-2 local gate runs (Junction: `pytest`, `isort`, `flake8`, `mypy`, `tsc -b`, `vitest`).
-2. **Local reviewers** — a list of local review subagents, **one spawned per entry** (each pinned to a concrete `spawn_run` **model id**, with a `model_tier` fallback). A reviewer is either **contract-backed** (it mirrors a specific CI gate by reading that workflow's contract, e.g. `codex-review.yml`) or **standalone** (it reviews against an inline `rubric` with no CI counterpart). Reviewers do **not** have to bind to CI — a repo can add local-only reviewers (security, performance, a11y, house style) that no server gate mirrors, and a repo with no CI reviewers at all can still define reviewers by rubric. All reviewers inherit the shared `rule_files` (AUTOSDE / AGENTS.md).
+2. **Local reviewers** — a list of local review subagents, **one spawned per entry** (each pinned to a concrete `spawn_run` **model id**, with a `model_tier` fallback). A reviewer is either **contract-backed** (it mirrors a specific CI gate by reading that workflow's contract) or **standalone** (it reviews against an inline `rubric` with no CI counterpart). Reviewers do **not** have to bind to CI — a repo can add local-only reviewers (security, performance, a11y, house style) that no server gate mirrors, and a repo with no CI reviewers at all can still define reviewers by rubric. All reviewers inherit the shared `rule_files` (AUTOSDE / AGENTS.md).
 3. **Conventions** — single-commit rule (on/off), the readiness status context name + managed labels, an optional long-term-defer label, and the base branch override.
 
 ### 5.2 Resolution order (fail-safe, most-specific-wins)
@@ -103,7 +103,7 @@ When there is no `.prepare-pr.toml`:
 
 ### 5.4 Junction marker detection
 
-The `junction` profile auto-selects when the repo root contains the distinctive markers, e.g. **all/most of**: `AUTOSDE.yaml` **and** `website/AUTOSDE.yaml`, the review workflows (`codex-review.yml` + `claude-review.yml`), and the `PR Readiness` status usage. Presence of these is a strong, low-false-positive signal that we are in Junction (or a faithful fork), so loading the tuned profile is safe.
+The `junction` profile auto-selects when the repo root contains all of its markers: `AUTOSDE.yaml` plus the two review prompts its reviewers apply (`.github/review-prompts/gpt-review-core.md` and `.github/review-prompts/opus-validate.md`). Presence of these is a strong, low-false-positive signal that we are in Junction (or a faithful fork), and it selects the profile exactly where its reviewers' contracts exist, so loading the tuned profile is safe.
 
 ### 5.5 Profile schema (`.prepare-pr.toml`)
 
@@ -126,8 +126,7 @@ commands = [
 ]
 
 [review]
-# Shared rule files EVERY reviewer inherits. Both Junction CI gates
-# (codex-review.yml AND claude-review.yml) load base-ref AUTOSDE and read the
+# Shared rule files EVERY reviewer inherits: the base-ref AUTOSDE rules and the
 # AGENTS.md conventions (root = backend, website/ = frontend). CLAUDE.md is
 # intentionally omitted — it holds no rules, only an `@AGENTS.md` import pointer.
 rule_files = ["AUTOSDE.yaml", "website/AUTOSDE.yaml", "AGENTS.md", "website/AGENTS.md"]
@@ -141,19 +140,19 @@ rule_files = ["AUTOSDE.yaml", "website/AUTOSDE.yaml", "AGENTS.md", "website/AGEN
 # spawn_run concurrency floors at 3 and auto-sizes up from host memory/CPU
 # (config agent.max_subagents), so extra reviewers just queue — never error.
 
-# contract-backed — mirrors the GPT CI gate
+# contract-backed — mirrors a repository's AI review CI gate
 [[review.reviewers]]
 name = "gpt"
 model = "gpt-5.6-sol"        # concrete spawn_run model id (served GPT-5.x tier)
 model_tier = "gpt-5.x"
-contract = ".github/workflows/codex-review.yml"
+contract = ".github/workflows/ai-review.yml"
 
-# contract-backed — mirrors the Claude/Opus CI gate
+# standalone — applies a review contract kept in the repository
 [[review.reviewers]]
 name = "opus"
-model = "claude-opus-5"      # mirrors claude-review.yml --model us.anthropic.claude-opus-5
-model_tier = "claude-opus-4.8"   # CI's --fallback-model (us.anthropic.claude-opus-4-8)
-contract = ".github/workflows/claude-review.yml"
+model = "claude-opus-4.8"
+model_tier = "claude-opus-4.7"
+rubric = "Apply the base-ref .github/review-prompts/opus-discovery.md, then opus-validate.md over the discovery candidates."
 
 # standalone — a local-only reviewer with no CI gate to mirror
 [[review.reviewers]]
@@ -167,11 +166,11 @@ status_context = "PR Readiness"   # optional override; else pr_status.py falls b
 defer_label = ""                  # optional: a label that formally defers a gate
 ```
 
-The bundled `profiles/junction.json` encodes exactly this Junction configuration as a machine-readable profile the resolver loads directly, so Junction needs no in-repo `.prepare-pr.toml`.
+The bundled `profiles/junction.json` encodes Junction's own configuration as a machine-readable profile the resolver loads directly, so Junction needs no in-repo `.prepare-pr.toml`. Junction runs no AI reviewer in CI, so both of its reviewers (`gpt` and `opus`) are standalone: each rubric names the review contract in `.github/review-prompts/` that reviewer applies.
 
-> **Why mirror + multi-model by default (not dimension-split).** Contract-backed reviewers reproduce each CI gate's bar locally, so blocking findings surface pre-push instead of a CI round later; pinning each reviewer to a different vendor buys cross-model blind-spot coverage (the same principle the `llm-council` skill is built on — a same-model panel echoes one bias). Splitting one model across dimensions (correctness vs contracts, the pre-#616 A/B design) adds little as models get stronger, since one capable reviewer covers both in a pass — so the default spends the parallel budget on **model diversity**, not dimension slices.
+> **Why one contract per reviewer + multi-model by default (not dimension-split).** Contract-backed reviewers reproduce each CI gate's bar locally, so blocking findings surface pre-push instead of a CI round later, and Junction's standalone reviewers apply a full review contract each rather than one dimension of one; pinning each reviewer to a different vendor buys cross-model blind-spot coverage (the same principle the `llm-council` skill is built on — a same-model panel echoes one bias). Splitting one model across dimensions (correctness vs contracts, the pre-#616 A/B design) adds little as models get stronger, since one capable reviewer covers both in a pass — so the default spends the parallel budget on **model diversity**, not dimension slices.
 >
-> **This is a default, not a constraint.** The `[[review.reviewers]]` mechanism does not stop anyone from building dimension-based review: a user can define standalone `rubric` reviewers split by concern (a correctness reviewer + a contracts reviewer, exactly the old A/B charters) — with or without any CI gate to mirror. Junction simply *chooses* to mirror its CI gates by default. Per-dimension charters are especially worth adding for very large diffs, where a single reviewer's attention/context is the bottleneck.
+> **This is a default, not a constraint.** The `[[review.reviewers]]` mechanism does not stop anyone from building dimension-based review: a user can define standalone `rubric` reviewers split by concern (a correctness reviewer + a contracts reviewer, exactly the old A/B charters) — with or without any CI gate to mirror. Junction simply *chooses* one full contract per reviewer by default. Per-dimension charters are especially worth adding for very large diffs, where a single reviewer's attention/context is the bottleneck.
 
 ### 5.6 Script changes
 
@@ -285,11 +284,11 @@ The three axes (§5.1) map one-to-one onto the loop's green nodes. Anything a pr
 ### 5.9 The reviewer-marker grammar (spec of record)
 
 The `[<NAME>-REVIEWED]` / `[BLOCK-MERGE]` markers are a load-bearing contract
-between three parties: the review workflows that EMIT them
-(`codex-review.yml`, `claude-review.yml`, `design-review.yml`,
-`ux-review.yml`), and the two parity-pinned parser copies in `pr_status.py`
-and `pr_findings.py` that CONSUME them. A workflow change that alters the
-emitted shape silently orphans the parsers — the freshness gate then sees no
+between the review bots that EMIT them and the two parity-pinned parser copies
+in `pr_status.py` and `pr_findings.py` that CONSUME them. No reviewer in this
+repository's CI emits them; the parsers serve any repository whose review bots
+post the grammar below, and find nothing to gate on where none does. An emitter
+change that alters the emitted shape silently orphans the parsers — the freshness gate then sees no
 stamps and stops gating — so any change to either side must update this
 section and both parser regexes together
 (`test_prepare_pr_findings.py::TestMarkerRegexParity` pins the two copies to
@@ -299,7 +298,8 @@ The grammar, one marker per line inside the bot's PR comment body:
 
 - `[<NAME>-REVIEWED] <sha>` — proof the review ran for that commit. `<NAME>`
   is `[A-Z][A-Z0-9_-]*` (e.g. `GPT`, `OPUS`, `DESIGN`, `UX`); `<sha>` is a
-  7–40 char lowercase hex prefix of the head SHA (workflows emit the full 40).
+  7–40 char lowercase hex prefix of the head SHA (emitters normally write the
+  full 40).
 - `[BLOCK-MERGE] <sha>` — emitted ADDITIONALLY, only for a blocking verdict on
   that same commit. Never emitted for advisory findings.
 - Finding lines start with the literal token `BLOCKING` or `FINDING`, followed
@@ -309,16 +309,17 @@ The grammar, one marker per line inside the bot's PR comment body:
 
 Consumption rules the parsers implement: only comments whose author is a Bot
 AND whose login is a trusted marker author count — by default
-`github-actions[bot]`, the actor every review workflow posts through, because
+`github-actions[bot]`, the actor a review workflow posts through, because
 `user.type == "Bot"` alone is spoofable by a third-party app that echoes
 PR-controlled text (`--marker-authors` / `PREPARE_PR_MARKER_AUTHORS` widens
 the allowlist for a repo whose reviewers post under app-specific logins); an
 agent's own disposition comments quote these tokens verbatim and are excluded
 by both checks; reviewer IDENTITY comes from workflow-authored bytes, never
 from model output — each lane's comment starts with its template-written
-upsert key (`<!-- codex-ai-review -->` → GPT, `<!-- claude-ai-review -->` →
-OPUS, `<!-- design-review -->` → DESIGN, `<!-- ux-review -->` → UX;
-`--marker-bindings` / `PREPARE_PR_MARKER_BINDINGS` overrides), and a stamp
+upsert key, bound to a reviewer name (the default bindings are
+`<!-- codex-ai-review -->` → GPT, `<!-- claude-ai-review -->` → OPUS,
+`<!-- design-review -->` → DESIGN, `<!-- ux-review -->` → UX;
+`--marker-bindings` / `PREPARE_PR_MARKER_BINDINGS` overrides them), and a stamp
 counts only when the bound lane's own name matches it, so injected model
 output in one lane can never grant another reviewer's freshness whatever
 names it emits (its `[BLOCK-MERGE]` still gates from any trusted comment:
@@ -329,10 +330,8 @@ reviewer name. Discovery mode holds every stamp found to freshness but does
 not require presence; naming reviewers (`--reviewers` /
 `PREPARE_PR_REVIEWERS`) additionally REQUIRES each named reviewer to have a
 fresh stamp, so a pinned fleet cannot be silently un-gated by an emitter
-drift or a bot that fails to post. Two tests hold the contract together:
-`TestMarkerRegexParity` pins the two consumer copies to each other, and
-`test_emitting_workflows_still_carry_the_marker_grammar` pins the emitting
-workflows to the markers the consumers parse.
+drift or a bot that fails to post. `TestMarkerRegexParity` pins the two
+consumer copies to each other.
 
 ## 6. Distribution — keep it built-in
 
@@ -378,9 +377,9 @@ src/junction/builtin_skills/junction-dev/prepare-pr/
 - **Profile format:** `.prepare-pr.toml` (TOML via `tomllib`) vs a `[tool.prepare-pr]` table inside `pyproject.toml` for Python repos. Leaning TOML root file for language-neutrality.
 - **Gate command trust:** running profile-supplied shell commands is arbitrary code execution by design (it's the repo's own dev config). Confirm this is acceptable, or gate first-run on user confirmation.
 - **Marker strictness:** how many Junction markers must match to auto-load the `junction` profile (all vs a quorum) to stay robust across forks.
-- **Concrete model ids (verified 2026-07-28):** pinned to the CI gates' own models — `gpt-5.6-sol` (codex-review.yml: `model = "openai.gpt-5.6-sol"`) and `claude-opus-5` primary / `claude-opus-4.8` fallback (claude-review.yml: `--model us.anthropic.claude-opus-5 --fallback-model us.anthropic.claude-opus-4-8`); all confirmed served by `kiro-cli chat --list-models`. Note the bare `gpt-5.6` is NOT served (spawns fail) — the GPT mirror must pin the `-sol` tier. Remaining item is *maintenance*: keep the profile ids in sync when the CI workflow pins are bumped (periodic check or a test asserting parity).
+- **Concrete model ids:** the bundled profile pins the `kiro-cli` ids `gpt-5.6-sol` and `claude-opus-4.8`. Note the bare `gpt-5.6` is NOT served (spawns fail) — the GPT reviewer must pin the `-sol` tier.
 - **Profile-resolution mechanism (resolved):** implemented as the deterministic `resolve_profile.py` helper emitting resolved JSON — chosen for determinism + testability over prose-driven parsing.
-- **Model-tier fallback wording:** how loudly to warn when a mirror's pinned `model` id is unavailable and it drops to the `model_tier` fallback (local-green is then weaker than server-green).
+- **Model-tier fallback wording:** how loudly to warn when a mirror's pinned `model` id is unavailable and it drops to the `model_tier` fallback (local-green is then a weaker signal).
 
 ## 11. Scope of work (if approved)
 

@@ -45,11 +45,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PROFILES_DIR = os.path.join(os.path.dirname(HERE), "profiles")
 
 # Files whose combined presence identifies the Junction repo (or a faithful
-# fork) with a very low false-positive rate. All must be present to match.
+# fork) with a very low false-positive rate. All must be present to match. The
+# two review prompts are the contracts the bundled profile's reviewers apply,
+# so the profile is selected exactly where those reviewers can run.
 _JUNCTION_MARKERS = (
     "AUTOSDE.yaml",
-    ".github/workflows/codex-review.yml",
-    ".github/workflows/claude-review.yml",
+    ".github/review-prompts/gpt-review-core.md",
+    ".github/review-prompts/opus-validate.md",
 )
 
 

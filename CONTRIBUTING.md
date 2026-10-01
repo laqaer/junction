@@ -486,35 +486,22 @@ line your change falls on, open an issue and ask.
 
 ### CI checks on your PR (forks vs. direct branches)
 
-GitHub deliberately withholds repository secrets and OIDC credentials from
-workflows triggered by **pull requests opened from a fork**. Three of our
-checks need those credentials to reach Amazon Bedrock, so their behaviour
-depends on *where your branch lives*:
+GitHub withholds repository secrets and OIDC credentials from workflows
+triggered by **pull requests opened from a fork**. No PR check needs them, so
+tests, lint, typecheck, coverage, build and the deterministic code-review gates
+run the same on a fork PR as on a branch pushed to `laqaer/junction`. Two
+differences remain:
 
-| Check | Fork PR | Branch pushed to `laqaer/junction` |
-| --- | --- | --- |
-| **Opus 4.8 Review** | Skipped (neutral — not a failure) | Runs |
-| **GPT 5.6 Review** | Skipped | Runs |
-| **Design Review** | Skipped | Runs |
-| Tests, lint, typecheck, CodeQL, coverage, build | Run normally | Run normally |
+- **CodeQL** runs through GitHub's default setup, which is not scheduled for
+  fork heads. `PR Readiness` lists it as not eligible on a fork PR instead of
+  waiting for it, so it never blocks your PR.
+- **A fork PR that changes anything under `.github/`** is held by the fork
+  workflow guard until a maintainer has reviewed the change and applied the
+  `allow-fork-workflow-change` label.
 
-- **Opening from a fork (the default for most contributors):** the three AI
-  reviews are **skipped, not failed** — and this is identical for *everyone*,
-  regardless of permission level. A maintainer who opens a PR from their own
-  personal fork gets exactly the same skip; write access does not change it.
-  A skipped review does **not** block your PR and there is nothing for you to
-  fix: just make sure the credential-free checks (tests, lint, typecheck,
-  CodeQL, coverage, build) are green. A maintainer runs the AI review on their
-  side (or re-pushes your branch to the upstream repo) and reviews manually.
-- **Getting the AI reviews to run** depends only on *where the branch lives*,
-  never on who you are: the branch has to be on `laqaer/junction` itself,
-  not on a fork. Pushing a branch directly to the upstream repo requires write
-  access — so if you have it, push there and open the PR from that branch to
-  get the full suite. Without write access, the fork path above is the correct
-  and only route, by design.
-
-If your only red checks are the AI reviews on a fork PR, there is nothing for
-you to fix — flag it to a maintainer.
+No AI reviewer runs in CI. A maintainer reviews every PR by hand; if you drive
+your PR with the `prepare-pr` skill, it also runs an AI review locally before
+each push.
 
 ## Commit Messages
 

@@ -47,7 +47,7 @@ pytestmark = pytest.mark.skipif(
     reason="requires the workflow plus a POSIX bash and jq",
 )
 
-# ``gh`` stub. Serves canned workflow-run / check-run JSON keyed on the URL,
+# ``gh`` stub. Serves canned workflow-run JSON keyed on the URL,
 # and can simulate a flaky or dead endpoint: any URL containing $FLAKY_SUBSTR
 # fails with a TLS-style error until its per-run counter exceeds $FLAKY_FAILS.
 GH_STUB = r"""#!/usr/bin/env bash
@@ -74,7 +74,6 @@ if [ -n "${FLAKY_SUBSTR:-}" ] && [[ "$url" == *"$FLAKY_SUBSTR"* ]]; then
   fi
 fi
 case "$url" in
-  *"/commits/"*"/check-runs"*)             cat "$FIXTURES/check_runs.json"; exit 0 ;;
   *"/commits/"*"/status"*)
     # The truncated-fallback's defer guard: the CURRENT "PR Readiness"
     # commit-status state (gh applies --jq itself, so the stub emits the
@@ -197,15 +196,6 @@ class Runner:
         (self.fixtures / "codeql_runs.json").write_text(
             _run_json("codeql", status="completed", conclusion="success")
         )
-        (self.fixtures / "check_runs.json").write_text(
-            json.dumps(
-                {
-                    "check_runs": [
-                        {"status": "completed", "conclusion": "success"}
-                    ]
-                }
-            )
-        )
 
     def evaluate(
         self,
@@ -259,7 +249,7 @@ class TestTransientFailureIsRetried:
         # transient failure, then success -- the retry must absorb it and the
         # evaluation must land on the REAL verdict, not the fallback.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs", flaky_fails=1
+            flaky_substr="code-review.yml/runs", flaky_fails=1
         )
         assert proc.returncode == 0, proc.stderr
         assert outputs["status_state"] == "success"
@@ -284,7 +274,7 @@ class TestPersistentTransportFailureIsNonTerminal:
         # Endpoint dead for all 3 attempts: the job must NOT go red. It exits
         # 0 with the explicit non-terminal verdict so the publish step runs.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs", flaky_fails=99
+            flaky_substr="code-review.yml/runs", flaky_fails=99
         )
         assert proc.returncode == 0, proc.stderr
         assert outputs["status_state"] == "pending"
@@ -306,14 +296,13 @@ class TestPersistentTransportFailureIsNonTerminal:
         assert proc.returncode == 0, proc.stderr
         assert len(outputs["description"]) <= 140
 
-    def test_fork_checkrun_lane_takes_the_same_fallback(self, runner: Runner):
-        # A fork PR's AI-review lanes are read from the head SHA's check-runs
-        # (checkrun: specs) -- a different branch of the evaluate loop than the
-        # workflow-runs reads. A persistent transport failure there must take
-        # the same non-terminal fallback, since fork PRs are the lane that
-        # produced the documented frozen-verdict incidents.
+    def test_fork_pr_takes_the_same_fallback(self, runner: Runner):
+        # A fork PR evaluates a shorter lane list (CodeQL is ineligible), and
+        # fork PRs are the lane that produced the documented frozen-verdict
+        # incidents. A persistent transport failure there must take the same
+        # non-terminal fallback.
         proc, outputs = runner.evaluate(
-            flaky_substr="check-runs", flaky_fails=99, fork=True
+            flaky_substr="code-review.yml/runs", flaky_fails=99, fork=True
         )
         assert proc.returncode == 0, proc.stderr
         assert outputs["status_state"] == "pending"
@@ -328,7 +317,7 @@ class TestPersistentTransportFailureIsNonTerminal:
         # would only discard its diagnostics and set the sweep re-firing.
         # The truncated run defers: exit 0, nothing published.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs",
+            flaky_substr="code-review.yml/runs",
             flaky_fails=99,
             existing_status_state="failure",
         )
@@ -348,7 +337,7 @@ class TestPersistentTransportFailureIsNonTerminal:
         # only ever BLOCK a merge -- publishing it over success is the
         # fail-safe write, and re-evaluation restores the true verdict.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs",
+            flaky_substr="code-review.yml/runs",
             flaky_fails=99,
             existing_status_state="success",
         )
@@ -364,7 +353,7 @@ class TestPersistentTransportFailureIsNonTerminal:
         # nothing, and the refreshed timestamp keeps the self-heal sweep's
         # staleness clock honest.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs",
+            flaky_substr="code-review.yml/runs",
             flaky_fails=99,
             existing_status_state="pending",
         )
@@ -380,7 +369,7 @@ class TestPersistentTransportFailureIsNonTerminal:
         # that re-evaluation will unblock, while deferring would leave a
         # possibly-stale green mergeable -- so unreadable publishes pending.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs",
+            flaky_substr="code-review.yml/runs",
             flaky_fails=99,
             existing_status_state="__FAIL__",
         )
@@ -397,9 +386,9 @@ class TestPermanentHttpErrorFailsLoud:
         # failure" forever (the sweep re-fires pending statuses endlessly).
         # The helper must not retry it, and the job must fail loudly.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs",
+            flaky_substr="code-review.yml/runs",
             flaky_fails=99,
-            http_error="HTTP 404: Not Found (repos/x/actions/workflows/codex-review.yml/runs)",
+            http_error="HTTP 404: Not Found (repos/x/actions/workflows/code-review.yml/runs)",
         )
         assert proc.returncode != 0
         assert outputs.get("status_state") != "pending"
@@ -439,7 +428,7 @@ class TestPermanentHttpErrorFailsLoud:
         # A 403 WITHOUT rate-limit text (missing scope, SSO enforcement)
         # is a real misconfiguration: no retry, fail loud.
         proc, outputs = runner.evaluate(
-            flaky_substr="codex-review.yml/runs",
+            flaky_substr="code-review.yml/runs",
             flaky_fails=99,
             http_error="HTTP 403: Resource not accessible by integration",
         )
@@ -472,7 +461,7 @@ class TestGenuineFailureStaysRed:
             _run_json("ci.yml", status="completed", conclusion="failure")
         )
         proc, outputs = runner.evaluate(
-            flaky_substr="claude-review.yml/runs", flaky_fails=1
+            flaky_substr="code-review.yml/runs", flaky_fails=1
         )
         assert proc.returncode == 0, proc.stderr
         assert outputs["status_state"] == "failure"
@@ -485,13 +474,13 @@ class TestGenuineFailureStaysRed:
         # then a later lane's read dies for all 3 attempts. The fallback must
         # NOT mask the known red behind "could not be evaluated" -- an
         # already-observed blocker wins and the verdict stays terminal red.
-        # (ci.yml is evaluated before the review lanes, so the failure is in
+        # (ci.yml is evaluated before code-review.yml, so the failure is in
         # `failed[]` by the time the transport failure aborts the loop.)
         (runner.fixtures / "ci_runs.json").write_text(
             _run_json("ci.yml", status="completed", conclusion="failure")
         )
         proc, outputs = runner.evaluate(
-            flaky_substr="claude-review.yml/runs", flaky_fails=99
+            flaky_substr="code-review.yml/runs", flaky_fails=99
         )
         assert proc.returncode == 0, proc.stderr
         assert outputs["status_state"] == "failure"
@@ -522,7 +511,8 @@ class TestLaneStateIsLoggedNotOnlySummarized:
         # Real lane labels, not just a non-empty bucket -- proves the log line
         # carries the SAME names the summary does, not a placeholder.
         assert "CI" in log_line
-        assert "Opus 4.8 Review" in log_line
+        assert "Code Review" in log_line
+        assert "CodeQL" in log_line
 
     def test_a_stuck_lane_is_named_in_the_log_line(self, runner: Runner):
         # The exact #3550 shape: one lane never completes (still queued),
@@ -540,3 +530,19 @@ class TestLaneStateIsLoggedNotOnlySummarized:
         )
         assert "CodeQL" in log_line
         assert "pending=[CodeQL" in log_line
+
+    def test_fork_pr_passes_with_codeql_listed_as_not_eligible(
+        self, runner: Runner
+    ):
+        # A fork head cannot run the managed CodeQL workflow, so a fully green
+        # fork reaches "passed" with CodeQL reported as not eligible -- never
+        # pending on a lane that can never start.
+        proc, outputs = runner.evaluate(fork=True)
+        assert proc.returncode == 0, proc.stderr
+        assert outputs["status_state"] == "success"
+        assert outputs["label"] == "readiness: passed"
+        log_line = next(
+            line for line in proc.stdout.splitlines() if line.startswith("pr-readiness: lane state")
+        )
+        assert "skipped=[CodeQL (fork PR)]" in log_line
+        assert "pending=[]" in log_line

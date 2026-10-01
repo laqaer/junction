@@ -3,8 +3,8 @@
 
 ``src/junction/_vendor`` (vendored llama-cpp-python: executable Python plus
 per-platform native libraries) is deliberately excluded from every
-source-level content review: semgrep, the AI reviewers' reviewable diff, and
-the formatter/linter configs all skip it. Without a content gate, a PR that
+source-level content review: semgrep and the formatter/linter configs both
+skip it. Without a content gate, a PR that
 modifies vendored Python source, swaps a native library, or drops a rogue
 ``.py`` into the vendored ``sys.path`` root passes every review unnoticed.
 
