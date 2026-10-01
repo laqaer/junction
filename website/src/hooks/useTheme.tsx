@@ -27,6 +27,7 @@ import {
 } from './themeCss'
 
 import { i18nT } from '../i18n/t'
+import { BUILTIN_THEME_NAME } from '../utils/builtinThemeNames'
 
 export type ModePreference = 'dark' | 'light' | 'system'
 export type ResolvedMode = 'dark' | 'light'
@@ -325,7 +326,7 @@ function applyThemeBranding(theme: CustomThemeData | undefined) {
  * Everforest), a product (Kiro, IntelliJ), or the display technology it is tuned
  * for (AMOLED). Those are proper nouns — translating one would sever the name
  * from the upstream project a user is looking for — so they stay verbatim as
- * `label` in `THEMES` below, exactly like the theme names an installed pack or a
+ * `label` in `THEMES` below (spelled in `utils/builtinThemeNames.ts`, the one exempt module), exactly like the theme names an installed pack or a
  * `registerTheme()` caller supplies. `High Contrast` is the one that names a
  * rendering PROPERTY (the accessibility palette) rather than a palette identity,
  * so it is copy in the same sense as every other settings label.
@@ -342,28 +343,27 @@ export const THEME_LABEL_KEY: Record<string, string> = {
 
 export const THEMES: ThemeEntry[] = [
   { value: 'junction', label: 'Warding' },
-  { value: 'emerald', label: '🌿 Emerald' },
-  { value: 'monokai', label: '🎨 Monokai' },
-  { value: 'solarized', label: '☀️ Solarized' },
-  { value: 'amber', label: '🔥 Amber' },
-  { value: 'dracula', label: '🔮 Dracula' },
-  { value: 'nord', label: '🌊 Nord' },
-  { value: 'rosepine', label: '🌹 Rosé Pine' },
-  { value: 'catppuccin', label: '🐱 Catppuccin' },
-  { value: 'tokyonight', label: '🌃 Tokyo Night' },
-  { value: 'gruvbox', label: '🍦 Gruvbox' },
-  { value: 'ice', label: '🧊 Ice' },
-  { value: 'amoled', label: '🖤 AMOLED' },
-  { value: 'intellij', label: '😶‍🌫️ IntelliJ' },
+  { value: 'emerald', label: BUILTIN_THEME_NAME.emerald },
+  { value: 'monokai', label: BUILTIN_THEME_NAME.monokai },
+  { value: 'solarized', label: BUILTIN_THEME_NAME.solarized },
+  { value: 'amber', label: BUILTIN_THEME_NAME.amber },
+  { value: 'dracula', label: BUILTIN_THEME_NAME.dracula },
+  { value: 'nord', label: BUILTIN_THEME_NAME.nord },
+  { value: 'rosepine', label: BUILTIN_THEME_NAME.rosepine },
+  { value: 'catppuccin', label: BUILTIN_THEME_NAME.catppuccin },
+  { value: 'tokyonight', label: BUILTIN_THEME_NAME.tokyonight },
+  { value: 'gruvbox', label: BUILTIN_THEME_NAME.gruvbox },
+  { value: 'ice', label: BUILTIN_THEME_NAME.ice },
+  { value: 'amoled', label: BUILTIN_THEME_NAME.amoled },
+  { value: 'intellij', label: BUILTIN_THEME_NAME.intellij },
   // The only descriptive name here, so the only one with a catalog key: `label`
-  // holds the glyph alone as the pre-resolution fallback and the full display
-  // string lives in `hooks.theme.high_contrast` (emoji included, as
-  // `components.themeEditor.color_picker` already does). Nothing renders this
+  // holds the English name as the pre-resolution fallback and the translated
+  // display string lives in `hooks.theme.high_contrast`. Nothing renders this
   // entry's `label` directly — `allThemes` goes through `builtinThemes()`.
-  { value: 'highcontrast', label: '🔆' },
-  { value: 'everforest', label: '🌲 Everforest' },
-  { value: 'amoled-midnight', label: '🌌 AMOLED Midnight' },
-  { value: 'amoled-grey-calm', label: '🌑 AMOLED Grey Calm' },
+  { value: 'highcontrast', label: BUILTIN_THEME_NAME.highcontrast },
+  { value: 'everforest', label: BUILTIN_THEME_NAME.everforest },
+  { value: 'amoled-midnight', label: BUILTIN_THEME_NAME.amoledMidnight },
+  { value: 'amoled-grey-calm', label: BUILTIN_THEME_NAME.amoledGreyCalm },
 ]
 
 /**
