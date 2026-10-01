@@ -3,8 +3,9 @@
 **The lamp stays on. The rules stay shut.**
 
 Warding runs the coding agent you already pay for, all night, on your own
-box, and asks you in chat before anything risky — under a policy it cannot
-read or rewrite.
+box, and can ask you in chat before it acts when you enable approvals — under
+a policy it cannot read or rewrite. Approvals are opt-in: `agent.approval_mode`
+defaults to `auto`; set it to `interactive` or choose Interactive in the dashboard.
 
 Built on Amazon's open-source Kiro agent workspace, published under
 Apache-2.0 in 2026. Most of the code is theirs; the attribution
@@ -16,9 +17,9 @@ notice is in [NOTICE](NOTICE). Not affiliated with Amazon. Lineage:
 For developers who already pay for a coding agent, and for the platform or
 security lead who has to say yes to it running unattended, Warding is the
 self-hosted late desk that keeps that agent working on your own machine after
-you close the laptop, reports into the chat you already use, and asks first
-before anything risky — under a written policy the agent can neither read nor
-rewrite. Unlike vendor routines and cloud sessions, it runs on your hardware
+you close the laptop, reports into the chat you already use, and can ask before
+it acts when you enable approvals — under a written policy the agent can neither
+read nor rewrite. Unlike vendor routines and cloud sessions, it runs on your hardware
 with no run cap added by us (your model plan's limits still apply) and no
 account with us in the door; unlike the personal-agent projects, it denies the
 agent the secret paths and policy files on its deny list, at its own gate; and

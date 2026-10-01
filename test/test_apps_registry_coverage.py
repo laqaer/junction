@@ -1076,10 +1076,11 @@ class TestEnrichWithInstallStatus:
         )
         assert "origin" not in rows[0]
 
-    def test_non_external_row_still_receives_origin(self):
+    def test_non_external_row_still_receives_origin(self, monkeypatch):
+        monkeypatch.setattr("junction.apps.manager.registered_builtin_install", lambda name: True)
         rows = registry._enrich_with_install_status(
-            [{"name": "demo"}],
-            {"demo": {"version": "1.0.0", "origin": "builtin"}},
+            [{"name": "file-explorer"}],
+            {"file-explorer": {"version": "1.0.0", "origin": "builtin"}},
         )
         assert rows[0]["origin"] == "builtin"
 
@@ -1103,8 +1104,9 @@ class TestApplyTrustFields:
         assert "featured" not in rows[0]
         assert "_index_author" not in rows[0]
 
-    def test_builtin_row_is_verified(self):
-        rows = registry._apply_trust_fields([{"name": "demo", "origin": "builtin"}])
+    def test_builtin_row_is_verified(self, monkeypatch):
+        monkeypatch.setattr("junction.apps.manager.registered_builtin_install", lambda name: True)
+        rows = registry._apply_trust_fields([{"name": "file-explorer", "origin": "builtin"}])
         assert rows[0]["provenance"] == "builtin"
         assert rows[0]["verified"] is True
 

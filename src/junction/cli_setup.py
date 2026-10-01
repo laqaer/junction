@@ -90,7 +90,7 @@ def _manifest(alias: str | None = None, output: str | None = None, url: bool = F
         out = Path(output)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(rendered, encoding="utf-8")
-        print(f"✅ Manifest written to {output} (name: Junction-{alias})")
+        print(f"✅ Manifest written to {output} (name: Warding-{alias})")
     else:
         print(rendered)
 

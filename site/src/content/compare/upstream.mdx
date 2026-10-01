@@ -34,7 +34,7 @@ The upstream project is further along than the version we forked. Since its 0.6 
     ["Sending a subagent to another harness", "not checked yet", "the harness router: flat-rate quota before metered spend, the kind of task, a cooldown after a usage limit or a failed login; it never forwards provider traffic. <a href=\"/verified/#notyet-h\">Registered · unverified</a>"],
     ["Installers, wheel, Docker", "yes: installers for macOS, Windows and Linux, a one-line wheel install, and Docker", "<strong>no</strong>: install from source today"],
     ["Chat channels", "the same ten; we inherited them from this engine", "the same ten: five with approve buttons, one typed, four chat-only"],
-    ["What the default build contacts", "its own update feed and app catalog", "no server of upstream's and none of ours; the embedding model is fetched from a third-party CDN on first use"],
+    ["What the default build contacts", "its own update feed and app catalog", "none of ours; the embedding model still comes from the CDN address upstream shipped, on first use, hash-checked"],
     ["Version", "0.7.1", "based on 0.5.0; no tagged release yet"],
     ["Dawn-expiring approval grants, a Morning Report", "no", "in development"],
   ]}
@@ -45,7 +45,7 @@ The upstream project is further along than the version we forked. Since its 0.6 
 - **A registry of eleven runtimes with kiro-cli optional and last.** Five of our ten non-Kiro runtimes are ones the upstream project does not dock: Cursor, Kimi, DeepSeek Harness, Grok and Droid. Both of us dock OpenCode. <a href="/registry/">The registry</a> says what is verified on each, which today is little.
 - **A harness router for subagents.** Chat runs the one harness you choose; the router can send a spawned subagent to another installed harness and never forwards provider traffic. It is registered and unit-tested, not verified on a live run; whether upstream has an equivalent is not checked yet.
 - **No first-launch account with us.** You still need your agent vendor's own login.
-- **Endpoint removal.** The default build contacts no server of upstream's and none of ours, with the one exception in the table.
+- **Endpoint removal.** Upstream's update feed, app catalog and telemetry are off by default; the one address left is the embedding download in the table.
 - **Proof pages.** A check on this site links to a dated row on <a href="/verified/">the verification log</a>.
 
 ## What we lack

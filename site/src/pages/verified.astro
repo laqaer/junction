@@ -28,7 +28,7 @@ const chip = (r: (typeof verifiedRowsSorted)[number]) =>
       <WardBars align="left" />
       <h2 id="rows-h">Rows</h2>
       <p class="caption">Verified rows first, then the registry order. Each row's anchor is <code>#&lt;harness&gt;-&lt;feature&gt;</code>; the homepage matrix and <a href="/registry/">the registry</a> link here.</p>
-      <div class="table-scroll">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Verification log">
         <table class="matrix vtable">
           <thead>
             <tr>

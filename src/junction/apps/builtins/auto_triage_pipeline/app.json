@@ -1,8 +1,8 @@
 {
   "name": "auto-triage-pipeline",
   "version": "0.1.0",
-  "displayName": "Junction Auto Triage Pipeline",
-  "description": "A read-only, three-level view of Junction's own auto-triage pipeline: the six steps and their throughput, the issues inside a step, and what each issue's agent sessions cost.",
+  "displayName": "Warding Auto Triage Pipeline",
+  "description": "A read-only, three-level view of Warding's own auto-triage pipeline: the six steps and their throughput, the issues inside a step, and what each issue's agent sessions cost.",
   "author": "junction",
   "iconUrl": "/app-assets/auto-triage-pipeline/icon.svg",
   "tags": [

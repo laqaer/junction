@@ -9,7 +9,10 @@
  */
 ---
 <style is:global>
-  article.prose ul, article.prose ol { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; color: var(--fg-2); }
+  article.prose ul, article.prose ol { margin: 0; padding-left: 1.4em; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; color: var(--fg-2); }
+  /* A list item's widest <pre> must scroll inside it, not size the list's column. */
+  article.prose li { min-width: 0; }
+  article.prose li > code, article.prose p > code { overflow-wrap: anywhere; }
   article.prose ul { list-style: disc; }
   article.prose ol { list-style: decimal; }
   article.prose li::marker { color: var(--lamp); font-family: var(--font-clock); }

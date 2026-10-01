@@ -80,9 +80,22 @@ describe("structure (site-spec §11)", () => {
         expect(html).not.toMatch(/href=""/);
         expect(html).not.toMatch(/href="#"/);
       });
-      it("declares theme-color for both schemes", () => {
-        expect(html).toMatch(/<meta name="theme-color" media="\(prefers-color-scheme: light\)" content="#F3EEE3"/i);
-        expect(html).toMatch(/<meta name="theme-color" media="\(prefers-color-scheme: dark\)" content="#0B0E14"/i);
+      it("declares the theme-color and scheme of its register", () => {
+        // The register fixes the page's scheme (the day/night split is the
+        // brand), so the browser chrome matches it rather than the OS setting.
+        const night = /<html[^>]*data-register="night"/.test(html);
+        expect(html).toMatch(new RegExp(`<meta name="theme-color" content="${night ? "#0B0E14" : "#F3EEE3"}"`, "i"));
+        expect(html).toMatch(new RegExp(`<html[^>]*data-theme="${night ? "dark" : "light"}"`));
+      });
+      it("gives every element a unique id", () => {
+        // A repeated id makes fragment links and aria references land on the
+        // first match only, e.g. a guide's "## Install" heading and the
+        // closing install band both claiming #install. Scripts are skipped:
+        // JSON-LD and island props carry "id" keys that are not attributes.
+        const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ");
+        const ids = [...markup.matchAll(/<[a-z][^>]*?\sid="([^"]+)"/gi)].map((m) => m[1]);
+        const dupes = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
+        expect(dupes).toEqual([]);
       });
       it("has landmarks and a skip link", () => {
         expect(html).toMatch(/<header\b/);

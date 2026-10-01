@@ -140,11 +140,11 @@ _DOWNLOAD_BACKOFF_BASE_SECS = 60.0
 _DOWNLOAD_BACKOFF_CAP_SECS = 1800.0
 # Escape hatch for tests/CI: never kick a 610MB model download from a test run.
 _SKIP_DOWNLOAD_ENV = "JUNCTION_SKIP_MODEL_DOWNLOAD"
-# Distribution: public CloudFront CDN in front of Junction's OWN model bucket
-# (junction-models, reachable only through the distribution's OAC — the bucket
-# itself blocks public access). Serving our own copy rather than sharing another
-# project's bucket keeps the download signal attributable: a fetch here is a
-# Junction first-install, uncontaminated by another product's traffic.
+# Distribution: the public CloudFront address this default has carried since the
+# codebase Warding is built on; this project does not operate it. It is the one
+# endpoint a default build still contacts, on first embedding use, so operators
+# who want no inherited host point JUNCTION_EMBED_MODEL_URL or
+# memory.embed_model_url at a mirror of their own.
 # Plain HTTPS, no git access and no cloud SDK required. The
 # sha256 pin above is the trust anchor for every source, so a tampered CDN
 # object can only fail verification. Resolution order: JUNCTION_EMBED_MODEL_URL
