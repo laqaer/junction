@@ -225,6 +225,16 @@ _CLAUDE_ACP_DEP_MARKER = Path("@agentclientprotocol") / "sdk"
 # changes, and keep the tuple NARROW so a genuine error line is never silently
 # swallowed.
 _SUPPRESSED_STDERR_MARKERS = ("thinking_tokens",)
+# claude-agent-acp reports every SDK message it does not enumerate as
+# "Unexpected case: <json>" from the default arm of its message switch. Each
+# Claude Code release adds such messages (post_turn_summary, task_summary,
+# active_goal, autocompact_state, ...), so a pinned adapter prints several of
+# these on every turn. They are the adapter's forward-compat gap, not a turn
+# failure, and some carry a summary of what the agent just did, so they go to
+# DEBUG and stay out of the diagnostic ring buffer that error reports quote.
+# Matched as a line prefix so an error that merely mentions the phrase still
+# surfaces as a WARNING.
+_UNHANDLED_ADAPTER_MESSAGE_PREFIX = "Unexpected case: "
 # Minimum seconds between throttled debug summaries of the suppressed-line count,
 # so the suppression itself stays observable without re-introducing a flood.
 _SUPPRESSED_STDERR_SUMMARY_INTERVAL_SECS = 60.0
@@ -3168,10 +3178,13 @@ class AcpClient:
                     suppressed = 0
                     last_summary = now
                 continue
-            self._stderr_lines.append(text)
             redacted, _ = redact_exfiltration_urls(text)
             redacted, _ = redact_credentials(redacted)
             _bin_label = "claude-acp" if self._is_claude else (self.backend or KIRO_CLI_BIN)
+            if text.startswith(_UNHANDLED_ADAPTER_MESSAGE_PREFIX):
+                logger.debug("%s stderr: %s", _bin_label, redacted)
+                continue
+            self._stderr_lines.append(text)
             logger.warning("%s stderr: %s", _bin_label, redacted)
         if suppressed:
             # Flush the residual count once the stream closes so the final burst

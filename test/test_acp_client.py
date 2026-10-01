@@ -3257,6 +3257,34 @@ class TestDrainStderrSuppression:
         assert mock_logger.warning.call_args[0][2] == raw
 
     @pytest.mark.asyncio
+    async def test_unhandled_adapter_message_goes_to_debug_not_buffer(self):
+        client = AcpClient()
+        unhandled = (
+            'Unexpected case: {"type":"system","subtype":"post_turn_summary",'
+            '"status_detail":"wrote notes.txt","session_id":"abc-123"}'
+        )
+        reader = self._reader([unhandled])
+
+        with patch("junction.acp.client.logger") as mock_logger:
+            await client._drain_stderr(reader)
+
+        mock_logger.warning.assert_not_called()
+        mock_logger.debug.assert_called_once()
+        assert list(client._stderr_lines) == []
+
+    @pytest.mark.asyncio
+    async def test_error_mentioning_unexpected_case_still_warns(self):
+        client = AcpClient()
+        raw = "Error: Unexpected case: handler threw"
+        reader = self._reader([raw])
+
+        with patch("junction.acp.client.logger") as mock_logger:
+            await client._drain_stderr(reader)
+
+        assert list(client._stderr_lines) == [raw]
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_mixed_stream_keeps_real_error_after_burst(self):
         client = AcpClient()
         real_before = "Error: first real failure"
