@@ -388,6 +388,9 @@ async def _chat(message: str | None, model: str | None, agent: str | None = None
 
 def _run_chat(message: str | None, model: str | None, agent: str | None = None) -> None:
     """Run chat at the sync CLI boundary and render SIGINT as a clean exit."""
+    from junction.sandbox import warm_backend_before_loop
+
+    warm_backend_before_loop()
     try:
         asyncio.run(_chat(message, model, agent=agent))
     except KeyboardInterrupt:

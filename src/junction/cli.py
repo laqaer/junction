@@ -2533,7 +2533,9 @@ The dashboard port is set with the JUNCTION_PORT env var, not a config key.
         _spawn(args)
     elif args.command == "run":
         from junction.cli_server import _run_task
+        from junction.sandbox import warm_backend_before_loop
 
+        warm_backend_before_loop()
         asyncio.run(_run_task(args))
     elif args.command == "learn":
         from junction.cli_commands import _learn
