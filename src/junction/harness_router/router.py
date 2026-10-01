@@ -48,6 +48,8 @@ METERED_FACTOR = 0.6
 EXHAUSTED_FACTOR = 0.15
 # Bonus for a lane or harness the caller prefers.
 PREFER_BONUS = 0.08
+# Hard dispatch caps use a rolling day, independent of each lane's plan window.
+DAILY_LIMIT_WINDOW_SECS = 24 * 3600
 
 DECISION_OK = "ok"
 DECISION_NO_LANE = "no_lane"
@@ -164,7 +166,10 @@ def score_lane(
     elif usage.cooling(now):
         excluded = EXCLUDED_COOLDOWN
         note = usage.cooldown_reason
-    elif lane.daily_limit > 0 and usage.count_since(now - 86400) >= lane.daily_limit:
+    elif (
+        lane.daily_limit > 0
+        and usage.count_since(now - DAILY_LIMIT_WINDOW_SECS) >= lane.daily_limit
+    ):
         excluded = EXCLUDED_DAILY_CAP
     score = AFFINITY_WEIGHT * affinity + HEADROOM_WEIGHT * headroom
     if lane.billing == BILLING_METERED:

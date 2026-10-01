@@ -79,4 +79,5 @@ async def test_harness_view_and_registered_routes(monkeypatch):
         "/api/routing/harnesses",
         "/api/routing/harnesses/{harness}/check",
         "/api/routing/harnesses/{harness}/lane",
+        "/api/routing/settings",
     }

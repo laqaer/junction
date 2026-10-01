@@ -7447,7 +7447,8 @@
         "task_description": "タスクの説明",
         "task_title": "タスクのタイトル",
         "task_with_title": "タスク {{n}}（{{title}}）",
-        "this_gate_blocks_force_approval_true": "このゲートはブロックされています。force_approval=true。"
+        "this_gate_blocks_force_approval_true": "このゲートはブロックされています。force_approval=true。",
+        "ran_on_agent": "エージェント: {{agent}}"
       }
     },
     "appDetailPage": {
@@ -12406,6 +12407,8 @@
         "resume_now": "今すぐ再開",
         "who_gets_what": "担当の割り当て",
         "who_gets_what_description": "各種類の次のタスクが今どこに送られるかを示します。プランの消費や上限後の休止に応じて変わります。",
+        "route_task_steps": "Task Runner のステップをルーティング",
+        "route_task_steps_description": "Task Runner の各ステップを最も適したエージェントに送り、エージェントが上限に達したらそのステップを別のエージェントに移します。オフのときは、すべてのステップがメインのエージェントで実行されます。",
         "no_agent_available": "利用できるエージェントがありません",
         "kind_plan": "計画",
         "kind_implement": "コーディング",
