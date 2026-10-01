@@ -336,7 +336,6 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
     if not lanes:
         print("no lanes to check (see `warding route status`)")
         return 1
-    usage = router.ledger.snapshot()
     worst = 0
     unverified = False
     for lane in lanes:
@@ -354,7 +353,9 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
             # even once the rest is over. A clean start cannot contradict that. It
             # counts only for the harness that recorded it: a lane id reassigned to
             # another harness, or a record naming none, stays "auth unverified".
-            used = usage.get(lane.id)
+            # Read after the probe, which can take minutes: a routed run that ended
+            # meanwhile has already changed the answer.
+            used = router.ledger.snapshot().get(lane.id)
             if (
                 used is not None
                 and used.cooldown_reason == FAILURE_AUTH
