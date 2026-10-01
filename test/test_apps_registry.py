@@ -2593,7 +2593,7 @@ class TestApplyTrustFields:
         assert out["featured"] == 2  # curator flag preserved for core entries
 
     def test_builtin_origin_is_verified_builtin(self):
-        entry = {"name": "builtin-app", "origin": "builtin", "author": "x"}
+        entry = {"name": "file-explorer", "origin": "builtin", "author": "x"}
         (out,) = registry._apply_trust_fields([entry])
         assert out["provenance"] == "builtin"
         assert out["verified"] is True

@@ -1643,6 +1643,39 @@ class TestStockBuildListsShippedBuiltins:
             "manifest": {"name": name, "version": "1.2.0", **manifest},
         }
 
+    @staticmethod
+    def _ship(monkeypatch, tmp_path, manifests):
+        import json
+
+        from junction.apps import execution
+
+        source = tmp_path / "shipped"
+        for manifest in manifests:
+            root = source / manifest["name"]
+            root.mkdir(parents=True)
+            (root / "app.json").write_text(json.dumps(manifest), encoding="utf-8")
+        monkeypatch.setattr(execution, "_builtin_manifest_sources", lambda: (source,))
+
+    @pytest.mark.parametrize("claim", ["source", "origin"])
+    def test_mutable_install_cannot_forge_a_shipped_builtin(self, claim):
+        app = self._builtin("forged-panel", displayName="Forged", author="Junction")
+        app.update(origin="local", source="/tmp/third-party")
+        app[claim] = "builtin"
+        assert reg._builtin_shelf_rows({"forged-panel": app}, set()) == []
+        (row,) = reg._apply_trust_fields(
+            reg._enrich_with_install_status([{"name": "forged-panel"}], {"forged-panel": app})
+        )
+        assert row["provenance"] != "builtin" and row["verified"] is False
+        (direct,) = reg._apply_trust_fields([{"name": "forged-panel", "origin": "builtin"}])
+        assert direct["provenance"] != "builtin" and direct["verified"] is False
+
+    def test_shelf_display_comes_from_the_shipped_manifest(self, monkeypatch, tmp_path):
+        shipped = self._builtin("optional-panel", displayName="Shipped Panel")
+        self._ship(monkeypatch, tmp_path, [shipped["manifest"]])
+        forged = self._builtin("optional-panel", displayName="Tampered Panel")
+        (row,) = reg._builtin_shelf_rows({"optional-panel": forged}, set())
+        assert row["displayName"] == "Shipped Panel"
+
     @pytest.mark.asyncio
     async def test_disabled_ui_builtin_stays_discoverable_after_restart(
         self, monkeypatch, tmp_path
@@ -1660,6 +1693,7 @@ class TestStockBuildListsShippedBuiltins:
             "defaultEnabled": False,
             "ui": {"entry": "index.js"},
         }
+        self._ship(monkeypatch, tmp_path, [manifest])
         monkeypatch.setattr(manager, "_BUILTIN_APPS", [manifest])
         monkeypatch.setattr(manager, "discover_builtin_apps", lambda: [])
         monkeypatch.setattr(manager, "_edition_builtin_apps", lambda: [])
@@ -1692,7 +1726,7 @@ class TestStockBuildListsShippedBuiltins:
         assert rows[0]["provenance"] == "official" and rows[0]["verified"] is False
 
     @pytest.mark.asyncio
-    async def test_lists_visible_builtins_and_not_hidden_ones(self, monkeypatch):
+    async def test_lists_visible_builtins_and_not_hidden_ones(self, monkeypatch, tmp_path):
         monkeypatch.delenv(oc.CATALOG_BASE_ENV, raising=False)
         installed = [
             self._builtin(
@@ -1703,6 +1737,7 @@ class TestStockBuildListsShippedBuiltins:
             ),
             self._builtin("secret-panel", displayName="Secret Panel", hidden=True),
         ]
+        self._ship(monkeypatch, tmp_path, [app["manifest"] for app in installed])
         monkeypatch.setattr(reg, "_load_registry_file", lambda: [])
         monkeypatch.setattr(reg, "list_installed_apps", lambda: installed)
 
