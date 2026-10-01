@@ -35,6 +35,16 @@ describe('TaskDetailPanel', () => {
     expect(screen.getByText(/Requires approval/)).toBeInTheDocument()
   })
 
+  it('names the agent that ran a routed step, and nothing for an unrouted one', () => {
+    const { unmount } = render(
+      <TaskDetailPanel task={task({ status: 'passed', harness: 'codex' })} allTasks={[]} onClose={() => {}} />,
+    )
+    expect(screen.getByText('Agent: codex')).toBeInTheDocument()
+    unmount()
+    render(<TaskDetailPanel task={task({ status: 'passed' })} allTasks={[]} onClose={() => {}} />)
+    expect(screen.queryByText(/Agent:/)).not.toBeInTheDocument()
+  })
+
   it('shows retry button for failed tasks', () => {
     const onRetry = () => {}
     render(<TaskDetailPanel task={task({ status: 'failed', error: 'timeout' })} allTasks={[]} onClose={() => {}} onRetry={onRetry} />)
