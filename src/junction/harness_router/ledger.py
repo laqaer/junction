@@ -222,6 +222,7 @@ class UsageLedger:
         failure: str = "",
         text: str = "",
         harness: str = "",
+        current_harness: str = "",
         now: float | None = None,
     ) -> float:
         """Record how a dispatch ended on *harness*. Returns the lane's cooldown deadline.
@@ -229,17 +230,23 @@ class UsageLedger:
         A lane-level *failure* (usage or rate limit, auth, unavailable) rests the
         lane until the reset the error text names, or a class default. A plain
         task failure only increments ``failed``: the task would fail anywhere.
+
+        *current_harness* is the harness the lane runs now, when the caller knows it.
+        A success from any other harness is a run that outlived a reassignment: it
+        counts, but it says nothing about the harness the lane runs now, so it must
+        not clear what that harness recorded.
         """
         moment = time.time() if now is None else now
         with self._locked():
             state = self._read()
             usage = state.setdefault(lane_id, LaneUsage())
             if ok:
-                usage.harness = harness
                 usage.ok += 1
-                # Success proves the lane is usable again, whatever it said before.
-                usage.cooldown_until = 0.0
-                usage.cooldown_reason = ""
+                if not (harness and current_harness and harness != current_harness):
+                    usage.harness = harness
+                    # Success proves the lane is usable again, whatever it said before.
+                    usage.cooldown_until = 0.0
+                    usage.cooldown_reason = ""
             else:
                 usage.failed += 1
                 usage.last_error = _scrub(text)

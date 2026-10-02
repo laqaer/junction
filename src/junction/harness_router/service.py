@@ -248,7 +248,10 @@ class HarnessRouter:
 
     def record_success(self, lane_id: str, *, harness: str = "") -> None:
         try:
-            self._ledger.record_outcome(lane_id, ok=True, harness=harness)
+            lane = self.settings().lane(lane_id)
+            self._ledger.record_outcome(
+                lane_id, ok=True, harness=harness, current_harness=lane.harness if lane else ""
+            )
         except Exception:
             logger.warning("routing: could not record success on %s", lane_id, exc_info=True)
 
