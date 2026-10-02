@@ -246,22 +246,45 @@ class HarnessRouter:
         except Exception:
             logger.warning("routing: could not record dispatch to %s", lane_id, exc_info=True)
 
-    def record_success(self, lane_id: str) -> None:
+    def _current_harness(self, lane_id: str) -> str:
+        """The harness *lane_id* runs now; ``""`` when the mapping cannot be read."""
         try:
-            self._ledger.record_outcome(lane_id, ok=True)
+            lane = self.settings().lane(lane_id)
+        except Exception:
+            logger.warning("routing: could not read the harness of %s", lane_id, exc_info=True)
+            return ""
+        return lane.harness if lane else ""
+
+    def record_success(self, lane_id: str, *, harness: str = "") -> None:
+        try:
+            # Resolved by the ledger once it holds its lock: a mapping read before that
+            # could be reassigned, and a failure recorded for the new harness, in between.
+            self._ledger.record_outcome(
+                lane_id,
+                ok=True,
+                harness=harness,
+                current_harness=lambda: self._current_harness(lane_id),
+            )
         except Exception:
             logger.warning("routing: could not record success on %s", lane_id, exc_info=True)
 
     def record_failure(
-        self, lane_id: str, *, exc: BaseException | None = None, text: str = ""
+        self,
+        lane_id: str,
+        *,
+        exc: BaseException | None = None,
+        text: str = "",
+        harness: str = "",
     ) -> str:
-        """Record a failed dispatch. Returns the failure class."""
+        """Record a failed dispatch on *harness*. Returns the failure class."""
         detail = text or (str(exc) if exc is not None else "")
         failure = classify_exception(exc) if exc is not None else classify_failure(detail)
         if failure == FAILURE_OTHER and exc is not None and text:
             failure = classify_failure(text)
         try:
-            until = self._ledger.record_outcome(lane_id, ok=False, failure=failure, text=detail)
+            until = self._ledger.record_outcome(
+                lane_id, ok=False, failure=failure, text=detail, harness=harness
+            )
             if failure in LANE_FAILURES:
                 logger.warning(
                     "routing: lane %s resting (%s) for %.0fs",

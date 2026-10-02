@@ -3,7 +3,7 @@
     warding route                      lanes, windows, cooldowns, per-kind picks
     warding route pick KIND            rank every lane for one kind of work
     warding route run "PROMPT"         run one prompt on the routed harness
-    warding route check [LANE ...]     start each harness once: installed? logged in?
+    warding route check [LANE ...]     start each harness once: installed? starts? (no prompt)
     warding route init                 write routing.json from the installed harnesses
     warding route clear [LANE]         lift a cooldown early
 
@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 from junction.harness_router.kinds import KIND_DESCRIPTIONS, TASK_KINDS
@@ -63,7 +64,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         help="Deny tool permission requests instead of asking at the terminal",
     )
 
-    check = sub.add_parser("check", help="Start each harness once to verify install and login")
+    check = sub.add_parser(
+        "check", help="Start each harness once without a prompt: install and startup, not sign-in"
+    )
     check.add_argument("lanes", nargs="*", help="Lane ids (default: every enabled lane)")
 
     init = sub.add_parser("init", help="Write routing.json from the installed harnesses")
@@ -222,8 +225,23 @@ def _make_provider(lane: Any, cwd: str) -> Any:
     )
 
 
-async def _stream_once(provider: Any, prompt: str, *, interactive: bool) -> tuple[bool, str]:
-    """Stream one turn to stdout. Returns (produced_output, reply_text)."""
+@dataclass
+class _TurnProgress:
+    """What a streamed turn has already done, readable after it raised.
+
+    ``produced`` flips the moment text reaches stdout or a permission request
+    is approved (the tool may have run), so a lane that fails MID-stream is
+    still known to have done work and the turn is not re-run on another lane.
+    A refused request leaves it unset: nothing ran, so moving is safe.
+    """
+
+    produced: bool = False
+
+
+async def _stream_once(
+    provider: Any, prompt: str, *, interactive: bool, progress: _TurnProgress
+) -> str:
+    """Stream one turn to stdout, recording progress as it goes. Returns the reply text."""
     from junction.cli_chat import _answer_permission, _build_tool_gate
     from junction.providers.base import (
         EVENT_COMPLETE,
@@ -232,22 +250,23 @@ async def _stream_once(provider: Any, prompt: str, *, interactive: bool) -> tupl
     )
 
     gate = None
-    produced = False
     reply: list[str] = []
     async for event in provider.stream(prompt):
         if event.kind == EVENT_TEXT_CHUNK:
-            produced = produced or bool(event.text)
+            progress.produced = progress.produced or bool(event.text)
             reply.append(event.text)
             print(event.text, end="", flush=True)
         elif event.kind == EVENT_PERMISSION_REQUEST:
-            produced = True
             if gate is None:
                 gate = _build_tool_gate("junction")
-            await _answer_permission(provider, event, interactive=interactive, gate=gate)
+            # A refused call never ran, so only an approval marks the turn as
+            # having done work.
+            if await _answer_permission(provider, event, interactive=interactive, gate=gate):
+                progress.produced = True
         elif event.kind == EVENT_COMPLETE:
             break
     print()
-    return produced, "".join(reply)
+    return "".join(reply)
 
 
 async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
@@ -273,22 +292,24 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
         )
         router.record_dispatch(lane.id, kind)
         provider = _make_provider(lane, cwd)
-        produced = False
+        progress = _TurnProgress()
         try:
             await provider.start()
-            produced, reply = await _stream_once(provider, args.prompt, interactive=interactive)
+            reply = await _stream_once(
+                provider, args.prompt, interactive=interactive, progress=progress
+            )
             notice = limit_notice_failure(reply) if reply else ""
             if notice:
                 raise HarnessLaneFailure(notice, reply)
         except (KeyboardInterrupt, asyncio.CancelledError):
             raise
         except Exception as exc:
-            failure = router.record_failure(lane.id, exc=exc)
+            failure = router.record_failure(lane.id, exc=exc, harness=lane.harness)
             can_move = (
                 resolution.routed
                 and failure in LANE_FAILURES
                 and len(tried) <= max_hops
-                and (not produced or isinstance(exc, HarnessLaneFailure))
+                and (not progress.produced or isinstance(exc, HarnessLaneFailure))
             )
             nxt = router.next_lane(kind, tried) if can_move else None
             if nxt is None:
@@ -305,11 +326,16 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
             except Exception:
                 logger.debug("route run: provider shutdown failed", exc_info=True)
             gc.collect()
-        router.record_success(lane.id)
+        router.record_success(lane.id, harness=lane.harness)
         return 0
 
 
 # ── check ──
+
+# What `route check` prints for a probe that started the harness. The probe sends
+# no prompt, and a harness can open a session on an expired sign-in and fail only
+# at the first prompt, so a clean start is not evidence that the sign-in works.
+CHECK_AUTH_UNVERIFIED = "auth unverified"
 
 
 async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
@@ -321,6 +347,7 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
         probe_harness,
         setup_for,
     )
+    from junction.harness_router.limits import FAILURE_AUTH
 
     settings = router.settings()
     installed = router.installed(refresh=True)
@@ -329,22 +356,49 @@ async def _check(router: HarnessRouter, lane_ids: list[str]) -> int:
         print("no lanes to check (see `warding route status`)")
         return 1
     worst = 0
+    unverified = False
     for lane in lanes:
         print(f"  {lane.id:<14} starting…", end="", flush=True)
         result = await probe_harness(
             lane.harness, installed=lane.harness in installed, model=lane.model
         )
         router.probes.save(result)
+        status = result.status
         detail = result.detail or (f"{result.models} models" if result.models else "")
-        print(f"\r  {lane.id:<14} {result.status:<14} {detail}")
-        if result.status == STATUS_CONNECTED:
+        if status == STATUS_CONNECTED:
+            # A success or `route clear` empties a lane's cooldown reason and a later
+            # lane failure replaces it, so an auth reason still on the lane means its
+            # last lane failure was a failed sign-in and no prompt has worked since,
+            # even once the rest is over. A clean start cannot contradict that. It
+            # counts only for the harness that recorded it: a lane id reassigned to
+            # another harness, or a record naming none, stays "auth unverified".
+            # Read after the probe, which can take minutes: a routed run that ended
+            # meanwhile has already changed the answer.
+            used = router.ledger.snapshot().get(lane.id)
+            if (
+                used is not None
+                and used.cooldown_reason == FAILURE_AUTH
+                and used.harness == lane.harness
+            ):
+                status = STATUS_NEEDS_LOGIN
+                detail = "the harness starts, but its last routed run failed sign-in"
+            else:
+                status = CHECK_AUTH_UNVERIFIED
+                detail = f"started, {detail}" if detail else "started"
+        print(f"\r  {lane.id:<14} {status:<16} {detail}")
+        if status == CHECK_AUTH_UNVERIFIED:
+            unverified = True
             continue
         worst = 1
         setup = setup_for(lane.harness)
-        if result.status == STATUS_NEEDS_LOGIN:
+        if status == STATUS_NEEDS_LOGIN:
             print(f"  {'':<14} log in: {setup.login if setup else login_hint(lane.harness)}")
-        elif result.status == STATUS_NOT_INSTALLED:
+        elif status == STATUS_NOT_INSTALLED:
             print(f"  {'':<14} install: {setup.install if setup else login_hint(lane.harness)}")
+    if unverified:
+        print(f"\n{CHECK_AUTH_UNVERIFIED}: the check sends no prompt, so it cannot see an")
+        print("expired sign-in. To verify a lane with one prompt:")
+        print('  warding route run --harness LANE "reply ok"')
     return worst
 
 

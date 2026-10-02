@@ -764,8 +764,12 @@ async def _answer_permission(
     *,
     interactive: bool,
     gate: _ToolGate | None = None,
-) -> None:
+) -> bool:
     """Answer a pending permission request so the backend can resume the turn.
+
+    Returns True only when the call was approved and handed to the backend to
+    run; every refusal, automatic or human, returns False. A caller deciding
+    whether a turn may be retried elsewhere reads this as "a tool may have run".
 
     Answering one is an authorization decision, so Junction's own PreToolUse
     gate runs first and a human is asked only about what survives it. That gate
@@ -826,7 +830,7 @@ async def _answer_permission(
                 "   Fix the gate error, then retry the tool call."
             ),
         )
-        return
+        return False
     if decision.action == TOOL_DENY:
         # Not a question for the user: a policy denial is not theirs to
         # override from here. The audit carries a stable code; the reason is
@@ -841,7 +845,7 @@ async def _answer_permission(
             _print_permission_notice(f"\nBlocked by security policy: {safe_title} -- {reason}")
         except Exception:
             logger.warning("Could not prepare the CLI policy-denial notice", exc_info=True)
-        return
+        return False
 
     if _unverifiable_shell(event):
         # Refusing to ASK, not a gate rejection: with no trusted shell signal
@@ -858,7 +862,7 @@ async def _answer_permission(
             )
         except Exception:
             logger.warning("Could not prepare the CLI shell-denial notice", exc_info=True)
-        return
+        return False
 
     try:
         can_prompt = _can_prompt(interactive)
@@ -874,7 +878,7 @@ async def _answer_permission(
                 "   Retry from a usable terminal."
             ),
         )
-        return
+        return False
 
     if not can_prompt:
         await _audit_refusal(gate, event, error=_NONINTERACTIVE_CODE)
@@ -888,7 +892,7 @@ async def _answer_permission(
             )
         except Exception:
             logger.warning("Could not prepare the CLI noninteractive-denial notice", exc_info=True)
-        return
+        return False
 
     try:
         allowed = await _prompt_allows(event)
@@ -935,7 +939,7 @@ async def _answer_permission(
                 "   Retry the tool call from a usable terminal."
             ),
         )
-        return
+        return False
 
     if allowed:
         # AUDIT-OR-DENY, and only here. ``critical=True`` writes the record
@@ -971,8 +975,9 @@ async def _answer_permission(
                 )
             except Exception:
                 logger.warning("Could not prepare the CLI audit-denial notice", exc_info=True)
-            return
+            return False
         await provider.approve_tool(event.request_id)
+        return True
     else:
         # Deliberately NOT critical, and the asymmetry is the point: this call is
         # already being refused, so a lost record cannot authorize anything. Making
@@ -981,6 +986,7 @@ async def _answer_permission(
         # meaning where the alternative is execution.
         await _audit_refusal(gate, event, error=_USER_DENY_CODE)
         await provider.reject_tool(event.request_id)
+        return False
 
 
 async def _send_and_print(

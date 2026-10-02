@@ -26,7 +26,7 @@ not touch), [subagent](subagent.md) (where routed work runs), [mcp](../../archit
 | **Lane** | One subscription or account reached through one harness: `id`, `harness`, `billing`, `weight`, `window_hours`, `window_limit`, `daily_limit`, optional `model`, per-kind `affinity`. Two lanes may share a harness (an OpenCode lane on a cheap OpenRouter model for bulk work, another on a strong one for review). |
 | **Kind** | What the work is: `plan`, `implement`, `debug`, `review`, `test`, `research`, `docs`, `quick`, `bulk` (`kinds.TASK_KINDS`). The calling agent names it as an enum; the router never guesses it from free text. |
 | **Billing** | `subscription` (flat plan with a usage window), `free`, or `metered` (pay per token). |
-| **Ledger** | `<data home>/routing/ledger.json`: per-lane dispatch timestamps, outcome counters, cooldown deadline, and a truncated, credential-redacted last error. Never prompts or keys. |
+| **Ledger** | `<data home>/routing/ledger.json`: per-lane dispatch timestamps, outcome counters, cooldown deadline, the harness that produced or cleared the cooldown reason, and a truncated, credential-redacted last error. Never prompts or keys. |
 
 ## Objective
 
@@ -242,6 +242,29 @@ agent means running that agent's own login command, then probing it.
   atomic-replace transaction holds `platform_compat.file_lock` on the stable
   sibling `harnesses.lock`, shared by all harnesses and store instances.
   Concurrent completions retain each harness and its advertised model ids.
+- **A probe does not verify sign-in.** A harness can open a session on an
+  expired login and fail only at the first prompt: claude-agent-acp has probed
+  `connected` while a routed prompt on it failed with "OAuth session expired".
+  So `warding route check` prints a `connected` probe as `auth unverified`,
+  names `warding route run --harness LANE` as the verifier, and exits 0. It
+  prints `needs_login` with the login command, and exits 1, when the lane's
+  ledger `cooldown_reason` is still `auth` and the ledger's `harness` is the
+  lane's current harness: a success or `route clear` empties that reason, so it
+  means no prompt on that harness has worked since a failed sign-in, even after
+  the rest expired. A lane id reassigned to another harness, or a record that
+  names no harness, stays `auth unverified`. The ledger is read after that
+  lane's probe returns, so a routed run that ends during a minutes-long probe
+  counts. An ordinary task failure retains
+  both the cooldown reason and its producing harness; it cannot attribute an
+  older sign-in failure to the harness that ran that task. A success from a
+  harness the lane no longer runs (a run that outlived a reassignment) counts as
+  a completed run but leaves the failure state alone, because it says nothing
+  about the harness the lane runs now; a success on the current harness clears
+  it, whichever harness recorded it. The ledger resolves the lane's current
+  harness itself, while it holds its lock, so a reassignment and a failure
+  recorded for the new harness cannot land between the lookup and the write.
+  The stored probe
+  status stays `connected`; the gates below read it as "the harness starts".
 - `service.check_harness` (probe now) and `service.verified_connection` (reuse a
   `connected` probe younger than `max_age_secs`, else probe) hold one lock per
   harness, so a double-clicked Check or a burst of gated requests starts one
@@ -288,7 +311,7 @@ gate.
 | `warding route` / `route status [--json]` | Lanes, windows, 24h use, cooldowns and last error, current pick per kind |
 | `warding route pick KIND` | Rank every lane for a kind (twin of `route_task`) |
 | `warding route run [-k KIND] [--harness T] PROMPT` | One prompt on the routed lane, with failover |
-| `warding route check [LANE…]` | Start each harness once (initialize + session/new): installed? logged in? |
+| `warding route check [LANE…]` | Start each harness once (initialize + session/new, no prompt): installed? starts? A start reads `auth unverified`; a lane whose last routed run failed sign-in reads `needs_login` |
 | `warding route init [--force] [--all]` | Write `routing.json` from the installed harnesses |
 | `warding route clear [LANE]` | Lift a cooldown early |
 | MCP `route_task(kind, prefer?)` | Read-only ranking for the agent splitting the work |
