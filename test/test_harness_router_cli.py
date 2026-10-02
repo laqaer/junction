@@ -234,7 +234,10 @@ async def test_stream_outputs_text_and_routes_permissions_through_gate(monkeypat
     answer = AsyncMock()
     monkeypatch.setattr(cli_chat, "_build_tool_gate", gate)
     monkeypatch.setattr(cli_chat, "_answer_permission", answer)
-    assert await cli._stream_once(provider, "hello", interactive=False) == (True, "answer")
+    progress = cli._TurnProgress()
+    reply = await cli._stream_once(provider, "hello", interactive=False, progress=progress)
+    assert reply == "answer"
+    assert progress.produced is True
     assert capsys.readouterr().out == "answer\n"
     gate.assert_called_once_with("junction")
     assert answer.await_count == 2
@@ -265,7 +268,7 @@ async def test_run_moves_only_routed_lane_failures_and_shuts_down_each_provider(
     )
     factory = MagicMock(side_effect=[first_provider, second_provider])
     monkeypatch.setattr(cli, "_make_provider", factory)
-    stream = AsyncMock(side_effect=[RuntimeError("failed"), (True, "done")])
+    stream = AsyncMock(side_effect=[RuntimeError("failed"), "done"])
     monkeypatch.setattr(cli, "_stream_once", stream)
     assert await cli._run(router, args()) == (0 if move else 1)
     first_provider.shutdown.assert_awaited_once()
@@ -293,9 +296,7 @@ async def test_notice_only_run_fails_and_resolution_errors_are_usage_errors(rout
     router.record_failure.return_value = limits.FAILURE_USAGE_LIMIT
     provider = SimpleNamespace(start=AsyncMock(), shutdown=AsyncMock())
     monkeypatch.setattr(cli, "_make_provider", lambda *_: provider)
-    monkeypatch.setattr(
-        cli, "_stream_once", AsyncMock(return_value=(True, "You've hit your usage limit."))
-    )
+    monkeypatch.setattr(cli, "_stream_once", AsyncMock(return_value="You've hit your usage limit."))
     assert await cli._run(router, args()) == 1
     assert isinstance(router.record_failure.call_args.kwargs["exc"], limits.HarnessLaneFailure)
     router.next_lane.assert_not_called()
