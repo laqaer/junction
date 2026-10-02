@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -938,7 +939,10 @@ async def test_a_codex_read_command_is_judged_on_its_real_target(env):
     )
 
     assert event.title == "Read file"
-    assert f"cat {policy}" in event.tool_input, "the approval card must show the command"
+    # The card renders the arguments as JSON, which escapes a Windows path's backslashes.
+    assert (
+        json.dumps(f"cat {policy}")[1:-1] in event.tool_input
+    ), "the approval card must show the command"
     assert _gate(event).action == TOOL_DENY
 
     ordinary = str(env.ws / "README.md")
@@ -1046,6 +1050,14 @@ def _install_ceiling(body: dict):
     )
 
 
+def _as_quoted(path) -> str:
+    """*path* as the governance reason prints it, which quotes it with ``repr``.
+
+    That escapes a Windows path's backslashes; a POSIX path prints unchanged.
+    """
+    return repr(str(path))[1:-1]
+
+
 @pytest.fixture
 def governed_writes(env):
     """A ceiling that allows writes only under the workspace."""
@@ -1055,7 +1067,7 @@ def governed_writes(env):
         {
             "version": 1,
             "boot": {"fail_closed": True},
-            "filesystem": {"write": {"mode": "allow", "allow": [f"{env.ws}/**"]}},
+            "filesystem": {"write": {"mode": "allow", "allow": [os.path.join(str(env.ws), "**")]}},
         }
     )
     yield
@@ -1073,7 +1085,7 @@ async def test_the_filesystem_write_ceiling_binds_a_claude_write(env, governed_w
 
     assert decision.action == TOOL_DENY
     assert "governance policy" in decision.reason
-    assert str(outside) in decision.reason
+    assert _as_quoted(outside) in decision.reason
 
 
 @pytest.mark.asyncio
@@ -1086,7 +1098,7 @@ async def test_the_filesystem_write_ceiling_binds_every_file_of_a_codex_patch(en
 
     assert decision.action == TOOL_DENY
     assert "governance policy" in decision.reason
-    assert paths[1] in decision.reason
+    assert _as_quoted(paths[1]) in decision.reason
 
 
 @pytest.fixture
