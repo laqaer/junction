@@ -34,6 +34,7 @@ from junction.config.paths import (
     RETIRED_AUTH_STAGING_NAME,
     RETIRED_DATA_HOME_NAMES,
 )
+from junction.constants import CLI_CONSOLE_STEMS
 from junction.executors import maintenance_executor
 from junction.sel import SecurityEvent, SecurityEventLog
 from junction.trust_patterns import ENV_ASSIGNMENT_RE
@@ -66,6 +67,20 @@ logger = logging.getLogger(__name__)
 # ``is_sensitive_bash_command``, ``audit_bash_exfiltration``,
 # ``_check_imds_access``, ``_ENV_CRED_PATTERNS``, ``_SENSITIVE_HOME_DIRS``) are
 # independent and un-disableable; they run BEFORE the rule tiers.
+#
+# PROGRAM NAME vs IMPORT NAME.  The product CLI is installed under two console-script
+# names, ``warding`` (primary) and ``junction`` (a silent alias of the same entry point;
+# ``constants.CLI_CONSOLE_STEMS``), and either one reaches every self-protected verb, so
+# every rule below that recognises the CLI as a PROGRAM names both.  The Python package
+# is only ``junction``: ``python -m junction`` / ``import junction`` stay single-spelled
+# because there is no ``warding`` module for an interpreter to load.
+#
+# The regex halves spell the names out in the pattern text rather than building them
+# from ``CLI_CONSOLE_STEMS`` so the catalog stays human-auditable and the golden fixture
+# pins exactly what runs; ``test_denied_commands_warding_alias`` ties the two together.
+# ``warding`` is an ordinary word and the tail of others (``forwarding``, ``awarding``),
+# so it carries a leading ``\b`` everywhere; ``junction`` keeps the exact spelling it has
+# always had in each rule.
 
 
 @dataclass(frozen=True)
@@ -164,14 +179,15 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
         # ``token_auth.py`` from matching at all.  The forms this half misses on
         # purpose (a redirect between name and verb, a quoted verb) are the floor's.
         pattern=(
-            "(?:\\A|[;&|\\n`]|\\$\\()[\\s\"'(]*[\\w.:/\\\\-]*junction\\b[^|;&#>/*]*\\btoken\\b"
+            "(?:\\A|[;&|\\n`]|\\$\\()[\\s\"'(]*[\\w.:/\\\\-]*(?:\\bwarding|junction)\\b"
+            "[^|;&#>/*]*\\btoken\\b"
         ),
         category="credential-exfil",
         description=(
-            "Blocks the `junction token` CLI, which mints a signed dashboard access token an "
-            "attacker could use to authenticate to the gateway. Matches the CLI name and the "
-            "token verb within one command segment. The argv floor additionally covers "
-            "`python -m junction ... token`."
+            "Blocks the `warding token` CLI (and its `junction token` alias), which mints a "
+            "signed dashboard access token an attacker could use to authenticate to the "
+            "gateway. Matches either CLI name and the token verb within one command segment. "
+            "The argv floor additionally covers `python -m junction ... token`."
         ),
     ),
     DeniedCommandRule(
@@ -179,9 +195,9 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
         # Companion to the rule above, for the case a command-text matcher cannot
         # otherwise reach: an INTERPRETER payload that spawns the CLI through a
         # library call rather than as a shell word --
-        # ``python -c "subprocess.run(['junction','token'])"``,
+        # ``python -c "subprocess.run(['warding','token'])"``,
         # ``node -e 'execFileSync("junction",["token"])'``,
-        # ``perl -e 'system("junction","token")'``.  The floor cannot help here: the
+        # ``perl -e 'system("warding","token")'``.  The floor cannot help here: the
         # payload is one opaque token to the shell tokenizer and its contents are
         # Python/JS, not shell.
         #
@@ -206,7 +222,7 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
         pattern=(
             "(?:"
             # (a) argv literal: the two words as adjacent QUOTED arguments.
-            "['\"][\\w.:/\\\\-]*junction[\\w.]*['\"]"
+            "['\"][\\w.:/\\\\-]*(?:\\bwarding|junction)[\\w.]*['\"]"
             "[\\s,\\[\\]\\(\\)+*'\"=\\w-]*['\"]token['\"]"
             # (b) SINK-QUALIFIED single string: the two words inside ONE quoted
             # string, but only as the argument of a call that EXECUTES it.  The
@@ -220,16 +236,16 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
             "|child_process\\.exec\\w*|exec\\w*sync|spawn\\w*"
             "|kernel\\.system|io\\.popen)"
             "\\s*\\(?\\s*[a-z]{0,2}['\"][^'\"]*"
-            "(?:\\[j\\]unction|\\bjunction)\\b"
+            "(?:\\[w\\]arding|\\bwarding|\\[j\\]unction|\\bjunction)\\b"
             "[^'\"]*\\btoken\\b"
             ")"
         ),
         category="credential-exfil",
         description=(
-            "Blocks an interpreter payload that spawns the `junction token` credential mint "
-            "through a library call rather than as a shell command -- the CLI name and the "
-            "token verb as adjacent QUOTED arguments, as in "
-            "`python -c \"subprocess.run(['junction','token'])\"`. Scoped to the argv-literal "
+            "Blocks an interpreter payload that spawns the `warding token` (or `junction "
+            "token`) credential mint through a library call rather than as a shell command -- "
+            "either CLI name and the token verb as adjacent QUOTED arguments, as in "
+            "`python -c \"subprocess.run(['warding','token'])\"`. Scoped to the argv-literal "
             "shape so a regex literal or prose mentioning both words is not a mint; a "
             "single-string spelling is out of reach of command-text matching and is covered by "
             "the sensitive-path floor over the signing key instead."
@@ -239,7 +255,7 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
         id="self-protection-kill-interpreter",
         # Companion to ``self-protection-kill`` for the shape a shell-command matcher
         # cannot reach: an INTERPRETER payload that terminates the gateway through a
-        # library call -- ``os.system("pkill -f junction")``,
+        # library call -- ``os.system("pkill -f warding")``,
         # ``execSync("pkill -f junction")``.  The argv floor cannot help; the payload is
         # one opaque token to the shell tokenizer and its contents are Python/JS.
         #
@@ -259,26 +275,28 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
             "(?:"
             # (a) the command as a single quoted string.
             "\\s*\\(?\\s*[a-z]{0,2}['\"][^'\"]*\\b(?:pkill|killall)\\b"
-            "[^'\"]*(?:\\[j\\]unction|\\bjunction)\\b"
+            "[^'\"]*(?:\\[w\\]arding|\\bwarding|\\[j\\]unction|\\bjunction)\\b"
             # (b) the command as an argv LIST -- verb and target as separate quoted
-            # elements (``run(['pkill','-f','junction'])``), list concatenation included.
+            # elements (``run(['pkill','-f','warding'])``), list concatenation included.
             "|[\\s\\(\\[]*['\"][\\w.:/\\\\-]*(?:pkill|killall)['\"]"
-            "[\\s,\\[\\]\\(\\)+*'\"=\\w-]*['\"][^'\"]*(?:\\[j\\]unction|junction)"
+            "[\\s,\\[\\]\\(\\)+*'\"=\\w-]*['\"][^'\"]*"
+            "(?:\\[w\\]arding|\\bwarding|\\[j\\]unction|junction)"
             ")"
             # --- a DIRECT process-kill API, which IS the sink and therefore stands on
-            # its own rather than behind the list above: ``os.kill(pid_from("[j]unction
+            # its own rather than behind the list above: ``os.kill(pid_from("[w]arding
             # gateway"), 9)``.  The signal is the kill API and the product name in the
-            # same call.  The bracketed spelling ``[j]unction`` is matched alongside the
+            # same call.  The bracketed spelling ``[w]arding`` is matched alongside the
             # full name so the standard "don't match my own lookup" bracket idiom, which
             # still resolves to the gateway, is not a free pass.
-            "|(?:os\\.kill(?:pg)?|process\\.kill|\\bkillpg)\\s*\\([^)]*(?:\\[j\\]unction|junction)"
+            "|(?:os\\.kill(?:pg)?|process\\.kill|\\bkillpg)\\s*\\([^)]*"
+            "(?:\\[w\\]arding|\\bwarding|\\[j\\]unction|junction)"
             ")"
         ),
         category="self-protection",
         description=(
-            "Blocks an interpreter payload that terminates a junction process through a "
-            "library call rather than as a shell command -- a pkill/killall command and the "
-            "product name inside one quoted string passed to an executing sink such as "
+            "Blocks an interpreter payload that terminates a warding (or junction) process "
+            "through a library call rather than as a shell command -- a pkill/killall command "
+            "and the product name inside one quoted string passed to an executing sink such as "
             "`os.system(...)` or `execSync(...)`. Sink-qualified so prose, a commit message "
             "or a regex literal naming both is not a kill."
         ),
@@ -1351,43 +1369,49 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
         # byte-identical to the ``credential-exfil-s3-cp``/aws idiom on purpose:
         # ``_linearize_deny_pattern`` rewrites exactly that spelling into its
         # linear-time equivalent, so reusing it keeps these rules ReDoS-safe (#4799).
-        pattern=".*junction(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+restart.*",
+        pattern=".*(?:\\bwarding|junction)(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+restart.*",
         category="self-protection",
         description=(
-            "Blocks 'junction restart' so the agent cannot restart its own gateway process and "
-            "disrupt the running session or evade in-flight controls."
+            "Blocks 'warding restart' (and its 'junction restart' alias) so the agent cannot "
+            "restart its own gateway process and disrupt the running session or evade "
+            "in-flight controls."
         ),
     ),
     DeniedCommandRule(
         id="self-protection-update",
-        pattern=".*junction(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+update.*",
+        pattern=".*(?:\\bwarding|junction)(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+update.*",
         category="self-protection",
         description=(
-            "Blocks 'junction update' so the agent cannot self-update (git pull + rebuild + "
-            "execv restart) and swap out its own running code without operator oversight."
+            "Blocks 'warding update' (and its 'junction update' alias) so the agent cannot "
+            "self-update (git pull + rebuild + execv restart) and swap out its own running "
+            "code without operator oversight."
         ),
     ),
     DeniedCommandRule(
         id="self-protection-cloud",
         pattern=(
-            ".*junction(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+cloud\\s+"
+            ".*(?:\\bwarding|junction)(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+cloud\\s+"
             "(destroy|stop|start|launch|connect|tunnel|log(in|out)).*"
         ),
         category="self-protection",
         description=(
-            "Blocks 'junction cloud' lifecycle subcommands "
+            "Blocks 'warding cloud' (and 'junction cloud') lifecycle subcommands "
             "(destroy/stop/start/launch/connect/tunnel/login/logout) so the agent cannot tear "
             "down, provision, re-authenticate, or sign out its own cloud instance."
         ),
     ),
     DeniedCommandRule(
         id="self-protection-cron-adopt",
-        pattern=".*junction\\b(?:(?!&&)[^;|])*?\\bcron\\b(?:(?!&&)[^;|])*?\\badopt\\b.*",
+        pattern=(
+            ".*(?:\\bwarding|junction)\\b"
+            "(?:(?!&&)[^;|])*?\\bcron\\b(?:(?!&&)[^;|])*?\\badopt\\b.*"
+        ),
         category="self-protection",
         description=(
-            "Blocks 'junction cron adopt' so the agent cannot assign itself ownership of a "
-            "scheduled job. A cron's owning session both manages the job and receives its "
-            "output, and the MCP cron tools deliberately cannot write that field -- without "
+            "Blocks 'warding cron adopt' (and its 'junction cron adopt' alias) so the agent "
+            "cannot assign itself ownership of a scheduled job. A cron's owning session both "
+            "manages the job and receives its output, and the MCP cron tools deliberately "
+            "cannot write that field -- without "
             "this rule a session could reach the same power through bash and claim a job that "
             "belongs to another session. The gaps between the words tolerate anything that is "
             "not a command separator, rather than enumerating what may sit there: the CLI "
@@ -1400,11 +1424,12 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
     ),
     DeniedCommandRule(
         id="self-protection-gateway-restart",
-        pattern=".*junction(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+gateway restart.*",
+        pattern=".*(?:\\bwarding|junction)(?:\\s+--?[a-z-]+(?:[= ]\\S+)?)*\\s+gateway restart.*",
         category="self-protection",
         description=(
-            "Blocks 'junction gateway restart' so the agent cannot bounce its own gateway "
-            "server and interrupt the active session or supervision."
+            "Blocks 'warding gateway restart' (and its 'junction gateway restart' alias) so "
+            "the agent cannot bounce its own gateway server and interrupt the active session "
+            "or supervision."
         ),
     ),
     DeniedCommandRule(
@@ -1419,7 +1444,7 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
         # redirect (``>``), which is what the false positives this replaced always
         # crossed -- a bare ``kill <pid>`` followed by an unrelated command that
         # merely mentions the product, or a trailing comment naming it.  ``|`` and
-        # ``/`` stay INSIDE the gap on purpose: ``pkill -f 'x|junction'`` and
+        # ``/`` stay INSIDE the gap on purpose: ``pkill -f 'x|warding'`` and
         # ``pkill -f /usr/local/bin/junction`` are both real by-name kills, and
         # treating those characters as boundaries would let them through.
         pattern=(
@@ -1428,23 +1453,24 @@ BUILTIN_DENIED_RULES: list[DeniedCommandRule] = [
             # argument in the same segment IS the kill target.  The verb must be in
             # COMMAND POSITION -- start of input or after a separator, optionally
             # quoted or path-qualified -- so the word merely appearing in another
-            # command's arguments (``echo pkill junction``) is not a kill.
+            # command's arguments (``echo pkill warding``) is not a kill.
             "(?:\\A|[;&|\\n`]|\\$\\()[\\s\"'(]*[\\w.:/\\\\-]*"
-            "(?:pkill|killall)\\b[^;&#>]*\\bjunction\\b"
+            "(?:pkill|killall)\\b[^;&#>]*\\b(?:warding|junction)\\b"
             # Bare ``kill`` takes PIDs, so it can only aim at the product through
             # a command substitution that resolves the name to one.  The gap after
             # the opener is deliberately NOT stopped at ``)``: a nested
-            # substitution (``$(pgrep -f "$(printf '')junction")``) closes an inner
+            # substitution (``$(pgrep -f "$(printf '')warding")``) closes an inner
             # paren first, and stopping there would let that form through.
             "|(?:\\A|[;&|\\n`]|\\$\\()[\\s\"'(]*[\\w.:/\\\\-]*"
-            "kill\\b[^;&#>]*(?:\\$\\(|`)[^;&#>]*\\bjunction\\b"
+            "kill\\b[^;&#>]*(?:\\$\\(|`)[^;&#>]*\\b(?:warding|junction)\\b"
             ")"
         ),
         category="self-protection",
         description=(
-            "Blocks pkill/killall naming a junction process, and a bare kill whose PID comes "
-            "from a command substitution that resolves the junction name, so the agent cannot "
-            "terminate its own gateway or supervisor and disable the controls governing it. "
+            "Blocks pkill/killall naming a warding (or junction) process, and a bare kill whose "
+            "PID comes from a command substitution that resolves either name, so the agent "
+            "cannot terminate its own gateway or supervisor and disable the controls governing "
+            "it. "
             "Scoped to the kill target within one command segment: an incidental mention of the "
             "product in a later command or a comment (a file being restored, a log path) is not "
             "a kill."
@@ -2409,10 +2435,22 @@ DENY_REASON_MATCH_PREFIX = DENY_REASON_PREFIX.rstrip()
 # contains the product name" is exactly the false positive these rules exist to
 # stop.  Tokenizing resolves quoting and redirection BEFORE matching, so both
 # sides can be exact.  See ``_is_credential_mint`` / ``_is_self_kill``.
-_SELF_NAME_RE = re.compile(r"\bjunction\b")
-# ``[j]unction`` -- a one-character bracket class expands to that character, so it names
-# the protected program.  Collapsed before comparison rather than folded into every name
-# pattern, so a single rule covers the idiom wherever it appears in the word.
+#
+# The protected PROGRAM names: the console scripts the one entry point is installed under
+# (``warding`` primary, ``junction`` its silent alias).  ``constants.CLI_CONSOLE_STEMS`` owns
+# the list, so a console script added there is protected here without a second edit.  This
+# is the PROGRAM name only -- the import name (``python -m junction``, ``import junction``)
+# is :data:`_SELF_MODULE_SPELLINGS` / :data:`_SELF_IMPORT_RE`, because there is no
+# ``warding`` module to load.
+_SELF_PROGRAM_SPELLINGS: tuple[str, ...] = CLI_CONSOLE_STEMS
+_SELF_PROGRAM_ALTERNATION = "|".join(re.escape(name) for name in _SELF_PROGRAM_SPELLINGS)
+# The literal an alias or function that forwards to the CLI is rewritten to; any spelling
+# in :data:`_SELF_PROGRAM_SPELLINGS` is recognised, so the primary one stands for all.
+_SELF_PROGRAM_CANONICAL = _SELF_PROGRAM_SPELLINGS[0]
+_SELF_NAME_RE = re.compile(rf"\b(?:{_SELF_PROGRAM_ALTERNATION})\b")
+# ``[j]unction`` / ``[w]arding`` -- a one-character bracket class expands to that character,
+# so it names the protected program.  Collapsed before comparison rather than folded into
+# every name pattern, so a single rule covers the idiom wherever it appears in the word.
 _ONE_CHAR_CLASS_RE = re.compile(r"\[(\w)\]")
 
 
@@ -2422,15 +2460,15 @@ def _debracket(text: str) -> str:
 
 
 # The product name as a WHOLE program name (bare or the tail of a path), which is
-# what distinguishes ``bin/junction token`` from ``cd junction-wt-x``.
+# what distinguishes ``bin/warding token`` from ``cd warding-wt-x``.
 
 
-_SELF_PROGRAM_RE = re.compile(r"\Ajunction(?:\.(?:exe|cmd|bat|sh|py))?\Z")
-# Shell glob metacharacters, and the concrete spellings a glob could expand to.  A
-# glob in the program name (``junc[t]ion``) is resolved by the shell BEFORE exec, so
-# it has to be tested for expandability rather than compared literally.
+_SELF_PROGRAM_RE = re.compile(rf"\A(?:{_SELF_PROGRAM_ALTERNATION})(?:\.(?:exe|cmd|bat|sh|py))?\Z")
+# Shell glob metacharacters, and the concrete spellings a glob could expand to
+# (:data:`_SELF_PROGRAM_SPELLINGS`).  A glob in the program name (``junc[t]ion``) is
+# resolved by the shell BEFORE exec, so it has to be tested for expandability rather than
+# compared literally.
 _GLOB_CHARS_RE = re.compile(r"[\[\]?*{}]")
-_SELF_PROGRAM_SPELLINGS = ("junction",)
 # The kill programs that select their target BY NAME.  Bare ``kill`` takes PIDs
 # and is handled separately (it can only reach the product through a command
 # substitution that resolves the name), and both verbs are matched on TOKENS via
@@ -2578,6 +2616,25 @@ _PYTHON_INLINE_PROGRAM_FLAGS = ("-c",)
 #: PROVIDED the name is written literally, which the split/base64 forms below deliberately avoid.
 _SELF_IMPORT_RE = re.compile(r"\bjunction\b")
 
+#: The console script written literally inside an INLINE program, and the process-spawn
+#: primitives through which such a program runs it. ``python -c "subprocess.run(['warding',
+#: 'restart'])"`` names no import, so :data:`_SELF_IMPORT_RE` cannot see it, yet it restarts the
+#: gateway: an inline program runs with the interpreter's full authority and can BUILD the verb,
+#: so the gate is the name together with a way to execute it. A bare mention
+#: (``python -c "import warding"``, ``print('warding')``) spawns nothing and stays allowed, as does
+#: any payload that never names the script. ``warding`` carries a leading ``\b`` because it is the
+#: tail of ordinary words (``forwarding``). Written literally only, like the import check: a
+#: name assembled from pieces is caught by :data:`_INLINE_DYNAMIC_EXEC_RE` or is the documented
+#: residual of a string matcher.
+_SELF_SCRIPT_NAME_RE = re.compile(r"\bwarding\b")
+_INLINE_SPAWN_RE = re.compile(
+    # Matched by the bare name, never only module-qualified: ``from os import posix_spawnp`` and
+    # ``from pty import spawn`` call the primitive without the module word in front of it.
+    r"\bsubprocess\b|\b(?:posix_)?spawn\w*\b|\bpopen\w*\b|\bsystem\s*\("
+    r"|\bexec(?:l|le|lp|lpe|v|ve|vp|vpe)\b|\bcreate_subprocess_\w+\b|\bcheck_(?:call|output)\b"
+    r"|\bpexpect\b|\bplumbum\b|\b(?:from|import)\s+sh\b"
+)
+
 #: Dynamic-execution primitives that let an inline Python payload REACH the CLI without the
 #: package name ever appearing as a literal token: string-concatenated imports
 #: (``__import__('junc'+'tion')``), name-computed imports (``importlib.import_module(...)``),
@@ -2596,16 +2653,21 @@ _INLINE_DYNAMIC_EXEC_RE = re.compile(
 
 
 def _inline_payload_reaches_cli(payload: str) -> bool:
-    """True if an inline-program payload could import this package, LITERALLY or opaquely.
+    """True if an inline-program payload could reach this CLI, LITERALLY or opaquely.
 
-    Two ways: it names ``junction`` outright, or it uses a dynamic-execution primitive that
-    could construct that import from pieces a static matcher cannot follow. The second is a
+    Three ways: it names the package ``junction`` outright, it names the console script
+    ``warding`` AND uses a process-spawn primitive, or it uses a dynamic-execution primitive
+    that could construct either from pieces a static matcher cannot follow. The second is a
     deliberate over-match — a payload doing ``exec(...)`` or ``__import__(...)`` might import
     something else entirely — but on the credential-mint path "I cannot tell what this runs" is
     the fail-closed answer, and the cost is refusing an inline one-liner that happens to use
     ``exec``/``eval``, which is not a shape ordinary tooling relies on.
     """
-    return bool(_SELF_IMPORT_RE.search(payload) or _INLINE_DYNAMIC_EXEC_RE.search(payload))
+    return bool(
+        _SELF_IMPORT_RE.search(payload)
+        or _INLINE_DYNAMIC_EXEC_RE.search(payload)
+        or (_SELF_SCRIPT_NAME_RE.search(payload) and _INLINE_SPAWN_RE.search(payload))
+    )
 
 
 def _is_self_module_invocation(tokens: list[str], i: int) -> bool:
@@ -2920,7 +2982,7 @@ def _resolve_function_aliases(tokens: "list[str]") -> "list[str]":
             if spec and spec.group(2):
                 target = _normalize_operand(spec.group(2))
                 if _is_self_program(target):
-                    aliases[spec.group(1)] = "junction"
+                    aliases[spec.group(1)] = _SELF_PROGRAM_CANONICAL
                 elif _program_basename(target) in _KILL_BY_NAME_PROGRAMS:
                     aliases[spec.group(1)] = _program_basename(target)
         m = _FUNC_DEF_RE.match(tokens[i])
@@ -2929,7 +2991,7 @@ def _resolve_function_aliases(tokens: "list[str]") -> "list[str]":
             for body_token in tokens[i + 1 :]:
                 base = _program_basename(body_token)
                 if _is_self_program(body_token):
-                    aliases[m.group(1)] = "junction"
+                    aliases[m.group(1)] = _SELF_PROGRAM_CANONICAL
                     break
                 if base in _KILL_BY_NAME_PROGRAMS:
                     aliases[m.group(1)] = base
@@ -3976,8 +4038,9 @@ def _python_reads_stdin(later_tokens: list[str]) -> bool:
 # dynamic-exec primitive stands in for it. Each normalization needs specific
 # MACHINERY characters present in the raw text, so the union below is a
 # superset of every firing path:
-#   * the literal name, including the attached `-mjunction` module spelling,
-#     which `_SELF_NAME_RE`'s leading word boundary deliberately omits;
+#   * the literal name in either console-script spelling, plus the attached
+#     `-mjunction` module spelling, which `_SELF_NAME_RE`'s leading word boundary
+#     deliberately omits (there is no `-mwarding`: that is the import name only);
 #   * any machinery character that lets a normalization synthesize the name or
 #     a program spelling: glob/brace chars (`? * [ ] { }` — `_glob_could_expand_to`
 #     admits e.g. `j*n` for the program AND `*kill` for the kill verbs),
@@ -4004,7 +4067,7 @@ def _python_reads_stdin(later_tokens: list[str]) -> bool:
 # ``-mjunction`` has no word boundary before the package name (``m`` and ``j``
 # are both word characters), so a ``\b`` in front of ``junction`` would skip
 # the attached ``python -m`` spelling and the floor would never run.
-_SELF_FLOOR_NAME_HINT_RE = re.compile(r"-mjunction\b|\bjunction\b")
+_SELF_FLOOR_NAME_HINT_RE = re.compile(rf"-mjunction\b|\b(?:{_SELF_PROGRAM_ALTERNATION})\b")
 _SELF_FLOOR_MACHINERY_RE = re.compile(r"[?*\[\]{}$`~]|\\x[0-9a-f]|\\0?[0-7]{1,3}")
 _SELF_FLOOR_QUOTE_JUNK_RE = re.compile(r"[\"'\\\\]")
 
