@@ -597,8 +597,14 @@ class TestResetPaths:
     def test_reset_state_unlinks_claude_settings_and_survives_pipe_errors(self, tmp_path):
         client = _client(tmp_path, acp_backend=ACP_BACKEND_CLAUDE)
         stale = tmp_path / ".claude" / "settings.local.json"
-        stale.parent.mkdir(parents=True)
-        stale.write_text('{"permissions": {"defaultMode": "bypassPermissions"}}')
+
+        def _seed():
+            stale.parent.mkdir(parents=True)
+            stale.write_text('{"permissions": {"defaultMode": "bypassPermissions"}}')
+
+        # The edition's seed hook wrote the file, so it is ours to undo.
+        client._write_claude_local_settings = _seed
+        client._seed_claude_local_settings("seed failed")
 
         proc = MagicMock()
         proc.stdin.close.side_effect = OSError("already closed")

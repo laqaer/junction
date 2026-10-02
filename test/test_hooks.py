@@ -1804,3 +1804,58 @@ class TestTargetPathSpellings:
         assert target_paths({"path": {"nested": 1}, "filePath": "   "}) == []
         assert target_paths(None) == []
         assert target_paths({"path": "/a", "file_path": "/a"}) == ["/a"], "deduped"
+
+    def test_a_list_of_paths_is_read_element_by_element(self):
+        """A multi-file call has no scalar key to carry its fourth file."""
+        from junction.hooks import target_paths
+
+        assert target_paths({"path": "/a", "paths": ["/b", "/a", " ", 3, "/c"]}) == [
+            "/a",
+            "/b",
+            "/c",
+        ]
+        assert target_paths({"paths": ("/t",)}) == ["/t"]
+        assert target_paths({"paths": "/not-a-list"}) == [], "a bare string is not a path list"
+        assert target_paths({"paths": None}) == []
+
+    def test_any_forbidden_element_of_a_path_list_denies(self):
+        from junction.hooks import TOOL_DENY
+
+        for kind, forbidden in (("edit", "~/.ssh/id_rsa"), ("read", "~/.aws/credentials")):
+            decision = self._gate().on_tool_call(
+                "Edit files",
+                session_key="cli_chat",
+                tool_kind=kind,
+                raw_params={"paths": ["/tmp/a.md", "/tmp/b.md", forbidden]},
+            )
+            assert decision.action == TOOL_DENY, forbidden
+
+    def test_a_write_protected_element_of_a_path_list_denies_an_edit_only(self):
+        from pathlib import Path
+
+        from junction.hooks import TOOL_DENY
+
+        protected = str(Path.home() / ".claude" / "settings.json")
+        edit = self._gate().on_tool_call(
+            "Edit files",
+            session_key="cli_chat",
+            tool_kind="edit",
+            raw_params={"paths": ["/tmp/a.md", protected]},
+        )
+        read = self._gate().on_tool_call(
+            "Read files",
+            session_key="cli_chat",
+            tool_kind="read",
+            raw_params={"paths": ["/tmp/a.md", protected]},
+        )
+        assert edit.action == TOOL_DENY
+        assert read.action != TOOL_DENY, "write-protection must not turn into read-protection"
+
+    def test_path_list_and_scalar_spellings_stay_in_step_with_governance(self):
+        """The two gates must agree on what a call targets, and governance cannot
+        import this module without a cycle, so it mirrors the tuples."""
+        from junction.hooks import TARGET_PATH_KEYS, TARGET_PATH_LIST_KEYS
+        from junction.platform import governance
+
+        assert tuple(governance._PATH_ARG_KEYS) == TARGET_PATH_KEYS
+        assert tuple(governance._PATH_LIST_ARG_KEYS) == TARGET_PATH_LIST_KEYS

@@ -5310,6 +5310,50 @@ _WRITE_PROTECTED_HOME_PATHS += [
 _KIRO_AGENTS_DIR = ".kiro/agents"
 _WRITE_PROTECTED_HOME_PATHS += [_KIRO_AGENTS_DIR]
 
+# ── Adapted-harness permission and launch config (~/.claude, ~/.codex) ──
+# Claude Code and Codex decide what runs WITHOUT asking from files on disk, and
+# every one of those decisions bypasses Warding's PreToolUse gate, because a
+# pre-authorized call never raises a permission request:
+#
+# * Claude Code: ``settings.json`` / ``settings.local.json`` (``permissions.allow``,
+#   ``defaultMode``, ``hooks`` commands) and ``.claude.json`` (user-scope MCP servers,
+#   whose ``command`` launches at the next session start).
+# * Codex: ``config.toml`` (approval and sandbox policy, ``mcp_servers`` commands),
+#   ``hooks.json`` (lifecycle hooks) and ``rules/`` (execpolicy: a matching rule runs
+#   a command outside the sandbox with no prompt).
+#
+# An agent that can write one of them turns one approved edit into a standing waiver
+# for every later session, the same persistence the kiro agent specs above guard
+# against. They are WRITE-protected, not read+write sensitive: the harness itself and
+# the operator's own tooling read them constantly, and a read discloses no secret.
+#
+# The user-level files are listed here, so the ``~/.kiro/agents`` machinery applies:
+# the tool-path gate, the posture view, the bash gate and the re-anchoring under the
+# harness's own home override (``CLAUDE_CONFIG_DIR`` / ``CODEX_HOME``, see
+# ``_home_dir_targets_uncached``). The PROJECT-scope twins (``<project>/.claude/
+# settings.json`` and friends) and ``.claude.json`` cannot be home-anchored entries:
+# the former live in whatever workspace the agent runs in, and the latter's parent is
+# ``$HOME`` itself, which the auto-improvement sandbox masks wholesale for every entry
+# on this list. ``_path_names_harness_config`` matches those by name instead.
+_CLAUDE_HOME_DIR = ".claude"
+_CLAUDE_SETTINGS_LEAVES: tuple[str, ...] = ("settings.json", "settings.local.json")
+_CLAUDE_USER_JSON = ".claude.json"
+_CODEX_HOME_DIR = ".codex"
+_CODEX_CONFIG_LEAVES: tuple[str, ...] = ("config.toml", "hooks.json")
+#: Directory (the rules themselves live in ``rules/*.rules``): fenced as a whole.
+_CODEX_RULES_DIR = "rules"
+_WRITE_PROTECTED_HOME_PATHS += [
+    *(f"{_CLAUDE_HOME_DIR}/{leaf}" for leaf in _CLAUDE_SETTINGS_LEAVES),
+    *(f"{_CODEX_HOME_DIR}/{leaf}" for leaf in _CODEX_CONFIG_LEAVES),
+    f"{_CODEX_HOME_DIR}/{_CODEX_RULES_DIR}",
+]
+# (home-relative dir, env var that relocates it, entries under the relocated dir):
+# what ``_home_dir_targets_uncached`` re-anchors, mirroring ``KIRO_HOME`` above.
+_HARNESS_HOME_OVERRIDES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    (_CLAUDE_HOME_DIR, "CLAUDE_CONFIG_DIR", _CLAUDE_SETTINGS_LEAVES),
+    (_CODEX_HOME_DIR, "CODEX_HOME", (*_CODEX_CONFIG_LEAVES, _CODEX_RULES_DIR)),
+)
+
 # ── Bash-layer protection for write-protected leaves ──
 # Leaf files under the data home that a bash command must not be able to
 # CREATE/MODIFY/DELETE. The file-edit tool gate already blocks tool writes to
@@ -5689,6 +5733,56 @@ def _build_sensitive_regex() -> re.Pattern[str]:
     # blocks on naming alone.
     bare_leaves = "|".join(re.escape(leaf) for leaf in _BARE_TOKEN_PROTECTED_LEAVES)
     bare_protected_path = rf"(?<![\w.\-])(?:{bare_leaves})(?![\w\-])"
+    # ── Adapted-harness permission/launch config, on the shell path ──
+    # The tool gate (``is_sensitive_write_path``) is the primary control and keeps
+    # reads allowed; this branch closes the shell WRITE path and is matched
+    # verb-independently for the same reason the kiro agents branch above is: naming
+    # the file is the signal, and any enumerated write verb is bypassable.
+    #
+    # Two shapes. (a) The segment pair as a bare path segment with NO home anchor,
+    # because the project-scope twins (``.claude/settings.local.json`` relative to
+    # the workspace) carry no home and the user-level ones are reached by every
+    # spelling of home — one pattern covers ``~``, ``$HOME``, an absolute path, a
+    # relative path, either separator, quoted or not. The boundary is expressed as
+    # filename-character NEGATIVES, as in ``bare_protected_path``, so a different
+    # file that merely ends with one of these names stays allowed
+    # (``my.claude/settings.json``, ``settings-backup.json``) while a suffixed
+    # spelling (``…json.bak``) and the directory form stay matched. (b) The relocated
+    # home forms, ``$CLAUDE_CONFIG_DIR/settings.json`` and ``$CODEX_HOME/config.toml``,
+    # which carry no ``.claude`` / ``.codex`` segment, in the POSIX, cmd.exe and
+    # PowerShell spellings of the variable (an already-expanded override path is the
+    # accepted residual, covered by the tool gate which resolves it).
+    #
+    # Reads naming these files are blocked as a side effect (a bash ``cat``, and an
+    # agent Read whose display title carries the bare path, since this matcher also
+    # runs over titles). That is the tradeoff the kiro agents branch accepts: no
+    # secret lives in these files, and ``is_sensitive_path`` plus Warding's own
+    # readers are unaffected.
+    claude_settings_alt = "|".join(re.escape(leaf) for leaf in _CLAUDE_SETTINGS_LEAVES)
+    codex_config_alt = "|".join(re.escape(leaf) for leaf in _CODEX_CONFIG_LEAVES)
+    codex_entries_alt = f"(?:{codex_config_alt}|{re.escape(_CODEX_RULES_DIR)})"
+    claude_dir_alt = re.escape(_CLAUDE_HOME_DIR)
+    codex_dir_alt = re.escape(_CODEX_HOME_DIR)
+    harness_bare_path = (
+        rf"(?<![\w.\-])(?:{claude_dir_alt}{win_sep}(?:{claude_settings_alt})"
+        rf"|{codex_dir_alt}{win_sep}{codex_entries_alt}"
+        rf"|{re.escape(_CLAUDE_USER_JSON)})(?![\w\-])"
+    )
+
+    def _env_ref(name: str) -> str:
+        # ``$NAME`` / ``${NAME}`` (POSIX), ``%NAME%`` with expansion modifiers
+        # (cmd.exe) and ``$env:NAME`` / ``${env:NAME}`` (PowerShell).
+        return (
+            rf"(?:\${name}|\$\{{{name}\}}|%{name}(?::[^%\s]*)?%"
+            rf"|{re.escape('$env:' + name)}|{re.escape('${env:' + name + '}')})"
+        )
+
+    harness_env_alts = []
+    for _dir, env_name, leaves in _HARNESS_HOME_OVERRIDES:
+        leaf_alt = "|".join(re.escape(leaf) for leaf in leaves)
+        extra = f"|{re.escape(_CLAUDE_USER_JSON)}" if env_name == "CLAUDE_CONFIG_DIR" else ""
+        harness_env_alts.append(rf"{_env_ref(env_name)}{win_sep}(?:{leaf_alt}{extra})")
+    harness_env_path = rf"(?:{'|'.join(harness_env_alts)})(?![\w\-])"
     return re.compile(
         # (1) verb/redirect-anchored, OR (2) verb-independent: the sensitive path
         # appears anywhere as a token.  The token anchor accepts start-of-string
@@ -5725,7 +5819,10 @@ def _build_sensitive_regex() -> re.Pattern[str]:
         # only); tool-path reads stay allowed.
         rf"|(?:^|.*[\s'\"=:,;]){agents_write_path}"
         rf"|(?:^|.*[\s'\"=:,;]){win_agents_write_path}"
-        rf"|{bare_protected_path})",
+        rf"|{bare_protected_path}"
+        # (9) the adapted harnesses' permission/launch config: bare segment pair
+        # (any spelling of home, or none) and the relocated-home variable forms.
+        rf"|{harness_bare_path}|(?:^|.*[\s'\"=:,;]){harness_env_path})",
         re.IGNORECASE,
     )
 
@@ -5785,16 +5882,20 @@ def _candidate_forms(path_str: str, base_dir: str | None = None) -> set[str]:
     return candidates
 
 
+_Roots = tuple[str, str | None, str | None, str | None, str | None]
+
+
 def _home_dir_targets_uncached(
     home_dirs: list[str],
-    roots: tuple[str, str | None, str | None] | None = None,
+    roots: _Roots | None = None,
 ) -> set[str]:
     """Anchor the ``$HOME``-relative *home_dirs* entries into absolute, casefolded
     on-disk targets.
 
-    *roots* optionally supplies the ``(home, data_root, kiro_home)`` anchors
-    already resolved by the caller. The TTL cache in :func:`_home_dir_targets` MUST pass
-    it: resolving the roots here as well would read the filesystem a second
+    *roots* optionally supplies the ``(home, data_root, kiro_home, claude_home,
+    codex_home)`` anchors already resolved by the caller. The TTL cache in
+    :func:`_home_dir_targets` MUST pass it: resolving the roots here as well would
+    read the filesystem a second
     time, and a root symlink repointed between the two reads would file this
     set under a key naming the OTHER root — caching one root's targets against
     another root's key, which fails OPEN. ``None`` (direct callers and tests)
@@ -5815,9 +5916,15 @@ def _home_dir_targets_uncached(
     this is a no-op there.
     """
     if roots is not None:
-        home, data_root, kiro_home_override = roots
+        home, data_root, kiro_home_override, claude_home_override, codex_home_override = roots
     else:
-        home, data_root, kiro_home_override = _resolved_root_key()
+        (
+            home,
+            data_root,
+            kiro_home_override,
+            claude_home_override,
+            codex_home_override,
+        ) = _resolved_root_key()
 
     def _anchor(root: str, d: str) -> str:
         return os.path.join(root, *d.split("/")).casefold()
@@ -5872,6 +5979,26 @@ def _home_dir_targets_uncached(
             sensitive_targets.add(os.path.realpath(agents_full).casefold())
         except (OSError, ValueError):
             pass
+    # The adapted harnesses' config follows their own home overrides the same way
+    # (``CLAUDE_CONFIG_DIR`` replaces ``~/.claude``, ``CODEX_HOME`` replaces
+    # ``~/.codex``), so the entries under a relocated home are anchored there in
+    # addition to the ~/-rooted default. Only entries actually present in
+    # *home_dirs* are added: they are on the write-only tier, and must not leak
+    # into the read gate. An extra target under a bogus override is harmless.
+    for (harness_dir, _env_name, harness_leaves), harness_override in zip(
+        _HARNESS_HOME_OVERRIDES, (claude_home_override, codex_home_override)
+    ):
+        if not harness_override:
+            continue
+        for leaf in harness_leaves:
+            if f"{harness_dir}/{leaf}" not in home_dirs:
+                continue
+            full = os.path.join(harness_override, leaf)
+            sensitive_targets.add(full.casefold())
+            try:
+                sensitive_targets.add(os.path.realpath(full).casefold())
+            except (OSError, ValueError):
+                pass
     return sensitive_targets
 
 
@@ -5920,8 +6047,24 @@ _HOME_TARGETS_TTL_SECS = 0.1
 _home_targets_cache: dict[tuple[object, ...], tuple[float, set[str]]] = {}
 
 
-def _resolved_root_key() -> tuple[str, str | None, str | None]:
-    """Return the (home, data_root, kiro_home) roots the target set is anchored on.
+def _resolved_env_root(name: str) -> str | None:
+    """The resolved directory an env override names, or ``None`` when unset.
+
+    Falls back to the unresolved absolute form on OSError/ValueError, the same way
+    the builder anchors, so a symlinked override keys and anchors identically.
+    """
+    value = os.environ.get(name)
+    if not value:
+        return None
+    try:
+        return str(Path(value).expanduser().resolve())
+    except (OSError, ValueError):
+        return os.path.abspath(os.path.expanduser(value))
+
+
+def _resolved_root_key() -> _Roots:
+    """Return the (home, data_root, kiro_home, claude_home, codex_home) roots the
+    target set is anchored on.
 
     Mirrors how :func:`_home_dir_targets_uncached` derives its anchors, so the
     cache key changes exactly when the anchors would. Falls back to the
@@ -5933,28 +6076,20 @@ def _resolved_root_key() -> tuple[str, str | None, str | None]:
     must invalidate the cache. No validity check here (an unsafe value falls back
     to ``~/.kiro`` in ``kiro_home()``, already covered by the default form); it is
     resolved only so a symlinked override keys and anchors identically.
+    ``claude_home`` and ``codex_home`` are the ``CLAUDE_CONFIG_DIR`` and
+    ``CODEX_HOME`` overrides, resolved the same way for the harness config entries.
     """
     try:
         home = str(Path.home().resolve())
     except (OSError, ValueError):
         home = str(Path.home())
-    data_env = os.environ.get("JUNCTION_HOME")
-    if data_env:
-        try:
-            data: str | None = str(Path(data_env).expanduser().resolve())
-        except (OSError, ValueError):
-            data = os.path.abspath(os.path.expanduser(data_env))
-    else:
-        data = None
-    kiro_env = os.environ.get("KIRO_HOME")
-    if kiro_env:
-        try:
-            kiro: str | None = str(Path(kiro_env).expanduser().resolve())
-        except (OSError, ValueError):
-            kiro = os.path.abspath(os.path.expanduser(kiro_env))
-    else:
-        kiro = None
-    return home, data, kiro
+    return (
+        home,
+        _resolved_env_root("JUNCTION_HOME"),
+        _resolved_env_root("KIRO_HOME"),
+        _resolved_env_root("CLAUDE_CONFIG_DIR"),
+        _resolved_env_root("CODEX_HOME"),
+    )
 
 
 def _home_dir_targets(home_dirs: list[str]) -> set[str]:
@@ -6099,10 +6234,63 @@ def is_sensitive_write_path(path_str: str, base_dir: str | None = None) -> bool:
     written by the agent. Enforced at the file-edit tool gate
     (``hooks.on_tool_call`` on the ACP ``edit`` kind) — see
     :data:`_WRITE_PROTECTED_HOME_PATHS` for the rationale.
+
+    Also covers the adapted harnesses' project-scope config and ``.claude.json``,
+    which are matched by NAME wherever they sit (:func:`_path_names_harness_config`).
     """
     return _path_in_home_dirs(
         path_str, _SENSITIVE_HOME_DIRS + _WRITE_PROTECTED_HOME_PATHS, base_dir
-    )
+    ) or _path_names_harness_config(path_str, base_dir)
+
+
+# Name tails of the harness config files that are matched wherever they sit on disk,
+# casefolded: the project-scope twins of the user-level files fenced through
+# ``_WRITE_PROTECTED_HOME_PATHS``. Built from the same constants so the two lists
+# cannot drift apart.
+_HARNESS_CONFIG_FILE_TAILS: frozenset[tuple[str, ...]] = frozenset(
+    {
+        *((_CLAUDE_HOME_DIR, leaf) for leaf in _CLAUDE_SETTINGS_LEAVES),
+        *((_CODEX_HOME_DIR, leaf) for leaf in _CODEX_CONFIG_LEAVES),
+    }
+)
+
+_PATH_SEGMENT_SPLIT_RE = re.compile(r"[\\/]+")
+
+
+def _path_names_harness_config(path_str: str, base_dir: str | None = None) -> bool:
+    """Whether *path_str* names an adapted harness's permission or launch config.
+
+    Matches by the trailing path segments rather than by a home anchor, because the
+    project-scope files (``<project>/.claude/settings.json``,
+    ``<project>/.codex/config.toml``) live in whatever workspace the agent runs in
+    and Claude Code and Codex both read them at session start: a settings file the
+    agent writes into its own project is a standing waiver for the next session in
+    it. Also ``.claude.json`` (user-scope MCP servers) under any directory, and the
+    Codex ``rules/`` directory with everything beneath it.
+
+    Every candidate form is checked (:func:`_candidate_forms`), so a symlink that
+    resolves onto one of these files is caught the same as the file's own name. The
+    match is segment-exact and casefolded: ``.claude/settings.json.bak`` is a
+    different file, ``.claude/settings.jsonx`` is not matched, and
+    ``.Claude/Settings.JSON`` on a case-insensitive filesystem is.
+
+    Over-matching an unrelated file that happens to share one of these names is the
+    safe direction for a write gate, and the names are specific to these tools.
+    """
+    if not path_str:
+        return False
+    for candidate in _candidate_forms(path_str, base_dir):
+        parts = tuple(p.casefold() for p in _PATH_SEGMENT_SPLIT_RE.split(candidate) if p)
+        if not parts:
+            continue
+        if parts[-1] == _CLAUDE_USER_JSON:
+            return True
+        if parts[-2:] in _HARNESS_CONFIG_FILE_TAILS:
+            return True
+        for i in range(len(parts) - 1):
+            if parts[i] == _CODEX_HOME_DIR and parts[i + 1] == _CODEX_RULES_DIR:
+                return True
+    return False
 
 
 def sensitive_home_dirs() -> tuple[str, ...]:

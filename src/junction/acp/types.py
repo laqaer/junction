@@ -586,7 +586,9 @@ class AcpEvent:
     #: PROVENANCE flags for the child-fidelity gate (see child_low_fidelity).
     #: raw_params_trusted: raw_tool_params came from the tool_call cache (a
     #: frame this client parsed), not the permission payload's agent-authored
-    #: inline fallback. shell_classified: is_shell reflects a resolved
+    #: inline fallback or its spec-family ``rawInput``. A ``paths`` list added
+    #: from the permission frame's locations / diff blocks is deny-only and does
+    #: not change this flag. shell_classified: is_shell reflects a resolved
     #: classification (cache hit), not the miss-default False.
     raw_params_trusted: bool = False
     shell_classified: bool = False
