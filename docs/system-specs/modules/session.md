@@ -45,6 +45,14 @@ replaces the factory with `build_provider_factory`: a caller that injects its ow
 (the eval runner, tests) keeps it. The shared `BACKGROUND_KEY` session is not
 retired by the switch; it moves at its next recycle or a gateway restart. A
 failed re-read logs a warning and the session starts on the existing factory.
+`refresh_defaults` builds the replacement factory BEFORE publishing `_cfg`, so a
+build that raises leaves both untouched and the next cold start retries (a `_cfg`
+published ahead of its factory would read as adopted and never be retried).
+`open_task_session` adopts before it chooses between the run's shared runtime and
+a dedicated provider, because that choice (`_runs_on_acp_runtime`) and the
+runtime bootstrap read the config captured at build time: a task run opened after
+a switch away from a runtime-hosted harness (kiro-cli, KAS) must not start on the
+stale one.
 
 ### Context Overflow Protection
 

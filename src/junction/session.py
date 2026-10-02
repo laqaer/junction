@@ -1198,9 +1198,15 @@ class SessionManager:
         if cfg is None:
             cfg = JunctionConfig.load()
         async with self._pool_fill_lock:
+            # Built before anything is published: a factory that fails to build
+            # must leave ``_cfg`` and ``_provider_factory`` as they were. Publishing
+            # the config first would make the persisted harness look adopted
+            # (``_adopt_persisted_backend`` compares disk to ``_cfg``) while the
+            # old factory kept serving, and the failure would never be retried.
+            factory = build_provider_factory(cfg)
             async with self._lock:
                 self._cfg = cfg
-                self._provider_factory = build_provider_factory(cfg)
+                self._provider_factory = factory
                 while not self._warm_pool.empty():
                     try:
                         provider, _ = self._warm_pool.get_nowait()
@@ -1864,6 +1870,11 @@ class SessionManager:
         # the bootstrap's own check is the backstop. With no factory (unit tests)
         # the shared runtime is the only path there is.
         runtime: "AcpRuntime | None" = None
+        # Adopt a harness switched on disk BEFORE choosing the runtime path: the
+        # shared-runtime decision and the factory it bootstraps both read the
+        # config captured at build time, so a run opened after the switch would
+        # otherwise start on the previous harness.
+        await self._adopt_persisted_backend()
         shares_runtime = not self._provider_factory or self._runs_on_acp_runtime()
         if shares_runtime and parent_session_key not in self._dedicated_task_runs:
             runtime = await self._get_or_bootstrap_run_runtime(

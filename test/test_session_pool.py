@@ -1250,6 +1250,46 @@ class TestAdoptPersistedBackend:
         new_factory.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_failed_rebuild_stays_retryable(self):
+        mgr, old_factory = _adopting_manager("claude")
+        new_cfg, new_factory = _persisted("codex")
+        # Patched at session's own call: build_provider_factory degrades a lookup
+        # failure to cfg.create_provider_factory(), so failing the config's
+        # factory would not reach refresh_defaults.
+        build = MagicMock(side_effect=[RuntimeError("transient"), new_factory])
+
+        with patch("junction.session.JunctionConfig.load", return_value=new_cfg), patch(
+            "junction.session.build_provider_factory", build
+        ):
+            await mgr.get_or_create("dashboard:first")
+            # The failed build published nothing: still the old config and factory,
+            # so the next cold start sees the harness as unadopted and retries.
+            assert mgr._cfg is not new_cfg
+            assert mgr._provider_factory is old_factory
+            await mgr.get_or_create("dashboard:second")
+
+        assert mgr._cfg is new_cfg
+        assert "dashboard:second" in _keys(new_factory)
+
+    @pytest.mark.asyncio
+    async def test_task_session_adopts_before_choosing_its_runtime(self):
+        # A runtime-hosted harness (kiro-cli) shares one process per task run. After
+        # a switch to a per-session harness the run must not bootstrap that shared
+        # runtime from the stale factory.
+        mgr, old_factory = _adopting_manager("")
+        new_cfg, new_factory = _persisted("claude")
+        bootstrap = AsyncMock(side_effect=AssertionError("started the stale shared runtime"))
+        mgr._get_or_bootstrap_run_runtime = bootstrap
+
+        with patch("junction.session.JunctionConfig.load", return_value=new_cfg):
+            _, is_new, _ = await mgr.open_task_session("dashboard:run", "dashboard:run:task1")
+
+        bootstrap.assert_not_called()
+        assert is_new
+        assert "dashboard:run:task1" in _keys(new_factory)
+        assert not _keys(old_factory)
+
+    @pytest.mark.asyncio
     async def test_unreadable_config_does_not_fail_the_turn(self):
         mgr, factory = _adopting_manager("claude")
 
