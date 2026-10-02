@@ -492,10 +492,18 @@ steps.
   lane failure clears the binding the same way, and a step that passes clears it
   for good. A paused or crash-recovered step (`IN_PROGRESS` → `PENDING`) is not
   re-scored: `StepRoute.for_task` restores that lane and model, even though its
-  own earlier dispatch lowered the lane's headroom, so the native conversation
-  resumes and the provider never switches under a half-done step. The saved
-  model wins over a later edit of the lane's model, so the conversation keeps
-  the model it started on. A saved lane that is gone from routing.json,
+  own earlier dispatch lowered the lane's headroom, so the router never moves a
+  half-done step to another harness, model or ledger lane behind the operator's
+  back. This does not resume the native conversation: `taskrunner:` session keys
+  are stateless (`session._STATELESS_PREFIXES`; no native session id is saved or
+  reloaded), so every resumed step, routed or not, starts a fresh conversation
+  from the rebuilt prompt (plan, working memory, git state). Continuable step
+  sessions are a separate follow-up (#80). The saved model wins over a later
+  edit of the lane's model, so the step keeps the model it started on. A step
+  that fell back to the configured agent resumes on the configured agent as it
+  is configured at resume time, as an unrouted run does; the router is not
+  consulted, so a lane that has recovered cannot take it. A saved lane that is
+  gone from routing.json,
   disabled, on another harness than the step ran on, not installed, resting
   after a limit or at its hard daily cap refuses the resume (`RoutingError`
   `lane_unavailable` or `daily_cap`): the step fails with the reason, keeps its

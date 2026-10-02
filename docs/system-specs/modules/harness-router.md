@@ -163,8 +163,10 @@ replayed on another harness; text-only child activity does not count.
 A step also keeps its lane across a pause or gateway restart: the executor
 saves the lane and its model on the task (`Task.lane_id`, `Task.lane_model`)
 before every dispatch, and `StepRoute.for_task` restores them instead of
-re-scoring headroom that the step's own dispatch already reduced. The saved
-lane is never swapped for another provider. If it is gone, disabled,
+re-scoring headroom that the step's own dispatch already reduced. The router
+never swaps the saved lane for another provider. (Task-step sessions are
+stateless, so a resumed step is a fresh conversation on that lane, not a native
+session reload.) If it is gone, disabled,
 re-pointed at another harness, not installed, resting, or at its daily cap, the
 resume fails closed with `RoutingError` (`lane_unavailable` / `daily_cap`) and
 records no dispatch. A step that fell back to the configured agent resumes there.

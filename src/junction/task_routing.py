@@ -214,8 +214,8 @@ class StepRoute:
                 code=LANE_UNAVAILABLE,
             )
         self.tried.append(lane.id)
-        # The conversation continues on the model it started with, even if the
-        # lane's configured model changed while the run was paused.
+        # The step keeps the model it started on, even if the lane's configured
+        # model changed while the run was paused.
         return lane if lane.model == saved.model else dataclasses.replace(lane, model=saved.model)
 
     def _resolve(self) -> Any:
