@@ -28,6 +28,7 @@ from junction.acp import runtime as acp_runtime
 from junction.acp.types import (
     ACP_BACKEND_AUTO,
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_CODEX,
     ACP_BACKEND_KAS,
     ACP_BACKEND_KIRO,
     ACP_BACKENDS_ACP_RUNTIME,
@@ -35,6 +36,7 @@ from junction.acp.types import (
     ACP_BACKENDS_KIRO_MODELS,
     ACP_BACKENDS_KIRO_READINESS,
     ACP_BACKENDS_KNOWN,
+    ACP_BACKENDS_MANAGED_MCP,
     ACP_BACKENDS_SELECTABLE,
     ACP_BACKENDS_SESSION_SHARING,
     ACP_BACKENDS_SILENT_RETRY,
@@ -219,6 +221,34 @@ def test_is_kiro_cli_is_positive() -> None:
     )
 
 
+def test_managed_mcp_is_opt_in() -> None:
+    """H16: the managed MCP servers reach a harness by membership, never by default.
+
+    A spec-family harness reads no Warding agent spec, so the ``mcpServers`` array
+    is the only way its session gets memory, cron and subagent tools. The seam
+    must read the set, so a harness added to ``ACP_BACKENDS_KNOWN`` and nowhere
+    else gets nothing instead of inheriting the tools (and the permission surface
+    that comes with them). Kiro and KAS take the servers from their agent spec and
+    are never members; every other spec-family harness stays out until it is shown
+    to launch the entry and to raise a permission request for its tools.
+    """
+    source = inspect.getsource(acp_client.AcpClient._claude_session_mcp_servers)
+    body = source.split('"""')[-1]
+    assert "ACP_BACKENDS_MANAGED_MCP" in body
+    assert "not " not in body, "managed-MCP eligibility derived from a negation"
+
+    assert ACP_BACKENDS_MANAGED_MCP == frozenset({ACP_BACKEND_CLAUDE, ACP_BACKEND_CODEX})
+    assert ACP_BACKEND_KIRO not in ACP_BACKENDS_MANAGED_MCP
+    assert ACP_BACKEND_KAS not in ACP_BACKENDS_MANAGED_MCP
+    assert ACP_BACKEND_AUTO not in ACP_BACKENDS_MANAGED_MCP
+    assert ACP_BACKENDS_MANAGED_MCP < ACP_BACKENDS_SPEC_FAMILY
+
+    # Kiro's session/new stays byte-identical: the seam answers [] without
+    # resolving a launcher or reading identity.
+    kiro = acp_client.AcpClient(acp_backend=ACP_BACKEND_KIRO, session_key="s", channel_id="c")
+    assert kiro._claude_session_mcp_servers() == []
+
+
 def test_capability_sets_are_subsets_of_known_backends() -> None:
     """H8: a capability cannot be granted to an identifier nothing recognizes.
 
@@ -235,6 +265,7 @@ def test_capability_sets_are_subsets_of_known_backends() -> None:
         ("ACP_BACKENDS_KIRO_MODELS", ACP_BACKENDS_KIRO_MODELS),
         ("ACP_BACKENDS_SILENT_RETRY", ACP_BACKENDS_SILENT_RETRY),
         ("ACP_PERMISSION_MODE_PINS", frozenset(ACP_PERMISSION_MODE_PINS)),
+        ("ACP_BACKENDS_MANAGED_MCP", ACP_BACKENDS_MANAGED_MCP),
     ):
         assert members <= ACP_BACKENDS_KNOWN, f"{name} names an unknown backend"
 
@@ -251,6 +282,16 @@ def test_permission_mode_pins_are_opt_in_and_never_kiro() -> None:
     assert ACP_BACKEND_KIRO not in ACP_PERMISSION_MODE_PINS
     assert ACP_BACKEND_KAS not in ACP_PERMISSION_MODE_PINS
     assert all(isinstance(mode, str) and mode for mode in ACP_PERMISSION_MODE_PINS.values())
+
+
+def test_managed_mcp_requires_a_permission_pin() -> None:
+    """H16/H17: the managed servers reach only a harness pinned to a mode that asks.
+
+    In a mode that never asks (Claude Code ``bypassPermissions``, a Codex tool set to
+    auto-approve) an MCP call raises no permission request, so the memory, cron and
+    subagent tools would run without the gate ever seeing them.
+    """
+    assert ACP_BACKENDS_MANAGED_MCP <= frozenset(ACP_PERMISSION_MODE_PINS)
 
 
 def test_unknown_backend_rejected_at_construction() -> None:

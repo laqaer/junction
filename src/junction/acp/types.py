@@ -272,6 +272,23 @@ ACP_BACKENDS_KIRO_READINESS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 # harness", which would sweep in whatever harness is added next.
 ACP_BACKENDS_KIRO_MODELS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 
+# Backends handed Warding's always-on MCP servers (``junction-core``: memory,
+# knowledge, subagents, ask_question; ``junction-cron``) in the ``mcpServers``
+# array of ``session/new`` and ``session/load``. A spec-family harness reads no
+# Warding agent spec, so for it this array is the ONLY way those tools exist.
+# kiro-cli and KAS are deliberately not members: they take the same servers from
+# their agent spec (``~/.kiro/agents/junction.json``), and a session-injected
+# entry would shadow that one. A harness joins only when its adapter is shown to
+# launch a stdio entry carrying an ``env`` list and to raise a permission request
+# for the tools, so every call reaches the PreToolUse gate, and only while it is
+# also a key of ``ACP_PERMISSION_MODE_PINS``: a harness that started in a mode that
+# never asks (Claude Code ``bypassPermissions``, a Codex tool set to auto-approve)
+# would run these memory, cron and subagent tools without the gate ever seeing a
+# call, and the pin is what makes the permission request the adapter raises
+# unavoidable. Every other spec-family harness stays out until someone demonstrates
+# all of that, rather than inheriting the tools from a negation.
+ACP_BACKENDS_MANAGED_MCP = frozenset({ACP_BACKEND_CLAUDE, ACP_BACKEND_CODEX})
+
 # Backends that retry a failed model call (a provider rate limit, an overload)
 # INSIDE the harness without telling the ACP client: the turn goes silent before
 # any output, or between a tool result and the next model call, and never ends.

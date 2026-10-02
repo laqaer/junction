@@ -190,16 +190,34 @@ flag passed to `kiro-cli acp` at spawn time drives all configuration:
     `mcpServers`. The junction agent loads from global `~/.kiro/settings/mcp.json`
     where `disabled` and `disabledTools` flags are respected. Junction's dashboard
     MCP tab writes directly to the global config.
-  - **claude-agent-acp**: does NOT read any config file or `--agent` flag, so
-    `session/new` (and `session/load`) must carry the servers in the
-    `mcpServers` param. `_claude_acp_mcp_servers()` reads the Junction-owned
-    `~/.claude/agents/junction.mcp.json` (kept current by
-    `agent.install_cc_agent_config`) and reshapes it to the ACP array via
-    `cc_agent.acp_servers_from_cc_map` (stdio → `{name,command,args,env:[{name,value}],type}`;
-    url → `{name,type:"http"|"sse",url,headers}`). junction-core/cron are forced
-    to their canonical stdio command (overriding any stale `url`) and always
-    injected even when the registry is missing. Read per spawn so MCP
-    installs/toggles apply on the next session without a gateway restart.
+  - **Claude Code and Codex** (`ACP_BACKENDS_MANAGED_MCP`, harness-parity H16):
+    neither adapter reads a Warding agent spec or `--agent`, so `session/new` and
+    `session/load` must carry the servers in `mcpServers`.
+    `AcpClient._claude_session_mcp_servers()` returns the always-on managed
+    servers `junction-core` and `junction-cron` for a member that is also pinned
+    to an asking permission mode (`ACP_PERMISSION_MODE_PINS`, H17; in a mode that
+    never asks an MCP call raises no permission request and would skip the gate)
+    and `[]` for every other backend (so the kiro-cli array is unchanged). The entries come from
+    `agent.harness_session_mcp_servers()`, which reuses the managed-server table
+    and `_junction_mcp_invocation` that build the kiro spec: the ACP stdio shape
+    `{name, command, args, env: [{name, value}]}` with an absolute `command`, no
+    `type` (the Claude adapter drops a stdio entry that carries one) and no
+    `autoApprove` or other pre-authorization key, so every tool call still raises
+    a permission request for the PreToolUse gate. `env` carries the data-home pin
+    (`_managed_mcp_env`) plus the session's `JUNCTION_SESSION_KEY` and
+    `JUNCTION_CHANNEL_ID` and nothing else: the MCP server resolves its caller
+    per call from that key, and a harness may start stdio servers with a
+    reduced environment. When no absolute standalone launcher resolves (the
+    `<python> -m junction` fallback is refused because `-m` puts the user's
+    project directory on `sys.path`), it logs a warning and passes no entries;
+    session start is never blocked. `junction-computer` (gated) and
+    `junction-dashboard` (opt-in) are not offered. User-added servers from
+    `~/.junction/mcp.json` are not passed to these harnesses yet. The method name
+    is historical: it stays the single overridable seam, and an internal
+    companion that overrides it supplies the whole array. A pooled broker stub of
+    the same name is appended after these entries and replaces them in both
+    adapters' name-keyed maps. Codex skips a requested server whose name its own
+    config already defines.
 - **Tools/allowedTools/toolsSettings**: Applied by kiro-cli via `set_mode`.
 - **Prompt/resources/hooks**: Applied by kiro-cli via `set_mode`.
 - **deniedCommands**: Enforced by Junction's `_enforce_denied_commands()` on
@@ -243,11 +261,12 @@ attempts `session/load` instead of `session/new`:
 
 1. Check `agentCapabilities.loadSession` from `initialize` response
 2. Verify `~/.kiro/sessions/cli/{sid}.json` exists on disk
-3. Send `session/load` with `sessionId`, `cwd`, `mcpServers` (the pooled
+3. Send `session/load` with `sessionId`, `cwd`, `mcpServers` (the managed
+   servers for an `ACP_BACKENDS_MANAGED_MCP` harness, then the pooled
    broker stubs, re-declared so the resumed session keeps talking to the
    shared gateway — `session/load` re-initializes the session's MCP servers,
-   so an empty list would un-pool the session; `[]` only when the gateway is
-   disabled), and `_meta: {"_kiro.dev/session_file": "<path>"}` (required —
+   so an empty list would un-pool the session; `[]` only for kiro-cli with the
+   gateway disabled), and `_meta: {"_kiro.dev/session_file": "<path>"}` (required —
    without it kiro-cli silently ignores the request). `AcpRuntime.load_session`
    builds the same params for the multiplexed runtime.
 4. On success (response contains `modes`): set `_session_id`, `_resumed = True`

@@ -58,6 +58,7 @@ from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
     ACP_BACKEND_KIRO,
     ACP_BACKENDS_INTERNAL_SANDBOX,
+    ACP_BACKENDS_MANAGED_MCP,
     ACP_BACKENDS_SILENT_RETRY,
     ACP_BACKENDS_SPEC_FAMILY,
     ACP_BACKENDS_STEER,
@@ -114,7 +115,7 @@ from junction.acp.types import (
     JsonRpcRequest,
     TurnUsage,
 )
-from junction.agent import ensure_agent_materialized
+from junction.agent import ensure_agent_materialized, harness_session_mcp_servers
 from junction.atomic_write import atomic_write
 from junction.config.paths import kiro_sessions_dir
 from junction.constants import (
@@ -2517,16 +2518,42 @@ class AcpClient:
         return pooled_session_servers(self._mcp_gateway_overlay, self._agent, self._channel_id)
 
     def _claude_session_mcp_servers(self) -> list:
-        """MCP server array passed to a claude ``session/new`` / ``session/load``.
+        """MCP server array passed to a harness ``session/new`` / ``session/load``.
 
-        Overridable seam for the dormant ``_is_claude`` backend. The Default is
-        ``[]`` so the public core (kiro-cli only, which gets its servers via
-        ``--agent``) is byte-identical. An internal companion that re-registers
-        a Claude backend over the ``ACP_BACKEND_CLAUDE`` seam overrides this to
-        inject the junction-core/cron + user MCP servers — the claude adapter
-        does not read ``junction.mcp.json`` on its own, so without this a claude
-        session would have zero MCP tools.
+        A member of ``ACP_BACKENDS_MANAGED_MCP`` (Claude Code, Codex) is handed
+        the always-on managed servers, because such a harness reads no Warding
+        agent spec and would otherwise have no memory, cron or subagent tools.
+        The entries carry this session's key and channel id (a harness launches
+        its stdio servers with a reduced environment, so the identity in the
+        harness's own env does not reach them) and no pre-authorization key, so
+        every tool call still raises a permission request for the PreToolUse
+        gate. Every other backend gets ``[]``: kiro-cli takes its servers from
+        ``--agent``, so its ``session/new`` stays byte-identical.
+
+        The name is historical: it is the one overridable seam, and an internal
+        companion that re-registers a Claude backend over ``ACP_BACKEND_CLAUDE``
+        overrides it wholesale (to also inject user MCP servers), which replaces
+        this default rather than adding to it. A pooled broker stub of the same
+        name is appended after these entries and replaces them in both adapters'
+        name-keyed maps.
+
+        Never raises: a session must start without these tools rather than not
+        start. The launcher resolution is cached for the process, so after the
+        first call this is a few dict operations.
         """
+        # Both memberships, so a harness without an asking-mode pin (H17) never gets tools
+        # that would then run without the gate seeing them.
+        if self.backend in ACP_BACKENDS_MANAGED_MCP and self.backend in ACP_PERMISSION_MODE_PINS:
+            try:
+                return harness_session_mcp_servers(
+                    session_key=self._session_key or "", channel_id=self._channel_id or ""
+                )
+            except Exception:
+                logger.warning(
+                    "Managed MCP servers unavailable for this harness session; "
+                    "starting it without them",
+                    exc_info=True,
+                )
         return []
 
     @property
@@ -3606,18 +3633,17 @@ class AcpClient:
         without a sessionId, which the caller treats as a hard failure).
 
         The claude-backed substitution retry path is the dormant ``_is_claude``
-        seam (kiro-cli never emits this advisory); the public core drives only
-        kiro-cli, so ``mcpServers`` stays ``[]`` and the settings re-seed is
+        seam (kiro-cli never emits this advisory), so the settings re-seed is
         best-effort via ``getattr`` — the deleted cc_agent glue is re-added by
         the internal companion, not the public core.
         """
         new_params: dict = {
             "cwd": str(self._work_dir),
-            # kiro-cli loads servers from --agent; claude-agent-acp must be
-            # told here -- it does not read junction.mcp.json on its own. The
-            # Default hook returns [] (kiro-cli path unchanged); an internal
-            # companion that drives the _is_claude seam overrides
-            # _claude_session_mcp_servers() to populate the claude MCP array.
+            # kiro-cli loads servers from --agent; a spec-family harness reads
+            # no Warding agent spec and must be told here.
+            # _claude_session_mcp_servers() returns the managed servers for
+            # ACP_BACKENDS_MANAGED_MCP members and [] for everyone else, so the
+            # kiro-cli path is unchanged; a companion overrides it wholesale.
             # Pooled broker stubs are appended for kiro-cli: a session-injected
             # server outranks the same-named entry in the agent spec, which is
             # how pooling takes effect without writing a spec anywhere.
@@ -3724,12 +3750,13 @@ class AcpClient:
                     load_params: dict = {
                         "sessionId": resume_sid,
                         "cwd": str(self._work_dir),
-                        # kiro-cli gets its servers via --agent; the claude
-                        # backend must receive them here (it does not read
-                        # junction.mcp.json itself). Default [] leaves kiro-cli
-                        # unchanged; a companion overrides the hook (see
-                        # session/new above). Pooled stubs are re-declared so a
-                        # resumed session keeps talking to the broker.
+                        # kiro-cli gets its servers via --agent; a spec-family
+                        # harness must receive them here, and session/load
+                        # re-initializes its servers, so an empty list would drop
+                        # them from the resumed session. [] leaves kiro-cli
+                        # unchanged (see session/new above). Pooled stubs are
+                        # re-declared so a resumed session keeps talking to the
+                        # broker.
                         "mcpServers": [
                             *self._claude_session_mcp_servers(),
                             *(await asyncio.to_thread(self._pooled_mcp_servers)),

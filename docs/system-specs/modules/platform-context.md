@@ -923,8 +923,9 @@ new module/class names.
   (`build_json_schema` skips leading-underscore fields). Data-preservation half
   of the eventual `ConfigSchemaContributor`; Settings-visibility half is TODO.
 - ACP claude seam (all inside the dormant `_is_claude` path, inert on kiro-cli):
-  `AcpClient._claude_session_mcp_servers()` (Default `[]`) feeds both
-  `session/new` + `session/load` `mcpServers`; `_spawn` calls the
+  `AcpClient._claude_session_mcp_servers()` (Default: the managed servers for an
+  `ACP_BACKENDS_MANAGED_MCP` member, `[]` otherwise; an override replaces it)
+  feeds both `session/new` + `session/load` `mcpServers`; `_spawn` calls the
   companion-attached `_write_claude_local_settings()` (via `getattr`) on the
   PRIMARY spawn path; `AcpClient`/`AcpProvider` take a `permission_mode` kwarg
   (Default `None`); `acp/types.py` adds `CC_PERMISSION_MODE_DEFAULT` /
