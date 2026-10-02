@@ -204,6 +204,25 @@ gate bypass. Its stdio shim answers an empty `tools/list` while the keystone
 enable is off — retained as defence in depth for a mid-session disable, on top of
 the `spec_gate` above that keeps the process from existing in the first place.
 
+### Docked harnesses get the managed servers over ACP
+
+kiro-cli reads `junction-core` and `junction-cron` from its agent spec. Claude
+Code and Codex read no Warding spec, so `AcpClient` hands them the same two
+servers in the `mcpServers` array of `session/new` and `session/load`
+(`ACP_BACKENDS_MANAGED_MCP`, harness-parity H16; the entry shape and the other
+rules are in [acp-client](../system-specs/modules/acp-client.md)). What matters
+here is the stateless contract: the entry's `env` carries the session's
+`JUNCTION_SESSION_KEY` and `JUNCTION_CHANNEL_ID` (never a token), so
+`_resolve_session_key_strict()` resolves the caller per call exactly as it does
+for a kiro-launched process, and each harness session gets its own server
+processes keyed by its own identity. The entries are built from the same
+`_MANAGED_MCP_SERVERS` rows and `_junction_mcp_invocation`, so there is still one
+source of truth for the command; `junction-computer` and the opt-in
+`junction-dashboard` are not offered. There is no `autoApprove` here either, for
+the reason above: a harness approves a pre-authorized MCP tool itself, so the
+call would never reach `hooks.on_tool_call`. User-added servers from
+`~/.junction/mcp.json` are not passed to these harnesses yet.
+
 ### The final auto-approve pass
 
 `allowedTools` is kiro-cli's blanket auto-approve list, and it is the one path

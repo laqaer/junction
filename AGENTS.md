@@ -208,11 +208,12 @@ that harness pays for it.
   membership in a named `ACP_BACKENDS_*` set in `acp/types.py`. Never a bare
   string literal, an inequality, or a negation.
 - **Capabilities are opt-in membership sets** (`ACP_BACKENDS_SESSION_SHARING`,
-  `ACP_BACKENDS_STEER`, `ACP_BACKENDS_INTERNAL_SANDBOX`), and every harness's
-  membership is an explicit decision. `is_kiro_cli` is the one that fails OPEN:
-  it makes `sandbox.wrap_argv` SKIP Warding's own seatbelt in favour of the
-  harness's internal sandbox, so granting it to a harness without one leaves the
-  agent process unconfined.
+  `ACP_BACKENDS_STEER`, `ACP_BACKENDS_INTERNAL_SANDBOX`,
+  `ACP_BACKENDS_MANAGED_MCP`), and every harness's membership is an explicit
+  decision. `is_kiro_cli` is the one that fails OPEN: it makes
+  `sandbox.wrap_argv` SKIP Warding's own seatbelt in favour of the harness's
+  internal sandbox, so granting it to a harness without one leaves the agent
+  process unconfined.
 - **Kiro is the floor.** `agent.acp_backend` defaults to `ACP_BACKEND_KIRO` and
   it is in `ACP_BACKENDS_SELECTABLE` unconditionally; an unusable persisted value
   degrades there with a logged reason (`_normalize_acp_backend`) instead of
