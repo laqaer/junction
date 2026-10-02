@@ -62,6 +62,7 @@ from junction.acp.types import (
     ACP_BACKENDS_SPEC_FAMILY,
     ACP_BACKENDS_STEER,
     ACP_CLIENT_CAPABILITIES,
+    ACP_PERMISSION_MODE_PINS,
     EVENT_AGENT_SWITCHED,
     EVENT_CLEAR_STATUS,
     EVENT_COMPACTION_STATUS,
@@ -921,6 +922,9 @@ def parse_slash_command(command: str) -> tuple[str, dict]:
 
 # Timeouts for session initialization steps
 _INIT_TIMEOUT = 240.0  # 4 min — MCP servers can be slow to initialize
+#: A permission-mode switch is one control round trip to a session that is already live;
+#: the deadline is activity-based, so it only has to outlast a silent backend.
+_PERMISSION_MODE_PIN_TIMEOUT = 30.0
 # set_mode/set_model: fire-and-forget.  kiro-cli accepts these commands
 # but usually never sends a JSON-RPC response — MCP servers load
 # asynchronously.  Any late responses land in _buffer and are harmlessly
@@ -2363,6 +2367,9 @@ class AcpClient:
         # from "advertised zero/some modes, honor the list" (True) so an
         # explicitly-empty availableModes fails closed rather than attempting.
         self._modes_advertised: bool = False
+        # Mode id the backend reported as current at session init; the permission-mode
+        # pin compares against it so an already-correct mode costs no round trip.
+        self._current_mode_id: str = ""
         # Model kiro-cli/claude-agent-acp actually resolved to (may differ
         # from self._model when that's the "auto" sentinel). Used to look up
         # the context window when usage_update isn't sent (see _track_metadata).
@@ -2834,7 +2841,11 @@ class AcpClient:
         # backend never loaded (would fault with "Mode '<agent>' not found").
         # Assigned unconditionally so a re-init that omits `modes` clears any
         # stale state rather than guarding on it.
-        self._available_mode_ids, _current_mode, self._modes_advertised = parse_session_modes(resp)
+        (
+            self._available_mode_ids,
+            self._current_mode_id,
+            self._modes_advertised,
+        ) = parse_session_modes(resp)
 
     def _handle_config_option_update(self, msg: JsonRpcMessage) -> None:
         """Process a config_option_update session notification.
@@ -3843,11 +3854,55 @@ class AcpClient:
                     f"`warding setup --agent-only` to materialize the agent config."
                 )
 
+        # 4b. Pin the permission mode of an adapted harness (harness-parity H17). Runs
+        #     before the model is applied and before any prompt, so no tool call can
+        #     happen in the mode the session started in.
+        pinned_mode = ACP_PERMISSION_MODE_PINS.get(self.backend)
+        if pinned_mode is not None:
+            await self._pin_permission_mode(pinned_mode)
+
         # 5. Set model — override if Junction config specifies non-default.
         await self._apply_startup_model()
 
         # Drain MCP server init notifications
         await self._drain_notifications()
+
+    async def _pin_permission_mode(self, mode_id: str) -> None:
+        """Make *mode_id* the session's permission mode, or refuse to run the session.
+
+        ``HookManager.on_tool_call`` only decides on a call the harness asks about, and
+        the harness's own mode decides whether it asks (see ``ACP_PERMISSION_MODE_PINS``).
+        The mode a session starts in comes from the harness's default or the user's own
+        settings, neither of which Warding controls, so the pin is applied over the
+        protocol (``session/set_mode``) rather than by editing the user's files.
+
+        Fails closed. A mode the backend did not advertise, a rejected ``set_mode`` and a
+        timeout all raise, because continuing would run the session in a mode that may
+        never ask Warding about a tool call, and nothing would show it. The raise is
+        retried once on a fresh process by ``ensure_ready``, like any startup failure.
+        """
+        if self._modes_advertised and self._current_mode_id == mode_id:
+            return
+        if self._modes_advertised and mode_id not in self._available_mode_ids:
+            raise AcpError(
+                f"{self.backend} does not offer permission mode {mode_id!r} "
+                f"(advertised: {self._available_mode_ids or 'none'}). Refusing to run it in "
+                f"a mode that may skip Warding's approval gate."
+            )
+        try:
+            request_id = await self._send_request(
+                METHOD_SET_MODE, {"sessionId": self._session_id, "modeId": mode_id}
+            )
+            await self._wait_for_response(
+                request_id, timeout=_PERMISSION_MODE_PIN_TIMEOUT, method=METHOD_SET_MODE
+            )
+        except AcpError as exc:
+            raise AcpError(
+                f"Could not set {self.backend} to permission mode {mode_id!r}: {exc}. "
+                f"Refusing to run it in a mode that may skip Warding's approval gate."
+            ) from exc
+        self._current_mode_id = mode_id
+        logger.info("ACP permission mode pinned: %s (%s)", mode_id, self.backend)
 
     async def ensure_ready(self) -> None:
         """Ensure process is spawned and session is initialized.

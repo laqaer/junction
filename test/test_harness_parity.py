@@ -41,6 +41,7 @@ from junction.acp.types import (
     ACP_BACKENDS_SPEC_FAMILY,
     ACP_BACKENDS_STEER,
     ACP_CLIENT_CAPABILITIES,
+    ACP_PERMISSION_MODE_PINS,
     KAS_CLIENT_CAPABILITIES,
     PROVIDER_LABEL_AUTO,
     PROVIDER_LABEL_CLAUDE,
@@ -233,8 +234,23 @@ def test_capability_sets_are_subsets_of_known_backends() -> None:
         ("ACP_BACKENDS_KIRO_READINESS", ACP_BACKENDS_KIRO_READINESS),
         ("ACP_BACKENDS_KIRO_MODELS", ACP_BACKENDS_KIRO_MODELS),
         ("ACP_BACKENDS_SILENT_RETRY", ACP_BACKENDS_SILENT_RETRY),
+        ("ACP_PERMISSION_MODE_PINS", frozenset(ACP_PERMISSION_MODE_PINS)),
     ):
         assert members <= ACP_BACKENDS_KNOWN, f"{name} names an unknown backend"
+
+
+def test_permission_mode_pins_are_opt_in_and_never_kiro() -> None:
+    """H17: only a harness with a known asking mode is pinned, and Kiro never is.
+
+    The pin makes the harness route tool approvals to Warding's gate. A harness absent
+    from the table keeps the mode it starts in, which is a decision to record, not a
+    default to inherit; Kiro's agent-mode activation is a separate path the pin must
+    not reach.
+    """
+    assert set(ACP_PERMISSION_MODE_PINS) <= ACP_BACKENDS_SPEC_FAMILY
+    assert ACP_BACKEND_KIRO not in ACP_PERMISSION_MODE_PINS
+    assert ACP_BACKEND_KAS not in ACP_PERMISSION_MODE_PINS
+    assert all(isinstance(mode, str) and mode for mode in ACP_PERMISSION_MODE_PINS.values())
 
 
 def test_unknown_backend_rejected_at_construction() -> None:
