@@ -53,6 +53,13 @@ class Task:
     # configured agent). Only a routed run fills ``harness``.
     kind: str = ""
     harness: str = ""
+    # The lane (and its model) the step's in-flight conversation is bound to,
+    # written before each dispatch so a pause or gateway restart resumes on the
+    # same lane instead of re-scoring headroom ('' = unbound; see
+    # ``task_routing.CONFIGURED_AGENT_LANE`` for a step that fell back to the
+    # configured agent). Cleared when the step passes.
+    lane_id: str = ""
+    lane_model: str = ""
     created_at: float = 0.0
     started_at: float = 0.0
     finished_at: float = 0.0

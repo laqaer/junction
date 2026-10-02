@@ -10,6 +10,7 @@ after. Every dispatch and outcome lands in the routing ledger. With routing off
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from pathlib import Path
@@ -24,7 +25,13 @@ from junction.harness_router import service
 from junction.harness_router.service import HarnessRouter
 from junction.providers.base import EVENT_COMPLETE, EVENT_TEXT_CHUNK, EVENT_TOOL_CALL, LLMEvent
 from junction.task_models import SESSION_PREFIX, Project, Task
-from junction.task_routing import StepRoute, route_tasks_enabled
+from junction.task_routing import (
+    CONFIGURED_AGENT_LANE,
+    LANE_UNAVAILABLE,
+    LaneBinding,
+    StepRoute,
+    route_tasks_enabled,
+)
 
 _BINS = {"claude": "/b/claude", "codex": "/b/codex", "npx": "/b/npx", "grok": "/b/grok"}
 _USAGE_LIMIT = "You've hit your usage limit. Try again in 3 hours."
@@ -808,3 +815,338 @@ async def test_limit_notice_failure_redacts_credentials_before_logging(
         assert "usage_limit" in task.error
     assert credential not in caplog.text
     assert credential not in task.error
+
+
+# ── Resume: a step's lane outlives the process ──
+
+
+def _crowd(router: Any, lane_id: str, dispatches: int = 30) -> None:
+    """Use up *lane_id*'s headroom, as the step's own earlier dispatches do."""
+    for _ in range(dispatches):
+        router.record_dispatch(lane_id, "implement")
+
+
+def _edit_routing(router: Any, edit: Any) -> None:
+    path = router.home / "routing.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    edit(doc)
+    path.write_text(json.dumps(doc), encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_a_restored_route_keeps_its_lane_when_headroom_would_move_it(router: Any) -> None:
+    _crowd(router, "codex")
+    # Premise: scored fresh, the step would now cross to the other harness.
+    assert (await StepRoute("implement", router=router).pick()).harness == "claude"
+    route = StepRoute("implement", router=router, restore=LaneBinding("codex", "", "codex"))
+    lane = await route.pick()
+    assert lane.id == "codex"
+    assert route.binding == ("codex", "")
+    assert (await route.pick()).id == "codex"  # sticky from then on
+    # Each resumed attempt is a real dispatch and is accounted to its lane.
+    assert router.ledger.snapshot()["codex"].count_since(0) == 32
+
+
+@pytest.mark.asyncio
+async def test_a_restored_route_keeps_the_model_the_step_started_on(router: Any) -> None:
+    _edit_routing(router, lambda doc: doc["lanes"][0].update(model="gpt-new"))
+    route = StepRoute("implement", router=router, restore=LaneBinding("codex", "gpt-old", "codex"))
+    lane = await route.pick()
+    assert (lane.id, lane.model) == ("codex", "gpt-old")
+    assert route.binding == ("codex", "gpt-old")
+    # A step first dispatched on the harness default keeps it too.
+    default = StepRoute("implement", router=router, restore=LaneBinding("codex", "", "codex"))
+    assert (await default.pick()).model == ""
+
+
+def _remove_codex(router: Any) -> None:
+    _edit_routing(
+        router, lambda doc: doc.update(lanes=[ln for ln in doc["lanes"] if ln["id"] != "codex"])
+    )
+
+
+def _repoint_codex(router: Any) -> None:
+    _edit_routing(router, lambda doc: doc["lanes"][0].update(harness="claude"))
+
+
+def _disable_codex(router: Any) -> None:
+    _edit_routing(router, lambda doc: doc["lanes"][0].update(enabled=False))
+
+
+def _rest_codex(router: Any) -> None:
+    router.record_failure("codex", exc=RuntimeError(_USAGE_LIMIT))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("damage", "reason"),
+    [
+        (_remove_codex, "no longer configured"),
+        (_repoint_codex, "now runs claude, not codex"),
+        (_disable_codex, "disabled"),
+        (_rest_codex, "resting after usage_limit"),
+    ],
+)
+async def test_a_restored_route_refuses_a_lane_that_cannot_take_its_step_back(
+    router: Any, damage: Any, reason: str
+) -> None:
+    damage(router)
+    route = StepRoute("implement", router=router, restore=LaneBinding("codex", "", "codex"))
+    with pytest.raises(service.RoutingError, match=reason) as error:
+        await route.pick()
+    assert error.value.code == LANE_UNAVAILABLE
+    # Fail closed: nothing was dispatched, least of all to the other harness.
+    assert route.lane is None
+    assert "claude" not in router.ledger.snapshot()
+    assert router.ledger.snapshot().get("codex") is None or all(
+        usage.count_since(0) == 0 for usage in router.ledger.snapshot().values()
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_restored_route_refuses_an_uninstalled_harness(tmp_path: Path) -> None:
+    lanes = [{"id": h, "harness": h} for h in ("codex", "claude")]
+    (tmp_path / "routing.json").write_text(json.dumps({"lanes": lanes}), encoding="utf-8")
+    router = HarnessRouter(home=tmp_path, which={"claude": "/b/claude"}.get, env={})
+    route = StepRoute("implement", router=router, restore=LaneBinding("codex", "", "codex"))
+    with pytest.raises(service.RoutingError, match="no codex harness installed"):
+        await route.pick()
+    assert router.ledger.snapshot() == {}
+
+
+@pytest.mark.asyncio
+async def test_a_restored_route_still_obeys_the_daily_cap(tmp_path: Path) -> None:
+    lanes = [
+        {"id": "codex", "harness": "codex", "daily_limit": 1},
+        {"id": "claude", "harness": "claude"},
+    ]
+    (tmp_path / "routing.json").write_text(json.dumps({"lanes": lanes}), encoding="utf-8")
+    router = HarnessRouter(home=tmp_path, which=_BINS.get, env={})
+    router.record_dispatch("codex", "implement")
+    route = StepRoute("implement", router=router, restore=LaneBinding("codex", "", "codex"))
+    with pytest.raises(service.RoutingError) as error:
+        await route.pick()
+    assert error.value.code == "daily_cap"
+    assert router.ledger.snapshot()["codex"].count_since(0) == 1
+    assert "claude" not in router.ledger.snapshot()
+
+
+@pytest.mark.asyncio
+async def test_a_restored_configured_agent_fallback_does_not_cross_to_a_recovered_lane(
+    router: Any,
+) -> None:
+    route = StepRoute(
+        "implement", router=router, restore=LaneBinding(CONFIGURED_AGENT_LANE, "", "")
+    )
+    assert await route.pick() is None
+    assert route.binding == (CONFIGURED_AGENT_LANE, "")
+    assert router.ledger.snapshot() == {}  # Both lanes were free to take it.
+    assert await route.failed(RuntimeError(_USAGE_LIMIT), tool_ran=False) is False
+
+
+@pytest.mark.asyncio
+async def test_a_fallback_is_saved_as_the_configured_agent(tmp_path: Path) -> None:
+    router = _router(tmp_path, harnesses=("codex",))
+    router.record_failure("codex", exc=RuntimeError(_USAGE_LIMIT))
+    route = StepRoute("implement", router=router)
+    assert route.binding == ("", "")  # Not yet chosen.
+    assert await route.pick() is None
+    assert route.binding == (CONFIGURED_AGENT_LANE, "")
+
+
+@pytest.mark.asyncio
+async def test_the_first_limit_on_a_restored_lane_is_never_a_free_move(router: Any) -> None:
+    route = StepRoute("implement", router=router, restore=LaneBinding("codex", "", "codex"))
+    await route.pick()
+    # The earlier process may have changed the workspace already.
+    assert await route.failed(RuntimeError(_USAGE_LIMIT), tool_ran=False) is False
+    assert route.binding == ("", "")  # Released: the next pick resolves, not restores.
+    moved = await route.pick()
+    assert moved.harness == "claude"
+    assert route.binding == ("claude", "")
+    # The restore is spent: an ordinary failure budget applies from here.
+    assert await route.failed(RuntimeError(_USAGE_LIMIT), tool_ran=False) is True
+
+
+def test_a_route_for_a_task_restores_only_a_bound_task() -> None:
+    bound = Task(index=1, title="t", description="d", harness="codex", lane_id="codex")
+    assert StepRoute.for_task(bound)._restore == LaneBinding("codex", "", "codex")
+    assert StepRoute.for_task(Task(index=2, title="t", description="d"))._restore is None
+
+
+def _task_persist(task: Task, log: list[tuple[str, str, int]], sessions: MagicMock) -> Any:
+    async def persist() -> None:
+        log.append((task.lane_id, task.lane_model, len(sessions.opened)))
+
+    return persist
+
+
+async def _execute_with(run: Project, task: Task, sessions: MagicMock, persist: Any = None) -> bool:
+    return await task_executor.execute_task(
+        run,
+        task,
+        sessions,
+        None,
+        "",
+        None,
+        False,
+        None,
+        "",
+        AsyncMock(),
+        f"{SESSION_PREFIX}:{run.task_id}:task{task.index}",
+        persist=persist,
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_paused_step_resumes_on_the_lane_and_model_it_was_dispatched_on(
+    router: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from junction.taskrunner import TaskRunner
+
+    _quiet_executor(monkeypatch)
+    _edit_routing(router, lambda doc: doc["lanes"][0].update(model="gpt-x"))
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    run = _run(task, route_steps=True)
+    run.status = "running"
+    sessions = _sessions([_Client(asyncio.CancelledError(), tool=True)])
+    saved: list[tuple[str, str, int]] = []
+
+    # The step does work, then the run is paused (its asyncio task cancelled).
+    with pytest.raises(asyncio.CancelledError):
+        await _execute_with(run, task, sessions, _task_persist(task, saved, sessions))
+    # The lane was durable before the provider opened, not only afterwards.
+    assert saved == [("codex", "gpt-x", 0)]
+
+    # Gateway restart: the registry comes back from disk.
+    runner = TaskRunner(sessions=MagicMock(), auto_test=False, work_dir=tmp_path)
+    runner._runs[run.task_id] = run
+    runner._persist_runs()
+    reloaded = TaskRunner(sessions=MagicMock(), auto_test=False, work_dir=tmp_path)
+    reloaded._load_runs()
+    resumed_run = reloaded._runs[run.task_id]
+    resumed = resumed_run.tasks[0]
+    assert (resumed_run.status, resumed.status.value) == ("paused", "pending")
+
+    # The step's own dispatch used up codex's headroom; scored fresh it moves.
+    _crowd(router, "codex")
+    assert (await StepRoute("implement", router=router).pick()).harness == "claude"
+
+    sessions2 = _sessions([_Client(reply="finished")])
+    assert await _execute_with(resumed_run, resumed, sessions2) is True
+    assert [(o["acp_backend_override"], o["model"]) for o in sessions2.opened] == [
+        ("codex", "gpt-x")
+    ]
+    assert resumed.harness == "codex"
+    assert router.ledger.snapshot()["claude"].count_since(0) == 1  # only the premise check
+
+
+@pytest.mark.asyncio
+async def test_a_resumed_lane_limit_costs_an_attempt_even_before_any_tool(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _quiet_executor(monkeypatch)
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    task.harness, task.lane_id = "codex", "codex"
+    run = _run(task, route_steps=True)
+    sessions = _sessions([_Client(RuntimeError(_USAGE_LIMIT)), _Client()])
+    saved: list[tuple[str, str, int]] = []
+    assert await _execute_with(run, task, sessions, _task_persist(task, saved, sessions)) is True
+    assert [o["acp_backend_override"] for o in sessions.opened] == ["codex", "claude"]
+    assert task.attempts == 2  # Not a free hop: the step may have run before the pause.
+    # Released when the limit hit, rebound once the next lane was chosen.
+    assert saved == [("", "", 1), ("claude", "", 1)]
+    assert (task.lane_id, task.harness) == ("claude", "claude")
+
+
+@pytest.mark.asyncio
+async def test_a_resume_that_cannot_return_to_its_lane_waits_instead_of_crossing(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _quiet_executor(monkeypatch)
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    task.harness, task.lane_id = "codex", "codex"
+    run = _run(task, route_steps=True)
+    _rest_codex(router)
+    sessions = _sessions([_Client()])
+    assert await _execute_with(run, task, sessions) is False
+    assert "codex" in task.error and "resting" in task.error
+    assert sessions.opened == []
+    assert task.lane_id == "codex"  # Still bound: the lane is expected back.
+    assert "claude" not in router.ledger.snapshot()
+    sessions.reset.assert_not_awaited()  # Refusal is not a provider failure.
+
+    # Once the lane recovers the same step goes back to it.
+    router.ledger.clear_cooldown()
+    assert await _execute_with(run, task, sessions) is True
+    assert [o["acp_backend_override"] for o in sessions.opened] == ["codex"]
+
+
+@pytest.mark.asyncio
+async def test_a_configured_agent_fallback_stays_on_the_configured_agent_when_resumed(
+    router: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _quiet_executor(monkeypatch)
+    monkeypatch.setattr(
+        "junction.model_router.routing.apply_role_model", AsyncMock(return_value="auto")
+    )
+    for lane in ("codex", "claude"):
+        router.record_failure(lane, exc=RuntimeError(_USAGE_LIMIT))
+    task = Task(index=1, title="build it", description="d", kind="implement")
+    run = _run(task, route_steps=True)
+    sessions = _sessions([_Client(asyncio.CancelledError(), tool=True)])
+    saved: list[tuple[str, str, int]] = []
+    with pytest.raises(asyncio.CancelledError):
+        await _execute_with(run, task, sessions, _task_persist(task, saved, sessions))
+    assert saved == [(CONFIGURED_AGENT_LANE, "", 0)]
+
+    router.ledger.clear_cooldown()  # Both lanes are back, but the step is in flight.
+    resumed = _sessions([_Client()])
+    assert await _execute_with(run, task, resumed) is True
+    assert resumed.opened == [{"agent": None, "cwd": None}]
+    assert task.harness == ""
+    assert router.ledger.snapshot().get("claude") is None or not any(
+        u.count_since(0) for u in router.ledger.snapshot().values()
+    )
+
+
+async def _single(
+    run: Project, task: Task, sessions: MagicMock, tmp_path: Path, persist: Any = None
+) -> bool:
+    return await task_executor.execute_single_task(
+        run,
+        task,
+        "history",
+        sessions,
+        None,
+        "",
+        AsyncMock(),
+        None,
+        None,
+        False,
+        None,
+        tmp_path,
+        MagicMock(),
+        AsyncMock(),
+        persist=persist,
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_passed_step_lets_go_of_its_lane_and_a_failed_one_keeps_it(
+    router: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _quiet_executor(monkeypatch)
+    monkeypatch.setattr(task_executor, "self_review", AsyncMock(return_value=True))
+    passing = Task(index=1, title="build it", description="d", kind="implement")
+    run = _run(passing, route_steps=True)
+    assert await _single(run, passing, _sessions([_Client()]), tmp_path) is True
+    assert (passing.lane_id, passing.lane_model) == ("", "")
+    assert passing.harness == "codex"  # What ran it is still shown.
+
+    failing = Task(index=2, title="build more", description="d", kind="implement")
+    run.tasks.append(failing)
+    broken = _sessions([_Client(ValueError(f"boom {n}")) for n in range(3)])
+    assert await _single(run, failing, broken, tmp_path) is False
+    # A later resume of the unfinished step still goes back to its lane.
+    assert failing.lane_id == "codex"

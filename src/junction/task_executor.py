@@ -10,7 +10,7 @@ import asyncio
 import logging
 import time as _time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from junction import git_coord, platform_compat, shutdown_event
 from junction.acp.client import AcpProcessDied
@@ -65,6 +65,31 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+async def _bind_lane(
+    task: "Task",
+    route: StepRoute | None,
+    persist: Callable[[], Awaitable[None]] | None,
+) -> None:
+    """Save the lane *route* is on (or released) on *task*, durably when it changed.
+
+    Called before each dispatch and after a lane is released, so a pause or a
+    gateway restart finds the lane the step's conversation is bound to rather
+    than a stale one. An unchanged binding (a sticky retry) writes nothing.
+    """
+    if route is None:
+        return
+    lane_id, model = route.binding
+    if (task.lane_id, task.lane_model) == (lane_id, model):
+        return
+    task.lane_id, task.lane_model = lane_id, model
+    if persist is None:
+        return
+    try:
+        await persist()
+    except Exception:
+        logger.warning("could not persist the lane of task %d", task.index, exc_info=True)
+
+
 async def _check_error_loop(
     task: "Task",
     consecutive: int,
@@ -101,8 +126,13 @@ async def execute_single_task(
     log_task_fn: Callable,
     extract_lesson_fn: Callable,
     session_key: str = "",
+    persist: Callable[[], Awaitable[None]] | None = None,
 ) -> bool:
-    """Execute one task with approval gate, self-review, and memory update."""
+    """Execute one task with approval gate, self-review, and memory update.
+
+    *persist* writes the runs registry durably; a routed step calls it to save
+    its lane before dispatch (see ``_bind_lane``).
+    """
     if not session_key:
         session_key = f"{SESSION_PREFIX}:{run.task_id}:task{task.index}"
 
@@ -197,7 +227,11 @@ async def execute_single_task(
     run.current_task = task.index
     # A failed self-review retries the same live execution conversation. Keep
     # its route so headroom changes do not account that provider to a new lane.
-    route = StepRoute(task.kind) if run.route_steps else None
+    # A step resumed after a pause or restart restores the lane it was bound to.
+    route = StepRoute.for_task(task) if run.route_steps else None
+    route_kwargs: dict[str, Any] = (
+        {"step_route": route, "persist": persist} if route is not None else {}
+    )
     success = await execute_task(
         run,
         task,
@@ -210,7 +244,7 @@ async def execute_single_task(
         work_dir,
         on_notify,
         session_key,
-        **({"step_route": route} if route is not None else {}),
+        **route_kwargs,
     )
     run.last_task_time = _time.time()
 
@@ -244,7 +278,7 @@ async def execute_single_task(
                 work_dir,
                 on_notify,
                 session_key,
-                **({"step_route": route} if route is not None else {}),
+                **route_kwargs,
             )
             if success and run.branch_name:
                 try:
@@ -254,6 +288,9 @@ async def execute_single_task(
 
         if success:
             task.status = TaskStatus.PASSED
+            # Done: no conversation left to keep on a lane. The runner's
+            # post-step persist writes this.
+            task.lane_id = task.lane_model = ""
             log_task_fn(history_key, run, task)
             result_preview = (task.result or "")[:500]
             await on_notify(
@@ -302,6 +339,7 @@ async def execute_task(
     session_key: str = "",
     *,
     step_route: StepRoute | None = None,
+    persist: Callable[[], Awaitable[None]] | None = None,
 ) -> bool:
     """Execute a single task with retries and process recovery.
 
@@ -317,7 +355,7 @@ async def execute_task(
     route = (
         step_route
         if step_route is not None
-        else (StepRoute(task.kind) if run.route_steps else None)
+        else (StepRoute.for_task(task) if run.route_steps else None)
     )
     recoveries = 0
     compactions = 0
@@ -357,6 +395,9 @@ async def execute_task(
                 task.error = str(exc)
                 return False
             task.harness = lane.harness if lane is not None else ""
+            # Durable before the provider opens: a pause or crash from here on
+            # resumes this step on this lane (and model), not a re-scored one.
+            await _bind_lane(task, route, persist)
             client, is_new, _resumed = await sessions.open_task_session(
                 f"{SESSION_PREFIX}:{run.task_id}:runtime",
                 session_key,
@@ -634,6 +675,7 @@ async def execute_task(
             if route is not None:
                 previous_lane = route.lane
                 free_move = await route.failed(died, tool_ran=_tool_ran)
+                await _bind_lane(task, route, persist)
                 if previous_lane is not None and route.lane is None:
                     # A new lane starts a new process; its move is governed by
                     # max_failover and the attempt budget, not same-lane recovery.
@@ -724,6 +766,7 @@ async def execute_task(
             await sessions.record_failure(session_key)
             failed_harness = task.harness
             moved = await route.failed(exc, tool_ran=_tool_ran) if route is not None else False
+            await _bind_lane(task, route, persist)
 
             # Reset session between retries to avoid StreamReader corruption
             # ("readuntil() called while another coroutine is already waiting")

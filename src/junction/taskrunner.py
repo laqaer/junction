@@ -473,6 +473,9 @@ class TaskRunner:
                     t.error = ""
                     t.result = ""
                     t.attempts = 0
+                    if fresh:
+                        # A fresh start is a new conversation: not bound to a lane.
+                        t.lane_id = t.lane_model = ""
             run.error = ""
             run.replan_count = 0
             run.status = "planned"
@@ -814,6 +817,8 @@ class TaskRunner:
             log_task_fn=self._log_task,
             extract_lesson_fn=self._extract_lesson,
             session_key=session_key,
+            # A routed step saves its lane before dispatch, so resume stays on it.
+            persist=self._apersist_runs,
         )
 
     async def _try_replan(self, run: Project, failed_task: Task) -> bool:
@@ -1165,6 +1170,8 @@ class TaskRunner:
                 task.error = ""
                 task.result = ""
                 task.attempts = 0
+                # An explicit retry may take the step to a different lane.
+                task.lane_id = task.lane_model = ""
         run.status = "running"
         run.error = ""
         run.finished_at = 0.0
@@ -1499,6 +1506,8 @@ class TaskRunner:
                                 "attempts": t.attempts,
                                 "kind": t.kind,
                                 "harness": t.harness,
+                                "lane_id": t.lane_id,
+                                "lane_model": t.lane_model,
                             }
                             for t in run.tasks
                         ],
@@ -1607,6 +1616,8 @@ class TaskRunner:
                         force_approval=t.get("force_approval", False),
                         kind=str(t.get("kind") or ""),
                         harness=str(t.get("harness") or ""),
+                        lane_id=str(t.get("lane_id") or ""),
+                        lane_model=str(t.get("lane_model") or ""),
                     )
                     for t in item.get("task_details", item.get("tasks", []))
                 ]

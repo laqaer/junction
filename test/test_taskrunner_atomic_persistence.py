@@ -92,6 +92,58 @@ class TestPersistRoundTrip:
         # Not yet executed: still decided from routing.json at first execution.
         assert reloaded._runs["t2"].route_steps is None
 
+    def test_round_trip_keeps_the_lane_a_step_is_bound_to(self, tmp_path: Path) -> None:
+        runner = _make_runner(tmp_path)
+        run = _make_run()
+        run.route_steps = True
+        run.tasks[0].lane_id = "codex"
+        run.tasks[0].lane_model = "gpt-x"
+        runner._runs["t1"] = run
+        runner._persist_runs()
+
+        reloaded = _make_runner(tmp_path)
+        reloaded._load_runs()
+        step = reloaded._runs["t1"].tasks[0]
+        assert (step.lane_id, step.lane_model) == ("codex", "gpt-x")
+
+    def test_registry_written_before_lane_binding_loads_unbound(self, tmp_path: Path) -> None:
+        runner = _make_runner(tmp_path)
+        runner._runs["t1"] = _make_run()
+        runner._persist_runs()
+        path = tmp_path / "runs.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for item in data[0]["task_details"]:
+            item.pop("lane_id", None)
+            item.pop("lane_model", None)
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+        reloaded = _make_runner(tmp_path)
+        reloaded._load_runs()
+        step = reloaded._runs["t1"].tasks[0]
+        assert (step.lane_id, step.lane_model) == ("", "")
+
+    def test_crash_recovery_keeps_the_lane_of_the_step_that_was_running(
+        self, tmp_path: Path
+    ) -> None:
+        runner = _make_runner(tmp_path)
+        run = _make_run()
+        run.status = "running"
+        run.route_steps = True
+        run.tasks[0].status = StepStatus.IN_PROGRESS
+        run.tasks[0].attempts = 1
+        run.tasks[0].lane_id = "claude"
+        run.tasks[0].lane_model = "opus"
+        runner._runs["t1"] = run
+        runner._persist_runs()
+
+        reloaded = _make_runner(tmp_path)
+        reloaded._load_runs()
+        recovered = reloaded._runs["t1"]
+        step = recovered.tasks[0]
+        assert recovered.status == "paused"
+        assert step.status == StepStatus.PENDING
+        assert (step.lane_id, step.lane_model) == ("claude", "opus")
+
 
 class TestLoadRunsResilience:
     def test_missing_file_seeds_fresh(self, tmp_path: Path) -> None:

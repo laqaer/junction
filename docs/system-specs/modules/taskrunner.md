@@ -23,7 +23,7 @@ taskrunner.py        (orchestrator, ~1270 lines)
 ├── task_planner.py  (LLM decomposition + task parsing + parallel grouping, ~510 lines)
 ├── task_executor.py (task execution + retries + tests + self-review, ~720 lines)
 ├── task_reporter.py (status + notifications + progress checkpoints + resume context, ~234 lines)
-└── task_routing.py  (harness-router dispatch for steps when step routing is on, ~150 lines)
+└── task_routing.py  (harness-router dispatch for steps when step routing is on, ~300 lines)
 ```
 
 ### Module Responsibilities
@@ -34,7 +34,7 @@ taskrunner.py        (orchestrator, ~1270 lines)
 | `task_planner.py` | `decompose()`, `parse_tasks()`, `normalize_cross_group_deps()`, `group_parallel_tasks()`, `plan_to_chat_context()`, `update_plan_tasks()`, `auto_name()` | LLM spec decomposition, task parsing, dependency normalization, parallel grouping, plan-to-chat formatting |
 | `task_executor.py` | `execute_task()`, `build_task_prompt()`, `self_review()`, `run_tests()`, `check_context()` | Task execution with retry/recovery budgets, prompt building, context compaction, test running, self-review |
 | `task_reporter.py` | `notify()`, `build_status()`, `save_progress()`, `load_checkpoint()`, `build_resume_context()`, `format_completion_summary()` | Notifications, status reporting, TASK_PROGRESS.md checkpointing, resume context |
-| `task_routing.py` | `StepRoute`, `route_tasks_enabled()` | Opt-in: pick a harness-router lane per step and per review, account every dispatch and outcome, release the lane on a lane-level failure (see § Step Routing) |
+| `task_routing.py` | `StepRoute`, `LaneBinding`, `route_tasks_enabled()` | Opt-in: pick a harness-router lane per step and per review, account every dispatch and outcome, release the lane on a lane-level failure, restore a paused step's lane (see § Step Routing) |
 | `taskrunner.py` | `TaskRunner` | Orchestrator — owns run lifecycle, `_try_replan`, watchdog, run persistence (`_persist_runs`/`_load_runs`); delegates decomposition/execution/reporting to the helper modules |
 
 ### Import Graph (no cycles)
@@ -335,7 +335,8 @@ Loaded on `__init__` — survives gateway restarts.
     "step_details": [{
       "index": 1, "title": "Create handler", "description": "...",
       "status": "passed", "error": "", "result": "...(up to 2K)...", "attempts": 1,
-      "kind": "implement", "harness": "codex"
+      "kind": "implement", "harness": "codex",
+      "lane_id": "codex", "lane_model": ""
     }],
     "route_steps": true,
     "work_dir": "/path/to/work/dir",
@@ -483,6 +484,27 @@ steps.
   reaching that cap refuses the retry without changing its lane attribution.
   Selection refusal is terminal: it records no dispatch failure, spends no
   further attempt, and does not reset the live provider session.
+- **The lane survives a pause or restart.** Before each dispatch the executor
+  saves the step's lane and model on the task (`Task.lane_id`, `Task.lane_model`,
+  persisted in `runs.json`; a step that fell back to the configured agent saves
+  the `@configured` sentinel) and awaits the registry write (`persist`), so a
+  hard kill after the provider opens still finds it. Releasing a lane after a
+  lane failure clears the binding the same way, and a step that passes clears it
+  for good. A paused or crash-recovered step (`IN_PROGRESS` → `PENDING`) is not
+  re-scored: `StepRoute.for_task` restores that lane and model, even though its
+  own earlier dispatch lowered the lane's headroom, so the native conversation
+  resumes and the provider never switches under a half-done step. The saved
+  model wins over a later edit of the lane's model, so the conversation keeps
+  the model it started on. A saved lane that is gone from routing.json,
+  disabled, on another harness than the step ran on, not installed, resting
+  after a limit or at its hard daily cap refuses the resume (`RoutingError`
+  `lane_unavailable` or `daily_cap`): the step fails with the reason, keeps its
+  binding, records no dispatch, and a later resume goes back to the lane once it
+  is available. A restored lane may already have changed the workspace, so its
+  first lane-level failure is never a free move. Explicit restarts forget the
+  lane: `retry_from_task` for the retried steps, `execute_plan(fresh=True)` for
+  all of them. Not restored across a restart: the step's earlier failed lanes
+  (`tried`) and its used free moves, which rest on the ledger's cooldowns.
 - **Lane failures move the step.** A usage or rate limit, a sign-in failure, a
   missing harness or a silent stall (`AcpTurnStalled`) rests the lane in the
   ledger and releases it, so the next attempt resolves another. Before any tool
@@ -494,7 +516,10 @@ steps.
   `MAX_RECOVERIES` budget for ordinary process recovery.
 - **Reviews move too.** A routed review that fails at lane level (including a
   notice-only reply) moves to the next lane for free within `max_failover`, so
-  the step still gets a verdict; any other review failure stays non-blocking.
+  the step still gets a verdict; any other review failure stays non-blocking,
+  including a review that cannot be given a lane (every lane at its hard daily
+  cap): it is skipped rather than failing the step. Only the step's own
+  execution fails closed on a cap.
   Approved and native child-tool activity prevents replay. Tool identity is
   scoped by child session: a refusal in another session cannot hide work,
   while repeated activity for the same session and tool is counted once.

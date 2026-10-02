@@ -160,6 +160,18 @@ failure stays non-blocking. The review collector observes native child tools
 by their tool-call ids too, so a review that performed child tool work is not
 replayed on another harness; text-only child activity does not count.
 
+A step also keeps its lane across a pause or gateway restart: the executor
+saves the lane and its model on the task (`Task.lane_id`, `Task.lane_model`)
+before every dispatch, and `StepRoute.for_task` restores them instead of
+re-scoring headroom that the step's own dispatch already reduced. The saved
+lane is never swapped for another provider. If it is gone, disabled,
+re-pointed at another harness, not installed, resting, or at its daily cap, the
+resume fails closed with `RoutingError` (`lane_unavailable` / `daily_cap`) and
+records no dispatch. A step that fell back to the configured agent resumes there.
+A restored lane's first lane-level failure costs an attempt, since it may have
+worked already. Contract and persistence: [taskrunner](taskrunner.md) § Step
+Routing.
+
 A step keeps its lane across ordinary retries, runs on a dedicated provider for
 the lane's harness and model (`open_task_session(acp_backend_override=,
 model=)`), and never receives a role-model pin (H12). Each sticky retry checks
