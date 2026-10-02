@@ -57,8 +57,8 @@ overrides any of them per lane.
 
 ## Lanes and `routing.json`
 
-`<data home>/routing.json` holds `enabled`, `max_failover` (default 2) and a
-`lanes` list. It carries no credentials. With no file, every installed harness
+`<data home>/routing.json` holds `enabled`, `max_failover` (default 2),
+`route_tasks` (default `false`; see § Task-runner steps) and a `lanes` list. It carries no credentials. With no file, every installed harness
 becomes one lane with its built-in profile (`source: "auto"`), and that set
 tracks installs without a restart. A present-but-unparseable file degrades to
 the detected lanes with a warning: routing is never the reason a gateway cannot
@@ -133,6 +133,66 @@ continues on them: a conversation lives in the harness that ran it.
 - an explicit pin (`routed=False`) never moves; its failure still rests the lane.
 
 A run with no lane passes straight through: the unrouted path is unchanged.
+
+### Task-runner steps
+
+Opt-in with `route_tasks: true`; off, every step runs on the configured agent
+exactly as before (invariant 2). The run fixes the choice when it first
+executes (`Project.route_steps`, persisted). `task_routing.StepRoute` applies the
+subagent rules to a step, with two differences that follow from a step being
+retried by the task runner rather than re-run from scratch:
+
+- the planner names the step's kind (`Task.kind`; unnamed routes as
+  `implement`), and the self-review is its own dispatch of kind `review` that
+  prefers a lane on a different harness than the one that did the work;
+- a lane-level failure always releases the lane, so the next attempt goes to
+  the next best one. It is a free move (not counted as an attempt) only before
+  any tool ran and within `max_failover` moves per step; after tool use (including approved child permissions and child tool notifications) it
+  costs an attempt instead of being refused, because the task runner retries
+  the step with the previous error in the prompt either way.
+
+As for routed subagents, a turn that ends normally with only the harness's
+limit or login notice as its reply (`limit_notice_failure`) and ran no tool is a
+lane failure (`HarnessLaneFailure`), not a result. Notice text is credential and
+exfiltration-URL redacted before it enters exceptions or logs. A routed review that fails at
+lane level moves to the next lane for free in the same way; any other review
+failure stays non-blocking. The review collector observes native child tools
+by their tool-call ids too, so a review that performed child tool work is not
+replayed on another harness; text-only child activity does not count.
+
+A step also keeps its lane across a pause or gateway restart: the executor
+saves the lane and its model on the task (`Task.lane_id`, `Task.lane_model`)
+before every dispatch, and `StepRoute.for_task` restores them instead of
+re-scoring headroom that the step's own dispatch already reduced. The saved
+lane is never swapped for another provider. If it is gone, disabled,
+re-pointed at another harness, not installed, resting, or at its daily cap, the
+resume fails closed with `RoutingError` (`lane_unavailable` / `daily_cap`) and
+records no dispatch. A step that fell back to the configured agent resumes there.
+A restored lane's first lane-level failure costs an attempt, since it may have
+worked already. Contract and persistence: [taskrunner](taskrunner.md) § Step
+Routing.
+
+A step keeps its lane across ordinary retries, runs on a dedicated provider for
+the lane's harness and model (`open_task_session(acp_backend_override=,
+model=)`), and never receives a role-model pin (H12). Each sticky retry checks
+the lane's current hard daily dispatch cap before reserving usage; reaching the
+cap refuses the retry without moving its conversation to another lane.
+Selection refusal is terminal without a fabricated dispatch outcome, another
+attempt, or a live-session reset. Execution success is recorded only after its
+automatic verification tests pass; red tests record an ordinary failed attempt
+on the same lane, never a harness outage inferred from test-output prose. Cross-lane process moves are governed by
+`max_failover` and the task attempt budget, not ordinary process recovery.
+Initially no eligible lane runs the step on the configured agent unless a
+hard daily cap excluded a candidate; budget refusal never falls back unaccounted. After a lane failure, exhausting the
+eligible lanes fails the step rather than retrying a cooling harness without
+lane accounting. Dispatches and outcomes go to the same ledger as
+other routed work. Parallel step selection and dispatch recording share a
+process-local transaction, so each gateway step reserves its usage before the
+next step scores the ledger; model execution remains parallel. The ledger is
+shared with subagents, so a limit hit by a step rests that lane for every later decision.
+This transaction serializes task steps in this process only; existing subagent
+resolve/dispatch calls and other processes do not share its reservation lock.
+Contract for the runner side: [taskrunner](taskrunner.md) § Step Routing.
 
 ### The provider-factory seam
 
@@ -228,6 +288,10 @@ agent means running that agent's own login command, then probing it.
   plus the current pick per kind. On first load it probes every installed agent
   that was never checked. Every displayed word is a catalog key; commands and
   statuses are machine data.
+  The task-step routing switch writes `routing.json`, not the main config
+  hierarchy. Its `routing.route_tasks` UI key supports direct Settings links
+  and highlighting; the drift guard validates this separate namespace against
+  routing.json's editable fields and parser, not the main config schema.
 - The first-run gate shows the same panel in compact form above the Kiro steps,
   with **Continue with these agents** once any agent is connected
   (`POST /api/kiro-prerequisite/complete-with-agents`). kiro-cli is optional.
@@ -269,6 +333,7 @@ gate.
 | `POST /api/routing/cooldown/clear {lane?}` | Lift a cooldown |
 | `GET /api/routing/harnesses` | Every connectable agent: installed, last probe, setup commands, its lane, picks per kind |
 | `POST /api/routing/harnesses/{harness}/check` | Probe one agent now (one at a time per agent) and record the result |
+| `PUT /api/routing/settings` | Change routing.json switches (`route_tasks`); `400` `invalid_settings_edit` on an unknown field or non-boolean value. Same materialize/refuse rules as the lane edit |
 | `PUT /api/routing/harnesses/{harness}/lane` | Edit that agent's lane (`enabled`, `billing`, `weight`, `window_limit`, `daily_limit`, `model`) in `routing.json`; `400` `invalid_lane_edit` on a bad value. A missing file is materialized from the detected lanes; a broken one is refused, never overwritten |
 
 `/api/routing` is a mixed internal path (MCP secret or dashboard cookie).
@@ -279,7 +344,8 @@ Handlers do their file I/O off the event loop.
 1. **Choose, never forward.** No provider traffic, keys, or credential reads.
    OpenRouter reaches Warding as the OpenCode harness logged into it.
 2. **Unrouted is unchanged.** No lane ⇒ `_run_inner` directly; no override ⇒
-   the configured backend; the Kiro path gains no conditional (H13).
+   the configured backend; the Kiro path gains no conditional (H13). Task-runner
+   steps route only when `route_tasks` is on.
 3. **Explicit beats routed.** A named lane or harness never silently moves.
 4. **Only lane failures move work, only before activity.** An ordinary task
    failure never rests a lane; a run that executed a tool never re-runs.
@@ -288,7 +354,7 @@ Handlers do their file I/O off the event loop.
 6. **No secrets at rest.** The ledger stores redacted, truncated error text.
 
 Pinned by `test/test_harness_router.py`, `test/test_harness_router_notices.py`,
-`test/test_harness_probe_store.py`, `test/test_harness_readiness_gate.py`, and
-the per-harness cases in `test/test_session.py`. Those are unit and
-integration tests with the harness faked; no routed run on a live harness, and
-no OpenCode session, is recorded as verified yet.
+`test/test_harness_probe_store.py`, `test/test_harness_readiness_gate.py`,
+`test/test_task_routing.py`, and the per-harness cases in `test/test_session.py`.
+Those are unit and integration tests with the harness faked; no routed run on a
+live harness, and no OpenCode session, is recorded as verified yet.

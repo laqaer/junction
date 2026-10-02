@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import contextlib
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -1383,3 +1385,107 @@ async def test_complete_setup_with_agents_needs_a_connected_agent(
     body = json.loads(ok.body)
     assert ok.status == 200 and body["initial_setup_complete"] is True
     assert completed == [True]
+
+
+def test_route_tasks_defaults_off_and_reads_strictly() -> None:
+    assert parse_settings({"lanes": []}).route_tasks is False
+    assert parse_settings({"lanes": [], "route_tasks": True}).route_tasks is True
+    assert parse_settings({"lanes": [], "route_tasks": "yes"}).route_tasks is False
+
+
+def test_save_settings_edit_materializes_validates_and_refuses_a_broken_file(
+    tmp_path: Path,
+) -> None:
+    from junction.harness_router.lanes import RoutingConfigError, save_settings_edit
+
+    saved = save_settings_edit({"route_tasks": True}, home=tmp_path, which=_which(_ALL_BINS))
+    assert saved == {"route_tasks": True}
+    written = json.loads((tmp_path / "routing.json").read_text(encoding="utf-8"))
+    assert written["route_tasks"] is True and written["lanes"]  # detected lanes kept
+    for bad in ({"route_tasks": "on"}, {"max_failover": 5}, {}):
+        with pytest.raises(RoutingConfigError):
+            save_settings_edit(bad, home=tmp_path, which=_which(_ALL_BINS))
+    (tmp_path / "routing.json").write_text("{broken", encoding="utf-8")
+    with pytest.raises(RoutingConfigError):
+        save_settings_edit({"route_tasks": False}, home=tmp_path)
+    assert (tmp_path / "routing.json").read_text(encoding="utf-8") == "{broken"
+
+
+@pytest.mark.parametrize("settings_first", [True, False])
+def test_concurrent_settings_and_lane_edits_preserve_both_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, settings_first: bool
+) -> None:
+    from junction.harness_router import lanes
+
+    path = lanes.routing_path(tmp_path)
+    path.write_text(json.dumps(template_document(["codex"])), encoding="utf-8")
+    first_read = threading.Event()
+    second_started = threading.Event()
+    second_read = threading.Event()
+    release_first = threading.Event()
+    real_read = lanes.current_document
+    reads = 0
+    read_lock = threading.Lock()
+
+    def controlled_read(**kwargs):
+        nonlocal reads
+        document = real_read(**kwargs)
+        with read_lock:
+            reads += 1
+            first = reads == 1
+        if first:
+            first_read.set()
+            assert release_first.wait(5)
+        else:
+            second_read.set()
+        return document
+
+    monkeypatch.setattr(lanes, "current_document", controlled_read)
+
+    def edit(settings, *, second=False):
+        if second:
+            second_started.set()
+        if settings:
+            return lanes.save_settings_edit({"route_tasks": True}, home=tmp_path)
+        return lanes.save_lane_edit("codex", {"weight": 7.25}, home=tmp_path)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(edit, settings_first)
+        try:
+            assert first_read.wait(5)
+            second = pool.submit(edit, not settings_first, second=True)
+            assert second_started.wait(5)
+            # Without serialization, finish the second stale-snapshot writer
+            # before releasing the first, making the lost update reproducible.
+            if second_read.wait(0.1):
+                second.result(timeout=5)
+        finally:
+            release_first.set()
+        first.result(timeout=5)
+        second.result(timeout=5)
+
+    written = json.loads(path.read_text(encoding="utf-8"))
+    assert written["route_tasks"] is True
+    assert next(lane for lane in written["lanes"] if lane["harness"] == "codex")["weight"] == 7.25
+
+
+@pytest.mark.asyncio
+async def test_api_edit_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from junction.harness_router import api
+
+    router = _router(tmp_path)
+    monkeypatch.setattr(api, "get_router", lambda: router)
+
+    class _Req:
+        def __init__(self, payload: Any) -> None:
+            self._payload = payload
+
+        async def json(self) -> Any:
+            return self._payload
+
+    ok = await api.api_edit_settings(_Req({"route_tasks": True}))  # type: ignore[arg-type]
+    assert json.loads(ok.body) == {"code": "ok", "settings": {"route_tasks": True}}
+    assert router.harnesses_view()["route_tasks"] is True
+    assert router.status()["route_tasks"] is True
+    bad = await api.api_edit_settings(_Req({"route_tasks": 1}))  # type: ignore[arg-type]
+    assert bad.status == 400 and json.loads(bad.body)["code"] == "invalid_settings_edit"

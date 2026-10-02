@@ -25,6 +25,7 @@ from junction.hooks import fire_tool_hooks, get_global_hook_store
 from junction.providers.base import (
     EVENT_COMPLETE,
     EVENT_PERMISSION_REQUEST,
+    EVENT_SUBAGENT_ACTIVITY,
     EVENT_TEXT_CHUNK,
     EVENT_TOOL_CALL,
     LLMEvent,
@@ -1269,9 +1270,10 @@ async def stream_and_collect(
         # Tool calls that reached the gate, and tool calls that actually ran.
         # A tool auto-approved upstream never raises a permission request, so it
         # executes without a gate decision: correlating the two by
-        # ``tool_call_id`` is what lets a caller see that work happened.
-        gate_decided_ids: set[str] = set()
-        executed_calls: list[tuple[str, str]] = []
+        # session-scoped ``tool_call_id`` lets a caller see that work happened
+        # without letting a parent's refusal hide an unrelated child's work.
+        gate_decided_ids: set[tuple[str, str]] = set()
+        executed_calls: list[tuple[tuple[str, str], str]] = []
         retrying = False
         # Billing accrued on THIS attempt is measured against the stats object as
         # it stands now: a retry installs a fresh one, so without a per-attempt
@@ -1306,7 +1308,7 @@ async def stream_and_collect(
                             (event.title or "", approved, _mech.startswith("always_deny"))
                         )
                         if event.tool_call_id:
-                            gate_decided_ids.add(event.tool_call_id)
+                            gate_decided_ids.add((event.sub_session_id, event.tool_call_id))
                     if not approved:
                         continue
                 elif event.kind == EVENT_TOOL_CALL:
@@ -1316,7 +1318,9 @@ async def stream_and_collect(
                     # not replay the original prompt — see _fb_tool_activity.
                     _fb_tool_activity = True
                     if on_tool_gate:
-                        executed_calls.append((event.tool_call_id or "", event.title or ""))
+                        executed_calls.append(
+                            ((event.sub_session_id, event.tool_call_id or ""), event.title or "")
+                        )
                     if max_turns is not None and tool_call_count > max_turns:
                         logger.warning(
                             "max_turns=%d exceeded (%d tool calls), breaking",
@@ -1345,6 +1349,15 @@ async def stream_and_collect(
                         event.title,
                         event.tool_input,
                     )
+                elif event.kind == EVENT_SUBAGENT_ACTIVITY and event.tool_call_id:
+                    # Native child tools can have no parent tool-call frame.
+                    # Record workspace activity before a lane error propagates;
+                    # text-only activity and rejection notices carry no tool id.
+                    _fb_tool_activity = True
+                    if on_tool_gate:
+                        executed_calls.append(
+                            ((event.sub_session_id, event.tool_call_id), event.title or "")
+                        )
                 elif event.kind == EVENT_STEER_CONSUMED:
                     consumed_this_attempt.append(event.text or "")
                 elif event.kind == EVENT_COMPLETE:
@@ -1586,9 +1599,12 @@ async def stream_and_collect(
                 # An id-less execution cannot be correlated, so it counts too —
                 # over-reporting work risks a missed detection, under-reporting
                 # it fails a job that did something.
-                for _exec_id, _exec_title in executed_calls:
-                    if _exec_id and _exec_id in gate_decided_ids:
+                reported_ids = set(gate_decided_ids)
+                for _exec_key, _exec_title in executed_calls:
+                    if _exec_key[1] and _exec_key in reported_ids:
                         continue
+                    if _exec_key[1]:
+                        reported_ids.add(_exec_key)
                     try:
                         on_tool_gate(_exec_title, True, False)
                     except Exception:

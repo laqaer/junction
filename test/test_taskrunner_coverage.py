@@ -516,6 +516,38 @@ class TestExecutePlan:
         assert run.status == "completed"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("fresh", [False, True])
+    async def test_resume_keeps_a_step_on_its_lane_unless_fresh(
+        self, tmp_path: Path, fresh: bool
+    ) -> None:
+        # A resumed run restores each unfinished step's lane; a fresh start is a
+        # new conversation and forgets it.
+        runner = _runner(tmp_path)
+        run = _seed_run(
+            runner,
+            tmp_path,
+            status="paused",
+            tasks=[
+                Task(
+                    index=1,
+                    title="half done",
+                    description="d",
+                    status=TaskStatus.PENDING,
+                    harness="codex",
+                    lane_id="codex",
+                    lane_model="gpt-x",
+                )
+            ],
+        )
+        with patch.object(TaskRunner, "_execute_tasks", AsyncMock()), patch.object(
+            TaskRunner, "_watchdog_loop", AsyncMock()
+        ), patch.object(tr.git_coord, "init_workspace", AsyncMock()):
+            task_id = await runner.execute_plan("plan_1", fresh=fresh)
+            await runner._tasks[task_id]
+        expected = ("", "") if fresh else ("codex", "gpt-x")
+        assert (run.tasks[0].lane_id, run.tasks[0].lane_model) == expected
+
+    @pytest.mark.asyncio
     async def test_workspace_override_only_for_planned_runs(self, tmp_path: Path) -> None:
         override = tmp_path / "elsewhere"
         override.mkdir()
@@ -838,6 +870,26 @@ class TestRetryFromTask:
         assert run.tasks[1].attempts == 0
         assert run.status == "completed"
         assert run.finished_at > 123.0
+
+    @pytest.mark.asyncio
+    async def test_an_explicit_retry_releases_the_steps_lane(self, tmp_path: Path) -> None:
+        runner = _runner(tmp_path)
+        run = _seed_run(
+            runner,
+            tmp_path,
+            status="failed",
+            tasks=[
+                Task(index=1, title="a", description="d", lane_id="claude"),
+                Task(index=2, title="b", description="d", lane_id="codex", lane_model="m"),
+            ],
+        )
+        with patch.object(TaskRunner, "_execute_tasks", AsyncMock()), patch.object(
+            TaskRunner, "_watchdog_loop", AsyncMock()
+        ):
+            task_id = await runner.retry_from_task("plan_1", 2)
+            await runner._tasks[task_id]
+        # Only the retried steps move; an earlier step keeps its binding.
+        assert [(t.lane_id, t.lane_model) for t in run.tasks] == [("claude", ""), ("", "")]
 
     @pytest.mark.asyncio
     async def test_reinits_git_when_work_dir_is_missing(self, tmp_path: Path) -> None:
