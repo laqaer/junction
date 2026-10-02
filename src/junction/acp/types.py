@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import re as _re
 from dataclasses import dataclass, field
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 # ── ACP Event Kinds ──
 
@@ -201,6 +202,27 @@ ACP_BACKENDS_STEER = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 # that never starts and leaves the agent process unconfined. Only kiro-cli
 # qualifies; a Node or Python harness does not, however it is spawned.
 ACP_BACKENDS_INTERNAL_SANDBOX = frozenset({ACP_BACKEND_KIRO})
+
+# Harnesses whose permission mode Warding pins at session start, mapped to the mode
+# id each is pinned to (harness-parity H17). The PreToolUse gate only sees a call the
+# harness ASKS about, and every one of these harnesses can be configured, by the user's
+# own files or by its own default, to stop asking:
+#
+# * Claude Code starts in whatever ``permissions.defaultMode`` its settings name
+#   (``acceptEdits`` and ``bypassPermissions`` never ask about an edit or a command,
+#   ``auto`` hands the decision to a classifier). ``default`` asks about everything that
+#   is not a read.
+# * Codex starts in ``agent``, whose reviewer is a model that approves actions it judges
+#   safe without a request, and offers ``agent-full-access``, which never asks.
+#   ``read-only`` (labelled "Ask for approval") routes every approval to the client.
+#
+# Membership is an explicit decision per harness, like every other capability set: a
+# harness absent from the mapping keeps the mode it starts in, and a harness is added
+# only with its own mode vocabulary and evidence the mode routes approvals to the client.
+# Kiro-cli and KAS are never members; their agent-mode activation is a separate path.
+ACP_PERMISSION_MODE_PINS: Mapping[str, str] = MappingProxyType(
+    {ACP_BACKEND_CLAUDE: "default", ACP_BACKEND_CODEX: "read-only"}
+)
 
 # Backends served by AcpRuntime + AcpSessionHandle — the kiro-agent family
 # (kiro-cli and KAS) whose single process hosts N sessions via demux. The
