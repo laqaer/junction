@@ -307,7 +307,7 @@ def _materialize_available_models(value: Any) -> Any:
 
 
 def _is_harness_wire_id(model_id: str) -> bool:
-    """True when *model_id* is a kiro-cli ``set_model`` id, not a sidecar slug."""
+    """True when *model_id* is a bare (non-namespaced) harness ``set_model`` id."""
     return bool(model_id) and "/" not in model_id
 
 
