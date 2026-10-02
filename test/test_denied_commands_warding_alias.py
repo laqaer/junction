@@ -649,6 +649,79 @@ class TestWardingIsNotMatchedInsideOtherWords:
         assert _denied_by(cmd) is None, f"false positive on {cmd!r}"
 
 
+class TestInlineProgramsNamingEitherSpelling:
+    """An inline interpreter program can spawn the console script or build the verb, so the
+    gate is the name together with a way to execute it: a ``-c`` payload that names either
+    spelling and uses a spawn primitive is refused whatever verb it passes, however the
+    primitive was imported."""
+
+    @pytest.mark.parametrize("prog", _PROGRAMS)
+    @pytest.mark.parametrize(
+        "verb", ["restart", "update", "stop", "destroy", "launch", "adopt", _TOK]
+    )
+    def test_an_argv_list_spawn_is_denied(self, prog, verb):
+        cmd = f"python3 -c \"import subprocess; subprocess.run(['{prog}','{verb}'])\""
+        effective = compute_effective_denied(BUILTIN_DENIED_RULES, (), False, (), ())
+        assert is_denied(cmd, denied_regexes=effective) is not None, cmd
+        gate = HookManager(HooksConfig()).on_tool_call(
+            cmd, session_key="probe", tool_kind="execute", command=cmd, is_shell=True
+        )
+        assert gate.action == TOOL_DENY, cmd
+
+    @pytest.mark.parametrize("prog", _PROGRAMS)
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "from os import posix_spawnp,environ; posix_spawnp('{p}',['{p}','restart'],environ)",
+            "from os import posix_spawn,environ; posix_spawn('/x/{p}',['{p}','update'],environ)",
+            "from os import system; system('{p} restart')",
+            "from os import execvp; execvp('{p}',['{p}','restart'])",
+            "from os import execv as e; e('/x/{p}',['{p}','stop'])",
+            "import os; os.spawnvp(os.P_WAIT,'{p}',['{p}','restart'])",
+            "from os import spawnlp,P_WAIT; spawnlp(P_WAIT,'{p}','{p}','restart')",
+            "from pty import spawn; spawn(['{p}','restart'])",
+            "from subprocess import run; run(['{p}','restart'])",
+            "from subprocess import Popen as P; P(['{p}','update'])",
+            "from asyncio import create_subprocess_exec as c; c('{p}','restart')",
+            "import pexpect; pexpect.spawn('{p} restart')",
+            "from sh import ls; import sh; sh.Command('{p}')('restart')",
+        ],
+    )
+    def test_a_directly_imported_spawn_primitive_is_denied(self, prog, payload):
+        cmd = 'python3 -c "' + payload.format(p=prog) + '"'
+        gate = HookManager(HooksConfig()).on_tool_call(
+            cmd, session_key="probe", tool_kind="execute", command=cmd, is_shell=True
+        )
+        assert gate.action == TOOL_DENY, cmd
+
+    def test_a_bare_mention_of_the_cli_name_spawns_nothing_and_is_allowed(self):
+        """``warding`` is only a program name, so naming it without a spawn primitive is inert.
+
+        ``junction`` is also the import name, which is why an inline program that merely
+        mentions it stays refused.
+        """
+        cmd = "python3 -c \"print('warding')\""
+        gate = HookManager(HooksConfig()).on_tool_call(
+            cmd, session_key="probe", tool_kind="execute", command=cmd, is_shell=True
+        )
+        assert gate.action != TOOL_DENY, cmd
+
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            'python3 -c "print(1)"',
+            "python3 -c \"import json; print(json.dumps({'a': 1}))\"",
+            "python3 -c \"print('forwarding')\"",
+            "python3 -c \"print('awarding')\"",
+        ],
+    )
+    def test_ordinary_inline_programs_stay_allowed(self, cmd):
+        gate = HookManager(HooksConfig()).on_tool_call(
+            cmd, session_key="probe", tool_kind="execute", command=cmd, is_shell=True
+        )
+        assert gate.action != TOOL_DENY, cmd
+
+
 class TestImportNameStaysJunctionOnly:
     """There is no ``warding`` module, so only ``junction`` is an import name."""
 

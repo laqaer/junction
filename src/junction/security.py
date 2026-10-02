@@ -2616,6 +2616,25 @@ _PYTHON_INLINE_PROGRAM_FLAGS = ("-c",)
 #: PROVIDED the name is written literally, which the split/base64 forms below deliberately avoid.
 _SELF_IMPORT_RE = re.compile(r"\bjunction\b")
 
+#: The console script written literally inside an INLINE program, and the process-spawn
+#: primitives through which such a program runs it. ``python -c "subprocess.run(['warding',
+#: 'restart'])"`` names no import, so :data:`_SELF_IMPORT_RE` cannot see it, yet it restarts the
+#: gateway: an inline program runs with the interpreter's full authority and can BUILD the verb,
+#: so the gate is the name together with a way to execute it. A bare mention
+#: (``python -c "import warding"``, ``print('warding')``) spawns nothing and stays allowed, as does
+#: any payload that never names the script. ``warding`` carries a leading ``\b`` because it is the
+#: tail of ordinary words (``forwarding``). Written literally only, like the import check: a
+#: name assembled from pieces is caught by :data:`_INLINE_DYNAMIC_EXEC_RE` or is the documented
+#: residual of a string matcher.
+_SELF_SCRIPT_NAME_RE = re.compile(r"\bwarding\b")
+_INLINE_SPAWN_RE = re.compile(
+    # Matched by the bare name, never only module-qualified: ``from os import posix_spawnp`` and
+    # ``from pty import spawn`` call the primitive without the module word in front of it.
+    r"\bsubprocess\b|\b(?:posix_)?spawn\w*\b|\bpopen\w*\b|\bsystem\s*\("
+    r"|\bexec(?:l|le|lp|lpe|v|ve|vp|vpe)\b|\bcreate_subprocess_\w+\b|\bcheck_(?:call|output)\b"
+    r"|\bpexpect\b|\bplumbum\b|\b(?:from|import)\s+sh\b"
+)
+
 #: Dynamic-execution primitives that let an inline Python payload REACH the CLI without the
 #: package name ever appearing as a literal token: string-concatenated imports
 #: (``__import__('junc'+'tion')``), name-computed imports (``importlib.import_module(...)``),
@@ -2634,16 +2653,21 @@ _INLINE_DYNAMIC_EXEC_RE = re.compile(
 
 
 def _inline_payload_reaches_cli(payload: str) -> bool:
-    """True if an inline-program payload could import this package, LITERALLY or opaquely.
+    """True if an inline-program payload could reach this CLI, LITERALLY or opaquely.
 
-    Two ways: it names ``junction`` outright, or it uses a dynamic-execution primitive that
-    could construct that import from pieces a static matcher cannot follow. The second is a
+    Three ways: it names the package ``junction`` outright, it names the console script
+    ``warding`` AND uses a process-spawn primitive, or it uses a dynamic-execution primitive
+    that could construct either from pieces a static matcher cannot follow. The second is a
     deliberate over-match — a payload doing ``exec(...)`` or ``__import__(...)`` might import
     something else entirely — but on the credential-mint path "I cannot tell what this runs" is
     the fail-closed answer, and the cost is refusing an inline one-liner that happens to use
     ``exec``/``eval``, which is not a shape ordinary tooling relies on.
     """
-    return bool(_SELF_IMPORT_RE.search(payload) or _INLINE_DYNAMIC_EXEC_RE.search(payload))
+    return bool(
+        _SELF_IMPORT_RE.search(payload)
+        or _INLINE_DYNAMIC_EXEC_RE.search(payload)
+        or (_SELF_SCRIPT_NAME_RE.search(payload) and _INLINE_SPAWN_RE.search(payload))
+    )
 
 
 def _is_self_module_invocation(tokens: list[str], i: int) -> bool:
