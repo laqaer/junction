@@ -2227,7 +2227,7 @@ class KiroPrerequisiteService:
             if not error and (result.get("missing_agent_specs") or []):
                 error = (
                     "The rebuild reported success but the specs are still missing. "
-                    "Run `junction setup --agent-only --clean` on the gateway host."
+                    "Run `warding setup --agent-only --clean` on the gateway host."
                 )
             result["agent_spec_repair_error"] = error
             return result

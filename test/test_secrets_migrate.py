@@ -1081,5 +1081,5 @@ def test_rollback_delete_failure_records_orphaned_key_and_propagates_error(
         "JIRA_API_TOKEN" in str(m) for m in warning_msgs
     ), f"Expected WARNING naming orphaned key; got: {warning_msgs}"
     assert any(
-        "junction secrets rm" in str(m) for m in warning_msgs
+        "warding secrets rm" in str(m) for m in warning_msgs
     ), "WARNING must mention cleanup command"

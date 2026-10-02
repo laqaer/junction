@@ -39,7 +39,7 @@ def env_flag_enabled(name: str) -> bool:
 
 
 DATA_WARNING = (
-    "⚠️  Do not enter sensitive, secret, or regulated data into Junction.\n"
+    "⚠️  Do not enter sensitive, secret, or regulated data into Warding.\n"
     "   Treat anything you send as potentially logged or processed by the\n"
     "   configured model provider."
 )

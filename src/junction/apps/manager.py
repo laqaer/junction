@@ -1733,7 +1733,7 @@ def register_external_app(
         return AppResult(
             ok=False,
             name=name,
-            error="builtin origin is reserved for Junction-shipped apps",
+            error="builtin origin is reserved for Warding-shipped apps",
         )
 
     # Admission: register_external_app writes enabled=True and is HTTP-reachable
@@ -1810,7 +1810,7 @@ def register_external_app(
             ok=False,
             name=name,
             error=(
-                f"{name!r} is a Junction-shipped builtin and cannot be replaced "
+                f"{name!r} is a Warding-shipped builtin and cannot be replaced "
                 "by self-registration"
             ),
         )

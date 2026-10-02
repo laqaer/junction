@@ -1144,7 +1144,7 @@ def _validate_theme_dir(
         )
     if fmt > _THEME_FORMAT_VERSION:
         return None, (
-            f"this pack requires a newer version of Junction "
+            f"this pack requires a newer version of Warding "
             f"(pack formatVersion {fmt}, supported {_THEME_FORMAT_VERSION})"
         )
     if fmt < 1:

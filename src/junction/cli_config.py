@@ -88,9 +88,9 @@ def _config_cmd(args: argparse.Namespace) -> None:
             value = args.value
             use_local = getattr(args, "local", False)
             if not key or value is None:
-                print("Usage: junction config set <key> <value>", file=sys.stderr)
-                print("       junction config set --local <key> <value>", file=sys.stderr)
-                print("       junction config set --file <path.json>", file=sys.stderr)
+                print("Usage: warding config set <key> <value>", file=sys.stderr)
+                print("       warding config set --local <key> <value>", file=sys.stderr)
+                print("       warding config set --file <path.json>", file=sys.stderr)
                 sys.exit(1)
             parsed = _parse_value(value)
             # Fourth write path to telemetry.beacon_enabled, after the dashboard
@@ -230,7 +230,7 @@ def _config_cmd(args: argparse.Namespace) -> None:
         editor = os.environ.get("EDITOR", "vi")
         os.execvp(editor, [editor, str(p)])
     else:
-        print("Usage: junction config {get,set,edit}", file=sys.stderr)
+        print("Usage: warding config {get,set,edit}", file=sys.stderr)
         sys.exit(1)
 
 

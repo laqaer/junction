@@ -113,7 +113,7 @@ def repo_root() -> Path:
     if found is not None:
         return found
     raise aws.AWSError(
-        "could not locate the Junction source root (no install.sh + setup.cfg "
+        "could not locate the Warding source root (no install.sh + setup.cfg "
         "above this module) — source shipping needs an editable/git checkout. "
         "Run the cloud launcher from a clone, or launch without S3 source "
         "shipping (public git-clone fallback).",
@@ -278,7 +278,7 @@ def _tar_fallback(root: Path) -> Path:
     if tracked is None:
         raise aws.AWSError(
             "cannot safely package the source without git (needed to honor "
-            ".gitignore) — run `junction cloud launch` from a git checkout, or "
+            ".gitignore) — run `warding cloud launch` from a git checkout, or "
             "launch without S3 source shipping (public git-clone fallback).",
             action="source:PackageLocalCheckout",
         )
@@ -597,7 +597,7 @@ def _verify_instance_boundary_content(arn: str, account: str, profile: str, regi
             "the expected content-fixed document — refusing to reuse it (a boundary "
             "that caps nothing would defeat the instance-role ceiling). If you "
             "intentionally changed it, delete it and let the launcher recreate it, "
-            "or re-run `junction cloud iam-boundary`.",
+            "or re-run `warding cloud iam-boundary`.",
             action="iam:GetPolicyVersion",
         )
 

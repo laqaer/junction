@@ -160,7 +160,7 @@ class TestDispatchRouting:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         assert _bench_dispatch(_Args()) == 2
-        assert "usage: junction bench" in capsys.readouterr().out
+        assert "usage: warding bench" in capsys.readouterr().out
 
     def test_unknown_action_returns_two(self, capsys: pytest.CaptureFixture[str]) -> None:
         assert _bench_dispatch(_Args(bench_action="zibble")) == 2

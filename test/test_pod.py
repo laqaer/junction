@@ -1285,7 +1285,7 @@ class TestOrphanHomes:
         pod_cli._ls(c, argparse.Namespace(json=False))
         out = capsys.readouterr().out
         assert "1 orphaned pod HOME(s)" in out
-        assert "junction pod down orphan" in out
+        assert "warding pod down orphan" in out
 
     def test_the_json_shape_stays_live_pods_only(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture

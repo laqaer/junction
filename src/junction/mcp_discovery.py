@@ -218,7 +218,7 @@ def _warn_probe_sandbox_unavailable_once(name: str) -> None:
     _probe_sandbox_warned.add(name)
     logger.warning(
         "MCP probe skipped [%s]: no OS-level sandbox backend on this host, so "
-        "Junction cannot spawn the server to enumerate its tools. The server "
+        "Warding cannot spawn the server to enumerate its tools. The server "
         "itself is unaffected — kiro-cli launches it from the agent config "
         "without this probe. Set agent.sandbox_allow_unsandboxed_exec=true to "
         "enable probing (the dashboard will otherwise show it with 0 tools).",
@@ -2125,7 +2125,7 @@ async def probe_server(
         # limitation apart from a genuine handshake failure without parsing prose.
         server.status = "error"
         server.error = (
-            f"mcp_probe_sandbox_unavailable: Junction could not probe this server "
+            f"mcp_probe_sandbox_unavailable: Warding could not probe this server "
             f"because no OS-level sandbox backend is available on this host. The "
             f"server itself may be fine — kiro-cli launches it from the agent "
             f"config without this probe, so its tools can still work in chat. "

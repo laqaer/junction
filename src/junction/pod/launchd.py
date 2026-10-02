@@ -107,7 +107,7 @@ def require_backend() -> None:
     if shutil.which("launchctl") is None:
         raise LaunchdError(
             "pods need `launchctl`, which was not found on PATH. This host looks "
-            "like macOS but is missing launchd; run `junction pod` from a normal "
+            "like macOS but is missing launchd; run `warding pod` from a normal "
             "user session."
         )
 

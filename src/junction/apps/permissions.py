@@ -55,7 +55,7 @@ def validate_permissions(manifest: AppManifest) -> PermissionCheck:
     # Shared memory warning
     if perms.memory == "shared":
         result.warnings.append(
-            "App requests shared memory access — it can read/write Junction's memory stores"
+            "App requests shared memory access — it can read/write Warding's memory stores"
         )
 
     # Path traversal in any resource paths

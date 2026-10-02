@@ -430,7 +430,7 @@ def publish(port: int, *, audit_tool: str = "tailnet_publish") -> ServeResult:
             False,
             "timeout",
             "tailscale serve did not respond in time. It may still have applied — "
-            "check `junction tailnet status` before retrying.",
+            "check `warding tailnet status` before retrying.",
         )
     if rc == -3:
         return ServeResult(

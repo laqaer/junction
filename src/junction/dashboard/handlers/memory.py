@@ -592,7 +592,7 @@ def _apply_embedding_model(store: object, raw: str, loop: "asyncio.AbstractEvent
                 # publish a serving model later.
                 reset_shared_embedder()
             prog.fail(
-                "the model did not load — run 'junction doctor' for the reason "
+                "the model did not load — run 'warding doctor' for the reason "
                 "(memory falls back to keyword search meanwhile)"
             )
             return

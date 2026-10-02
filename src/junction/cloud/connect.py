@@ -186,7 +186,7 @@ def connect(
             logger.warning("dashboard sign-in provisioning failed on local port %d: %s", local_port, exc)
             error = (
                 "connected the SSM tunnel but minting a dashboard token failed "
-                f"({exc}) — check `junction cloud status` / your IAM permissions, "
+                f"({exc}) — check `warding cloud status` / your IAM permissions, "
                 "then retry."
             )
             _terminate(proc)
@@ -207,7 +207,7 @@ def connect(
             logger.warning("tunnel ready on local port %d but token mint failed", local_port)
             error = (
                 "connected the SSM tunnel but could not mint a dashboard token on the "
-                "instance — check `junction cloud status` / the box's gateway, then retry."
+                "instance — check `warding cloud status` / the box's gateway, then retry."
             )
             _terminate(proc)
             ready = False

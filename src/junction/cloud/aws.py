@@ -84,7 +84,7 @@ def assert_human_action(action: str) -> None:
     if _in_agent_session():
         raise CloudActionDenied(
             f"cloud mutation '{action}' is a human/installer action and is refused "
-            "from an agent session — run `junction cloud …` yourself in a terminal."
+            "from an agent session — run `warding cloud …` yourself in a terminal."
         )
 
 
@@ -147,7 +147,7 @@ def assert_chokepoint_allowed(args: list[str]) -> None:
         raise CloudActionDenied(
             f"cloud AWS action '{op}' is refused from an agent session (only "
             "specific read-only status/discovery calls are allowed) — run "
-            "`junction cloud …` yourself in a terminal."
+            "`warding cloud …` yourself in a terminal."
         )
 
 
@@ -344,7 +344,7 @@ def checked(
         if missing:
             hint = f" — grant `{missing}` in your IAM policy and retry"
         elif is_access_denied(err):
-            hint = " — add the missing permission (see `junction cloud iam-policy`) and retry"
+            hint = " — add the missing permission (see `warding cloud iam-policy`) and retry"
         raise AWSError(
             f"{action} failed: {err.strip()[:400]}{hint}",
             action=action,

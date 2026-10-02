@@ -96,7 +96,7 @@ def test_missing_file_with_downloads_disabled_names_the_fetch_command(cache: Pat
     with pytest.raises(CorpusFetchError) as exc:
         ensure(spec, allow_download=False)
     msg = str(exc.value)
-    assert "junction bench fetch longmemeval_s" in msg
+    assert "warding bench fetch longmemeval_s" in msg
     assert "downloading is disabled" in msg
     # The size is quoted so nobody starts a 277 MB fetch by surprise.
     assert "277 MB" in msg

@@ -618,7 +618,7 @@ PERMISSION_UNSUPPORTED = "unsupported"
 ERROR_PREFIX = "Error: "
 REFUSAL_UNSUPPORTED = "computer use is not supported on this platform ({platform}): {reason}"
 REFUSAL_DISABLED = (
-    "computer use is disabled. Enable it in the Junction dashboard under "
+    "computer use is disabled. Enable it in the Warding dashboard under "
     "Settings -> Computer Use; it cannot be enabled by an agent."
 )
 REFUSAL_UNATTENDED = (

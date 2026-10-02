@@ -210,7 +210,7 @@ class TestStopViaService:
 
         monkeypatch.setattr(platform_compat, "find_listening_pids", unreachable)
         cli_server._stop(None)
-        assert "Stopped junction service" in capsys.readouterr().out
+        assert "Stopped the Warding service" in capsys.readouterr().out
         assert sel_rec.calls[0]["resources"].endswith("via=service")
 
     def test_explicit_port_bypasses_the_service(self, monkeypatch, sel_rec, capsys) -> None:
@@ -331,7 +331,7 @@ class TestServiceCmd:
 
     def test_unknown_action_prints_usage_and_returns_2(self, sel_rec, capsys) -> None:
         assert cli_server._service_cmd(argparse.Namespace(service_action=None)) == 2
-        assert "Usage: junction service" in capsys.readouterr().err
+        assert "Usage: warding service" in capsys.readouterr().err
         assert sel_rec.calls == []
 
 
@@ -377,7 +377,7 @@ class TestSandboxCmd:
 
     def test_unknown_action_prints_usage_and_returns_2(self, sel_rec, capsys) -> None:
         assert cli_server._sandbox_cmd(argparse.Namespace(sandbox_action="bogus")) == 2
-        assert "Usage: junction sandbox" in capsys.readouterr().err
+        assert "Usage: warding sandbox" in capsys.readouterr().err
         assert sel_rec.calls == []
 
 
@@ -1121,7 +1121,7 @@ class TestUpdateGitPath:
         assert exc.value.code == 1
         out = capsys.readouterr().out
         assert "diverged" in out
-        assert "junction update --force" in out
+        assert "warding update --force" in out
         assert not any(c[:2] == ["git", "reset"] for c in stub.calls)
 
     def test_diverged_checkout_resets_under_force(self, monkeypatch, git_checkout, capsys) -> None:
@@ -1527,7 +1527,7 @@ class TestUpdateWheelInstaller:
         cli_server._update_wheel(_LAYOUT)
         out = capsys.readouterr().out
         assert "updated to 999.0.0" in out
-        assert "junction restart" in out
+        assert "warding restart" in out
         assert seen[0][:2] == ["sh", "-c"]
 
     def test_unparseable_remote_version_updates_anyway(

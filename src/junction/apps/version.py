@@ -39,9 +39,9 @@ def check_min_version(min_version: str) -> str | None:
 
         if parse_version(current) < parse_version(min_version):
             return (
-                f"App requires Junction >= {min_version}, "
+                f"App requires Warding >= {min_version}, "
                 f"but current version is {current}. "
-                f"Please update Junction first."
+                f"Please update Warding first."
             )
     except (ValueError, AttributeError, ImportError):
         pass

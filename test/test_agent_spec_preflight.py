@@ -121,7 +121,7 @@ class TestFormatRuntimeRpcError:
 
         assert f"'{agent}.json'" in text  # names the file that is missing
         assert str(tmp_path) in text  # names where it was looked for
-        assert "junction setup --agent-only --clean" in text  # names the repair
+        assert "warding setup --agent-only --clean" in text  # names the repair
         assert "-32603" not in text and "Mode" not in text  # no raw protocol noise
 
     def test_unknown_shape_keeps_the_raw_dict(self):
@@ -202,7 +202,7 @@ class TestGatewayInstallVerification:
             r.levelno == logging.ERROR and "Agent config install failed" in r.message
             for r in caplog.records
         )
-        assert "junction setup --agent-only --clean" in capsys.readouterr().out
+        assert "warding setup --agent-only --clean" in capsys.readouterr().out
 
     def test_silent_no_write_is_reported(self, tmp_path, caplog, capsys):
         # rebuild_agent_config RETURNED a path and raised nothing, but wrote no
@@ -220,7 +220,7 @@ class TestGatewayInstallVerification:
             r.levelno == logging.ERROR and "Agent specs missing after install" in r.message
             for r in caplog.records
         )
-        assert "junction setup --agent-only --clean" in capsys.readouterr().out
+        assert "warding setup --agent-only --clean" in capsys.readouterr().out
 
     def test_healthy_install_is_silent(self, tmp_path, caplog, capsys):
         orch = _make_orchestrator()

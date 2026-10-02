@@ -172,7 +172,7 @@ def _ensure_running_and_ssm_ready(instance_id: str, profile: str, region: str) -
     elif state and state != "running":
         # pending / shutting-down / terminated — can't proceed reliably.
         if state == "terminated":
-            ui.fail("the saved instance is terminated — run `junction cloud launch --new`.")
+            ui.fail("the saved instance is terminated — run `warding cloud launch --new`.")
             return False
         ui.info(f"Instance is {state}; waiting for it to run…")
 
@@ -187,7 +187,7 @@ def _ensure_running_and_ssm_ready(instance_id: str, profile: str, region: str) -
             waited += _SSM_READY_POLL_SECS
     ui.fail(
         "the instance did not report SSM Online in time. Check "
-        "`junction cloud status`; the agent may still be starting — retry shortly."
+        "`warding cloud status`; the agent may still be starting — retry shortly."
     )
     return False
 
@@ -224,7 +224,7 @@ def _verify_operational(
         # Transient SSM/API failure — we could not *check*, which is not the
         # same as "not signed in". Say so instead of a misleading warning.
         ui.warn("Could not verify sign-in state (transient AWS/SSM error).")
-        ui.detail(f"{exc} — check later with: junction cloud login")
+        ui.detail(f"{exc} — check later with: warding cloud login")
         return False
 
     ui.warn("Kiro backend is NOT signed in — a new chat would error.")
@@ -341,7 +341,7 @@ def launch(
     steps.step("AWS account")
     if not profile:
         ui.info("Using the AWS CLI's default credentials (no --profile).")
-        ui.detail("Junction never stores AWS credentials — the aws CLI resolves them.")
+        ui.detail("Warding never stores AWS credentials — the aws CLI resolves them.")
     with ui.Spinner("Checking AWS access…"):
         reach = iam.reachability_check(profile, region)
     if not reach["reachable"]:
@@ -365,7 +365,7 @@ def launch(
     steps.step("Permissions")
     ui.info("Launch creates a CloudFormation stack (EC2 + IAM role + security group).")
     ui.detail("If a launch fails with AccessDenied, apply this policy and retry:")
-    ui.detail("  junction cloud iam-policy   → prints the least-privilege policy")
+    ui.detail("  warding cloud iam-policy   → prints the least-privilege policy")
     ui.ok("Reachability confirmed (first launch is the true permission test).")
 
     # ── 3. Deployment choice + size ───────────────────────────────────────
@@ -381,7 +381,7 @@ def launch(
     except AWSError as exc:
         ui.fail(str(exc))
         if exc.missing_action:
-            ui.detail(f"Grant `{exc.missing_action}` (see `junction cloud iam-policy`) and retry.")
+            ui.detail(f"Grant `{exc.missing_action}` (see `warding cloud iam-policy`) and retry.")
         return 1
 
     tier = None
@@ -423,10 +423,10 @@ def launch(
                 # silently ignored is worse than an early exit — a script that
                 # passed --subnet expects the instance IN that subnet.
                 ui.fail("--subnet cannot apply to the existing stack (its network is fixed).")
-                ui.detail("Use `junction cloud launch --new --subnet …` for a fresh instance.")
+                ui.detail("Use `warding cloud launch --new --subnet …` for a fresh instance.")
                 return 1
             ui.warn("--subnet is ignored for an existing stack (its network is fixed).")
-            ui.detail("Use `junction cloud launch --new --subnet …` for a fresh instance.")
+            ui.detail("Use `warding cloud launch --new --subnet …` for a fresh instance.")
 
     # ── 4. Launch ─────────────────────────────────────────────────────────
     steps.step("Launching")
@@ -444,7 +444,7 @@ def launch(
         # fields (so progress streaming + failure diagnostics have the tag) but
         # only `cfg.save()` AFTER a confirmed-healthy deploy below.
         cfg.profile, cfg.region, cfg.last_tag = profile, region, tag
-        ui.info("Provisioning EC2 + installing Junction (this takes a few minutes)…")
+        ui.info("Provisioning EC2 + installing Warding (this takes a few minutes)…")
         try:
             result = _deploy_with_progress(
                 tag=tag,
@@ -458,7 +458,7 @@ def launch(
             ui.fail(str(exc))
             if exc.missing_action:
                 ui.detail(
-                    f"Grant `{exc.missing_action}` (see `junction cloud iam-policy`) and retry."
+                    f"Grant `{exc.missing_action}` (see `warding cloud iam-policy`) and retry."
                 )
             else:
                 # Surface the detailed on-box failure and how to dig further.
@@ -472,17 +472,17 @@ def launch(
                 if not keep_on_failure:
                     ui.detail(
                         "Re-run with --keep-on-failure to keep the instance for "
-                        "inspection (`junction cloud launch --keep-on-failure`)."
+                        "inspection (`warding cloud launch --keep-on-failure`)."
                     )
             return 1
         # Deploy succeeded (WaitCondition confirmed the gateway healthy) — NOW it
         # is safe to persist the tag as the saved deployment.
         cfg.profile, cfg.region, cfg.last_tag = profile, region, tag
         cfg.save()
-        ui.ok(f"Instance {result.instance_id} is up and Junction is healthy.")
+        ui.ok(f"Instance {result.instance_id} is up and Warding is healthy.")
     elif not result.instance_id:
         ui.warn("Previous cloud stack exists but the instance is not ready yet.")
-        ui.detail("Check progress with: junction cloud status")
+        ui.detail("Check progress with: warding cloud status")
         return 1
     else:
         ui.ok(f"Resuming instance {result.instance_id}.")
@@ -522,7 +522,7 @@ def launch(
                 ui.ok("Signed in.")
             else:
                 ui.warn("Sign-in not detected yet — you can finish it later.")
-                ui.detail("Re-run: junction cloud connect (then sign in from the dashboard/SSM).")
+                ui.detail("Re-run: warding cloud connect (then sign in from the dashboard/SSM).")
         else:
             prompt.close()
             ui.warn("Could not start Kiro sign-in automatically.")
@@ -535,7 +535,7 @@ def launch(
     if not _verify_operational(instance_id, profile, region, assume_yes=assume_yes):
         ui.warn(
             "Kiro backend is not signed in — new chats will error until you "
-            "sign in. Run: junction cloud login"
+            "sign in. Run: warding cloud login"
         )
 
     # ── 6. Open the dashboard ─────────────────────────────────────────────
@@ -561,7 +561,7 @@ def launch(
     # SSH key / inbound port / ~/.ssh/config.
     connect_mod.register_instance(
         instance_id,
-        name=f"Junction Cloud ({result.tag})",
+        name=f"Warding Cloud ({result.tag})",
         profile=profile,
         region=region,
     )
@@ -570,16 +570,16 @@ def launch(
     print()
     dashboard_ready = bool(conn and conn.ready and conn.url)
     if dashboard_ready:
-        ui.note(f"{ui.GREEN}{ui.BOLD}Junction is live on AWS.{ui.RESET}")
+        ui.note(f"{ui.GREEN}{ui.BOLD}Warding is live on AWS.{ui.RESET}")
     else:
-        ui.warn("Junction is running on AWS, but the dashboard tunnel is not open.")
-        ui.detail("Fix the local SSM tunnel issue, then run: junction cloud connect")
+        ui.warn("Warding is running on AWS, but the dashboard tunnel is not open.")
+        ui.detail("Fix the local SSM tunnel issue, then run: warding cloud connect")
     print()
     ui.note(f"{ui.BOLD}Manage it:{ui.RESET}")
-    ui.detail("junction cloud status            # state + cost estimate")
-    ui.detail("junction cloud connect           # reopen the dashboard")
-    ui.detail("junction cloud stop | start      # pause / resume (saves cost)")
-    ui.detail("junction cloud destroy           # remove EVERYTHING from AWS")
+    ui.detail("warding cloud status            # state + cost estimate")
+    ui.detail("warding cloud connect           # reopen the dashboard")
+    ui.detail("warding cloud stop | start      # pause / resume (saves cost)")
+    ui.detail("warding cloud destroy           # remove EVERYTHING from AWS")
     print()
 
     # Keep the SSM tunnel alive so the dashboard URL we just opened keeps
@@ -590,17 +590,17 @@ def launch(
     if conn and conn.ready and conn.process is not None and conn.process.poll() is None:
         if not hold_tunnel:
             conn.close()
-            ui.detail("Dashboard tunnel closed — reopen anytime: junction cloud connect")
+            ui.detail("Dashboard tunnel closed — reopen anytime: warding cloud connect")
         else:
             ui.detail(
                 "Keeping the dashboard tunnel open — press Ctrl+C to exit "
-                "(reopen later with `junction cloud connect`)."
+                "(reopen later with `warding cloud connect`)."
             )
             try:
                 conn.process.wait()
             except KeyboardInterrupt:
                 conn.close()
-                ui.info("Tunnel closed. Junction keeps running on AWS.")
+                ui.info("Tunnel closed. Warding keeps running on AWS.")
     return 0 if dashboard_ready else 1
 
 
@@ -611,9 +611,9 @@ def _ensure_session_manager_plugin(*, assume_yes: bool = False) -> bool:
         return True
 
     ui.warn("session-manager-plugin is required for SSM dashboard tunnels.")
-    ui.detail("Junction can install AWS's official Session Manager plugin locally.")
+    ui.detail("Warding can install AWS's official Session Manager plugin locally.")
     if not assume_yes and not ui.confirm("Install session-manager-plugin now?", default=True):
-        ui.detail("Install it later with: junction cloud doctor")
+        ui.detail("Install it later with: warding cloud doctor")
         return False
 
     ui.info("Installing session-manager-plugin locally. Sudo may ask for your password.")
@@ -708,22 +708,22 @@ def _choose_existing_launch(
         if len(launches) == 1 or cfg.last_tag:
             chosen = _preferred_existing_launch(launches, cfg)
             ui.info(
-                f"Existing Junction cloud stack found: {chosen.stack_name}. "
+                f"Existing Warding cloud stack found: {chosen.stack_name}. "
                 "Keeping it by default."
             )
-            ui.detail("Use `junction cloud launch --new` to create a separate instance.")
+            ui.detail("Use `warding cloud launch --new` to create a separate instance.")
             return chosen
         tags = ", ".join(launch.tag for launch in launches)
         raise AWSError(
-            "multiple existing Junction cloud stacks found; rerun interactively "
-            f"to choose one ({tags}), or pass `junction cloud launch --new` "
+            "multiple existing Warding cloud stacks found; rerun interactively "
+            f"to choose one ({tags}), or pass `warding cloud launch --new` "
             "to create a separate instance"
         )
 
     if len(launches) == 1:
         launch = launches[0]
         idx = ui.choose(
-            "Existing Junction cloud deployment",
+            "Existing Warding cloud deployment",
             [
                 ("Keep and resume existing", _launch_summary(launch)),
                 (
@@ -740,7 +740,7 @@ def _choose_existing_launch(
 
     options = [(f"Keep {launch.tag}", _launch_summary(launch)) for launch in launches]
     options.append(("Create a new installation", "Leaves existing AWS stacks untouched."))
-    idx = ui.choose("Existing Junction cloud deployments", options, default_index=0)
+    idx = ui.choose("Existing Warding cloud deployments", options, default_index=0)
     if idx < len(launches):
         return launches[idx]
     ui.info("Creating a new installation; existing stacks are unchanged.")
@@ -803,5 +803,5 @@ def _resume_tag(tag: str, profile: str, region: str) -> ec2.DeployResult | None:
         return None
 
     ui.info(f"Resuming existing CloudFormation stack: {ec2.stack_name(tag)}")
-    ui.detail("Use `junction cloud launch --new` to create a separate instance.")
+    ui.detail("Use `warding cloud launch --new` to create a separate instance.")
     return result

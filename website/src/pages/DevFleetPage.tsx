@@ -1333,7 +1333,7 @@ export default function DevFleetPage() {
         ? i18nT('pages.devFleetPage.keeps_name_the_live_target_and_discards_the_stag', { name: w.name, staged: stagedWorktree?.name ?? '' })
         : canRestart
           ? i18nT('pages.devFleetPage.swaps_the_code_behind_the_live_dashboard_to_this')
-          : i18nT('pages.devFleetPage.stages_the_code_behind_the_live_dashboard_manual', { cmd: fleet?.manual_restart || 'junction restart' }),
+          : i18nT('pages.devFleetPage.stages_the_code_behind_the_live_dashboard_manual', { cmd: fleet?.manual_restart || 'warding restart' }),
       cancellingStage
         ? { confirmLabel: i18nT('pages.devFleetPage.cancel_staged_cutover'), cancelLabel: i18nT('pages.devFleetPage.keep_cutover') }
         : { confirmLabel: i18nT('pages.devFleetPage.make_live') })
@@ -1710,8 +1710,8 @@ export default function DevFleetPage() {
                 persistent marker an operator who dismissed or missed the toast
                 reads the old running image as the new one. */}
             {w.is_staged ? <Badge variant="warn" className="text-[10px] px-1.5 py-0" title={stagedWorktree?.name === w.name
-              ? i18nT('pages.devFleetPage.cutover_staged_run_cmd_to_finish_or_cancel', { cmd: fleet?.manual_restart || 'junction restart' })
-              : i18nT('pages.devFleetPage.cutover_staged_run_the_restart_command_to_finish', { cmd: fleet?.manual_restart || 'junction restart' })}>{i18nT('pages.devFleetPage.restart_pending')}</Badge> : null}
+              ? i18nT('pages.devFleetPage.cutover_staged_run_cmd_to_finish_or_cancel', { cmd: fleet?.manual_restart || 'warding restart' })
+              : i18nT('pages.devFleetPage.cutover_staged_run_the_restart_command_to_finish', { cmd: fleet?.manual_restart || 'warding restart' })}>{i18nT('pages.devFleetPage.restart_pending')}</Badge> : null}
             {w.summary ? <span title={w.summary} style={{ fontSize: 11.5, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: '0 1 auto' } as CSSProperties}>{w.summary}</span> : null}
           </div>
           {isMainWithStepper ? renderSyncStepper() : provActive ? renderProvStepper(w) : (

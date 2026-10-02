@@ -141,7 +141,7 @@ def test_doctor_planes_never_fails(capsys: pytest.CaptureFixture[str]) -> None:
     out = capsys.readouterr().out
     assert "Planes" in out
     assert "vendor CLI optional" in out
-    assert "starts with junction up" in out
+    assert "starts with warding up" in out
     assert "orchestration=economy" in out
     assert "never paste provider keys" in out
     assert "sidecar injects" not in out
@@ -155,7 +155,7 @@ def test_doctor_quick_skips_the_full_probe(capsys: pytest.CaptureFixture[str]) -
     assert "Planes" in out
     assert "Platform" not in out
     assert "Dependencies" not in out
-    assert "junction doctor" in out
+    assert "warding doctor" in out
 
 
 @pytest.mark.asyncio
@@ -185,7 +185,7 @@ def test_human_planes_format_is_shared(plane_ports: PlanePorts) -> None:
     text = format_human_planes(snap, heading="Planes")
     assert text.startswith("Planes\n")
     assert "vendor CLI optional" in text
-    assert "starts with junction up" in text
+    assert "starts with warding up" in text
     assert "orchestration=economy" in text
     assert "never paste provider keys" in text
 

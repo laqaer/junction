@@ -199,7 +199,7 @@ def _repo() -> str:
     ``RepoUnavailable`` and say what the degraded answer is.
     """
     if not MAIN_REPO:
-        raise RepoNotConfigured("no Junction checkout found to manage")
+        raise RepoNotConfigured("no Warding checkout found to manage")
     if _REPO_INVALID_MSG:
         raise RepoUnreadable(_REPO_INVALID_MSG)
     return MAIN_REPO
@@ -318,7 +318,7 @@ def _repo_source_hint() -> str:
     if isinstance(configured, str) and configured.strip():
         return "It is set by dev_fleet.repo_path in config.json."
     return (
-        "Point Dev Fleet at your Junction checkout with the "
+        "Point Dev Fleet at your Warding checkout with the "
         "JUNCTION_DEVFLEET_REPO environment variable, or with "
         "dev_fleet.repo_path in config.json."
     )
@@ -3333,7 +3333,7 @@ async def _worktree_remove_locked(
                 logger.warning(
                     "dev-fleet worktree_remove: pod backend absent, so %r's pod state "
                     "cannot be verified and %s is left in place; reclaim it with "
-                    "`junction pod down %s` once the backend is back",
+                    "`warding pod down %s` once the backend is back",
                     name,
                     residue,
                     name,
@@ -3422,7 +3422,7 @@ async def _worktree_remove_locked(
                             logger.warning(
                                 "dev-fleet worktree_remove: could not look for %r's pod "
                                 "HOME (%s); the worktree is still removed — sweep the "
-                                "leftover with `junction pod prune`",
+                                "leftover with `warding pod prune`",
                                 name,
                                 _redact(str(exc)),
                             )
@@ -3698,7 +3698,7 @@ async def _sync_start_locked() -> dict:
         # worth keeping cached, and this path is user-initiated, not a loop.
         _invalidate_toolchain_cache()
         return {"ok": False, "error": (
-            "npm not found. Junction looks for a Node toolchain in "
+            "npm not found. Warding looks for a Node toolchain in "
             "<data-home>/node-bin-dir (written by ensure-node.sh), then in "
             "mise / asdf / nvm / fnm / volta install dirs, then in "
             f"{_TRUSTED_PATH}. Fix: run `bash ensure-node.sh` in the main "
@@ -4662,7 +4662,7 @@ async def dev_fleet_startup(app: web.Application) -> None:
             lambda: (_is_junction_checkout(discovered), _repo_source_hint()),
         )
         _REPO_INVALID_MSG = None if valid else (
-            f"not a Junction checkout: {discovered} exists but does not carry the "
+            f"not a Warding checkout: {discovered} exists but does not carry the "
             f"markers (.git, src/junction/, pyproject.toml). {hint}"
         )
     MAIN_REPO = discovered
@@ -5374,7 +5374,7 @@ def _make_live_status_error(code: str) -> str:
         "no_user_unit": (
             f"the live gateway is not running as the user service "
             f"{_LIVE_GATEWAY_UNIT} — Dev Fleet cannot restart it for you (a "
-            "`junction service install` system unit needs root to bounce)"
+            "`warding service install` system unit needs root to bounce)"
         ),
         "user_unit_inactive": (
             f"the user service {_LIVE_GATEWAY_UNIT} exists but is not running, so "
@@ -5394,13 +5394,13 @@ def _make_live_status_error(code: str) -> str:
         "agent_not_indirected": (
             f"the launchd agent {_LIVE_GATEWAY_LABEL} does not run through the "
             "live-gateway launcher, so Dev Fleet does not treat it as one it "
-            "can safely bounce. Re-run `junction service install` to refresh "
+            "can safely bounce. Re-run `warding service install` to refresh "
             "the agent definition"
         ),
         "agent_restart_contract_outdated": (
             f"the launchd agent {_LIVE_GATEWAY_LABEL} lacks the bounded graceful "
             "restart contract required by Dev Fleet. Re-run "
-            "`junction service install` to refresh the agent definition"
+            "`warding service install` to refresh the agent definition"
         ),
         "live_program_missing": (
             f"the launchd agent {_LIVE_GATEWAY_LABEL} is loaded but its "
@@ -5408,7 +5408,7 @@ def _make_live_status_error(code: str) -> str:
             "directory?), so it has nothing to execute. Make live onto a "
             "worktree to rewrite it, or start a gateway from your source "
             "checkout — either restores the launcher without touching the "
-            "agent definition, whereas junction service install would rewrite "
+            "agent definition, whereas warding service install would rewrite "
             "the whole plist and discard any environment you added to it"
         ),
     }.get(code, f"the live gateway cannot be repointed ({code})")
@@ -5424,7 +5424,7 @@ def _manual_restart_command() -> str:
     Linux host with ``systemctl`` present may still be running the gateway from a
     terminal with no unit to bounce.
     """
-    return "junction restart"
+    return "warding restart"
 
 
 def _make_live_plan(worktree: Path, cli_bin: Path, *,

@@ -482,7 +482,7 @@ class LaunchdBackend:
         if not restart_contract_current(self.plist_path()):
             return False, (
                 "launchd agent restart contract is outdated; re-run "
-                "`junction service install`"
+                "`warding service install`"
             )
         rc, printed = await self._print()
         if rc != 0:
@@ -490,7 +490,7 @@ class LaunchdBackend:
         if not loaded_restart_contract_current(printed):
             return False, (
                 "loaded launchd restart contract is outdated; re-run "
-                "`junction service install`"
+                "`warding service install`"
             )
         rc, _out, stderr = await self._run(
             ["launchctl", "kill", "TERM", self.target()], timeout=10
@@ -622,7 +622,7 @@ def default_confinement() -> "str | None":
       matching hosts where the scope probe failed and no scope was applied).
     """
     if os.environ.get("JUNCTION_SANDBOX_ACTIVE"):
-        return "the Dev Fleet backend runs inside the Junction OS sandbox"
+        return "the Dev Fleet backend runs inside the Warding OS sandbox"
     try:
         cgroup = Path("/proc/self/cgroup").read_text(encoding="utf-8")
     except OSError:
@@ -849,7 +849,7 @@ class ForegroundBackend:
             "restart_command": (
                 f"{resolved} restart --port {port}"
                 if resolved is not None and port is not None
-                else "junction restart"
+                else "warding restart"
             ),
         }
 

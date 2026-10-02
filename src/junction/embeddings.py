@@ -388,7 +388,7 @@ def _load_llama_class():
             logger.warning(
                 "Vendored llama.cpp install for %s is incomplete — missing %s in %s. "
                 "This is a packaging defect, not an unsupported platform; reinstall "
-                "Junction from a current release, or point %s at a complete lib "
+                "Warding from a current release, or point %s at a complete lib "
                 "directory. Memory falls back to keyword search.",
                 libs_dirname,
                 ", ".join(absent),
@@ -603,7 +603,7 @@ def _is_sensitive_model_path(path: Path) -> bool:
         # reports it through CustomModelSpec.error.
         logger.warning(
             "Could not evaluate the sensitive-path gate for the configured custom "
-            "embedding model — refusing it. Run 'junction doctor' for the path.",
+            "embedding model — refusing it. Run 'warding doctor' for the path.",
             exc_info=True,
         )
         return True
@@ -1220,7 +1220,7 @@ class LlamaCppEmbedder(EmbeddingBackend):
                 # store or the governance trust-root to native code.
                 logger.error(
                     "Refusing to load an embedding model from a protected location. "
-                    "Run 'junction doctor' for the path."
+                    "Run 'warding doctor' for the path."
                 )
                 self._load_failed_at = time.monotonic()
                 return

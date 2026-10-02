@@ -413,7 +413,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Enterprise MCP Registry Mode",
-      "help": "Set true when this Kiro account is governed by an enterprise MCP registry (Kiro console -> Shared settings -> MCP Registry URL, which applies to IAM Identity Center and API-key sign-ins). In registry mode the client connects ONLY to mcpServers entries carrying 'type': \"registry\" that resolve to a catalog entry of the same name, so Junction stamps that marker on the servers it manages. Leave false on a personal account: with no registry configured the filter inverts and registry-marked entries are the ones dropped. The administrator must also allow-list junction-core, junction-cron and junction-computer in the registry by those exact names.",
+      "help": "Set true when this Kiro account is governed by an enterprise MCP registry (Kiro console -> Shared settings -> MCP Registry URL, which applies to IAM Identity Center and API-key sign-ins). In registry mode the client connects ONLY to mcpServers entries carrying 'type': \"registry\" that resolve to a catalog entry of the same name, so Warding stamps that marker on the servers it manages. Leave false on a personal account: with no registry configured the filter inverts and registry-marked entries are the ones dropped. The administrator must also allow-list junction-core, junction-cron and junction-computer in the registry by those exact names.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": false
@@ -470,7 +470,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Sweep foreign agent backups",
-      "help": "When true, the agents-directory janitor also deletes aged backup files (*.bak-<digits> / *.json.bak.<digits>, older than 14 days) from the shared kiro agents directory. OFF by default: Junction does not author those backups, so every one it would delete belongs to another tool whose retention policy is not ours to decide. The orphaned atomic-write TEMP sweep (24h) always runs and reclaims most of the growth at near-zero risk; enable this only if you also want foreign backups in that directory reaped.",
+      "help": "When true, the agents-directory janitor also deletes aged backup files (*.bak-<digits> / *.json.bak.<digits>, older than 14 days) from the shared kiro agents directory. OFF by default: Warding does not author those backups, so every one it would delete belongs to another tool whose retention policy is not ours to decide. The orphaned atomic-write TEMP sweep (24h) always runs and reclaims most of the growth at near-zero risk; enable this only if you also want foreign backups in that directory reaped.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": false
@@ -484,7 +484,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Sandbox",
-      "help": "Sandbox mode for ACP provider. Default 'auto' engages OS-level isolation (namespace on Linux, sandbox-exec on macOS) and automatically defers to kiro-cli's internal sandbox on macOS when it is enabled (kiro-cli >= 2.13; nested seatbelt causes EPERM). Set to 'off' to skip Junction's own OS-level sandbox — delegation to kiro-cli's internal sandbox still fires on macOS if it is enabled, and a SECURITY warning is logged when neither layer is active.",
+      "help": "Sandbox mode for ACP provider. Default 'auto' engages OS-level isolation (namespace on Linux, sandbox-exec on macOS) and automatically defers to kiro-cli's internal sandbox on macOS when it is enabled (kiro-cli >= 2.13; nested seatbelt causes EPERM). Set to 'off' to skip Warding's own OS-level sandbox — delegation to kiro-cli's internal sandbox still fires on macOS if it is enabled, and a SECURITY warning is logged when neither layer is active.",
       "hasChildren": false,
       "enumValues": [
         "auto",
@@ -659,7 +659,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Ad-hoc Auto-approve Duration",
-      "help": "How long auto-approve (YOLO) lasts when it is enabled AD HOC — from the dashboard picker, Slack, or the API. Every one of those surfaces uses this same duration. Accepts 30m / 1h / 6h / 12h / 24h, or until_shutdown to keep it on with no timed expiry until Junction restarts. Timed values are capped at 24h. Does NOT apply to a grant declared via 'dangerously_skip_permissions' above, which persists.",
+      "help": "How long auto-approve (YOLO) lasts when it is enabled AD HOC — from the dashboard picker, Slack, or the API. Every one of those surfaces uses this same duration. Accepts 30m / 1h / 6h / 12h / 24h, or until_shutdown to keep it on with no timed expiry until Warding restarts. Timed values are capped at 24h. Does NOT apply to a grant declared via 'dangerously_skip_permissions' above, which persists.",
       "hasChildren": false,
       "enumValues": [
         "30m",
@@ -1430,7 +1430,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Use Transport",
-      "help": "Route inbound Slack messages through the SlackTransport → TurnDriver → SlackRenderer channel-neutral path instead of the native handle_message monolith. Default ON in Junction (the transport abstraction is the canonical path, shared with future channels). Set to false to fall back to the legacy native handler.",
+      "help": "Route inbound Slack messages through the SlackTransport → TurnDriver → SlackRenderer channel-neutral path instead of the native handle_message monolith. Default ON in Warding (the transport abstraction is the canonical path, shared with future channels). Set to false to fall back to the legacy native handler.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": true
@@ -1649,7 +1649,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Embedding Model URL",
-      "help": "Override HTTPS URL for the embedding model GGUF download (mirrored/airgapped deployments). Empty uses the public Junction CDN default; the JUNCTION_EMBED_MODEL_URL env var wins over both. The download is sha256-verified regardless of source.",
+      "help": "Override HTTPS URL for the embedding model GGUF download (mirrored/airgapped deployments). Empty uses the public Warding CDN default; the JUNCTION_EMBED_MODEL_URL env var wins over both. The download is sha256-verified regardless of source.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": ""
@@ -1987,7 +1987,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Auto-Add Documents",
-      "help": "Let the agent add documents it comes across during normal work to the Knowledge Library, so they become searchable later. The agent reads the document with its own tools, under your approval, and hands over the text -- Junction fetches nothing itself, so the doc-ingest host allowlist below does not apply. Added documents appear in a single aggregate 'Auto-added' source you can remove in one click. Off by default: the Library should only hold what you asked it to hold. Renamed from auto_ingest_doc_links, which is still accepted.",
+      "help": "Let the agent add documents it comes across during normal work to the Knowledge Library, so they become searchable later. The agent reads the document with its own tools, under your approval, and hands over the text -- Warding fetches nothing itself, so the doc-ingest host allowlist below does not apply. Added documents appear in a single aggregate 'Auto-added' source you can remove in one click. Off by default: the Library should only hold what you asked it to hold. Renamed from auto_ingest_doc_links, which is still accepted.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": false
@@ -2057,7 +2057,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Doc-Ingest Host Allowlist",
-      "help": "Exact hostnames whose links may be fetched by JUNCTION ITSELF and ingested, for an edition that wires a server-side doc-link scanner. Empty = fetch nothing (SSRF-safe deny-by-default). This governs only that server-fetch path -- it does NOT gate 'Auto-Add Documents' above, where the agent has already fetched the content under its own approval and Junction fetches nothing. Applying it there would make the feature ingest nothing on a default config while its toggle reads on.",
+      "help": "Exact hostnames whose links may be fetched by JUNCTION ITSELF and ingested, for an edition that wires a server-side doc-link scanner. Empty = fetch nothing (SSRF-safe deny-by-default). This governs only that server-fetch path -- it does NOT gate 'Auto-Add Documents' above, where the agent has already fetched the content under its own approval and Warding fetches nothing. Applying it there would make the feature ingest nothing on a default config while its toggle reads on.",
       "hasChildren": true,
       "enumValues": null,
       "defaultValue": []
@@ -2565,7 +2565,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Enabled",
-      "help": "Main switch for Junction metrics telemetry. Off by default: metric call sites are no-ops and nothing is written. When on, a local-first JSONL sink under ~/.junction/metrics is enabled (no network egress).",
+      "help": "Main switch for Warding metrics telemetry. Off by default: metric call sites are no-ops and nothing is written. When on, a local-first JSONL sink under ~/.junction/metrics is enabled (no network egress).",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": false
@@ -2663,7 +2663,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Beacon Endpoint",
-      "help": "HTTPS base URL that receives the anonymous heartbeat. Empty by default: Junction ships without a collector, so no beacon is ever sent, regardless of the toggle above, until you set one. Must be https:// (a plaintext heartbeat would reveal which hosts run this software to any on-path observer); a non-https value is cleared.",
+      "help": "HTTPS base URL that receives the anonymous heartbeat. Empty by default: Warding ships without a collector, so no beacon is ever sent, regardless of the toggle above, until you set one. Must be https:// (a plaintext heartbeat would reveal which hosts run this software to any on-path observer); a non-https value is cleared.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": ""
@@ -3322,7 +3322,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Extra MCP Binary Directories",
-      "help": "Additional directories to search for MCP server binaries, ahead of the built-in locations. Add one when a package manager installs its MCP launchers somewhere Junction does not know about: a server declared by bare name that resolves nowhere never starts, and the session just comes up short of tools. Each entry must be a single absolute directory (``~`` is expanded); anything else is ignored with a warning. These directories are prepended to the search path used by the MCP probe, the agent-config command resolver, and the broker's rewriter alike, so a binary found here is found everywhere. They do NOT join the search for the agent runtime itself, which must not be shadowable by a configured directory.",
+      "help": "Additional directories to search for MCP server binaries, ahead of the built-in locations. Add one when a package manager installs its MCP launchers somewhere Warding does not know about: a server declared by bare name that resolves nowhere never starts, and the session just comes up short of tools. Each entry must be a single absolute directory (``~`` is expanded); anything else is ignored with a warning. These directories are prepended to the search path used by the MCP probe, the agent-config command resolver, and the broker's rewriter alike, so a binary found here is found everywhere. They do NOT join the search for the agent runtime itself, which must not be shadowable by a configured directory.",
       "hasChildren": true,
       "enumValues": null,
       "defaultValue": []
@@ -3350,7 +3350,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Instances",
-      "help": "Multi-instance management — manage/switch remote Junctions over SSH.",
+      "help": "Multi-instance management — manage/switch remote Warding instances over SSH.",
       "hasChildren": true,
       "enumValues": null,
       "defaultValue": {
@@ -3374,7 +3374,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Enabled",
-      "help": "Enable multi-instance management — lets this gateway open SSH tunnels to remote Junctions and embed their dashboards. Default off (opt-in). Enabling also scopes a CSP frame-src relaxation to active tunnel ports.",
+      "help": "Enable multi-instance management — lets this gateway open SSH tunnels to remote Warding instances and embed their dashboards. Default off (opt-in). Enabling also scopes a CSP frame-src relaxation to active tunnel ports.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": false
@@ -6140,7 +6140,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Use Built-in Browser",
-      "help": "When on, the browser tool opens pages in Junction's built-in panel (desktop app only). When off, the agent browses via playwright-cli.",
+      "help": "When on, the browser tool opens pages in Warding's built-in panel (desktop app only). When off, the agent browses via playwright-cli.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": true
@@ -6921,7 +6921,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Agents",
-      "help": "Named Junction agent definitions.",
+      "help": "Named Warding agent definitions.",
       "hasChildren": true,
       "enumValues": null,
       "defaultValue": {}
@@ -7089,7 +7089,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Default Agent",
-      "help": "Active Junction agent name from the agents section.",
+      "help": "Active Warding agent name from the agents section.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": ""
@@ -7260,7 +7260,7 @@
       "sensitive": false,
       "tags": [],
       "label": "Snapshot Directory",
-      "help": "Directory for junction snapshot output. Defaults to ~/.junction/snapshots if empty.",
+      "help": "Directory for `warding snapshot` output. Defaults to ~/.junction/snapshots if empty.",
       "hasChildren": false,
       "enumValues": null,
       "defaultValue": ""

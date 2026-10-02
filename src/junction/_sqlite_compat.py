@@ -27,8 +27,8 @@ __all__ = ["sqlite3", "fts5_available", "FTS5_UNAVAILABLE_HINT", "require_fts5"]
 
 FTS5_UNAVAILABLE_HINT = (
     "SQLite FTS5 full-text extension is not available in this Python's sqlite3 "
-    "build. Junction memory and knowledge search require it.\n"
-    "  - Linux x86_64: pip install pysqlite3-binary (Junction depends on it here).\n"
+    "build. Warding memory and knowledge search require it.\n"
+    "  - Linux x86_64: pip install pysqlite3-binary (Warding depends on it here).\n"
     "  - Linux aarch64 / minimal images: install a python3 whose libsqlite3 was "
     "built with SQLITE_ENABLE_FTS5, or `pip install pysqlite3-binary` if a wheel "
     "exists for your platform.\n"

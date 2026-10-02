@@ -561,7 +561,7 @@ def read_policy_trust_root() -> "AdmissionPolicy":
     except Exception:
         logger.warning(
             "admission trust root at %s is unreadable or malformed; treating the "
-            "policy-signature requirement as unset (junction doctor reports this)",
+            "policy-signature requirement as unset (warding doctor reports this)",
             path,
             exc_info=True,
         )

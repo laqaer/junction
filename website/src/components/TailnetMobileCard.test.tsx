@@ -293,7 +293,7 @@ describe('TailnetMobileCard — occupied', () => {
     // Without this the body ("Publish it yourself if you are sure it is safe to
     // overwrite") is an instruction with no means to follow it.
     await mount(data({ step: 'occupied', published: null }))
-    expect(screen.getByText('junction tailnet up')).toBeInTheDocument()
+    expect(screen.getByText('warding tailnet up')).toBeInTheDocument()
     // And no publish button: publishing here would replace whatever Tailscale is
     // already serving, which is exactly what this step exists to avoid.
     expect(screen.queryByRole('button', { name: /Set up & show QR/ })).toBeNull()

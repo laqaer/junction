@@ -41,7 +41,7 @@ def _resolve_tag(args: argparse.Namespace) -> str:
     cfg = CloudConfig.load()
     if not cfg.last_tag:
         ui.fail("No instance tag given and no previous launch found.")
-        ui.detail("Pass --tag <tag>, or run `junction cloud list` to see instances.")
+        ui.detail("Pass --tag <tag>, or run `warding cloud list` to see instances.")
         sys.exit(1)
     return cfg.last_tag
 
@@ -68,10 +68,10 @@ def _cloud_list(args: argparse.Namespace) -> int:
         ui.fail(str(exc))
         return 1
     if not rows:
-        ui.info("No Junction cloud instances found.")
-        ui.detail("Launch one with: junction cloud launch")
+        ui.info("No Warding cloud instances found.")
+        ui.detail("Launch one with: warding cloud launch")
         return 0
-    ui.note(f"{ui.BOLD}Junction cloud instances ({region}):{ui.RESET}")
+    ui.note(f"{ui.BOLD}Warding cloud instances ({region}):{ui.RESET}")
     for r in rows:
         state = r.get("instance_state", "?")
         ui.note(f"  {ui.BOLD}{r['tag']}{ui.RESET}  {r['instance_id']}  {ui.DIM}{state}{ui.RESET}")
@@ -122,7 +122,7 @@ def _cloud_connect(args: argparse.Namespace) -> int:
             # Tunnel is up but the token mint failed — the URL will hit the
             # dashboard's login wall. Say so instead of implying it's ready.
             ui.warn("Tunnel open, but could not mint a dashboard token.")
-            ui.detail("The page will ask for a token. Retry: junction cloud connect")
+            ui.detail("The page will ask for a token. Retry: warding cloud connect")
         elif conn.browser_opened:
             ui.ok("Dashboard tunnel open.")
         else:
@@ -191,12 +191,12 @@ def _cloud_login(args: argparse.Namespace) -> int:
     if signed:
         ui.ok(
             "Signed in. New chats will work now — restart the gateway if a chat "
-            "was already open: junction cloud connect"
+            "was already open: warding cloud connect"
         )
         return 0
     ui.warn(
         "Sign-in not detected yet. Approve the code in the browser, then re-run "
-        "`junction cloud login`."
+        "`warding cloud login`."
     )
     return 1
 
@@ -219,11 +219,11 @@ def _cloud_logout(args: argparse.Namespace) -> int:
         signed_out = login_mod.logout(st["instance_id"], profile, region)
     if not signed_out:
         ui.fail("Could not confirm the instance is signed out.")
-        ui.detail("The session may still be active — retry, or check with: junction cloud connect")
+        ui.detail("The session may still be active — retry, or check with: warding cloud connect")
         return 1
     ui.ok("Signed out on the instance.")
     ui.detail("Any in-flight chats/cron sessions were stopped (their kiro-cli runtimes were killed).")
-    ui.detail("Sign in with another account: junction cloud login")
+    ui.detail("Sign in with another account: warding cloud login")
     return 0
 
 
@@ -236,7 +236,7 @@ def _cloud_stop(args: argparse.Namespace) -> int:
         ui.fail(str(exc))
         return 1
     ui.ok(f"Stopped '{tag}'. Compute billing paused (EBS storage still bills).")
-    ui.detail("Resume with: junction cloud start")
+    ui.detail("Resume with: warding cloud start")
     return 0
 
 
@@ -249,7 +249,7 @@ def _cloud_start(args: argparse.Namespace) -> int:
         ui.fail(str(exc))
         return 1
     ui.ok(f"Starting '{tag}'. It'll be reachable again shortly.")
-    ui.detail("Reopen the dashboard with: junction cloud connect")
+    ui.detail("Reopen the dashboard with: warding cloud connect")
     return 0
 
 
@@ -275,7 +275,7 @@ def _cloud_destroy(args: argparse.Namespace) -> int:
     )
     ui.detail("Any data on the instance is lost. This cannot be undone.")
     if not getattr(args, "yes", False):
-        if not ui.confirm(f"Remove Junction instance '{tag}' from AWS?", default=False):
+        if not ui.confirm(f"Remove Warding instance '{tag}' from AWS?", default=False):
             ui.info("Aborted — nothing was deleted.")
             return 0
 
@@ -292,7 +292,7 @@ def _cloud_destroy(args: argparse.Namespace) -> int:
         # exit non-zero — otherwise automation would assume teardown finished
         # while AWS resources may still be billing.
         ui.warn("Delete started but did not confirm completion — resources may still exist.")
-        ui.detail("Check `junction cloud status` (and the AWS console); re-run destroy if needed.")
+        ui.detail("Check `warding cloud status` (and the AWS console); re-run destroy if needed.")
         return 1
 
     # Confirmed deleted — now it's safe to drop the local Instances
@@ -363,7 +363,7 @@ def _cloud_doctor(args: argparse.Namespace) -> int:
     import shutil
 
     profile, region = _resolve(args)
-    ui.note(f"{ui.BOLD}Junction cloud — diagnostics{ui.RESET}")
+    ui.note(f"{ui.BOLD}Warding cloud — diagnostics{ui.RESET}")
     # Client prerequisites. Probe the exact binary resolved spawn sites execute
     # (the shared deploy-engine resolver), so the doctor's verdict agrees with
     # what `junction cloud` commands actually run under a GUI-launched
@@ -397,9 +397,9 @@ def _ensure_session_manager_plugin() -> bool:
     if ssm.session_manager_plugin_installed():
         return True
     ui.warn("session-manager-plugin is required for SSM dashboard tunnels.")
-    ui.detail("Junction can install AWS's official Session Manager plugin locally.")
+    ui.detail("Warding can install AWS's official Session Manager plugin locally.")
     if not ui.confirm("Install session-manager-plugin now?", default=True):
-        ui.detail("Install it later with: junction cloud doctor")
+        ui.detail("Install it later with: warding cloud doctor")
         return False
     ui.info("Installing session-manager-plugin locally. Sudo may ask for your password.")
     result = ssm.install_session_manager_plugin()
@@ -434,10 +434,10 @@ def handle_cloud(args: argparse.Namespace) -> int:
     """Entry point for ``junction cloud <action>``."""
     action = getattr(args, "cloud_action", None)
     if not action:
-        ui.note(f"{ui.BOLD}junction cloud{ui.RESET} — run Junction on your own AWS EC2")
+        ui.note(f"{ui.BOLD}warding cloud{ui.RESET} — run Warding on your own AWS EC2")
         print()
         ui.detail("launch      Provision + configure an instance (interactive)")
-        ui.detail("list        List your Junction cloud instances")
+        ui.detail("list        List your Warding cloud instances")
         ui.detail("status      Show one instance's state")
         ui.detail("tunnel      Open the dashboard SSM tunnel (alias: connect)")
         ui.detail("connect     Open the dashboard over an SSM tunnel")

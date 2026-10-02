@@ -293,7 +293,7 @@ async def api_cloud_launch_create(request: web.Request) -> web.Response:
             return web.json_response(
                 {
                     "error": (
-                        "a remote Junction setup is already running; cancel it before "
+                        "a remote Warding setup is already running; cancel it before "
                         "starting another"
                     ),
                     "code": "launch_already_running",

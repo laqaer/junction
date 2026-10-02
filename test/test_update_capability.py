@@ -337,7 +337,7 @@ class TestDeriveCapability:
         assert capability.managed_by == "git"
         assert capability.can_apply is True
         assert capability.remediation is not None
-        assert capability.remediation["command"] == "junction update"
+        assert capability.remediation["command"] == "warding update"
 
     @pytest.mark.parametrize("dist", ["wheel", "source"])
     def test_feed_checkable_shapes_share_one_capability(self, dist, tmp_path):
@@ -379,8 +379,8 @@ class TestDeriveCapability:
         assert capability.managed_by == "junction"
         assert capability.can_apply is False
         # The remediation is the installer for THIS install's real channel, not
-        # "junction update" against the unrelated clone.
-        assert (capability.remediation or {}).get("command", "") != "junction update"
+        # "warding update" against the unrelated clone.
+        assert (capability.remediation or {}).get("command", "") != "warding update"
 
     def test_to_dict_carries_the_whole_contract_half(self, tmp_path):
         contract = derive_capability(install_root=str(tmp_path), dist="wheel").to_dict()

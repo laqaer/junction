@@ -458,5 +458,5 @@ def status() -> str:
     """Return a human-readable status block from launchctl."""
     res = _launchctl("list", LAUNCHD_LABEL)
     if res.returncode != 0:
-        return f"junction service is not loaded ({res.stderr.strip() or 'no entry'})\n"
+        return f"Warding service is not loaded ({res.stderr.strip() or 'no entry'})\n"
     return res.stdout

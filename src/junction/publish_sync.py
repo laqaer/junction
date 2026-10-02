@@ -669,7 +669,7 @@ async def unpublish(slug: str) -> None:
 
 # Sentinel prefix for the out-of-band-drift sync note, so refresh can both set
 # and later clear it without clobbering a genuine push-conflict message.
-_DRIFT_PREFIX = "The remote copy changed outside Junction"
+_DRIFT_PREFIX = "The remote copy changed outside Warding"
 
 # This prefix is not only displayed -- it is PERSISTED in `last_error` and matched
 # back on the next reconcile. Publications written before the display-name rename
@@ -747,8 +747,8 @@ async def refresh_publication(slug: str) -> Artifact:
             f"v{expected_dest_v}" if expected_dest_v is not None else "an unknown version"
         )
         drift_msg = (
-            f"{_DRIFT_PREFIX}: it is showing {cur_v_str} (Junction published "
-            f"{expected_str}). Force re-sync to re-publish Junction's current version."
+            f"{_DRIFT_PREFIX}: it is showing {cur_v_str} (Warding published "
+            f"{expected_str}). Force re-sync to re-publish Warding's current version."
         )
         if pub.last_error != drift_msg:
             fields["last_error"] = drift_msg

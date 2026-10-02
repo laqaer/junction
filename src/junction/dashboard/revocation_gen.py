@@ -41,7 +41,7 @@ def _warn_unreadable_counter(path: Path, reason: str, *, exc_info: bool = False)
     logger.warning(  # nosemgrep: python-logger-credential-disclosure
         "token revocation counter file %s %s; authentication is fail-closed. "
         "To reset revocation state and restore access, delete only %s "
-        "(this re-enables unexpired sessions revoked by junction logout)",
+        "(this re-enables unexpired sessions revoked by warding logout)",
         path,
         reason,
         path,

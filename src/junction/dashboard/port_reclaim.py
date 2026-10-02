@@ -344,7 +344,7 @@ async def reclaim_stale_gateway_port(
     if terminate is None:
         terminate = _terminate_pids
     log.warning(
-        "Port %d is held by an unresponsive Junction gateway (pid %s) left by an "
+        "Port %d is held by an unresponsive Warding gateway (pid %s) left by an "
         "unclean exit — terminating it to reclaim the port.",
         port,
         _describe_holders(kiro_pids),

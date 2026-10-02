@@ -1,4 +1,5 @@
 import { copyToClipboard } from '../utils/clipboard'
+import { TOKEN_COMMAND } from '../components/settingRef/envShellCommands'
 import { resizeImageForModel, type ResizeInfo } from '../utils/resizeImage'
 import type {
   ChatSlot,
@@ -1072,7 +1073,7 @@ function showSessionExpiredBanner(lead?: string): void {
   const b = document.createElement('b')
   b.textContent = lead ?? i18nT('api.client.session_expired')
   const code = document.createElement('code')
-  code.textContent = 'junction token'
+  code.textContent = TOKEN_COMMAND
   code.style.cssText = 'background:#7f1d1d;padding:2px 6px;border-radius:4px'
   const input = document.createElement('input')
   input.type = 'text'

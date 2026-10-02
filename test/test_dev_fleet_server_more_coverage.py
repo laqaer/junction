@@ -962,7 +962,7 @@ async def test_restart_gateway_refuses_confined_status(monkeypatch):
     # specific reason the gateway cannot be restarted, plus the manual remedy.
     assert "user service" in out["error"]
     assert "not running" in out["error"]
-    assert "junction restart" in out["error"]
+    assert "warding restart" in out["error"]
 
 
 @pytest.mark.asyncio

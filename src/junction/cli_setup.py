@@ -30,7 +30,7 @@ from junction.config.loader import (
     env_path,
     write_config_atomically,
 )
-from junction.constants import DATA_WARNING, MIN_NODE_MAJOR, PRODUCT_NAME
+from junction.constants import CLI_BIN, DATA_WARNING, MIN_NODE_MAJOR, PRODUCT_NAME
 from junction.sandbox import unavailable_kind
 from junction.secrets.migrate import _env_lock_path
 from junction.sel import sel
@@ -60,7 +60,7 @@ def _get_alias() -> str:
     if not alias:
         print(
             "❌ Cannot determine username. Set $USER or re-run with "
-            "`junction manifest --alias <alias>`.",
+            "`warding manifest --alias <alias>`.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -200,7 +200,7 @@ def _setup_electron() -> None:
 
     if not shutil.which("node"):
         print("  ❌ Node.js not found — required to build the desktop app.")
-        print("     Install Node.js and re-run: junction setup --electron-only")
+        print("     Install Node.js and re-run: warding setup --electron-only")
         return
 
     electron_dir = _find_electron_dir()
@@ -295,7 +295,7 @@ def _setup_impl(
         _setup_electron()
         return
 
-    print("Junction Setup\n")
+    print(f"{PRODUCT_NAME} Setup\n")
     print(f"  {DATA_WARNING.replace(chr(10), chr(10) + '  ')}\n")
 
     # Report on optional prerequisites.
@@ -365,9 +365,9 @@ def _setup_impl(
         for flag in [name for name, on in requested if on]:
             print(
                 f"\n  ⚠️  {flag} is ignored with --agent-only. Run "
-                f"'junction setup {flag}' for its guided setup."
+                f"'warding setup {flag}' for its guided setup."
             )
-        print("\nDone! Try: junction up")
+        print(f"\nDone! Try: {CLI_BIN} up")
         _mark_first_run_complete()
         return
 
@@ -391,7 +391,7 @@ def _setup_impl(
         print("  Connect Slack, Discord, Telegram, Teams, Webex, WeCom, WeChat,")
         print("  WhatsApp, or iMessage (macOS only)")
         print("  later from the dashboard (Settings → Channels) or run")
-        print("  'junction setup --slack' or 'junction setup --whatsapp' for a")
+        print("  'warding setup --slack' or 'warding setup --whatsapp' for a")
         print("  guided setup.\n")
 
     # 4. Timezone
@@ -405,17 +405,21 @@ def _setup_impl(
     # 6. Desktop app (macOS only)
     if platform.system() == "Darwin":
         print("── Desktop App ──\n")
-        answer = input("  Install Junction desktop app to ~/Applications? [Y/n]: ").strip().lower()
+        answer = (
+            input(f"  Install {PRODUCT_NAME} desktop app to ~/Applications? [Y/n]: ")
+            .strip()
+            .lower()
+        )
         if answer in ("", "y", "yes"):
             _setup_electron()
         else:
-            print("  ⏭  Skipped. Install later: junction setup --electron-only\n")
+            print("  ⏭  Skipped. Install later: warding setup --electron-only\n")
 
     # 7. Cloud (run Junction on the user's own AWS EC2) — optional, delegated.
     _maybe_setup_cloud()
 
     _mark_first_run_complete()
-    print("\nDone! Try: junction doctor --quick && junction up")
+    print(f"\nDone! Try: {CLI_BIN} doctor --quick && {CLI_BIN} up")
 
 
 def _maybe_setup_cloud() -> None:
@@ -429,12 +433,12 @@ def _maybe_setup_cloud() -> None:
     print(f"  {PRODUCT_NAME} can run 24/7 on your own AWS EC2 instance (bring your own")
     print("  AWS account; credentials stay in the aws CLI — never stored here).")
     try:
-        answer = input("  Launch Junction on AWS now? [y/N]: ").strip().lower()
+        answer = input(f"  Launch {PRODUCT_NAME} on AWS now? [y/N]: ").strip().lower()
     except EOFError:
         # Piped/non-interactive setup — take the default (skip).
         answer = ""
     if answer not in ("y", "yes"):
-        print("  ⏭  Skipped. Launch later: junction cloud launch\n")
+        print("  ⏭  Skipped. Launch later: warding cloud launch\n")
         return
     try:
         import argparse
@@ -454,7 +458,7 @@ def _maybe_setup_cloud() -> None:
         handle_cloud(args)
     except Exception as exc:  # pragma: no cover - non-fatal, informative
         print(f"  Cloud launch could not start: {exc}")
-        print("  Run it directly: junction cloud launch\n")
+        print("  Run it directly: warding cloud launch\n")
 
 
 def _setup_workspace_dir() -> None:
@@ -829,7 +833,7 @@ def _setup_sandbox_consent() -> None:
     # terminal rather than letting a non-interactive run answer it.
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
         print("  ⚠️  No sandbox backend on this host, so agent subprocesses are")
-        print("     refused. Run `junction setup` from a terminal to decide, or set")
+        print("     refused. Run `warding setup` from a terminal to decide, or set")
         print("     agent.sandbox_allow_unsandboxed_exec=true by hand to opt in.\n")
         return
 
