@@ -112,9 +112,9 @@ async def test_headless_rejection_fails_task_not_passes(tmp_path):
     """A turn that ended after a headless rejection is not a completed task.
 
     The agent stops and says it is waiting for approval; the stream still
-    completes normally, and that alone used to mark the task PASSED (and, with
-    --no-test, the whole run "completed" with nothing done). It must fail the
-    task AND the run, so the runner neither retries nor replans around a
+    completes normally, and a normally completed stream is not evidence the
+    work happened (with --no-test nothing else checks it). The rejection fails
+    the task AND the run, so the runner neither retries nor replans around a
     permission nothing in the process can grant.
     """
     provider = _provider_one_tool_then_done()
