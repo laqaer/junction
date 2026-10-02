@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from pathlib import Path
@@ -1129,6 +1130,63 @@ def test_the_ledger_applies_a_success_unconditionally_when_no_current_harness_is
     ledger.record_outcome("pro", ok=True, harness="claude")
     used = ledger.snapshot()["pro"]
     assert (used.harness, used.cooldown_reason) == ("claude", "")
+
+
+def test_a_success_reads_the_lanes_harness_only_while_the_ledger_lock_is_held(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    router = _check_router(tmp_path, monkeypatch)
+    router.record_failure("pro", text="Authentication required", harness="codex")
+    held = {"now": False, "asked": []}
+    real_locked = router.ledger._locked
+
+    @contextlib.contextmanager
+    def watched_lock() -> Any:
+        with real_locked():
+            held["now"] = True
+            try:
+                yield
+            finally:
+                held["now"] = False
+
+    real_settings = router.settings
+
+    def watched_settings() -> Any:
+        held["asked"].append(held["now"])
+        return real_settings()
+
+    monkeypatch.setattr(router.ledger, "_locked", watched_lock)
+    monkeypatch.setattr(router, "settings", watched_settings)
+    router.record_success("pro", harness="claude")
+    assert held["asked"] == [True], "a mapping read before the lock could be reassigned meanwhile"
+    assert router.ledger.snapshot()["pro"].cooldown_reason == limits.FAILURE_AUTH
+
+
+def test_the_ledger_resolves_a_callable_current_harness_when_it_records(tmp_path: Path) -> None:
+    ledger = UsageLedger(tmp_path)
+    ledger.record_outcome("pro", ok=False, failure=limits.FAILURE_AUTH, text="x", harness="codex")
+    ledger.record_outcome("pro", ok=True, harness="claude", current_harness=lambda: "codex")
+    used = ledger.snapshot()["pro"]
+    assert (used.harness, used.cooldown_reason) == ("codex", limits.FAILURE_AUTH)
+    ledger.record_outcome("pro", ok=True, harness="codex", current_harness=lambda: "codex")
+    used = ledger.snapshot()["pro"]
+    assert (used.harness, used.cooldown_reason) == ("codex", "")
+
+
+def test_a_success_still_records_when_the_lane_mapping_cannot_be_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    router = _check_router(tmp_path, monkeypatch)
+    router.record_failure("pro", text="Authentication required", harness="codex")
+
+    def broken_settings() -> Any:
+        raise OSError("routing.json unreadable")
+
+    monkeypatch.setattr(router, "settings", broken_settings)
+    router.record_success("pro", harness="claude")
+    used = router.ledger.snapshot()["pro"]
+    # With no mapping to compare against the success applies as it did before the guard.
+    assert (used.ok, used.harness, used.cooldown_reason) == (1, "claude", "")
 
 
 @pytest.mark.asyncio

@@ -212,7 +212,10 @@ agent means running that agent's own login command, then probing it.
   harness the lane no longer runs (a run that outlived a reassignment) counts as
   a completed run but leaves the failure state alone, because it says nothing
   about the harness the lane runs now; a success on the current harness clears
-  it, whichever harness recorded it. The stored probe
+  it, whichever harness recorded it. The ledger resolves the lane's current
+  harness itself, while it holds its lock, so a reassignment and a failure
+  recorded for the new harness cannot land between the lookup and the write.
+  The stored probe
   status stays `connected`; the gates below read it as "the harness starts".
 - `service.check_harness` (probe now) and `service.verified_connection` (reuse a
   `connected` probe younger than `max_age_secs`, else probe) hold one lock per

@@ -17,7 +17,7 @@ import json
 import logging
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -222,7 +222,7 @@ class UsageLedger:
         failure: str = "",
         text: str = "",
         harness: str = "",
-        current_harness: str = "",
+        current_harness: str | Callable[[], str] = "",
         now: float | None = None,
     ) -> float:
         """Record how a dispatch ended on *harness*. Returns the lane's cooldown deadline.
@@ -231,10 +231,12 @@ class UsageLedger:
         lane until the reset the error text names, or a class default. A plain
         task failure only increments ``failed``: the task would fail anywhere.
 
-        *current_harness* is the harness the lane runs now, when the caller knows it.
-        A success from any other harness is a run that outlived a reassignment: it
-        counts, but it says nothing about the harness the lane runs now, so it must
-        not clear what that harness recorded.
+        *current_harness* is the harness the lane runs now, when the caller knows it:
+        a name, or a callable that is evaluated once the lock is held. A success from
+        any other harness is a run that outlived a reassignment: it counts, but it
+        says nothing about the harness the lane runs now, so it must not clear what
+        that harness recorded. Asking after the lock is taken means a failure
+        recorded under a reassignment cannot slip in between the answer and the write.
         """
         moment = time.time() if now is None else now
         with self._locked():
@@ -242,7 +244,8 @@ class UsageLedger:
             usage = state.setdefault(lane_id, LaneUsage())
             if ok:
                 usage.ok += 1
-                if not (harness and current_harness and harness != current_harness):
+                current = current_harness() if callable(current_harness) else current_harness
+                if not (harness and current and harness != current):
                     usage.harness = harness
                     # Success proves the lane is usable again, whatever it said before.
                     usage.cooldown_until = 0.0

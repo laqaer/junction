@@ -246,11 +246,24 @@ class HarnessRouter:
         except Exception:
             logger.warning("routing: could not record dispatch to %s", lane_id, exc_info=True)
 
-    def record_success(self, lane_id: str, *, harness: str = "") -> None:
+    def _current_harness(self, lane_id: str) -> str:
+        """The harness *lane_id* runs now; ``""`` when the mapping cannot be read."""
         try:
             lane = self.settings().lane(lane_id)
+        except Exception:
+            logger.warning("routing: could not read the harness of %s", lane_id, exc_info=True)
+            return ""
+        return lane.harness if lane else ""
+
+    def record_success(self, lane_id: str, *, harness: str = "") -> None:
+        try:
+            # Resolved by the ledger once it holds its lock: a mapping read before that
+            # could be reassigned, and a failure recorded for the new harness, in between.
             self._ledger.record_outcome(
-                lane_id, ok=True, harness=harness, current_harness=lane.harness if lane else ""
+                lane_id,
+                ok=True,
+                harness=harness,
+                current_harness=lambda: self._current_harness(lane_id),
             )
         except Exception:
             logger.warning("routing: could not record success on %s", lane_id, exc_info=True)
