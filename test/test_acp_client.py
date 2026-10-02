@@ -40,6 +40,7 @@ from junction.acp.liveness import (
 )
 from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_CODEX,
     ACP_BACKEND_KIRO,
     ACP_BACKEND_OPENCODE,
     JSONRPC_METHOD_NOT_FOUND,
@@ -3258,7 +3259,7 @@ class TestDrainStderrSuppression:
 
     @pytest.mark.asyncio
     async def test_unhandled_adapter_message_goes_to_debug_not_buffer(self):
-        client = AcpClient()
+        client = AcpClient(acp_backend=ACP_BACKEND_CLAUDE)
         unhandled = (
             'Unexpected case: {"type":"system","subtype":"post_turn_summary",'
             '"status_detail":"wrote notes.txt","session_id":"abc-123"}'
@@ -3273,8 +3274,23 @@ class TestDrainStderrSuppression:
         assert list(client._stderr_lines) == []
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("backend", [ACP_BACKEND_KIRO, ACP_BACKEND_CODEX])
+    async def test_other_harnesses_keep_unexpected_case_lines_as_warnings(self, backend):
+        # The demotion is the claude adapter's forward-compat gap; a Kiro or
+        # Codex line with the same prefix is that harness's own diagnostic.
+        client = AcpClient(acp_backend=backend)
+        raw = 'Unexpected case: {"type":"system","subtype":"post_turn_summary"}'
+        reader = self._reader([raw])
+
+        with patch("junction.acp.client.logger") as mock_logger:
+            await client._drain_stderr(reader)
+
+        assert list(client._stderr_lines) == [raw]
+        mock_logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_error_mentioning_unexpected_case_still_warns(self):
-        client = AcpClient()
+        client = AcpClient(acp_backend=ACP_BACKEND_CLAUDE)
         raw = "Error: Unexpected case: handler threw"
         reader = self._reader([raw])
 

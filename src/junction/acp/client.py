@@ -232,8 +232,9 @@ _SUPPRESSED_STDERR_MARKERS = ("thinking_tokens",)
 # these on every turn. They are the adapter's forward-compat gap, not a turn
 # failure, and some carry a summary of what the agent just did, so they go to
 # DEBUG and stay out of the diagnostic ring buffer that error reports quote.
-# Matched as a line prefix so an error that merely mentions the phrase still
-# surfaces as a WARNING.
+# Applies to the claude backend only: any other harness that prints this phrase
+# is reporting something of its own. Matched as a line prefix so an error that
+# merely mentions the phrase still surfaces as a WARNING.
 _UNHANDLED_ADAPTER_MESSAGE_PREFIX = "Unexpected case: "
 # Minimum seconds between throttled debug summaries of the suppressed-line count,
 # so the suppression itself stays observable without re-introducing a flood.
@@ -3181,7 +3182,7 @@ class AcpClient:
             redacted, _ = redact_exfiltration_urls(text)
             redacted, _ = redact_credentials(redacted)
             _bin_label = "claude-acp" if self._is_claude else (self.backend or KIRO_CLI_BIN)
-            if text.startswith(_UNHANDLED_ADAPTER_MESSAGE_PREFIX):
+            if self._is_claude and text.startswith(_UNHANDLED_ADAPTER_MESSAGE_PREFIX):
                 logger.debug("%s stderr: %s", _bin_label, redacted)
                 continue
             self._stderr_lines.append(text)
