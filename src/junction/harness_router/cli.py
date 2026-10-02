@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 from junction.harness_router.kinds import KIND_DESCRIPTIONS, TASK_KINDS
@@ -224,8 +225,23 @@ def _make_provider(lane: Any, cwd: str) -> Any:
     )
 
 
-async def _stream_once(provider: Any, prompt: str, *, interactive: bool) -> tuple[bool, str]:
-    """Stream one turn to stdout. Returns (produced_output, reply_text)."""
+@dataclass
+class _TurnProgress:
+    """What a streamed turn has already done, readable after it raised.
+
+    ``produced`` flips the moment text reaches stdout or a permission request
+    is approved (the tool may have run), so a lane that fails MID-stream is
+    still known to have done work and the turn is not re-run on another lane.
+    A refused request leaves it unset: nothing ran, so moving is safe.
+    """
+
+    produced: bool = False
+
+
+async def _stream_once(
+    provider: Any, prompt: str, *, interactive: bool, progress: _TurnProgress
+) -> str:
+    """Stream one turn to stdout, recording progress as it goes. Returns the reply text."""
     from junction.cli_chat import _answer_permission, _build_tool_gate
     from junction.providers.base import (
         EVENT_COMPLETE,
@@ -234,22 +250,23 @@ async def _stream_once(provider: Any, prompt: str, *, interactive: bool) -> tupl
     )
 
     gate = None
-    produced = False
     reply: list[str] = []
     async for event in provider.stream(prompt):
         if event.kind == EVENT_TEXT_CHUNK:
-            produced = produced or bool(event.text)
+            progress.produced = progress.produced or bool(event.text)
             reply.append(event.text)
             print(event.text, end="", flush=True)
         elif event.kind == EVENT_PERMISSION_REQUEST:
-            produced = True
             if gate is None:
                 gate = _build_tool_gate("junction")
-            await _answer_permission(provider, event, interactive=interactive, gate=gate)
+            # A refused call never ran, so only an approval marks the turn as
+            # having done work.
+            if await _answer_permission(provider, event, interactive=interactive, gate=gate):
+                progress.produced = True
         elif event.kind == EVENT_COMPLETE:
             break
     print()
-    return produced, "".join(reply)
+    return "".join(reply)
 
 
 async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
@@ -275,10 +292,12 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
         )
         router.record_dispatch(lane.id, kind)
         provider = _make_provider(lane, cwd)
-        produced = False
+        progress = _TurnProgress()
         try:
             await provider.start()
-            produced, reply = await _stream_once(provider, args.prompt, interactive=interactive)
+            reply = await _stream_once(
+                provider, args.prompt, interactive=interactive, progress=progress
+            )
             notice = limit_notice_failure(reply) if reply else ""
             if notice:
                 raise HarnessLaneFailure(notice, reply)
@@ -290,7 +309,7 @@ async def _run(router: HarnessRouter, args: argparse.Namespace) -> int:
                 resolution.routed
                 and failure in LANE_FAILURES
                 and len(tried) <= max_hops
-                and (not produced or isinstance(exc, HarnessLaneFailure))
+                and (not progress.produced or isinstance(exc, HarnessLaneFailure))
             )
             nxt = router.next_lane(kind, tried) if can_move else None
             if nxt is None:
