@@ -39,10 +39,20 @@ the catalog listener before the compose banner.
 `available_models` on ACP clients is a **method**. Role apply calls it;
 treating the bound method as a list left every unpinned role on `"auto"`.
 
-`apply_role_model` sends `set_model` only for harness ids (no `/`). A
-namespaced catalog slug is returned as the plan's wire id but is not
-sent on the harness wire. Namespaced slugs stay in the plan until a
-translation listener is actually up.
+`apply_role_model` keeps the existing bare harness-id behavior. A namespaced
+id (`provider/model`) is also sent to `set_model` when it is an explicit
+`agent.role_models.<role>` pin and the active client advertises it, using the
+shared `model_is_unusable` predicate. The namespace is preserved; no model id
+is translated to another provider's spelling.
+
+Catalog-only pins, unknown or failed advertisement, and unpinned namespaced
+suggestions stay unapplied. Their returned id remains a plan value, not an
+execution receipt. A missing setter or setter failure retains the existing
+best-effort `auto` return. This compatibility path installs no router, reads
+no credentials, and changes no billing configuration. Advertisement proves
+only a model-selection option, not authentication, available quota or cost.
+An optional external router still needs a separately verified, supported
+harness connection; its health alone cannot activate a catalog entry.
 
 Economy roles with no advertised economy id pick the cheapest advertised
 id rather than inheriting a flagship session default. Capable and
