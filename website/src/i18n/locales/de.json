@@ -5189,7 +5189,8 @@
       "used": "Verbraucht",
       "voice_input": "Spracheingabe",
       "finishing": "Wird beendet…",
-      "keep_holding_to_record": "Zum Aufnehmen halten"
+      "keep_holding_to_record": "Zum Aufnehmen halten",
+      "harness": "Läuft auf {{name}}"
     },
     "chatPane": {
       "agent_list": "Agenten-Liste",
@@ -12578,7 +12579,20 @@
         "kind_research": "Recherche",
         "kind_docs": "Dokumentation schreiben",
         "kind_quick": "Schnelle Änderungen",
-        "kind_bulk": "Massenänderungen"
+        "kind_bulk": "Massenänderungen",
+        "chat_harness_title": "Agent für Chats",
+        "chat_harness_description": "Der Coding-Agent, der neue Chats beantwortet. Ein Chat, der schon offen ist, behält den Agenten, mit dem er begonnen hat, bis er endet. Das Routing unten entscheidet nur, wohin Aufgaben von Subagenten gehen.",
+        "chat_harness_auto": "Automatisch",
+        "chat_harness_auto_description": "Der erste installierte Agent. Gerade: {{agent}}.",
+        "chat_harness_auto_none": "Der erste installierte Agent. Noch ist keiner installiert.",
+        "chat_harness_active": "Aktiv",
+        "chat_harness_not_installed_reason": "Nicht installiert. Installiere ihn unten und wähle ihn dann hier.",
+        "chat_harness_needs_login_note": "Du kannst ihn schon jetzt wählen. Chats damit schlagen fehl, bis er angemeldet ist.",
+        "chat_harness_starts_on": "Neue Chats starten mit {{agent}}.",
+        "chat_harness_none_ready": "Noch kann kein installierter Agent einen Chat starten. Installiere unten einen.",
+        "chat_harness_save_failed": "Der Agent für Chats konnte nicht geändert werden.",
+        "chat_harness_unknown": "{{productName}} kann diesen Agenten nicht ausführen, deshalb wurde nichts geändert.",
+        "chat_harness_overridden": "Gespeichert, aber config.local.json legt einen anderen Agenten fest und hat Vorrang."
       }
     },
     "settingsPage": {

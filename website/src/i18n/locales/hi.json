@@ -5189,7 +5189,8 @@
       "used": "उपयोग",
       "voice_input": "वॉइस इनपुट",
       "finishing": "पूरा हो रहा है…",
-      "keep_holding_to_record": "रिकॉर्ड करने के लिए दबाए रखें"
+      "keep_holding_to_record": "रिकॉर्ड करने के लिए दबाए रखें",
+      "harness": "{{name}} पर चल रहा है"
     },
     "chatPane": {
       "agent_list": "एजेंट सूची",
@@ -12579,7 +12580,20 @@
         "kind_research": "शोध",
         "kind_docs": "दस्तावेज़ लिखना",
         "kind_quick": "छोटे बदलाव",
-        "kind_bulk": "बड़े पैमाने पर बदलाव"
+        "kind_bulk": "बड़े पैमाने पर बदलाव",
+        "chat_harness_title": "चैट का एजेंट",
+        "chat_harness_description": "नई चैट का जवाब देने वाला कोडिंग एजेंट। जो चैट पहले से खुली है, वह खत्म होने तक उसी एजेंट पर रहती है जिससे शुरू हुई थी। नीचे की रूटिंग सिर्फ़ यह तय करती है कि सब-एजेंट के काम कहाँ जाएँ।",
+        "chat_harness_auto": "स्वचालित",
+        "chat_harness_auto_description": "पहला इंस्टॉल किया हुआ एजेंट। अभी: {{agent}}।",
+        "chat_harness_auto_none": "पहला इंस्टॉल किया हुआ एजेंट। अभी कोई इंस्टॉल नहीं है।",
+        "chat_harness_active": "सक्रिय",
+        "chat_harness_not_installed_reason": "इंस्टॉल नहीं है। पहले नीचे इंस्टॉल करो, फिर यहाँ चुनो।",
+        "chat_harness_needs_login_note": "इसे अभी चुन सकते हो। साइन इन होने तक इस पर चैट विफल होंगी।",
+        "chat_harness_starts_on": "नई चैट {{agent}} पर शुरू होंगी।",
+        "chat_harness_none_ready": "अभी कोई इंस्टॉल किया हुआ एजेंट चैट शुरू नहीं कर सकता। नीचे से एक इंस्टॉल करो।",
+        "chat_harness_save_failed": "चैट का एजेंट बदला नहीं जा सका।",
+        "chat_harness_unknown": "{{productName}} उस एजेंट को नहीं चला सकता, इसलिए कुछ नहीं बदला गया।",
+        "chat_harness_overridden": "सेव हो गया, लेकिन config.local.json में दूसरा एजेंट तय है और वही लागू होता है।"
       }
     },
     "settingsPage": {

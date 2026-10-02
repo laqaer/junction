@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any
 
 from aiohttp import web
 
@@ -69,9 +70,28 @@ def _harness_param(request: web.Request) -> str | None:
     return name if is_routable_harness(name) else None
 
 
+def _harnesses_payload() -> dict[str, Any]:
+    """The Agents & plans payload, with ``agent.acp_backend`` read fresh.
+
+    Blocking (a config read and a ``PATH`` walk), so it runs off the event loop.
+    The configured harness is read per request rather than from the session
+    manager: the manager adopts a changed value for its next new session, and
+    this view must say what that session runs.
+    """
+    # Deferred: junction.planes imports the model-plane probe, which this
+    # module's other handlers never need.
+    from junction.planes import configured_backend
+
+    return get_router().harnesses_view(configured=configured_backend())
+
+
 async def api_harnesses(request: web.Request) -> web.Response:
-    """GET /api/routing/harnesses — connectable harnesses, probes, lanes, picks."""
-    payload = await asyncio.to_thread(get_router().harnesses_view)
+    """GET /api/routing/harnesses — connectable harnesses, probes, lanes, picks.
+
+    ``chat`` names the harness a new chat starts on and every harness it may be
+    set to (``agent.acp_backend``; written through ``PATCH /api/config/junction``).
+    """
+    payload = await asyncio.to_thread(_harnesses_payload)
     return web.json_response(payload)
 
 

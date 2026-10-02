@@ -18,9 +18,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from junction.acp.runtimes import AUTO_PREFERENCE, RuntimeNotFoundError, select_runtime
+from junction.acp.types import ACP_BACKEND_AUTO, ACP_BACKEND_KIRO_NAME
 from junction.harness_router.connect import (
     FEATURED_HARNESSES,
     PROBE_TIMEOUT_SECS,
+    STATUS_NOT_INSTALLED,
     STATUS_UNKNOWN,
     ProbeResult,
     ProbeStore,
@@ -298,13 +301,15 @@ class HarnessRouter:
 
     # ── Status ──
 
-    def harnesses_view(self) -> dict[str, Any]:
+    def harnesses_view(self, *, configured: str | None = None) -> dict[str, Any]:
         """Every connectable harness with install state, last probe, and its lane.
 
         What the dashboard's Agents & plans panel renders: the featured
         subscriptions always, plus any other harness that is installed or has a
         lane. Setup commands and probe outcomes are machine data; the dashboard
-        owns every displayed word.
+        owns every displayed word. *configured* is ``agent.acp_backend``, which
+        the ``chat`` block reports as the harness a new chat starts on; omitted,
+        it reads as ``auto`` (the configuration default).
         """
         settings = self.settings()
         installed = self.installed(refresh=True)
@@ -351,6 +356,95 @@ class HarnessRouter:
             "kinds": list(TASK_KINDS),
             "preview": preview,
             "harnesses": rows,
+            "chat": self.chat_view(
+                ACP_BACKEND_AUTO if configured is None else configured,
+                installed=installed,
+                probes=probes,
+            ),
+        }
+
+    def chat_view(
+        self,
+        configured: str,
+        *,
+        installed: Collection[str] | None = None,
+        probes: Mapping[str, ProbeResult] | None = None,
+    ) -> dict[str, Any]:
+        """The harness a new chat starts on, and every harness it may be set to.
+
+        *configured* is ``agent.acp_backend`` as persisted (``""`` for kiro-cli).
+        ``choices`` is ``auto`` plus every selectable harness the host can tell
+        apart: the featured subscriptions (shown not-installed rather than
+        hidden, so the operator sees what to install), every installed harness,
+        the Kiro harness unconditionally (H1: it stays selectable whatever the
+        host has), and the configured harness even when it is none of those.
+        Membership in ``ACP_BACKENDS_SELECTABLE`` is the only gate, so nothing
+        the loader would degrade to ``auto`` is ever offered. ``selected`` is
+        what a new chat runs now, with ``auto`` resolved by the provider
+        factory's own rule; ``""`` means nothing is installed.
+        """
+        if installed is None:
+            installed = self.installed()
+        if probes is None:
+            probes = self.probes.load()
+        current = harness_name(configured)
+        names = [name for name in ordered_harnesses(installed, []) if is_routable_harness(name)]
+        for extra in (ACP_BACKEND_KIRO_NAME, current):
+            if extra not in names and is_routable_harness(extra):
+                names.append(extra)
+        auto_target = self._auto_target()
+        choices: list[dict[str, Any]] = [
+            {
+                "id": ACP_BACKEND_AUTO,
+                "label": "",
+                "installed": None,
+                "status": "",
+                "setup": None,
+                "hint": "",
+                # What ``auto`` would pick, whichever harness is configured now.
+                "resolves_to": auto_target,
+            }
+        ]
+        choices.extend(self._chat_choice(name, installed, probes) for name in names)
+        return {
+            "configured": current,
+            "selected": auto_target if current == ACP_BACKEND_AUTO else current,
+            "choices": choices,
+        }
+
+    def _auto_target(self) -> str:
+        """The first installed harness, by the provider factory's own rule; ``""`` when none is."""
+        try:
+            spec = select_runtime(ACP_BACKEND_AUTO, which=self._which, env=self._env)
+        except RuntimeNotFoundError:
+            return ""
+        return harness_name(spec.id)
+
+    @staticmethod
+    def _chat_choice(
+        name: str, installed: Collection[str], probes: Mapping[str, ProbeResult]
+    ) -> dict[str, Any]:
+        """One selectable harness. ``installed`` is ``None`` where the host cannot tell.
+
+        A harness outside the runtime registry (KAS) has no install probe, so it
+        reports ``None`` and the dashboard leaves it selectable rather than
+        claiming it is missing.
+        """
+        setup = setup_for(name)
+        known = name in {harness_name(backend) for backend in AUTO_PREFERENCE}
+        present: bool | None = (name in installed) if known else None
+        if present is False:
+            status = STATUS_NOT_INSTALLED
+        else:
+            probe = probes.get(name)
+            status = probe.status if probe else STATUS_UNKNOWN
+        return {
+            "id": name,
+            "label": profile_for(name).label,
+            "installed": present,
+            "status": status,
+            "setup": setup.to_dict() if setup else None,
+            "hint": "" if setup else login_hint(name),
         }
 
     def status(self) -> dict[str, Any]:

@@ -5102,7 +5102,8 @@
       "used": "使用済み",
       "voice_input": "音声入力",
       "finishing": "処理中…",
-      "keep_holding_to_record": "押したままで録音"
+      "keep_holding_to_record": "押したままで録音",
+      "harness": "{{name}} で実行中"
     },
     "chatPane": {
       "agent_list": "エージェントリスト",
@@ -12418,7 +12419,20 @@
         "kind_research": "調査",
         "kind_docs": "ドキュメント作成",
         "kind_quick": "小さな修正",
-        "kind_bulk": "一括変更"
+        "kind_bulk": "一括変更",
+        "chat_harness_title": "チャットのエージェント",
+        "chat_harness_description": "新しいチャットに応答するコーディングエージェントです。すでに開いているチャットは、終了するまで開始時のエージェントのままです。下のルーティングはサブエージェントのタスクの送り先だけを決めます。",
+        "chat_harness_auto": "自動",
+        "chat_harness_auto_description": "最初にインストールされたエージェントです。現在：{{agent}}。",
+        "chat_harness_auto_none": "最初にインストールされたエージェントです。まだインストールされていません。",
+        "chat_harness_active": "使用中",
+        "chat_harness_not_installed_reason": "未インストールです。下でインストールしてから、ここで選んでください。",
+        "chat_harness_needs_login_note": "今すぐ選べます。サインインするまで、このエージェントでのチャットは失敗します。",
+        "chat_harness_starts_on": "新しいチャットは {{agent}} で開始されます。",
+        "chat_harness_none_ready": "チャットを開始できるインストール済みエージェントがまだありません。下でインストールしてください。",
+        "chat_harness_save_failed": "チャットのエージェントを変更できませんでした。",
+        "chat_harness_unknown": "{{productName}} はそのエージェントを実行できないため、何も変更していません。",
+        "chat_harness_overridden": "保存しましたが、config.local.json が別のエージェントを指定しており、そちらが優先されます。"
       }
     },
     "settingsPage": {

@@ -19,7 +19,9 @@ session, however the value was written (`junction config set`, a hand edit,
 `config edit`): the cold start compares the persisted value with the one its
 provider factory was built from and, on a difference, rebuilds the factory
 through `SessionManager.refresh_defaults` (see [session.md](session.md)). Live
-sessions keep the harness their process runs. `junction config set
+sessions keep the harness their process runs. The dashboard's **Chat harness**
+picker writes the same key through `PATCH /api/config/junction` and calls
+`refresh_defaults` itself (see [harness-router.md](harness-router.md#choosing-the-chat-harness)). `junction config set
 agent.acp_backend` refuses a value `resolve_acp_backend_override` does not know,
 because the loader would otherwise degrade it to `auto` silently (H3), and
 confirms with the same harness line `junction planes` prints.

@@ -198,7 +198,7 @@ from junction.messaging.renderer import chunk_for_transport
 from junction.metrics.events import TURN_TIMEOUT_CAUSE, emit_counter
 from junction.metrics.provider import get_recorder
 from junction.platform import redact_via_context
-from junction.providers.acp import is_claude_backend
+from junction.providers.acp import is_claude_backend, provider_backend
 from junction.providers.base import (
     EVENT_COMPLETE,
     EVENT_PERMISSION_REQUEST,
@@ -2365,6 +2365,37 @@ def _resolve_mirror_target(state: Any, session_key: str) -> Any:
     )
 
 
+def _note_slot_harness(state: Any, slot: _ChatSlot, provider: Any) -> None:
+    """Record the backend *slot*'s session runs on, and publish it when it changed.
+
+    *provider* is the live session the turn just obtained. ``None`` means the
+    session failed to start (a harness that is not signed in, say): the label
+    then names the backend the manager targeted, which it adopted before the
+    spawn, so the failure card and the label name the same harness. Where no
+    backend can be named (a provider that cannot say, or ``auto`` with no
+    installed runtime, which spawned nothing) the label is cleared: it states
+    what runs, never a guess from config or the routing fallback, and not the
+    previous session's harness either.
+
+    A change is pushed to the browsers at once. Its snapshot of the slot was
+    taken before the session existed, and the next slots update may be the end
+    of a long response.
+    """
+    try:
+        backend = (
+            provider_backend(provider)
+            if provider is not None
+            else state.sessions.targeted_backend()
+        )
+        recorded = backend if isinstance(backend, str) else None
+        if slot._harness_backend == recorded:
+            return
+        slot._harness_backend = recorded
+        state.push_slots_update()
+    except Exception:
+        logger.debug("harness label: could not record for slot %s", slot.key, exc_info=True)
+
+
 async def _retire_sessions_on_identity_change(state: Any) -> None:
     """Recycle kiro-backed children when the signed-in account has changed.
 
@@ -3212,7 +3243,7 @@ async def _eager_spawn(
                 # which case the speculative session/load runs here and the
                 # resumed=True observation is armed for the real turn. See
                 # get_or_create's docstring.
-                _, is_new, resumed = await sessions.get_or_create(
+                eager_provider, is_new, resumed = await sessions.get_or_create(
                     session_key,
                     agent=kiro_agent or slot.agent or None,
                     # Canonical agent identity — the resolver's alias, which
@@ -3273,6 +3304,9 @@ async def _eager_spawn(
                 )
                 await sessions.remove(session_key)
                 return
+            # Only a session that survived the checks above is the slot's session:
+            # one removed for a deleted slot or changed bindings runs nothing.
+            _note_slot_harness(state, slot, eager_provider)
             logger.info(
                 "Eager spawn: session ready for %s in %.0fms (new=%s resumed=%s)",
                 session_key,
@@ -5086,17 +5120,22 @@ async def _run_chat(
         # as is gone. Retiring it here means this turn cold-starts on the current
         # account instead of running as the previous one.
         await _retire_sessions_on_identity_change(state)
-        client, is_new, resumed = await state.sessions.get_or_create(
-            session_key,
-            agent=kiro_agent or slot.agent or None,
-            # Same canonical agent identity as the eager-spawn path — the two
-            # must agree or an eager session and its real first turn would
-            # carry different watchdog windows.
-            canonical_agent=agent_alias,
-            model=slot.model or agent_model or None,
-            cwd=slot.project or None,
-            reasoning_effort_override=slot.reasoning_effort or None,
-        )
+        try:
+            client, is_new, resumed = await state.sessions.get_or_create(
+                session_key,
+                agent=kiro_agent or slot.agent or None,
+                # Same canonical agent identity as the eager-spawn path — the two
+                # must agree or an eager session and its real first turn would
+                # carry different watchdog windows.
+                canonical_agent=agent_alias,
+                model=slot.model or agent_model or None,
+                cwd=slot.project or None,
+                reasoning_effort_override=slot.reasoning_effort or None,
+            )
+        except BaseException:
+            _note_slot_harness(state, slot, None)
+            raise
+        _note_slot_harness(state, slot, client)
         _acquired = True
         # Member activity pointer — once per SESSION, not per turn: the log
         # answers "which sessions did this member take part in", so a per-turn
