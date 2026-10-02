@@ -32,6 +32,7 @@ async def _no_sleep(_seconds: float) -> None:
     """Collapse the retry backoff so the retry test stays fast."""
     return None
 
+
 # Tripped by the always-enforced deny checks in _resolve_permission, which run
 # for every approval policy — including AUTO_APPROVE, which is what a cron with
 # approval_mode="auto" uses.
@@ -159,9 +160,9 @@ async def test_an_interactive_rejection_is_not_a_security_block():
         on_tool_gate=lambda t, a, b: seen.append((t, a, b)),
     )
 
-    assert seen == [(_BENIGN_TITLE, False, False)], (
-        "an interactive rejection must not be reported as a security block"
-    )
+    assert seen == [
+        (_BENIGN_TITLE, False, False)
+    ], "an interactive rejection must not be reported as a security block"
     assert provider.rejected == ["r1"]
 
 
@@ -313,8 +314,12 @@ async def test_an_executed_call_matching_a_decision_is_not_double_counted():
     an execution event would mask every fully-blocked run."""
     provider = _ScriptedProvider(
         [
-            LLMEvent(kind=EVENT_PERMISSION_REQUEST, title=_DENIED_TITLE, request_id="r1",
-                     tool_call_id="t1"),
+            LLMEvent(
+                kind=EVENT_PERMISSION_REQUEST,
+                title=_DENIED_TITLE,
+                request_id="r1",
+                tool_call_id="t1",
+            ),
             LLMEvent(kind=EVENT_TOOL_CALL, title=_DENIED_TITLE, tool_call_id="t1"),
             LLMEvent(kind=EVENT_COMPLETE, text=""),
         ]
@@ -367,9 +372,9 @@ async def test_a_pin_only_deny_is_reported_as_non_security():
         on_tool_gate=lambda t, a, b: seen.append((t, a, b)),
     )
 
-    assert seen == [("Running: pinned-tool --go", False, False)], (
-        f"a governance-pinned deny must not count as a security block: {seen}"
-    )
+    assert seen == [
+        ("Running: pinned-tool --go", False, False)
+    ], f"a governance-pinned deny must not count as a security block: {seen}"
 
 
 @pytest.mark.asyncio
@@ -419,3 +424,88 @@ async def test_omitting_the_callback_leaves_behavior_unchanged():
 
     assert text == "on it — could not."
     assert provider.rejected == ["r1"]
+
+
+@pytest.mark.asyncio
+async def test_native_child_activity_is_reported_once_and_text_is_not_work():
+    provider = _ScriptedProvider(
+        [
+            LLMEvent(kind="subagent_activity", sub_session_id="child", text="thinking"),
+            LLMEvent(
+                kind="subagent_activity", sub_session_id="child", tool_call_id="edit1", title="Edit"
+            ),
+            LLMEvent(
+                kind="subagent_activity", sub_session_id="child", tool_call_id="edit1", title="Edit"
+            ),
+            LLMEvent(kind=EVENT_COMPLETE),
+        ]
+    )
+    seen = []
+    await stream_and_collect(
+        provider,
+        "q",
+        retry_transient=False,
+        on_tool_gate=lambda title, approved, blocked: seen.append((title, approved, blocked)),
+    )
+    assert seen == [("Edit", True, False)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("refused_session", ["", "other-child"])
+async def test_refused_tool_id_cannot_hide_another_sessions_child_work(refused_session):
+    provider = _ScriptedProvider(
+        [
+            LLMEvent(
+                kind=EVENT_PERMISSION_REQUEST,
+                sub_session_id=refused_session,
+                tool_call_id="1",
+                request_id="r1",
+                title=_DENIED_TITLE,
+            ),
+            LLMEvent(
+                kind="subagent_activity", sub_session_id="child", tool_call_id="1", title="Edit"
+            ),
+            LLMEvent(
+                kind="subagent_activity", sub_session_id="child", tool_call_id="1", title="Edit"
+            ),
+            LLMEvent(kind=EVENT_COMPLETE),
+        ]
+    )
+    seen = []
+    await stream_and_collect(
+        provider,
+        "q",
+        retry_transient=False,
+        on_tool_gate=lambda title, approved, blocked: seen.append((title, approved, blocked)),
+    )
+    assert seen == [(_DENIED_TITLE, False, True), ("Edit", True, False)]
+
+
+@pytest.mark.asyncio
+async def test_approved_child_gate_and_repeated_activity_are_one_approval():
+    provider = _ScriptedProvider(
+        [
+            LLMEvent(
+                kind=EVENT_PERMISSION_REQUEST,
+                sub_session_id="child",
+                tool_call_id="1",
+                request_id="r1",
+                title=_BENIGN_TITLE,
+            ),
+            LLMEvent(
+                kind="subagent_activity", sub_session_id="child", tool_call_id="1", title="Edit"
+            ),
+            LLMEvent(
+                kind="subagent_activity", sub_session_id="child", tool_call_id="1", title="Edit"
+            ),
+            LLMEvent(kind=EVENT_COMPLETE),
+        ]
+    )
+    seen = []
+    await stream_and_collect(
+        provider,
+        "q",
+        retry_transient=False,
+        on_tool_gate=lambda title, approved, blocked: seen.append((title, approved, blocked)),
+    )
+    assert seen == [(_BENIGN_TITLE, True, False)]

@@ -4,7 +4,7 @@ matching ``path`` and ``type``.
 
 Additionally, every ``configKey`` in the generated settingsRegistry.gen.ts
 that maps a UI control to a backend config entry is asserted to exist in
-SCHEMA_REGISTRY — catching typos or backend renames that would make a
+SCHEMA_REGISTRY or the real editable routing.json namespace — catching typos or backend renames that would make a
 SettingRef chip inert at runtime.
 
 ENV-KEY drift guard: ensures every env var name in settingref-env-vars.json
@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 
 from junction.config.schema import SCHEMA_REGISTRY
+from junction.harness_router.lanes import EDITABLE_SETTINGS_FIELDS, parse_settings
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parent.parent
@@ -75,9 +76,9 @@ def registry_index() -> dict[str, object]:
 @pytest.fixture()
 def generated_config_keys() -> list[str]:
     """Extract all configKey values from settingsRegistry.gen.ts."""
-    assert SETTINGS_REGISTRY_PATH.exists(), (
-        f"settingsRegistry.gen.ts not found: {SETTINGS_REGISTRY_PATH}"
-    )
+    assert (
+        SETTINGS_REGISTRY_PATH.exists()
+    ), f"settingsRegistry.gen.ts not found: {SETTINGS_REGISTRY_PATH}"
     content = SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8")
     return CONFIG_KEY_RE.findall(content)
 
@@ -108,18 +109,23 @@ class TestSettingRefSchemaFixtureDrift:
 
 
 class TestSettingsRegistryGenConfigKeyDrift:
-    """Every configKey in settingsRegistry.gen.ts must exist in the backend."""
+    """Every UI configKey must exist in its authoritative backend settings store."""
 
     def test_generated_config_keys_found(self, generated_config_keys):
         """At least one configKey exists in the generated file."""
-        assert len(generated_config_keys) > 0, (
-            "No configKey entries found in settingsRegistry.gen.ts"
-        )
+        assert (
+            len(generated_config_keys) > 0
+        ), "No configKey entries found in settingsRegistry.gen.ts"
 
-    def test_all_config_keys_exist_in_schema_registry(
-        self, generated_config_keys, registry_index
-    ):
-        missing = [k for k in generated_config_keys if k not in registry_index]
+    def test_all_config_keys_exist_in_schema_registry(self, generated_config_keys, registry_index):
+        # routing.json is a distinct settings store. Check its UI namespace
+        # against the real editable fields and parser, never a fake main-config key.
+        routing_fields = {f"routing.{name}" for name in EDITABLE_SETTINGS_FIELDS}
+        parsed = parse_settings({"lanes": [], **{name: True for name in EDITABLE_SETTINGS_FIELDS}})
+        assert all(getattr(parsed, name) is True for name in EDITABLE_SETTINGS_FIELDS)
+        missing = [
+            k for k in generated_config_keys if k not in registry_index and k not in routing_fields
+        ]
         assert not missing, (
             f"settingsRegistry.gen.ts configKey(s) missing from backend "
             f"SCHEMA_REGISTRY — typo or backend rename? Missing: {missing}"
@@ -142,9 +148,7 @@ def _scan_backend_source_for_literal(name: str) -> bool:
 @pytest.fixture()
 def env_vars_fixture() -> list[str]:
     """Load the shared JSON fixture of known env var names."""
-    assert ENV_VARS_FIXTURE_PATH.exists(), (
-        f"Env vars fixture not found: {ENV_VARS_FIXTURE_PATH}"
-    )
+    assert ENV_VARS_FIXTURE_PATH.exists(), f"Env vars fixture not found: {ENV_VARS_FIXTURE_PATH}"
     return json.loads(ENV_VARS_FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
@@ -155,10 +159,7 @@ class TestSettingRefEnvVarsDrift:
         assert len(env_vars_fixture) > 0, "settingref-env-vars.json is empty"
 
     def test_all_env_vars_found_in_backend_source(self, env_vars_fixture):
-        missing = [
-            name for name in env_vars_fixture
-            if not _scan_backend_source_for_literal(name)
-        ]
+        missing = [name for name in env_vars_fixture if not _scan_backend_source_for_literal(name)]
         assert not missing, (
             f"settingref-env-vars.json lists env vars not found in "
             f"src/junction/**/*.py: {missing}. Either the var was removed "

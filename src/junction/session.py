@@ -1727,6 +1727,8 @@ class SessionManager:
         agent: str | None = None,
         cwd: str | None = None,
         approval_policy: str = "",
+        acp_backend_override: str | None = None,
+        model: str | None = None,
         _won_race_retries: int = 0,
     ) -> tuple[LLMProvider, bool, bool]:
         """Open a task-runner session multiplexed onto the run's shared runtime.
@@ -1745,6 +1747,12 @@ class SessionManager:
         ``reset`` terminates only this session — the shared runtime survives and
         is freed once via ``release_subagent_runtime(parent_session_key)`` at run
         end/cancel.
+
+        A routed step names its harness (*acp_backend_override*, a harness-router
+        lane's harness, with that lane's *model*): it always gets a dedicated
+        provider on that harness, because the run's shared runtime is the
+        configured one. An existing live session for the key is still reused, so
+        a step keeps the harness its conversation started on.
 
         Returns ``(provider, is_new, resumed)`` mirroring ``get_or_create``.
         Acquires the per-session semaphore; the caller MUST ``release`` it.
@@ -1777,6 +1785,16 @@ class SessionManager:
             # still ours, evict it and shut the dead provider down before
             # cold-starting a replacement below.
             await self._evict_stale_session(key, existing)
+
+        if acp_backend_override is not None:
+            return await self.get_or_create(
+                session_key,
+                agent=agent,
+                cwd=cwd,
+                approval_policy=approval_policy,
+                model=model or None,
+                acp_backend_override=acp_backend_override,
+            )
 
         # Cold path: open a fresh session on the run's shared runtime. Runtime
         # I/O (get_subagent_runtime spawn + create_session) is kept OUTSIDE the

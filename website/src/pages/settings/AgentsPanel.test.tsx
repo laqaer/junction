@@ -10,6 +10,7 @@ vi.mock('../../api/client', () => ({
     routingHarnesses: vi.fn(),
     checkRoutingHarness: vi.fn(),
     editRoutingLane: vi.fn(),
+    editRoutingSettings: vi.fn(),
     clearRoutingCooldown: vi.fn(),
   },
 }))
@@ -69,6 +70,7 @@ function mount() {
 const harnesses = vi.mocked(api.routingHarnesses)
 const checkHarness = vi.mocked(api.checkRoutingHarness)
 const editLane = vi.mocked(api.editRoutingLane)
+const editSettings = vi.mocked(api.editRoutingSettings)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -77,6 +79,7 @@ beforeEach(() => {
   clipboard.copied = []
   checkHarness.mockResolvedValue({ code: 'ok', harness: 'codex', probe: row({}).probe })
   editLane.mockResolvedValue({ code: 'ok', lane: row({}).lane! })
+  editSettings.mockResolvedValue({ code: 'ok', settings: { route_tasks: true } })
 })
 
 describe('AgentsPanel', () => {
@@ -157,6 +160,28 @@ describe('AgentsPanel', () => {
     expect(within(card).queryByRole('button', { name: /Sign in/ })).toBeNull()
     fireEvent.click(within(card).getByRole('button', { name: /Install/ }))
     await waitFor(() => expect(terminal.sent).toEqual(['npm i -g claude-pieces']))
+  })
+
+  it('turns Task Runner step routing on and off', async () => {
+    harnesses.mockResolvedValue({ ...view([row({})]), route_tasks: false })
+    mount()
+
+    const toggle = await screen.findByRole('switch', { name: /Route Task Runner steps/ })
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    expect(toggle.closest('[data-setting-key]')).toHaveAttribute('data-setting-key', 'routing.route_tasks')
+    fireEvent.click(toggle)
+    await waitFor(() => expect(editSettings).toHaveBeenCalledWith({ route_tasks: true }))
+  })
+
+  it('leaves step routing out of the first-run view', async () => {
+    harnesses.mockResolvedValue({ ...view([row({})]), route_tasks: true })
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AgentsPanel compact />
+      </QueryClientProvider>,
+    )
+    await screen.findByTestId('agent-codex')
+    expect(screen.queryByRole('switch', { name: /Route Task Runner steps/ })).toBeNull()
   })
 
   it('fills in the installed and model counts', async () => {

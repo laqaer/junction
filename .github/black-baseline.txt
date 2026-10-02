@@ -843,7 +843,6 @@ test/test_lifecycle_hooks.py
 test/test_link_dashboard.py
 test/test_link_unfurl.py
 test/test_live_target.py
-test/test_llm_helpers_tool_gate.py
 test/test_llm_pool.py
 test/test_local_gate.py
 test/test_loopback_proxy.py
@@ -1082,7 +1081,6 @@ test/test_session_thread_map.py
 test/test_session_transfer.py
 test/test_session_usage.py
 test/test_sessions_health_cache.py
-test/test_settingref_schema_fixture.py
 test/test_ship_report_issues.py
 test/test_side.py
 test/test_side_context.py

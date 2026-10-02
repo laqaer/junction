@@ -405,6 +405,13 @@ export function AgentsPanel({ compact = false }: { compact?: boolean } = {}) {
     onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   })
 
+  const settings = useMutation({
+    mutationFn: (routeTasks: boolean) => api.editRoutingSettings({ route_tasks: routeTasks }),
+    onError: () => setError(i18nT('pages.settings.agentsPanel.save_failed')),
+    onSuccess: () => setError(''),
+    onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  })
+
   // A first visit shows every installed agent as "Not checked". Probe those once
   // so the panel answers "am I signed in?" without a click; a probe starts the
   // agent without sending a prompt, so it spends no plan quota.
@@ -461,6 +468,14 @@ export function AgentsPanel({ compact = false }: { compact?: boolean } = {}) {
         <SettingsSection title={i18nT('pages.settings.agentsPanel.who_gets_what')}>
           <SettingsCard>
             <p className="text-[13px] text-muted">{i18nT('pages.settings.agentsPanel.who_gets_what_description')}</p>
+            <SettingsToggle
+              configKey="routing.route_tasks"
+              label={i18nT('pages.settings.agentsPanel.route_task_steps')}
+              description={i18nT('pages.settings.agentsPanel.route_task_steps_description')}
+              checked={!!view.data.route_tasks}
+              onChange={v => settings.mutate(v)}
+              disabled={settings.isPending}
+            />
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
               {view.data.kinds.map(kind => {
                 const laneId = view.data?.preview[kind] ?? ''
