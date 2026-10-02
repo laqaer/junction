@@ -214,7 +214,13 @@ ACP_BACKENDS_INTERNAL_SANDBOX = frozenset({ACP_BACKEND_KIRO})
 #   is not a read.
 # * Codex starts in ``agent``, whose reviewer is a model that approves actions it judges
 #   safe without a request, and offers ``agent-full-access``, which never asks.
-#   ``read-only`` (labelled "Ask for approval") routes every approval to the client.
+#   ``read-only`` (labelled "Ask for approval") routes the approvals it requires to the
+#   client.
+#
+# The pin routes the approvals the harness REQUIRES; it does not make every call ask. A
+# read inside the harness's own boundary (a Claude Code read in the session's cwd, a Codex
+# read anywhere its sandbox allows) raises no permission request in any of these modes,
+# so the gate's read-side checks never run on it.
 #
 # Membership is an explicit decision per harness, like every other capability set: a
 # harness absent from the mapping keeps the mode it starts in, and a harness is added
