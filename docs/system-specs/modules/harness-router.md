@@ -204,9 +204,15 @@ agent means running that agent's own login command, then probing it.
   lane's current harness: a success or `route clear` empties that reason, so it
   means no prompt on that harness has worked since a failed sign-in, even after
   the rest expired. A lane id reassigned to another harness, or a record that
-  names no harness, stays `auth unverified`. An ordinary task failure retains
+  names no harness, stays `auth unverified`. The ledger is read after that
+  lane's probe returns, so a routed run that ends during a minutes-long probe
+  counts. An ordinary task failure retains
   both the cooldown reason and its producing harness; it cannot attribute an
-  older sign-in failure to the harness that ran that task. The stored probe
+  older sign-in failure to the harness that ran that task. A success from a
+  harness the lane no longer runs (a run that outlived a reassignment) counts as
+  a completed run but leaves the failure state alone, because it says nothing
+  about the harness the lane runs now; a success on the current harness clears
+  it, whichever harness recorded it. The stored probe
   status stays `connected`; the gates below read it as "the harness starts".
 - `service.check_harness` (probe now) and `service.verified_connection` (reuse a
   `connected` probe younger than `max_age_secs`, else probe) hold one lock per

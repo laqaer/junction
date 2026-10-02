@@ -1061,6 +1061,77 @@ async def test_route_check_reports_needs_login_after_a_routed_run_failed_sign_in
 
 
 @pytest.mark.asyncio
+async def test_route_check_reads_each_lane_ledger_after_its_probe(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from junction.harness_router import cli, connect
+
+    router = _check_router(tmp_path, monkeypatch)
+    router.record_failure("max", text="Authentication required", harness="claude")
+
+    async def probe_while_runs_finish(harness: str, *, installed: bool, model: str = "") -> Any:
+        # Each probe can take minutes, so routed runs land while the check is going.
+        if harness == "codex":
+            # A routed prompt on claude succeeds while codex is still being probed...
+            router.record_success("max", harness="claude")
+            # ...and one on codex fails sign-in before its own probe returns.
+            router.record_failure("pro", text="Authentication required", harness="codex")
+        return connect.ProbeResult(harness, connect.STATUS_CONNECTED, models=3, checked_at=NOW)
+
+    monkeypatch.setattr(connect, "probe_harness", probe_while_runs_finish)
+    code = await cli._check(router, [])
+    lines = _check_lines(capsys.readouterr().out)
+    assert "needs_login" in lines["pro"]
+    assert "auth unverified" in lines["max"]
+    assert code == 1
+
+
+@pytest.mark.asyncio
+async def test_a_late_success_from_a_replaced_harness_keeps_the_new_harnesss_sign_in_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from junction.harness_router import cli
+
+    router = _check_router(tmp_path, monkeypatch)
+    # Lane "pro" now runs codex; a run started while it still ran claude is in flight.
+    router.record_failure("pro", text="Authentication required", harness="codex")
+    router.record_success("pro", harness="claude")
+    used = router.ledger.snapshot()["pro"]
+    assert (used.harness, used.cooldown_reason) == ("codex", limits.FAILURE_AUTH)
+    assert used.ok == 1, "the stale run still counts as a completed run"
+    code = await cli._check(router, [])
+    lines = _check_lines(capsys.readouterr().out)
+    assert "needs_login" in lines["pro"]
+    assert code == 1
+
+    # A success on the lane's current harness proves it works, whatever was recorded.
+    router.record_success("pro", harness="codex")
+    used = router.ledger.snapshot()["pro"]
+    assert (used.harness, used.cooldown_reason, used.cooldown_until) == ("codex", "", 0.0)
+
+
+@pytest.mark.asyncio
+async def test_a_success_on_the_current_harness_clears_a_failure_the_old_harness_recorded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    router = _check_router(tmp_path, monkeypatch)
+    router.record_failure("pro", text="Authentication required", harness="claude")
+    router.record_success("pro", harness="codex")
+    used = router.ledger.snapshot()["pro"]
+    assert (used.harness, used.cooldown_reason, used.cooldown_until) == ("codex", "", 0.0)
+
+
+def test_the_ledger_applies_a_success_unconditionally_when_no_current_harness_is_given(
+    tmp_path: Path,
+) -> None:
+    ledger = UsageLedger(tmp_path)
+    ledger.record_outcome("pro", ok=False, failure=limits.FAILURE_AUTH, text="x", harness="codex")
+    ledger.record_outcome("pro", ok=True, harness="claude")
+    used = ledger.snapshot()["pro"]
+    assert (used.harness, used.cooldown_reason) == ("claude", "")
+
+
+@pytest.mark.asyncio
 async def test_route_check_ignores_a_sign_in_failure_recorded_for_another_harness(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
