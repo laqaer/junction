@@ -185,12 +185,14 @@ class TestValidateConfigData:
         assert warnings and "totally_unknown_key" in warnings[0]
         assert "meta" not in warnings[0]
 
+    @pytest.mark.skipif(not validation._HAS_JSONSCHEMA, reason="jsonschema not installed")
     def test_deprecated_field_with_a_value_warns(self, caplog: pytest.LogCaptureFixture) -> None:
         data = {"telegram": {"accounts": {"ops": {"bot_token": "x"}}}}
         with caplog.at_level(logging.WARNING, logger="junction.config.loader"):
             validation.validate_config_data(data)
         assert any("deprecated field 'telegram.accounts'" in r.message for r in caplog.records)
 
+    @pytest.mark.skipif(not validation._HAS_JSONSCHEMA, reason="jsonschema not installed")
     @pytest.mark.parametrize("empty", [{}, None])
     def test_deprecated_field_left_empty_by_save_is_silent(
         self, caplog: pytest.LogCaptureFixture, empty: object
