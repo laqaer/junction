@@ -246,23 +246,34 @@ async def apply_role_model(client: Any, role: str) -> str:
     wire = resolve_wire_id(role, pins=pins, advertised=advertised)
     if not wire or wire == DEFAULT_MODEL:
         return DEFAULT_MODEL
-    if not _is_harness_wire_id(wire):
+    namespaced = not _is_harness_wire_id(wire)
+    pinned = (pins.get(role) or "").strip() == wire
+    if namespaced:
         from junction.acp.client import model_is_unusable
 
         # An empty advertisement means unknown to the shared predicate. It
         # must not activate a catalog slug, nor may a suggestion enable a
         # provider the operator did not explicitly select for this role.
-        pinned = (pins.get(role) or "").strip() == wire
         if not pinned or not advertised or model_is_unusable(wire, advertised):
             logger.info("model-router role %s skip set_model for sidecar slug", role)
             return wire
     setter = getattr(client, "set_model", None)
+    if setter is None and namespaced:
+        # ``AcpProvider`` wraps the live client without re-exporting
+        # ``set_model``. Reach it through the wrapper so an admitted
+        # namespaced pin is not dropped on spec-family harness sessions.
+        from junction.llm_helpers import resolve_substitute_set_model
+
+        setter = resolve_substitute_set_model(client)
     if setter is None:
         return DEFAULT_MODEL
     try:
         await setter(wire)
-    except Exception:
-        logger.info("model-router role %s apply skipped", role)
+    except Exception as exc:
+        # An explicit operator pin that could not be applied must be visible;
+        # the session still proceeds on the backend default (best effort).
+        log = logger.warning if pinned else logger.info
+        log("model-router role %s apply skipped (%s)", role, type(exc).__name__)
         return DEFAULT_MODEL
     return wire
 

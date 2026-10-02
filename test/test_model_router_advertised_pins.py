@@ -154,6 +154,61 @@ async def test_setter_failure_preserves_best_effort_behavior(
 
 
 @pytest.mark.asyncio
+async def test_setter_failure_of_explicit_pin_is_logged_without_error_text(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _pin(monkeypatch, "vendor-a/model-a")
+    client = _Client([{"modelId": "vendor-a/model-a"}])
+
+    async def failed(model_id: str) -> None:
+        raise RuntimeError("secret-token-in-provider-error")
+
+    monkeypatch.setattr(client, "set_model", failed)
+    with caplog.at_level("INFO", logger=routing.logger.name):
+        assert await routing.apply_role_model(client, routing.ROLE_PLANNING) == "auto"
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert [r.getMessage() for r in warnings] == [
+        "model-router role planning apply skipped (RuntimeError)"
+    ]
+    assert "secret-token-in-provider-error" not in caplog.text
+
+
+class _Wrapper:
+    """Shape of ``AcpProvider``: advertises models but re-exports no ``set_model``."""
+
+    def __init__(self, inner: _Client, attr: str) -> None:
+        self.available_models = inner.available_models
+        setattr(self, attr, inner)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("attr", ["client", "_client"])
+async def test_explicit_namespaced_pin_reaches_setter_behind_wrapper(
+    monkeypatch: pytest.MonkeyPatch, attr: str
+) -> None:
+    _pin(monkeypatch, "vendor-a/model-a")
+    inner = _Client([{"modelId": "vendor-a/model-a"}])
+    wrapper = _Wrapper(inner, attr)
+    assert not hasattr(wrapper, "set_model")
+    assert await routing.apply_role_model(wrapper, routing.ROLE_PLANNING) == "vendor-a/model-a"
+    assert inner.seen == ["vendor-a/model-a"]
+
+
+@pytest.mark.asyncio
+async def test_wrapper_guards_still_apply_before_setter_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inner = _Client([{"modelId": "vendor-a/model-a"}])
+    wrapper = _Wrapper(inner, "client")
+    # An unpinned namespaced suggestion is not activated through a wrapper.
+    assert await routing.apply_role_model(wrapper, routing.ROLE_PLANNING) == "auto"
+    # A pin the active harness does not advertise stays unapplied too.
+    _pin(monkeypatch, "vendor-b/model-b")
+    assert await routing.apply_role_model(wrapper, routing.ROLE_PLANNING) == "vendor-b/model-b"
+    assert inner.seen == []
+
+
+@pytest.mark.asyncio
 async def test_missing_setter_preserves_best_effort_behavior(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

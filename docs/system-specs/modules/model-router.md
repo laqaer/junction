@@ -45,10 +45,16 @@ id (`provider/model`) is also sent to `set_model` when it is an explicit
 shared `model_is_unusable` predicate. The namespace is preserved; no model id
 is translated to another provider's spelling.
 
+`AcpProvider` wraps the live client and does not re-export `set_model`, so an
+admitted namespaced pin reaches the setter through the wrapped client via
+`llm_helpers.resolve_substitute_set_model`. Bare ids keep the direct-setter
+lookup unchanged; extending wrapper resolution to them is a separate change.
+
 Catalog-only pins, unknown or failed advertisement, and unpinned namespaced
 suggestions stay unapplied. Their returned id remains a plan value, not an
 execution receipt. A missing setter or setter failure retains the existing
-best-effort `auto` return. This compatibility path installs no router, reads
+best-effort `auto` return; a failed explicit pin is logged at warning level
+with the exception type only, never its message. This compatibility path installs no router, reads
 no credentials, and changes no billing configuration. Advertisement proves
 only a model-selection option, not authentication, available quota or cost.
 An optional external router still needs a separately verified, supported
