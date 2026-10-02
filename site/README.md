@@ -16,7 +16,7 @@ Node ≥ 22.12. All dependencies are `devDependencies` (nothing ships at runtime
 
 | Path | What |
 |---|---|
-| `src/data/site.ts` | The one config object: domain, repo, version, feature flags, checkout and waitlist links. `""` renders a named "coming soon" state, never a broken link. The owner flips `domain` when the new one is live. |
+| `src/data/site.ts` | The one config object: domain, repo, publisher, version, feature flags, checkout and waitlist links. The publisher supplies the linked "by Myrmitis" attribution in the header and footer and the website/software JSON-LD. `""` renders a named "coming soon" state, never a broken link. The owner flips `domain` when the new one is live. |
 | `src/data/channels.ts`, `harnesses.ts`, `pricing.ts`, `nav.ts` | The ten channels with their honest approval mode, the eleven runtimes with verified flags and the harness router, the seven offers with labels and rails, the nav and footer. Pages read these; do not restate the facts in copy. |
 | `src/content/{compare,guides,channels}/*.mdx` | Content collections. Frontmatter is schema-validated (`src/content.config.ts`): `title` ≤ 60, `description` ≤ 155, `h1`, `ogRegister`, `verified` rows with ISO dates. A bad field fails the build. |
 | `src/layouts/BaseLayout.astro` | Head (title, description, canonical, OG/Twitter, theme-color both schemes, JSON-LD slot), skip link, landmarks, reveal script. |
