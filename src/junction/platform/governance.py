@@ -56,6 +56,7 @@ from typing import (
 )
 
 from junction.config.paths import config_dir
+from junction.path_spellings import MAX_TARGET_PATHS, path_spellings
 from junction.platform.admission import (
     canonical_signing_bytes,
     hmac_signature,
@@ -442,6 +443,11 @@ _KIND_FETCH = "fetch"
 
 _PATH_ARG_KEYS = ("path", "file_path", "filePath")
 
+# Argument names holding a LIST of paths (a multi-file edit, a batched read).
+# Mirrors ``hooks.TARGET_PATH_LIST_KEYS`` — the two gates must agree on what a
+# call targets, and this module cannot import ``hooks`` without a cycle.
+_PATH_LIST_ARG_KEYS = ("paths",)
+
 
 def _tool_arg_paths(raw_params: Mapping[str, object]) -> Tuple[str, ...]:
     """Return every distinct, non-empty path carried under a supported alias.
@@ -449,13 +455,32 @@ def _tool_arg_paths(raw_params: Mapping[str, object]) -> Tuple[str, ...]:
     Tool backends use all three spellings, sometimes in the same payload.  Every
     value must be governed: choosing the first truthy alias would let a benign
     ``path`` mask a sensitive ``filePath`` (and a truthy non-string value could
-    mask every later alias entirely).
+    mask every later alias entirely).  Every element of a list-valued alias is
+    governed the same way, and so is the trimmed spelling of a value a harness
+    would trim (``path_spellings``), because the harness opens that path.  The list is
+    bounded the way ``hooks.target_paths`` bounds it; the hooks gate denies a call past
+    the bound before governance sees it.
     """
     paths: list[str] = []
+    seen: set[str] = set()
+
+    def _add(value: object) -> None:
+        if isinstance(value, str) and value.strip():
+            for spelling in path_spellings(value):
+                if spelling not in seen:
+                    seen.add(spelling)
+                    paths.append(spelling)
+
     for key in _PATH_ARG_KEYS:
-        value = raw_params.get(key)
-        if isinstance(value, str) and value.strip() and value not in paths:
-            paths.append(value)
+        _add(raw_params.get(key))
+    for key in _PATH_LIST_ARG_KEYS:
+        values = raw_params.get(key)
+        if not isinstance(values, (list, tuple)):
+            continue
+        for value in values:
+            if len(paths) > MAX_TARGET_PATHS:
+                return tuple(paths)
+            _add(value)
     return tuple(paths)
 
 
