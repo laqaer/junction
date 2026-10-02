@@ -135,7 +135,7 @@
   "apps": {
     "agentWorlds": {
       "manifest": {
-        "description": "Trasforma gli agenti in esecuzione in personaggi di una scena animata in pixel art: un’occhiata ti dice quanto è occupato Junction. Ogni agente attivo appare come uno sprite che reagisce quando il lavoro inizia e finisce, in scene a tema che vanno da un ufficio classico a una torre da mago o a un laboratorio sottomarino. Aprila in una finestra separata per tenerla su un secondo schermo mentre lavori.",
+        "description": "Trasforma gli agenti in esecuzione in personaggi di una scena animata in pixel art: un’occhiata ti dice quanto è occupato Warding. Ogni agente attivo appare come uno sprite che reagisce quando il lavoro inizia e finisce, in scene a tema che vanno da un ufficio classico a una torre da mago o a un laboratorio sottomarino. Aprila in una finestra separata per tenerla su un secondo schermo mentre lavori.",
         "display_name": "Agent Worlds",
         "highlight_1": "Vista in tempo reale di quali agenti sono in esecuzione, come personaggi anziché come elenco",
         "highlight_2": "Scene a tema tra cui Office, Panda Den, Neural Net, Wizard Tower e Deep Lab",
@@ -366,8 +366,8 @@
     },
     "autoTriagePipeline": {
       "manifest": {
-        "description": "Una vista in sola lettura a tre livelli della pipeline di triage automatico di Junction: i sei passi e il loro flusso, le issue dentro un passo e il costo delle sessioni agente di ogni issue.",
-        "display_name": "Pipeline di auto-triage Junction",
+        "description": "Una vista in sola lettura a tre livelli della pipeline di triage automatico di Warding: i sei passi e il loro flusso, le issue dentro un passo e il costo delle sessioni agente di ogni issue.",
+        "display_name": "Pipeline di auto-triage Warding",
         "page_label": "Pipeline di auto-triage",
         "use_case_1": "Individua dove il lavoro degli incaricati di Issue Radar si accumula, viene riaperto o resta in attesa nell’intera pipeline di consegna.",
         "configuration_1": "Collega un repository in Issue Radar e lascia che il registro dei suoi incaricati raccolga gli eventi di fase, quindi attiva questa app e seleziona quel repository."
@@ -1173,7 +1173,7 @@
         "title": "Compagno"
       },
       "manifest": {
-        "description": "Un compagno da scrivania per Junction che ti aiuta a dare ritmo alla giornata: ti invita a fare pause, conserva i promemoria che imposti in linguaggio naturale e propone un breve esercizio di respirazione quando hai bisogno di ricaricarti. Ti avvisa anche quando una sessione finisce, va in errore o attende un tuo OK.",
+        "description": "Un compagno da scrivania per Warding che ti aiuta a dare ritmo alla giornata: ti invita a fare pause, conserva i promemoria che imposti in linguaggio naturale e propone un breve esercizio di respirazione quando hai bisogno di ricaricarti. Ti avvisa anche quando una sessione finisce, va in errore o attende un tuo OK.",
         "display_name": "Compagno",
         "highlight_1": "Inviti gentili a fare una pausa — bere, allungarsi, guardare lontano — con l’intervallo che scegli tu",
         "highlight_2": "Promemoria che imposti in linguaggio naturale, come «bere acqua tra 20 minuti»",
@@ -1182,7 +1182,7 @@
         "highlight_5": "Galleggia sulla scrivania con un avatar sostituibile",
         "page_label": "Compagno",
         "use_case_1": "Usa un compagno desktop per promemoria delle pause, promemoria in linguaggio semplice, esercizi di respirazione e notifiche delle sessioni.",
-        "configuration_1": "Usa Junction Desktop, attiva l'app, quindi imposta nella sua pagina l'intervallo delle pause e le notifiche di completamento; gli avatar si scelgono nella Gallery del compagno."
+        "configuration_1": "Usa Warding Desktop, attiva l'app, quindi imposta nella sua pagina l'intervallo delle pause e le notifiche di completamento; gli avatar si scelgono nella Gallery del compagno."
       },
       "memories": {
         "days_together_many": "{{count}} giorni insieme",
@@ -1511,18 +1511,18 @@
     },
     "devFleet": {
       "manifest": {
-        "description": "Un pannello di controllo per lavorare su Junction stesso. Elenca ogni worktree di funzionalità con lo stato della sua pull request, il numero di commit e lo spazio occupato su disco, e può avviarne uno qualsiasi come pod: un’istanza di anteprima completa, su una porta e una cartella dati proprie, così puoi provare una modifica non finita senza disturbare il gateway attivo. Si occupa anche delle incombenze che ne derivano — fare pull di main e ricompilare, fare il rebase di un branch, seguire i log dei pod ed eliminare i worktree il cui lavoro è già stato unito.",
+        "description": "Un pannello di controllo per lavorare su Warding stesso. Elenca ogni worktree di funzionalità con lo stato della sua pull request, il numero di commit e lo spazio occupato su disco, e può avviarne uno qualsiasi come pod: un’istanza di anteprima completa, su una porta e una cartella dati proprie, così puoi provare una modifica non finita senza disturbare il gateway attivo. Si occupa anche delle incombenze che ne derivano — fare pull di main e ricompilare, fare il rebase di un branch, seguire i log dei pod ed eliminare i worktree il cui lavoro è già stato unito.",
         "display_name": "Dev Fleet",
         "highlight_1": "Avvia qualsiasi worktree come pod isolato, su una porta e una cartella dati proprie, lasciando intatto il gateway attivo",
         "highlight_2": "Vista della flotta con stato della PR per branch, numero di commit e spazio su disco",
         "highlight_3": "Sincronizza (pull di main e ricompilazione) o fai il rebase di un branch senza uscire dalla dashboard",
         "highlight_4": "«Elimina i worktree uniti» si rifiuta di cancellare un worktree con lavoro non committato o non tracciato, invece di buttarlo via",
         "highlight_5": "Segui i log dei pod e genera le chiavi di accesso ai pod dall’interfaccia",
-        "highlight_6": "Pensata per chi sviluppa Junction stesso — non serve per l’uso quotidiano",
+        "highlight_6": "Pensata per chi sviluppa Warding stesso — non serve per l’uso quotidiano",
         "highlight_7": "I pod funzionano su Linux (systemd --user) e macOS (launchd) — ma il pod su macOS non ha un limite di memoria/CPU imposto; Make Live resta solo per Linux; vista della flotta, stato della PR, sincronizzazione, rebase ed eliminazione funzionano su qualsiasi piattaforma",
         "page_label": "Dev Fleet",
-        "use_case_1": "Gestisci i worktree delle funzionalità di Junction e pod di anteprima isolati senza modificare il gateway live.",
-        "configuration_1": "Indica all'app un checkout di Junction; le azioni sulle PR richiedono gh autenticato, mentre i pod richiedono systemd --user su Linux o launchd su macOS e devono prima essere predisposti."
+        "use_case_1": "Gestisci i worktree delle funzionalità di Warding e pod di anteprima isolati senza modificare il gateway live.",
+        "configuration_1": "Indica all'app un checkout di Warding; le azioni sulle PR richiedono gh autenticato, mentre i pod richiedono systemd --user su Linux o launchd su macOS e devono prima essere predisposti."
       }
     },
     "designTweak": {
@@ -1691,7 +1691,7 @@
         "truncated": "· troncato"
       },
       "manifest": {
-        "description": "Sfoglia e leggi i file sulla macchina che esegue Junction senza uscire dalla dashboard. Tieni aperti più file in schede, percorri l’albero delle cartelle con accanto lo stato git di ciascun file, cerca una stringa in un’intera cartella e leggi il markdown formattato anziché grezzo. È di sola lettura per scelta: apre e cerca nei file ma non li modifica, non li sposta e non li elimina mai, e può raggiungere solo la tua home più /tmp e /opt.",
+        "description": "Sfoglia e leggi i file sulla macchina che esegue Warding senza uscire dalla dashboard. Tieni aperti più file in schede, percorri l’albero delle cartelle con accanto lo stato git di ciascun file, cerca una stringa in un’intera cartella e leggi il markdown formattato anziché grezzo. È di sola lettura per scelta: apre e cerca nei file ma non li modifica, non li sposta e non li elimina mai, e può raggiungere solo la tua home più /tmp e /opt.",
         "display_name": "File",
         "highlight_1": "Sola lettura: apre e cerca nei file, e non li scrive, sposta o elimina mai",
         "highlight_2": "Più file aperti contemporaneamente in schede, con evidenziazione della sintassi",
@@ -2917,7 +2917,7 @@
       "manifest": {
         "description": "Un assistente AI per le riunioni. Trascrive la riunione dal vivo, tiene note e diagrammi strutturati mentre procede, estrae le azioni da fare e ti lascia rivederle prima di registrarle.",
         "display_name": "Riunioni",
-        "highlight_1": "Trascrizione dal vivo con il riconoscimento vocale integrato di Junction — nessun daemon aggiuntivo, nessun account cloud oltre a quelli che usi già",
+        "highlight_1": "Trascrizione dal vivo con il riconoscimento vocale integrato di Warding — nessun daemon aggiuntivo, nessun account cloud oltre a quelli che usi già",
         "highlight_2": "Un team di agenti lavora sulla riunione in parallelo: note strutturate, un diagramma HTML/Mermaid e un elenco di azioni da fare",
         "highlight_3": "Correggi una volta sola gli errori ricorrenti del riconoscimento vocale con un dizionario di dominio e tutte le riunioni successive li scriveranno bene",
         "highlight_4": "Rivedi le azioni estratte prima che qualcosa venga registrato — archivia il rumore, registra il resto",
@@ -3278,7 +3278,7 @@
         "highlight_6": "Il nucleo autonomo è interamente nello stesso processo — nessuna seconda app, nessun runtime aggiuntivo",
         "page_label": "Mochi",
         "use_case_1": "Tieni un discreto animaletto desktop che conversa, segue promemoria e modifiche delle pagine pubbliche e si adatta agli eventi del calendario collegato.",
-        "configuration_1": "Usa Junction Desktop, attiva Mochi, scegline aspetto e comportamento, quindi aggiungi gli obiettivi da seguire nella chat o nella dashboard; la pianificazione basata sugli impegni richiede uno strumento MCP di calendario collegato."
+        "configuration_1": "Usa Warding Desktop, attiva Mochi, scegline aspetto e comportamento, quindi aggiungi gli obiettivi da seguire nella chat o nella dashboard; la pianificazione basata sugli impegni richiede uno strumento MCP di calendario collegato."
       },
       "menu": {
         "clear_screen": "Svuota schermo",
@@ -3733,7 +3733,7 @@
         "highlight_6": "Conosce i turni: il livello di automazione in servizio si arma e si disarma da sé",
         "page_label": "Mission Control",
         "use_case_1": "Monitora i segnali operativi, indaga sugli incidenti, riutilizza le correzioni collaudate e consegna una traccia di controllo locale completa.",
-        "configuration_1": "Aggiungi provider nelle Impostazioni con credenziali d'ambiente o token, mantieni Observe per l'uso in sola lettura e abilita esplicitamente le azioni Propose o Act consentite; l'output Slack riutilizza una connessione Junction esistente."
+        "configuration_1": "Aggiungi provider nelle Impostazioni con credenziali d'ambiente o token, mantieni Observe per l'uso in sola lettura e abilita esplicitamente le azioni Propose o Act consentite; l'output Slack riutilizza una connessione Warding esistente."
       },
       "opsMissionControlPage": {
         "act": "Act",
@@ -4095,7 +4095,7 @@
         "no_source_files": "Nessun file sorgente."
       },
       "manifest": {
-        "description": "Un editor per articoli in LaTeX con anteprima PDF dal vivo e un coautore AI. Scrivi in un editor a due riquadri, premi Cmd+S (Ctrl+S su Windows e Linux) per compilare con pdflatex o tectonic e leggi il PDF prodotto accanto al sorgente. Gli errori di compilazione vengono raccolti in un elenco cliccabile che salta alla riga incriminata. Clona un articolo esistente da qualsiasi remoto git, poi fai commit e push dalla barra degli strumenti. Il pannello del coautore è una vera sessione di chat di Junction limitata all’articolo, così l’agente può leggere e modificare il tuo LaTeX mentre guardi il PDF aggiornarsi.",
+        "description": "Un editor per articoli in LaTeX con anteprima PDF dal vivo e un coautore AI. Scrivi in un editor a due riquadri, premi Cmd+S (Ctrl+S su Windows e Linux) per compilare con pdflatex o tectonic e leggi il PDF prodotto accanto al sorgente. Gli errori di compilazione vengono raccolti in un elenco cliccabile che salta alla riga incriminata. Clona un articolo esistente da qualsiasi remoto git, poi fai commit e push dalla barra degli strumenti. Il pannello del coautore è una vera sessione di chat di Warding limitata all’articolo, così l’agente può leggere e modificare il tuo LaTeX mentre guardi il PDF aggiornarsi.",
         "display_name": "Papyrus",
         "highlight_1": "Editor LaTeX a due riquadri con l’anteprima PDF dal vivo accanto",
         "highlight_2": "Compilazione al salvataggio (Cmd+S, o Ctrl+S su Windows e Linux) con pdflatex o tectonic, e il ciclo bibtex eseguito per te",
@@ -4578,7 +4578,7 @@
         }
       },
       "manifest": {
-        "description": "Sviluppo guidato dalle spec dentro Junction: trasforma l’idea di una funzionalità in Requisiti → Progettazione → Attività con un agente integrato, rivedi il markdown nell’app e poi affida il piano approvato a una sessione di esecuzione autonoma.",
+        "description": "Sviluppo guidato dalle spec dentro Warding: trasforma l’idea di una funzionalità in Requisiti → Progettazione → Attività con un agente integrato, rivedi il markdown nell’app e poi affida il piano approvato a una sessione di esecuzione autonoma.",
         "display_name": "Spec Builder",
         "page_label": "Spec Builder",
         "use_case_1": "Trasforma una funzionalità, un bug o un'attività rapida in requisiti, progettazione e passaggi di implementazione legati al repository e pronti da revisionare.",
@@ -4592,7 +4592,7 @@
     },
     "workflows": {
       "manifest": {
-        "description": "Scrivi, esegui e osserva workflow dinamici: script Python, di solito scritti per te da un agente a partire da un obiettivo in linguaggio naturale, che guidano più agenti Junction attraverso fasi ordinate. Prima che venga eseguito qualcosa lo script viene verificato contro un insieme di comandi di workflow in sandbox, così gli errori emergono senza esecuzione, e poi la pagina trasmette ogni fase e ogni evento degli agenti mentre l’esecuzione procede. Con l’app arrivano esempi eseguibili da cui partire.",
+        "description": "Scrivi, esegui e osserva workflow dinamici: script Python, di solito scritti per te da un agente a partire da un obiettivo in linguaggio naturale, che guidano più agenti Warding attraverso fasi ordinate. Prima che venga eseguito qualcosa lo script viene verificato contro un insieme di comandi di workflow in sandbox, così gli errori emergono senza esecuzione, e poi la pagina trasmette ogni fase e ogni evento degli agenti mentre l’esecuzione procede. Con l’app arrivano esempi eseguibili da cui partire.",
         "display_name": "Workflow",
         "highlight_1": "Convalida un workflow prima di eseguirlo — gli errori emergono senza che nulla venga eseguito",
         "highlight_2": "Osserva l’esecuzione dal vivo, fase per fase, con eventi di progresso per ogni agente",

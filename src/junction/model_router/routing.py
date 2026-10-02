@@ -220,8 +220,8 @@ def orchestrator_turn_role(*, in_stage: bool, synthetic: bool) -> str:
     """Pick the DAG role for one orchestrator chat turn.
 
     Stage execution is the bulk of coding tokens. Synthetic coordinator
-    turns (subagent synthesis, recovery continuations) are control
-    traffic and stay economy. The remaining unpinned turn is plan
+    turns (subagent synthesis, recovery continuations) are control traffic
+    and stay economy. The remaining unpinned turn is plan
     decomposition and spends on capability.
     """
     if in_stage:
@@ -234,10 +234,10 @@ def orchestrator_turn_role(*, in_stage: bool, synthetic: bool) -> str:
 async def apply_role_model(client: Any, role: str) -> str:
     """Best-effort ``set_model`` for a task-class role. Never raises.
 
-    Namespaced catalog slugs (``provider/model``) are not kiro-cli ids. Sending
-    one on ``set_model`` is swallowed by the harness, so this cut skips that
-    call until the sidecar owns the wire (M2). The returned id is still the
-    pin so callers and the plan agree.
+    A namespaced pin may be a native id for an adapted harness. Apply it only
+    when explicitly pinned and advertised by this client. Catalog-only slugs
+    and unpinned namespaced suggestions stay unapplied; their returned id is a
+    plan value, not proof of execution. No provider forwarding happens here.
     """
     if role not in ROUTE_ROLE_KEYS:
         return DEFAULT_MODEL
@@ -246,16 +246,34 @@ async def apply_role_model(client: Any, role: str) -> str:
     wire = resolve_wire_id(role, pins=pins, advertised=advertised)
     if not wire or wire == DEFAULT_MODEL:
         return DEFAULT_MODEL
-    if not _is_harness_wire_id(wire):
-        logger.info("model-router role %s skip set_model for sidecar slug", role)
-        return wire
+    namespaced = not _is_harness_wire_id(wire)
+    pinned = (pins.get(role) or "").strip() == wire
+    if namespaced:
+        from junction.acp.client import model_is_unusable
+
+        # An empty advertisement means unknown to the shared predicate. It
+        # must not activate a catalog slug, nor may a suggestion enable a
+        # provider the operator did not explicitly select for this role.
+        if not pinned or not advertised or model_is_unusable(wire, advertised):
+            logger.info("model-router role %s skip set_model for sidecar slug", role)
+            return wire
     setter = getattr(client, "set_model", None)
+    if setter is None and namespaced:
+        # ``AcpProvider`` wraps the live client without re-exporting
+        # ``set_model``. Reach it through the wrapper so an admitted
+        # namespaced pin is not dropped on spec-family harness sessions.
+        from junction.llm_helpers import resolve_substitute_set_model
+
+        setter = resolve_substitute_set_model(client)
     if setter is None:
         return DEFAULT_MODEL
     try:
         await setter(wire)
-    except Exception:
-        logger.info("model-router role %s apply skipped", role)
+    except Exception as exc:
+        # An explicit operator pin that could not be applied must be visible;
+        # the session still proceeds on the backend default (best effort).
+        log = logger.warning if pinned else logger.info
+        log("model-router role %s apply skipped (%s)", role, type(exc).__name__)
         return DEFAULT_MODEL
     return wire
 
@@ -300,7 +318,7 @@ def _materialize_available_models(value: Any) -> Any:
 
 
 def _is_harness_wire_id(model_id: str) -> bool:
-    """True when *model_id* is a kiro-cli ``set_model`` id, not a sidecar slug."""
+    """True when *model_id* is a bare (non-namespaced) harness ``set_model`` id."""
     return bool(model_id) and "/" not in model_id
 
 

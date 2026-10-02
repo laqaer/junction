@@ -28,13 +28,13 @@ What has been run on which harness is on <a href="/verified/">the verification l
 
 1. **Give the gateway a public HTTPS URL**, as above.
 2. **Install the Teams extra** into the gateway's environment. From a source checkout:
-   <pre><code>pip install -e ".[teams]"</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{".venv/bin/pip install -e '.[teams]'"}</code></pre>
 3. **Register an Azure Bot** in the Azure Portal. Note the App ID, create a client secret, add the **Microsoft Teams** channel, and set the messaging endpoint to your public URL plus `/api/messaging/teams`.
 4. **Save the credentials** in the data home's `.env`: `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD` and, for a single-tenant bot, `MICROSOFT_APP_TENANT_ID`. The password is read from the environment only, never from `config.json`.
 5. **Allow yourself** in `config.json`:
-   <pre><code>{`"teams": { "enabled": true, "allowed_emails": ["you@yourcompany.com"] }`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`"teams": { "enabled": true, "allowed_emails": ["you@yourcompany.com"] }`}</code></pre>
 6. **Package the Teams app** in the Teams Developer Portal (a bot with your App ID, scope Personal, `supportsFiles` set to true), upload it, restart the gateway and open a 1:1 chat:
-   <pre><code>{`${site.cli} restart`}</code></pre>
+   <pre tabIndex="0" role="region" aria-label="Command"><code>{`${site.cli} restart`}</code></pre>
 
 ## Who can reach it
 

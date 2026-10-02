@@ -2084,6 +2084,11 @@ def _audit_default_on_backfill(name: str) -> None:
 # file manifest; reach for this only when there is no directory to put one in.
 _BUILTIN_APPS: list[dict[str, Any]] = []
 
+# Process-local proof of successful registration, not an installed.json claim.
+# The key includes the resolved apps home; the value pins the directory and the
+# exact manifest written there. This proves registration, not every mutable file.
+_registered_builtin_installations: dict[Path, tuple[int, int, bytes]] = {}
+
 
 _REQUIRED_BUILTIN_FIELDS = {"name", "version", "displayName", "description", "author"}
 
@@ -2319,6 +2324,33 @@ def builtin_owns_installed(name: str) -> bool:
     return existing is not None and _builtin_owns_install(existing)
 
 
+def registered_builtin_install(name: str) -> bool:
+    """Whether this gateway registered the current, unchanged builtin slot."""
+    dest = app_dir(name)
+    try:
+        key = dest.parent.resolve() / name
+    except OSError:
+        return False
+    proof = _registered_builtin_installations.get(key)
+    if proof is None:
+        return False
+    try:
+        current = dest.lstat()
+        manifest = dest / APP_MANIFEST_FILENAME
+        valid = (
+            stat.S_ISDIR(current.st_mode)
+            and (current.st_dev, current.st_ino) == proof[:2]
+            and not manifest.is_symlink()
+            and manifest.read_bytes() == proof[2]
+            and builtin_owns_installed(name)
+        )
+    except OSError:
+        valid = False
+    if not valid:
+        _registered_builtin_installations.pop(key, None)
+    return valid
+
+
 def _app_declares_backend(app_data: dict[str, Any]) -> bool:
     """Whether a manifest declares a backend the gateway proxy can reach.
 
@@ -2379,6 +2411,10 @@ def register_builtin_apps() -> int:
        companion contributes its feature apps).  ADD-only: the hardcoded list
        and the package's own builtins still take precedence on name collision.
     """
+    home = apps_dir().resolve()
+    for key in list(_registered_builtin_installations):
+        if key.parent == home:
+            _registered_builtin_installations.pop(key, None)
     _adopt_renamed_builtin_installs()
 
     # Merge hardcoded list with auto-discovered builtins + edition-contributed
@@ -2592,6 +2628,8 @@ def register_builtin_apps() -> int:
 
         dest = app_dir(name)
         dest.mkdir(parents=True, exist_ok=True)
+        registration_stat = dest.lstat()
+        registration_identity = (registration_stat.st_dev, registration_stat.st_ino)
 
         # A pre-existing entry this function did not write belongs to the USER:
         # they installed an app that happens to share this builtin's name. Taking
@@ -2658,10 +2696,8 @@ def register_builtin_apps() -> int:
             _write_installed(name, meta)
 
         # Persist manifest so dashboard can show full info
-        atomic_write(
-            dest / APP_MANIFEST_FILENAME,
-            json.dumps(app_data, indent=2) + "\n",
-        )
+        manifest_bytes = (json.dumps(app_data, indent=2) + "\n").encode("utf-8")
+        atomic_write(dest / APP_MANIFEST_FILENAME, manifest_bytes)
 
         # Built-in apps with a backend need an app secret so the gateway
         # proxy can authenticate requests to them.  Generate once; preserve
@@ -2693,6 +2729,13 @@ def register_builtin_apps() -> int:
             except Exception:
                 pass  # routes module may not be importable during bootstrap
 
+        current = dest.lstat()
+        if stat.S_ISDIR(current.st_mode) and (
+            current.st_dev, current.st_ino
+        ) == registration_identity:
+            _registered_builtin_installations[home / name] = (
+                *registration_identity, manifest_bytes
+            )
         count += 1
 
     if count:

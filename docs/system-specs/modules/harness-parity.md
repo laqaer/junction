@@ -42,7 +42,8 @@ invariants and names what pins each one.
 - **Pinned by** names the test module and function. Test modules live at `test/`
   in the repo root; sources live at `src/junction/`. A row marked
   *review-only* has no deterministic test — it is enforced by the
-  `harness-parity` rule in `AUTOSDE.yaml`, which every AI review lane reads.
+  `harness-parity` rule in `AUTOSDE.yaml`, which the `prepare-pr` skill's local
+  reviewers read.
 - An invariant is *closed* by its test, not by this document. If a row
   disagrees with the named test, the test is right.
 - The ids are stable. Source docstrings and review findings cite them bare
@@ -91,7 +92,8 @@ test still passes.
 
 Deterministically un-pinnable — they are properties of a change, not of a tree,
 and the absence of a mechanism is not something a source scan can see. The
-`harness-parity` rule in `AUTOSDE.yaml` carries them to every AI review lane.
+`harness-parity` rule in `AUTOSDE.yaml` carries them to every reviewer that
+reads it, including the `prepare-pr` skill's local reviewers.
 
 | Id | Guarantees | Pinned by | Constrains |
 |---|---|---|---|
@@ -104,9 +106,9 @@ The added-line gate that enforces Group B on a diff is
 [../../ci/harness-parity-gate.md](../../ci/harness-parity-gate.md). The
 structural invariants (Groups A and C) are pinned by
 `test/test_harness_parity.py` and therefore fail in the ordinary test job, not
-in a separate gate. Group D reaches the four AI review lanes through
-`AUTOSDE.yaml`'s `harness-parity` rule, which every lane's prompt treats as the
-source of truth for what blocks.
+in a separate gate. Group D reaches review through `AUTOSDE.yaml`'s
+`harness-parity` rule, which the review contracts treat as the source of truth
+for what blocks.
 
 ## Adding or changing an invariant
 

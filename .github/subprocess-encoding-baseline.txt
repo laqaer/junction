@@ -65,7 +65,6 @@
 2 test/test_acp_backend_kas.py
 1 test/test_agent_home_isolation.py
 1 test/test_agent_import_hoist.py
-4 test/test_ai_review_workflows.py
 1 test/test_beacon.py
 1 test/test_bench_cli.py
 1 test/test_brand_name_gate.py
@@ -112,7 +111,6 @@
 1 test/test_pr_readiness_evaluate.py
 1 test/test_pr_readiness_publish.py
 2 test/test_pr_readiness_sweep.py
-4 test/test_prepare_pr_local_review.py
 1 test/test_prepare_pr_profiles.py
 2 test/test_prepare_pr_prove.py
 2 test/test_project_git.py

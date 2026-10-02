@@ -1,9 +1,9 @@
 """Content-integrity guards for the vendored ``_vendor`` tree.
 
 Everything under ``src/junction/_vendor`` is excluded from source-level
-content review — semgrep, the AI reviewers' reviewable diff, and the
-lint/format configs all skip it — so a modified vendored ``.py``, a swapped
-native library, or an added rogue file would pass every review gate unnoticed.
+content review — semgrep and the lint/format configs both skip it — so a
+modified vendored ``.py``, a swapped native library, or an added rogue file
+would pass every review gate unnoticed.
 ``scripts/verify_vendor_manifest.py`` closes that gap: a committed sha256
 manifest (``scripts/vendor_manifest.sha256``, deliberately OUTSIDE the
 excluded tree) pins every file's content, and the ``vendor-manifest`` CI job

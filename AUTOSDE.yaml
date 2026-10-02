@@ -2,7 +2,8 @@
 #
 # Backend (Python) counterpart to website/AUTOSDE.yaml (React/TypeScript
 # frontend rules). Rules here govern the Python package under src/junction/.
-# Both files are enforced by the Claude and Codex PR reviewers.
+# Both files are applied by the prepare-pr skill's local reviewers; the rules a
+# grep can check are also enforced by .github/workflows/code-review.yml.
 #
 # Blocking rules are backed by real vulnerabilities/incidents in this codebase.
 

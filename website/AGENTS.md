@@ -55,9 +55,9 @@ copy-paste before a single test executes. Commands and layers:
   removed. An upstream sync must not restore either.
 
 > **`AUTOSDE.yaml` in this directory is live and authoritative.** The frontend
-> review rules it declares are read by the `claude-review`, `codex-review`,
-> `code-review`, `fork-gpt-review`, and `fork-opus-review` workflows, and a
-> `blocking: true` rule there outranks a reviewer's own prompt. Read it before
+> review rules it declares are enforced by the `code-review` workflow (the rules
+> a grep can check) and applied by the `prepare-pr` skill's local reviewers, and
+> a `blocking: true` rule there outranks a reviewer's own prompt. Read it before
 > changing frontend code; never treat it as historical.
 
 ## Browser support

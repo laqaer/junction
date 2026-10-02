@@ -6,7 +6,7 @@ import { channels } from "../../data/channels";
 const entries = (await getCollection("channels")).filter((e) => !e.data.draft);
 const bySlug = new Map(entries.map((e) => [e.data.channel, e]));
 ---
-<PageLayout title="Chat channels for your coding agent: Slack, Telegram…" description="Ten chat apps, honestly labelled: five with approve buttons, WhatsApp with typed approvals, four chat-only. Setup guides for each." h1="Reach it from the chat you already use." lead="Five with buttons. One typed. Four chat-only. We never say ten." breadcrumbs={[{ label: "Channels", href: "/channels/" }]}>
+<PageLayout title="Chat channels for your coding agent: Slack, Telegram…" description="Ten chat apps, honestly labelled: five with approve buttons, WhatsApp with typed approvals, four chat-only. Setup guides for each." h1="Reach it from the chat you already use." lead="Ten chat apps, and we say which ones can do what: five with approve buttons, one with typed replies, four chat-only." breadcrumbs={[{ label: "Channels", href: "/channels/" }]}>
   <ul class="grid">
     {channels.map((c) => {
       const page = bySlug.get(c.slug as never);

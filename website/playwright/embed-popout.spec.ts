@@ -93,7 +93,7 @@ test.describe('Popout route tree — /popout/*', () => {
     await expect.poll(
       () => page.title(),
       { timeout: 10000 }
-    ).toContain('Junction')
+    ).toContain('Warding')
   })
 
   test('popout wildcard redirects SPA navigation back to initial path', async ({ page, request }) => {
