@@ -55,6 +55,9 @@ class LaneUsage:
     cooldown_reason: str = ""
     last_error: str = ""
     last_used: float = 0.0
+    # The harness that produced or cleared the cooldown reason. Ordinary task
+    # failures leave that reason and its producer together; "" names no harness.
+    harness: str = ""
 
     def count_since(self, since: float) -> int:
         return sum(1 for ts in self.dispatches if ts >= since)
@@ -73,6 +76,7 @@ class LaneUsage:
             "cooldown_reason": self.cooldown_reason,
             "last_error": self.last_error,
             "last_used": self.last_used,
+            "harness": self.harness,
         }
 
     @classmethod
@@ -100,6 +104,7 @@ class LaneUsage:
             cooldown_reason=str(raw.get("cooldown_reason") or ""),
             last_error=str(raw.get("last_error") or ""),
             last_used=_nonneg_float(raw.get("last_used")),
+            harness=str(raw.get("harness") or ""),
         )
 
 
@@ -216,9 +221,10 @@ class UsageLedger:
         ok: bool,
         failure: str = "",
         text: str = "",
+        harness: str = "",
         now: float | None = None,
     ) -> float:
-        """Record how a dispatch ended. Returns the lane's cooldown deadline.
+        """Record how a dispatch ended on *harness*. Returns the lane's cooldown deadline.
 
         A lane-level *failure* (usage or rate limit, auth, unavailable) rests the
         lane until the reset the error text names, or a class default. A plain
@@ -229,6 +235,7 @@ class UsageLedger:
             state = self._read()
             usage = state.setdefault(lane_id, LaneUsage())
             if ok:
+                usage.harness = harness
                 usage.ok += 1
                 # Success proves the lane is usable again, whatever it said before.
                 usage.cooldown_until = 0.0
@@ -237,6 +244,7 @@ class UsageLedger:
                 usage.failed += 1
                 usage.last_error = _scrub(text)
                 if failure in LANE_FAILURES:
+                    usage.harness = harness
                     usage.limited += 1
                     rest = cooldown_seconds(failure, text, now=moment)
                     usage.cooldown_until = max(usage.cooldown_until, moment + rest)
