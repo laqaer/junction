@@ -29,13 +29,20 @@ _HARNESS_TRIM_CHARS = "".join(
 )  # fmt: skip
 
 #: How many paths one call may name, and how long each may be. A real call names a few
-#: files (a large patch, a few thousand) and no filesystem accepts a path past 4096
-#: characters; a call beyond either is not a file operation, and the checks are linear
+#: files, and no filesystem accepts a path past 4096 characters. The raw entry count
+#: of a path/location list is bounded too, so duplicates and non-path objects cannot
+#: evade the scan bound. A call beyond either limit is denied; checks are linear
 #: per path, so an unbounded list would stall the event loop the gate runs on. The gate
 #: DENIES such a call rather than checking a truncated prefix, because a truncated check
 #: would let the unchecked tail carry the forbidden path.
 MAX_TARGET_PATHS = 2048
 MAX_TARGET_PATH_CHARS = 4096
+
+# A raw path/location list past the entry bound may contain only duplicates or
+# non-path objects. Preserve its denial across cache merges and deduplication
+# with an overlong string, which the existing path-length gate always refuses.
+# No filesystem operation is ever attempted on this value.
+PATH_LIMIT_SENTINEL = "!" * (MAX_TARGET_PATH_CHARS + 1)
 
 
 def path_spellings(value: str) -> tuple[str, ...]:

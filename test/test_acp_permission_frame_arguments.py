@@ -22,7 +22,9 @@ session (paths templated; every file involved was a synthetic placeholder, and
 every permission request was rejected, so nothing was written). The Codex frames
 are NOT recorded -- there is no Codex login to drive -- and are built from
 ``@agentclientprotocol/codex-acp`` 1.13.1 (``createFileChangeUpdate`` /
-``fileChangeToolCall`` / ``commandToolCall`` in ``dist/index.js``).
+``fileChangeToolCall`` / ``commandToolCall`` in ``dist/index.js``). The MCP
+frames use its tagged ``CodexToolCallMapper.createMcpToolCallUpdate`` and
+``permissions/mcp.ts`` correlated approval shapes, also source-derived.
 
 Each frame goes through ``AcpClient._dispatch_events`` (the production dispatch
 loop), and the resulting event is handed to ``HookManager.on_tool_call`` with the
@@ -40,7 +42,7 @@ from urllib.parse import urlparse
 import pytest
 
 from junction import security
-from junction.acp.client import _MAX_CACHED_TOOL_PARAMS, AcpClient
+from junction.acp.client import _MAX_CACHED_TOOL_PARAMS, AcpClient, _frame_target_paths
 from junction.acp.types import (
     ACP_BACKEND_CLAUDE,
     ACP_BACKEND_CODEX,
@@ -51,7 +53,8 @@ from junction.acp.types import (
     AcpEvent,
     JsonRpcMessage,
 )
-from junction.hooks import TOOL_DENY, HookManager, HooksConfig
+from junction.hooks import TOOL_DENY, HookManager, HooksConfig, target_paths
+from junction.path_spellings import MAX_TARGET_PATHS, PATH_LIMIT_SENTINEL, exceeds_path_limits
 
 # ── Recorded claude-agent-acp 0.60.0 frames (Write) ──
 # A Write of a new file in the session's cwd. The adapter titles an in-cwd write
@@ -508,6 +511,49 @@ def _codex_read_command(call_id, *, path, command, cwd):
                     "rawInput": {"command": command, "cwd": cwd},
                     "locations": [{"path": path}],
                 },
+                "options": _CODEX_OPTIONS,
+            },
+        },
+    ]
+
+
+def _codex_mcp_call(arguments, *, server="junction-core", tool="learn_list"):
+    """Tagged codex-acp 1.13.1 mapper + correlated permissions/mcp.ts shapes.
+
+    These are source-derived, not recorded: ``createMcpToolCallUpdate`` wraps
+    the actual arguments and marks a call that otherwise has the shell kind.
+    The correlated approval names only the call id; identity must survive in
+    the notification caches rather than being inferred from the permission.
+    """
+    return [
+        {
+            "jsonrpc": "2.0",
+            "method": "session/update",
+            "params": {
+                "sessionId": "thr-1",
+                "update": {
+                    "sessionUpdate": "tool_call",
+                    "toolCallId": "mcp-call",
+                    "kind": "execute",
+                    "title": f"mcp.{server}.{tool}",
+                    "status": "pending",
+                    "rawInput": {"server": server, "tool": tool, "arguments": arguments},
+                    "_meta": {"is_mcp_tool_call": True},
+                },
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "method": "session/request_permission",
+            "params": {
+                "sessionId": "thr-1",
+                "toolCall": {
+                    "toolCallId": "mcp-call",
+                    "kind": "execute",
+                    "status": "pending",
+                },
+                "_meta": {"is_mcp_tool_approval": True},
                 "options": _CODEX_OPTIONS,
             },
         },
@@ -1354,3 +1400,378 @@ def test_the_settings_seed_is_recorded_even_when_the_hook_raises_something_unexp
     client._undo_claude_settings_seed()
 
     assert not path.exists()
+
+
+# ── Codex marks MCP notifications as execute, but they are not shell calls ──
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("arguments", [{}, {"limit": 3}])
+async def test_a_codex_mcp_approval_keeps_its_notification_identity_and_arguments(env, arguments):
+    frames = _codex_mcp_call(arguments)
+    repeated = copy.deepcopy(frames[-1])
+    repeated["id"] = 10
+    # Permission-only claims cannot replace the preceding adapter identity/args.
+    repeated["params"]["toolCall"]["rawInput"] = {
+        "server": "other",
+        "tool": "other",
+        "arguments": {"limit": 999},
+    }
+    events = [
+        event
+        for event in await _replay(_client(env, ACP_BACKEND_CODEX), [*frames, repeated])
+        if event.kind == EVENT_PERMISSION_REQUEST
+    ]
+
+    assert len(events) == 2
+    for event in events:
+        assert event.is_shell is False
+        assert event.shell_classified is True
+        assert event.mcp_server_name == "junction-core"
+        assert event.tool_name == "learn_list"
+        assert event.raw_tool_params == arguments
+        assert event.raw_params_trusted is True
+        assert _gate(event).action != TOOL_DENY
+
+
+@pytest.mark.asyncio
+async def test_a_codex_mcp_refinement_can_supply_the_adapter_identity(env):
+    frames = _codex_mcp_call({"limit": 3})
+    initial = copy.deepcopy(frames[0])
+    initial["params"]["update"].pop("_meta")
+    initial["params"]["update"]["rawInput"] = {}
+    frames[0]["params"]["update"]["sessionUpdate"] = "tool_call_update"
+    # A marked argument refinement need not repeat the optional kind.
+    frames[0]["params"]["update"].pop("kind")
+
+    event = await _permission_event(_client(env, ACP_BACKEND_CODEX), [initial, *frames])
+
+    assert event.is_shell is False
+    assert event.shell_classified is True
+    assert event.mcp_server_name == "junction-core"
+    assert event.tool_name == "learn_list"
+    assert event.raw_tool_params == {"limit": 3}
+    assert event.raw_params_trusted is True
+    assert _gate(event).action != TOOL_DENY
+
+
+@pytest.mark.asyncio
+async def test_a_codex_mcp_arguments_wrapper_cannot_hide_a_keystone_path(env):
+    policy = str(env.data_home / "security_policy.json")
+    event = await _permission_event(
+        _client(env, ACP_BACKEND_CODEX), _codex_mcp_call({"file_path": policy})
+    )
+
+    assert event.raw_tool_params == {"file_path": policy}
+    assert event.is_shell is False
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("deny", ["@junction-core", "@junction-core/learn_list"])
+async def test_a_codex_mcp_approval_is_bound_by_its_canonical_governance_identity(env, deny):
+    from junction.platform import context as ctx_mod
+
+    _install_ceiling(
+        {"version": 1, "boot": {"fail_closed": True}, "mcp": {"mode": "deny", "deny": [deny]}}
+    )
+    try:
+        event = await _permission_event(_client(env, ACP_BACKEND_CODEX), _codex_mcp_call({}))
+        decision = _gate(event)
+    finally:
+        ctx_mod.reset_context()
+
+    assert event.mcp_server_name == "junction-core"
+    assert event.tool_name == "learn_list"
+    assert decision.action == TOOL_DENY
+    assert "governance policy" in decision.reason
+
+
+@pytest.mark.asyncio
+async def test_a_codex_mcp_arguments_wrapper_cannot_hide_a_denied_network_target(
+    env, governed_egress
+):
+    event = await _permission_event(
+        _client(env, ACP_BACKEND_CODEX),
+        _codex_mcp_call({"url": "https://denied.example.com/api"}),
+    )
+
+    decision = _gate(event)
+
+    assert decision.action == TOOL_DENY
+    assert "governance policy" in decision.reason
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("marker", [None, False, 1, "true"])
+async def test_an_execute_notification_without_the_exact_codex_mcp_marker_stays_shell(env, marker):
+    frames = _codex_mcp_call({})
+    frames[0]["params"]["update"]["_meta"]["is_mcp_tool_call"] = marker
+
+    event = await _permission_event(_client(env, ACP_BACKEND_CODEX), frames)
+
+    assert event.is_shell is True
+    assert event.mcp_server_name == ""
+    assert event.tool_name == ""
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "raw_input",
+    [
+        {"server": "", "tool": "learn_list", "arguments": {}},
+        {"server": "junction-core/learn_list", "tool": "learn_list", "arguments": {}},
+        {"server": "junction-core", "tool": " learn_list", "arguments": {}},
+        {"server": "junction-core", "tool": "learn/list", "arguments": {}},
+        {"server": 7, "tool": "learn_list", "arguments": {}},
+        {"server": "junction-core", "tool": None, "arguments": {}},
+        {"server": "junction-core", "tool": "learn_list", "arguments": []},
+        {"server": "junction-core", "tool": "learn_list"},
+        {"server": "junction-core", "tool": "learn_list", "arguments": {}, "command": None},
+    ],
+)
+async def test_a_malformed_codex_mcp_notification_cannot_waive_the_shell_deny(env, raw_input):
+    frames = _codex_mcp_call({})
+    frames[0]["params"]["update"]["rawInput"] = raw_input
+
+    event = await _permission_event(_client(env, ACP_BACKEND_CODEX), frames)
+
+    assert event.is_shell is True
+    assert event.mcp_server_name == ""
+    assert event.tool_name == ""
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.asyncio
+async def test_a_codex_mcp_marker_requires_the_notification_raw_input_field(env):
+    frames = _codex_mcp_call({})
+    update = frames[0]["params"]["update"]
+    update["input"] = update.pop("rawInput")
+
+    event = await _permission_event(_client(env, ACP_BACKEND_CODEX), frames)
+
+    assert event.is_shell is True
+    assert event.mcp_server_name == ""
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.asyncio
+async def test_a_permission_frame_mcp_marker_cannot_reclassify_a_cached_codex_shell(env):
+    frames = _codex_mcp_call({})
+    initial = frames[0]["params"]["update"]
+    initial.pop("_meta")
+    initial["rawInput"] = {}
+    permission = frames[-1]["params"]["toolCall"]
+    permission["_meta"] = {"is_mcp_tool_call": True}
+    permission["rawInput"] = {"server": "junction-core", "tool": "learn_list", "arguments": {}}
+
+    event = await _permission_event(_client(env, ACP_BACKEND_CODEX), frames)
+
+    assert event.is_shell is True
+    assert event.shell_classified is True
+    assert event.mcp_server_name == ""
+    assert event.tool_name == ""
+    assert event.raw_params_trusted is False
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.asyncio
+async def test_a_permission_only_codex_mcp_claim_has_no_canonical_identity_or_provenance(env):
+    permission = _codex_mcp_call({})[-1]
+    permission["params"]["toolCall"]["_meta"] = {"is_mcp_tool_call": True}
+    permission["params"]["toolCall"]["rawInput"] = {
+        "server": "junction-core",
+        "tool": "learn_list",
+        "arguments": {},
+    }
+
+    event = await _permission_event(_client(env, ACP_BACKEND_CODEX), [permission])
+
+    assert event.shell_classified is False
+    assert event.mcp_server_name == ""
+    assert event.tool_name == ""
+    assert event.raw_params_trusted is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("has_command", [False, True])
+async def test_a_codex_mcp_argument_replacement_without_provenance_drops_the_old_identity(
+    env, has_command
+):
+    frames = _codex_mcp_call({})
+    refinement = copy.deepcopy(frames[0])
+    update = refinement["params"]["update"]
+    update["sessionUpdate"] = "tool_call_update"
+    update.pop("kind")
+    update["_meta"]["is_mcp_tool_call"] = False
+    if has_command:
+        update["rawInput"] = {"command": f"cat {env.data_home / 'security_policy.json'}"}
+
+    event = await _permission_event(
+        _client(env, ACP_BACKEND_CODEX), [frames[0], refinement, frames[-1]]
+    )
+
+    assert event.is_shell is True
+    assert event.mcp_server_name == ""
+    assert event.tool_name == ""
+    if has_command:
+        assert event.shell_command == update["rawInput"]["command"]
+    else:
+        assert event.shell_command is None
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.asyncio
+async def test_a_codex_mcp_marker_has_no_effect_on_kiros_existing_execute_path(env):
+    event = await _permission_event(_client(env, ACP_BACKEND_KIRO), _codex_mcp_call({}))
+
+    assert event.is_shell is True
+    assert event.mcp_server_name == ""
+    assert event.tool_name == ""
+    assert "arguments" in event.raw_tool_params
+    assert _gate(event).action == TOOL_DENY
+
+
+class _TailObservedList(list):
+    """Fail deterministically if a bounded reader iterates through the tail."""
+
+    def __init__(self, values):
+        super().__init__(values)
+        self.iterations: list[int] = []
+        self.slices: list[slice] = []
+
+    def __iter__(self):
+        iteration = len(self.iterations)
+        self.iterations.append(0)
+        for value in super().__iter__():
+            self.iterations[iteration] += 1
+            assert self.iterations[iteration] <= MAX_TARGET_PATHS + 2, "unbounded tail iteration"
+            yield value
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            self.slices.append(key)
+        return super().__getitem__(key)
+
+
+@pytest.mark.parametrize("source", ["locations", "content"])
+def test_frame_path_collection_stops_once_it_has_the_denial_sentinel(env, source):
+    paths = [str(env.ws / f"f{i}.txt") for i in range(MAX_TARGET_PATHS + 50)]
+    values = _TailObservedList(
+        {"path": path, **({"type": "diff"} if source == "content" else {})} for path in paths
+    )
+
+    found = _frame_target_paths({source: values}, None)
+
+    assert found == [PATH_LIMIT_SENTINEL]
+    assert values.iterations == []
+
+
+def test_permission_path_merge_copies_only_the_bounded_prefix_and_still_denies(env):
+    paths = _TailObservedList(str(env.ws / f"f{i}.txt") for i in range(MAX_TARGET_PATHS + 50))
+    event = AcpEvent(
+        kind=EVENT_PERMISSION_REQUEST,
+        title="Write files",
+        tool_kind="edit",
+        tool_input="already rendered",
+        raw_tool_params={"paths": paths},
+    )
+    msg = JsonRpcMessage.from_dict(
+        {
+            "method": METHOD_REQUEST_PERMISSION,
+            "id": 9,
+            "params": {"toolCall": {"locations": [{"path": str(env.ws / "another.txt")}]}},
+        }
+    )
+
+    _client(env)._recover_permission_arguments(event, msg)
+
+    assert paths.slices == [slice(None, MAX_TARGET_PATHS + 1)]
+    assert paths.iterations == []
+    assert len(paths) == MAX_TARGET_PATHS + 50
+    assert _gate(event).action == TOOL_DENY
+
+
+def test_a_bounded_permission_merge_keeps_a_distinct_forbidden_path_after_many_duplicates(env):
+    ordinary = str(env.ws / "ordinary.txt")
+    policy = str(env.data_home / "security_policy.json")
+    paths = _TailObservedList([ordinary] * (MAX_TARGET_PATHS + 50) + [policy])
+    event = AcpEvent(
+        kind=EVENT_PERMISSION_REQUEST,
+        title="Write files",
+        tool_kind="edit",
+        tool_input="already rendered",
+        raw_tool_params={"paths": paths},
+    )
+    msg = JsonRpcMessage.from_dict(
+        {
+            "method": METHOD_REQUEST_PERMISSION,
+            "id": 9,
+            "params": {"toolCall": {"locations": [{"path": str(env.ws / "another.txt")}]}},
+        }
+    )
+
+    _client(env)._recover_permission_arguments(event, msg)
+
+    # The count alone denies before the unseen forbidden tail; the sentinel must
+    # survive the merge rather than becoming an allowing truncated prefix.
+    assert PATH_LIMIT_SENTINEL in target_paths(event.raw_tool_params)
+    assert paths.iterations == []
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.parametrize("value", ["ordinary.txt", None])
+def test_raw_path_entry_bounds_deny_repetitions_and_non_paths_before_iteration(env, value):
+    from junction.platform.governance import _tool_arg_paths
+
+    paths = _TailObservedList([value] * (MAX_TARGET_PATHS + 50))
+
+    assert target_paths({"paths": paths}) == [PATH_LIMIT_SENTINEL]
+    assert _tool_arg_paths({"paths": paths}) == (PATH_LIMIT_SENTINEL,)
+    assert paths.iterations == []
+    event = AcpEvent(
+        kind=EVENT_PERMISSION_REQUEST,
+        title="Write files",
+        tool_kind="edit",
+        raw_tool_params={"paths": paths},
+    )
+    assert _gate(event).action == TOOL_DENY
+    assert paths.iterations == []
+
+
+@pytest.mark.parametrize("source", ["locations", "content"])
+@pytest.mark.parametrize("has_path", [False, True])
+def test_frame_entry_bounds_deny_repetitions_and_non_paths_before_iteration(env, source, has_path):
+    value = {"path": str(env.ws / "ordinary.txt")} if has_path else {}
+    if source == "content":
+        value["type"] = "diff"
+    values = _TailObservedList([value] * (MAX_TARGET_PATHS + 50))
+
+    found = _frame_target_paths({source: values}, None)
+
+    assert found == [PATH_LIMIT_SENTINEL]
+    assert values.iterations == []
+    event = AcpEvent(
+        kind=EVENT_PERMISSION_REQUEST,
+        title="Write files",
+        tool_kind="edit",
+        raw_tool_params={"paths": found},
+    )
+    assert _gate(event).action == TOOL_DENY
+
+
+@pytest.mark.parametrize("source", ["locations", "content"])
+def test_frame_collection_also_stops_when_trimmed_spellings_exceed_the_distinct_bound(env, source):
+    values = _TailObservedList(
+        {
+            "path": "\ufeff" + str(env.ws / f"f{i}.txt"),
+            **({"type": "diff"} if source == "content" else {}),
+        }
+        for i in range(MAX_TARGET_PATHS)
+    )
+
+    found = _frame_target_paths({source: values}, None)
+
+    assert exceeds_path_limits(found)
+    assert values.iterations[0] < len(values)

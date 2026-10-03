@@ -56,12 +56,15 @@ from junction.acp.prompt_blocks import build_prompt_blocks
 from junction.acp.types import (
     ACP_BACKEND_AUTO,
     ACP_BACKEND_CLAUDE,
+    ACP_BACKEND_CODEX,
     ACP_BACKEND_KIRO,
     ACP_BACKENDS_INTERNAL_SANDBOX,
+    ACP_BACKENDS_MANAGED_MCP,
     ACP_BACKENDS_SILENT_RETRY,
     ACP_BACKENDS_SPEC_FAMILY,
     ACP_BACKENDS_STEER,
     ACP_CLIENT_CAPABILITIES,
+    ACP_PERMISSION_MODE_PINS,
     EVENT_AGENT_SWITCHED,
     EVENT_CLEAR_STATUS,
     EVENT_COMPACTION_STATUS,
@@ -113,7 +116,7 @@ from junction.acp.types import (
     JsonRpcRequest,
     TurnUsage,
 )
-from junction.agent import ensure_agent_materialized
+from junction.agent import ensure_agent_materialized, harness_session_mcp_servers
 from junction.atomic_write import atomic_write
 from junction.config.paths import kiro_sessions_dir
 from junction.constants import (
@@ -132,7 +135,7 @@ from junction.hooks import (
 from junction.kiro_cli import resolve_kiro_cli
 from junction.mcp_gateway.claim import schedule_claim
 from junction.mcp_gateway.session_servers import pooled_session_servers
-from junction.path_spellings import MAX_TARGET_PATHS, path_spellings
+from junction.path_spellings import MAX_TARGET_PATHS, PATH_LIMIT_SENTINEL, path_spellings
 from junction.resource_status import inject_xdist_auto_cap
 from junction.sandbox import (
     RLIMIT_PROFILE_SESSION_HOST,
@@ -789,7 +792,9 @@ def _frame_target_paths(frame: dict, raw_params: dict | None) -> list[str]:
     which of the three sources to believe. A path a harness would trim
     (``path_spellings``) is listed in both spellings for the same reason. Collection
     stops one past ``MAX_TARGET_PATHS``: the gate denies a call that names more, so
-    walking an attacker-sized list to the end would only stall the loop.
+    walking an attacker-sized list to the end would only stall the loop. Locations
+    and content lists past the raw-entry bound return a denial sentinel before
+    iteration, including lists filled with repetitions or non-path objects.
     """
     found: list[str] = []
     seen: set[str] = set()
@@ -810,12 +815,20 @@ def _frame_target_paths(frame: dict, raw_params: dict | None) -> list[str]:
             _add(raw_params.get(key))
     locations = frame.get("locations")
     if isinstance(locations, list):
+        if len(locations) > MAX_TARGET_PATHS:
+            return [*found, PATH_LIMIT_SENTINEL]
         for location in locations:
+            if len(found) > MAX_TARGET_PATHS:
+                return found
             if isinstance(location, dict):
                 _add(location.get("path"))
     content = frame.get("content")
     if isinstance(content, list):
+        if len(content) > MAX_TARGET_PATHS:
+            return [*found, PATH_LIMIT_SENTINEL]
         for block in content:
+            if len(found) > MAX_TARGET_PATHS:
+                return found
             if isinstance(block, dict) and block.get("type") == "diff":
                 _add(block.get("path"))
     return found
@@ -921,6 +934,9 @@ def parse_slash_command(command: str) -> tuple[str, dict]:
 
 # Timeouts for session initialization steps
 _INIT_TIMEOUT = 240.0  # 4 min — MCP servers can be slow to initialize
+#: A permission-mode switch is one control round trip to a session that is already live;
+#: the deadline is activity-based, so it only has to outlast a silent backend.
+_PERMISSION_MODE_PIN_TIMEOUT = 30.0
 # set_mode/set_model: fire-and-forget.  kiro-cli accepts these commands
 # but usually never sends a JSON-RPC response — MCP servers load
 # asynchronously.  Any late responses land in _buffer and are harmlessly
@@ -2363,6 +2379,9 @@ class AcpClient:
         # from "advertised zero/some modes, honor the list" (True) so an
         # explicitly-empty availableModes fails closed rather than attempting.
         self._modes_advertised: bool = False
+        # Mode id the backend reported as current at session init; the permission-mode
+        # pin compares against it so an already-correct mode costs no round trip.
+        self._current_mode_id: str = ""
         # Model kiro-cli/claude-agent-acp actually resolved to (may differ
         # from self._model when that's the "auto" sentinel). Used to look up
         # the context window when usage_update isn't sent (see _track_metadata).
@@ -2521,16 +2540,50 @@ class AcpClient:
         return pooled_session_servers(self._mcp_gateway_overlay, self._agent, self._channel_id)
 
     def _claude_session_mcp_servers(self) -> list:
-        """MCP server array passed to a claude ``session/new`` / ``session/load``.
+        """MCP server array passed to a harness ``session/new`` / ``session/load``.
 
-        Overridable seam for the dormant ``_is_claude`` backend. The Default is
-        ``[]`` so the public core (kiro-cli only, which gets its servers via
-        ``--agent``) is byte-identical. An internal companion that re-registers
-        a Claude backend over the ``ACP_BACKEND_CLAUDE`` seam overrides this to
-        inject the junction-core/cron + user MCP servers — the claude adapter
-        does not read ``junction.mcp.json`` on its own, so without this a claude
-        session would have zero MCP tools.
+        A member of ``ACP_BACKENDS_MANAGED_MCP`` (Claude Code, Codex) is handed
+        the always-on managed servers, because such a harness reads no Warding
+        agent spec and would otherwise have no memory, cron or subagent tools.
+        The entries carry this session's key and channel id (a harness launches
+        its stdio servers with a reduced environment, so the identity in the
+        harness's own env does not reach them) and no pre-authorization key, so
+        every tool call still raises a permission request for the PreToolUse
+        gate. Every other backend gets ``[]``: kiro-cli takes its servers from
+        ``--agent``, so its ``session/new`` stays byte-identical.
+
+        The name is historical: it is the one overridable seam, and an internal
+        companion that re-registers a Claude backend over ``ACP_BACKEND_CLAUDE``
+        overrides it wholesale (to also inject user MCP servers), which replaces
+        this default rather than adding to it. A pooled broker stub of the same
+        name is appended after these entries and replaces them in both adapters'
+        name-keyed maps.
+
+        Never raises: a session must start without these tools rather than not
+        start. The launcher resolution is cached for the process, so after the
+        first call this is a few dict operations.
         """
+        # Both memberships, so a harness without an asking-mode pin (H17) never gets tools
+        # that would then run without the gate seeing them. And a session key: the servers
+        # resolve their caller from the key they are launched with, and a launched harness
+        # keeps the one it started with (``rekey`` updates this client only), so a client that
+        # starts without one, such as a pre-warmed pool session, gets none rather than tools
+        # that refuse every call.
+        if (
+            self.backend in ACP_BACKENDS_MANAGED_MCP
+            and self.backend in ACP_PERMISSION_MODE_PINS
+            and self._session_key
+        ):
+            try:
+                return harness_session_mcp_servers(
+                    session_key=self._session_key, channel_id=self._channel_id or ""
+                )
+            except Exception:
+                logger.warning(
+                    "Managed MCP servers unavailable for this harness session; "
+                    "starting it without them",
+                    exc_info=True,
+                )
         return []
 
     @property
@@ -2834,7 +2887,11 @@ class AcpClient:
         # backend never loaded (would fault with "Mode '<agent>' not found").
         # Assigned unconditionally so a re-init that omits `modes` clears any
         # stale state rather than guarding on it.
-        self._available_mode_ids, _current_mode, self._modes_advertised = parse_session_modes(resp)
+        (
+            self._available_mode_ids,
+            self._current_mode_id,
+            self._modes_advertised,
+        ) = parse_session_modes(resp)
 
     def _handle_config_option_update(self, msg: JsonRpcMessage) -> None:
         """Process a config_option_update session notification.
@@ -3609,18 +3666,17 @@ class AcpClient:
         without a sessionId, which the caller treats as a hard failure).
 
         The claude-backed substitution retry path is the dormant ``_is_claude``
-        seam (kiro-cli never emits this advisory); the public core drives only
-        kiro-cli, so ``mcpServers`` stays ``[]`` and the settings re-seed is
+        seam (kiro-cli never emits this advisory), so the settings re-seed is
         best-effort via ``getattr`` — the deleted cc_agent glue is re-added by
         the internal companion, not the public core.
         """
         new_params: dict = {
             "cwd": str(self._work_dir),
-            # kiro-cli loads servers from --agent; claude-agent-acp must be
-            # told here -- it does not read junction.mcp.json on its own. The
-            # Default hook returns [] (kiro-cli path unchanged); an internal
-            # companion that drives the _is_claude seam overrides
-            # _claude_session_mcp_servers() to populate the claude MCP array.
+            # kiro-cli loads servers from --agent; a spec-family harness reads
+            # no Warding agent spec and must be told here.
+            # _claude_session_mcp_servers() returns the managed servers for
+            # ACP_BACKENDS_MANAGED_MCP members and [] for everyone else, so the
+            # kiro-cli path is unchanged; a companion overrides it wholesale.
             # Pooled broker stubs are appended for kiro-cli: a session-injected
             # server outranks the same-named entry in the agent spec, which is
             # how pooling takes effect without writing a spec anywhere.
@@ -3727,12 +3783,13 @@ class AcpClient:
                     load_params: dict = {
                         "sessionId": resume_sid,
                         "cwd": str(self._work_dir),
-                        # kiro-cli gets its servers via --agent; the claude
-                        # backend must receive them here (it does not read
-                        # junction.mcp.json itself). Default [] leaves kiro-cli
-                        # unchanged; a companion overrides the hook (see
-                        # session/new above). Pooled stubs are re-declared so a
-                        # resumed session keeps talking to the broker.
+                        # kiro-cli gets its servers via --agent; a spec-family
+                        # harness must receive them here, and session/load
+                        # re-initializes its servers, so an empty list would drop
+                        # them from the resumed session. [] leaves kiro-cli
+                        # unchanged (see session/new above). Pooled stubs are
+                        # re-declared so a resumed session keeps talking to the
+                        # broker.
                         "mcpServers": [
                             *self._claude_session_mcp_servers(),
                             *(await asyncio.to_thread(self._pooled_mcp_servers)),
@@ -3843,11 +3900,59 @@ class AcpClient:
                     f"`warding setup --agent-only` to materialize the agent config."
                 )
 
+        else:
+            # 4b. Pin the permission mode of an adapted harness (harness-parity H17).
+            #     Before the model and any prompt, so no tool call can happen in the
+            #     mode the session started in. The Kiro activation above is unchanged.
+            pinned_mode = ACP_PERMISSION_MODE_PINS.get(self.backend)
+            if pinned_mode is not None:
+                await self._pin_permission_mode(pinned_mode)
+
         # 5. Set model — override if Junction config specifies non-default.
         await self._apply_startup_model()
 
         # Drain MCP server init notifications
         await self._drain_notifications()
+
+    async def _pin_permission_mode(self, mode_id: str) -> None:
+        """Make *mode_id* the session's permission mode, or refuse to run the session.
+
+        ``HookManager.on_tool_call`` only decides on a call the harness asks about, and
+        the harness's own mode decides whether it asks (see ``ACP_PERMISSION_MODE_PINS``).
+        The mode a session starts in comes from the harness's default or the user's own
+        settings, neither of which Warding controls, so the pin is applied over the
+        protocol (``session/set_mode``) rather than by editing the user's files.
+
+        Fails closed. A mode the backend did not advertise, a rejected ``set_mode`` and a
+        timeout all raise, because continuing would run the session in a mode that may
+        never ask Warding about a tool call, and nothing would show it. The raise is
+        retried once on a fresh process by ``ensure_ready``, like any startup failure.
+        """
+        if self._modes_advertised and self._current_mode_id == mode_id:
+            return
+        if self._modes_advertised and mode_id not in self._available_mode_ids:
+            raise AcpError(
+                f"{self.backend} does not offer permission mode {mode_id!r} "
+                f"(advertised: {self._available_mode_ids or 'none'}). Refusing to run it in "
+                f"a mode that may skip Warding's approval gate."
+            )
+        try:
+            request_id = await self._send_request(
+                METHOD_SET_MODE, {"sessionId": self._session_id, "modeId": mode_id}
+            )
+            await self._wait_for_response(
+                request_id,
+                timeout=_PERMISSION_MODE_PIN_TIMEOUT,
+                method=METHOD_SET_MODE,
+                allow_model_substitution=False,
+            )
+        except AcpError as exc:
+            raise AcpError(
+                f"Could not set {self.backend} to permission mode {mode_id!r}: {exc}. "
+                f"Refusing to run it in a mode that may skip Warding's approval gate."
+            ) from exc
+        self._current_mode_id = mode_id
+        logger.info("ACP permission mode pinned: %s (%s)", mode_id, self.backend)
 
     async def ensure_ready(self) -> None:
         """Ensure process is spawned and session is initialized.
@@ -4098,6 +4203,7 @@ class AcpClient:
         *,
         method: str = "",
         expected_mcp: object = None,
+        allow_model_substitution: bool = True,
     ) -> dict:
         """Block until a JSON-RPC response matching *req_id* arrives.
 
@@ -4120,6 +4226,11 @@ class AcpClient:
         them in a local list until exit guarantees forward progress while
         preserving the frame so a later ``_prompt_loop`` / ``_process_message``
         can answer the deferred ``session/request_permission`` request.
+
+        Model-substitution advisories are non-fatal by default. A permission-mode
+        pin disables that exception: any non-None error payload, including an
+        advisory or malformed falsy payload, must refuse startup rather than
+        confirm a mode the backend did not set.
 
         The deadline is **activity-based**: any received message (notification,
         deferred frame, or the matching response) resets it to ``now + timeout``,
@@ -4160,8 +4271,8 @@ class AcpClient:
             deadline = min(time.monotonic() + timeout, hard_deadline)
             if msg.is_response_for(req_id):
                 _reinject()
-                if msg.error:
-                    if _is_model_substitution_advisory(msg.error):
+                if msg.error or (not allow_model_substitution and msg.error is not None):
+                    if allow_model_substitution and _is_model_substitution_advisory(msg.error):
                         # Admin-tier / headless-tier policy substituted the
                         # requested model. The session is already live on the
                         # substitute -- keep going; log loudly so operators see it.
@@ -5788,6 +5899,8 @@ class AcpClient:
             title = update.get("title", "unknown")
             kind = update.get("kind", "unknown")
             raw_input = update.get("rawInput") or update.get("input") or update.get("params")
+            codex_mcp = self._codex_mcp_notification(update, update.get("rawInput"))
+            gate_params = codex_mcp[2] if codex_mcp is not None else raw_input
             purpose = extract_tool_purpose(raw_input)
             logger.debug(
                 "ACP tool_call raw: %s",
@@ -5842,10 +5955,10 @@ class AcpClient:
             # scopes (filesystem.write / network.egress). Bounded by the same
             # clear() as _tool_call_inputs; capped to avoid unbounded growth on a
             # stream that never sends a matching permission request.
-            if tool_call_id and isinstance(raw_input, dict):
+            if tool_call_id and isinstance(gate_params, dict):
                 if len(self._tool_call_params) > _MAX_CACHED_TOOL_PARAMS:
                     self._tool_call_params.clear()
-                self._tool_call_params[tool_call_id] = raw_input
+                self._tool_call_params[tool_call_id] = gate_params
             # Redact LLM-influenced fields before dashboard display
             if purpose:
                 purpose, _ = redact_exfiltration_urls(purpose)
@@ -5859,15 +5972,17 @@ class AcpClient:
             # Capture the canonical shell signal from the raw kind BEFORE
             # redaction so the later permission_request event (which carries no
             # kind) can inherit it via the toolCallId cache below.
-            is_shell = _is_shell_kind(kind)
+            is_shell = False if codex_mcp is not None else _is_shell_kind(kind)
+            mcp_server = codex_mcp[0] if codex_mcp is not None else _kiro_mcp_server_name(update)
+            tool_name = codex_mcp[1] if codex_mcp is not None else _kiro_tool_name(update)
             if tool_call_id:
                 self._tool_call_is_shell[tool_call_id] = is_shell
                 # Same lifecycle as is_shell: cache the trusted MCP server
                 # identity so the later permission event can inherit it.
-                self._tool_call_mcp_server[tool_call_id] = _kiro_mcp_server_name(update)
+                self._tool_call_mcp_server[tool_call_id] = mcp_server
                 # Cache the trusted tool name too, so the permission event can
                 # rebuild mcp__<server>__<tool> for per-tool governance.
-                self._tool_call_tool_name[tool_call_id] = _kiro_tool_name(update)
+                self._tool_call_tool_name[tool_call_id] = tool_name
             title = _select_tool_title(title, raw_input, kind, is_shell=is_shell) or ""
             if title:
                 title, _ = redact_exfiltration_urls(title)
@@ -5876,8 +5991,8 @@ class AcpClient:
                 kind, _ = redact_exfiltration_urls(kind)
                 kind, _ = redact_credentials(kind)
             self.last_prompt_stats.tool_calls.append((kind, title))
-            # Trusted identity from _meta.kiro (NOT the LLM-authored title) —
-            # shared with the _dispatch builder so both event paths carry it.
+            # Trusted Kiro metadata or a decoded Codex notification, never the
+            # LLM-authored title. The shared parser receives the identity caches.
             return AcpEvent(
                 kind=EVENT_TOOL_CALL,
                 title=title,
@@ -5886,10 +6001,10 @@ class AcpClient:
                 tool_input=input_str,
                 tool_input_redacted=input_redacted,
                 tool_call_id=tool_call_id,
-                raw_tool_params=raw_input if isinstance(raw_input, dict) else None,
+                raw_tool_params=gate_params if isinstance(gate_params, dict) else None,
                 is_shell=is_shell,
-                tool_name=_kiro_tool_name(update),
-                mcp_server_name=_kiro_mcp_server_name(update),
+                tool_name=tool_name,
+                mcp_server_name=mcp_server,
             )
         return None
 
@@ -5995,6 +6110,8 @@ class AcpClient:
         title = update.get("title")
         kind = update.get("kind")
         raw_input = update.get("rawInput")
+        codex_mcp = self._codex_mcp_notification(update, raw_input)
+        gate_params = codex_mcp[2] if codex_mcp is not None else raw_input
         # Only emit when at least one refinement field is present. Pure-output
         # updates (content/rawOutput only) are handled by the result extractor.
         if title is None and kind is None and not raw_input:
@@ -6039,17 +6156,34 @@ class AcpClient:
         # _dispatch._build_tool_refinement_event, which the runtime path already uses.
         # Spec family only: a kiro-cli session on this client keeps resolving its
         # params from the initial tool_call alone, so a refinement cannot replace them.
-        if self._is_spec and isinstance(raw_input, dict) and raw_input:
+        if self._is_spec and isinstance(gate_params, dict) and raw_input:
             if len(self._tool_call_params) > _MAX_CACHED_TOOL_PARAMS:
                 self._tool_call_params.clear()
-            self._tool_call_params[tool_use_id] = raw_input
+            self._tool_call_params[tool_use_id] = gate_params
         # Refresh the cached shell signal only when this refinement carries a
         # kind. A refinement that omits kind must NOT clobber a True cached by
         # the initial tool_call notification (kind is optional on updates).
         # Cache off the RAW kind, not the redacted kind_str. Resolved BEFORE the
         # title so the label rule sees the real classification rather than a
         # missing kind.
-        if isinstance(kind, str) and kind:
+        if codex_mcp is not None:
+            self._tool_call_is_shell[tool_use_id] = False
+            self._tool_call_mcp_server[tool_use_id] = codex_mcp[0]
+            self._tool_call_tool_name[tool_use_id] = codex_mcp[1]
+        elif (
+            self.backend == ACP_BACKEND_CODEX
+            and raw_input
+            and self._tool_call_mcp_server.get(tool_use_id)
+        ):
+            # New arguments for a resolved Codex MCP call must carry the same
+            # notification provenance. An unmarked/malformed replacement cannot
+            # retain non-shell status or the old canonical identity while hiding
+            # its actual arguments inside the wrapper. Missing commands then take
+            # the existing hard shell deny; real commands take the shell checks.
+            self._tool_call_is_shell[tool_use_id] = True
+            self._tool_call_mcp_server.pop(tool_use_id, None)
+            self._tool_call_tool_name.pop(tool_use_id, None)
+        elif isinstance(kind, str) and kind:
             self._tool_call_is_shell[tool_use_id] = _is_shell_kind(kind)
         is_shell = self._tool_call_is_shell.get(tool_use_id, False)
         # Prefer rawInput.description over the SDK-supplied title (e.g.
@@ -6089,8 +6223,10 @@ class AcpClient:
             tool_input=input_str,
             tool_input_redacted=input_redacted,
             tool_call_id=tool_use_id,
-            raw_tool_params=raw_input if isinstance(raw_input, dict) else None,
+            raw_tool_params=gate_params if isinstance(gate_params, dict) else None,
             is_shell=is_shell,
+            mcp_server_name=codex_mcp[0] if codex_mcp is not None else "",
+            tool_name=codex_mcp[1] if codex_mcp is not None else "",
         )
 
     def _read_new_tool_results_sync(self) -> list[AcpEvent]:
@@ -6154,6 +6290,37 @@ class AcpClient:
         if results:
             logger.debug("JSONL: read %d tool result(s) from %s", len(results), jsonl_path.name)
         return results
+
+    def _codex_mcp_notification(
+        self, update: dict, raw_input: object
+    ) -> tuple[str, str, dict] | None:
+        """Decode only an adapter-proven Codex MCP notification, never a permission.
+
+        Codex builds MCP calls with the same ``execute`` kind as shell calls. Its
+        notification's explicit marker and resolved identity distinguish them; a
+        permission frame alone cannot waive the shell-command deny. Arguments are
+        unwrapped so the path and egress gates see the actual tool inputs. Kiro's
+        metadata parser and classification remain unchanged (H13).
+        """
+        if self.backend == ACP_BACKEND_CODEX:
+            meta = update.get("_meta")
+            if not isinstance(meta, dict) or meta.get("is_mcp_tool_call") is not True:
+                return None
+            if not isinstance(raw_input, dict) or "command" in raw_input:
+                return None
+            server, tool, arguments = (
+                raw_input.get("server"),
+                raw_input.get("tool"),
+                raw_input.get("arguments"),
+            )
+            if not isinstance(arguments, dict):
+                return None
+            if not isinstance(server, str) or not isinstance(tool, str):
+                return None
+            if any(not name or name.strip() != name or "/" in name for name in (server, tool)):
+                return None
+            return server, tool, arguments
+        return None
 
     def _note_frame_paths(self, update: dict, tool_call_id: str) -> None:
         """Remember the files a spec-family tool_call / tool_call_update names.
@@ -6285,11 +6452,13 @@ class AcpClient:
         merged = dict(base) if isinstance(base, dict) else {}
         existing = merged.get("paths")
         if isinstance(existing, (list, tuple)):
-            head = list(existing)
+            head = list(existing[: MAX_TARGET_PATHS + 1])
         elif isinstance(existing, str) and existing.strip():
             head = [existing]
         else:
             head = []
+        # A sliced over-limit list keeps MAX+1 raw entries, so the gate still
+        # denies on entry count even if every retained path is a duplicate.
         merged["paths"] = [*head, *extra]
         event.raw_tool_params = merged
 

@@ -6042,26 +6042,29 @@ def _home_dir_targets_uncached(
             sensitive_targets.add(os.path.realpath(agents_full).casefold())
         except (OSError, ValueError):
             pass
-    # The adapted harnesses' config follows their own home overrides the same way
-    # (``CLAUDE_CONFIG_DIR`` replaces ``~/.claude``, ``CODEX_HOME`` replaces
-    # ``~/.codex``), so the entries under a relocated home are anchored there in
-    # addition to the ~/-rooted default. Only entries actually present in
-    # *home_dirs* are added: they are on the write-only tier, and must not leak
-    # into the read gate. An extra target under a bogus override is harmless.
+    # The adapted harnesses' default homes or leaves can themselves be symlinks
+    # into a workspace. Resolve those targets as well as the lexical defaults,
+    # otherwise an edit naming the actual file could rewrite its permission
+    # config without carrying a .claude/.codex segment. Their home overrides
+    # (CLAUDE_CONFIG_DIR / CODEX_HOME) add relocated targets the same way. Only
+    # entries present in *home_dirs* are added: they are write-only and must not
+    # leak into the read gate. The existing target-cache TTL applies to aliases.
     for (harness_dir, _env_name, harness_leaves), harness_override in zip(
         _HARNESS_HOME_OVERRIDES, (claude_home_override, codex_home_override)
     ):
-        if not harness_override:
-            continue
+        harness_roots = [os.path.join(home, harness_dir)]
+        if harness_override:
+            harness_roots.append(harness_override)
         for leaf in harness_leaves:
             if f"{harness_dir}/{leaf}" not in home_dirs:
                 continue
-            full = os.path.join(harness_override, leaf)
-            sensitive_targets.add(full.casefold())
-            try:
-                sensitive_targets.add(os.path.realpath(full).casefold())
-            except (OSError, ValueError):
-                pass
+            for harness_root in harness_roots:
+                full = os.path.join(harness_root, leaf)
+                sensitive_targets.add(full.casefold())
+                try:
+                    sensitive_targets.add(os.path.realpath(full).casefold())
+                except (OSError, ValueError):
+                    pass
     return sensitive_targets
 
 

@@ -5973,6 +5973,88 @@ class TestHarnessPermissionConfigIsWriteProtected:
 
         assert is_sensitive_write_path(str(link)) is True
 
+    @pytest.mark.parametrize(
+        "harness_dir,leaf",
+        [
+            (".claude", "settings.json"),
+            (".claude", "settings.local.json"),
+            (".codex", "config.toml"),
+            (".codex", "hooks.json"),
+            (".codex", "rules/default.rules"),
+        ],
+    )
+    def test_a_default_harness_home_symlink_protects_its_actual_config_target(
+        self, tmp_path, harness_dir, leaf
+    ) -> None:
+        """The usual unset-override home may point into the agent workspace."""
+        from junction.hooks import TOOL_DENY, HookManager, HooksConfig
+
+        target_home = tmp_path / "workspace" / "harness-config"
+        target = target_home / leaf
+        target.parent.mkdir(parents=True)
+        target.write_text("{}\n", encoding="utf-8")
+        try:
+            (self.home / harness_dir).symlink_to(target_home, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("directory symlinks unavailable")
+
+        assert is_sensitive_write_path(str(target)) is True
+        assert is_sensitive_path(str(target)) is False
+        gate = HookManager(HooksConfig.from_dict({}))
+        write = gate.on_tool_call(
+            "Edit config", tool_kind="edit", raw_params={"file_path": str(target)}
+        )
+        read = gate.on_tool_call(
+            "Read config", tool_kind="read", raw_params={"file_path": str(target)}
+        )
+
+        assert write.action == TOOL_DENY
+        assert "write-protected" in write.reason
+        assert read.action != TOOL_DENY
+        # Resolving a config alias must not fence the entire relocated home.
+        ordinary = target_home / "session-log.json"
+        assert is_sensitive_write_path(str(ordinary)) is False
+
+    @pytest.mark.parametrize(
+        "harness_dir,leaf",
+        [
+            (".claude", "settings.json"),
+            (".claude", "settings.local.json"),
+            (".codex", "config.toml"),
+            (".codex", "hooks.json"),
+            (".codex", "rules"),
+        ],
+    )
+    def test_a_default_harness_config_leaf_symlink_protects_its_actual_target(
+        self, tmp_path, harness_dir, leaf
+    ) -> None:
+        from junction.hooks import TOOL_DENY, HookManager, HooksConfig
+
+        harness_home = self.home / harness_dir
+        harness_home.mkdir()
+        is_directory = leaf == "rules"
+        alias_target = tmp_path / "workspace" / "ordinary-config"
+        if is_directory:
+            alias_target.mkdir(parents=True)
+            target = alias_target / "default.rules"
+        else:
+            alias_target.parent.mkdir(parents=True)
+            target = alias_target
+        target.write_text("{}\n", encoding="utf-8")
+        try:
+            (harness_home / leaf).symlink_to(alias_target, target_is_directory=is_directory)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks unavailable")
+
+        assert is_sensitive_write_path(str(target)) is True
+        assert is_sensitive_path(str(target)) is False
+        gate = HookManager(HooksConfig.from_dict({}))
+        write = gate.on_tool_call("Edit config", tool_kind="edit", raw_params={"path": str(target)})
+        read = gate.on_tool_call("Read config", tool_kind="read", raw_params={"path": str(target)})
+
+        assert write.action == TOOL_DENY
+        assert read.action != TOOL_DENY
+
     def test_relocated_harness_homes_are_re_anchored(self, tmp_path, monkeypatch) -> None:
         # ``CLAUDE_CONFIG_DIR`` replaces ``~/.claude`` and ``CODEX_HOME`` replaces
         # ``~/.codex``; the files the harness actually reads live under the override,

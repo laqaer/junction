@@ -873,7 +873,7 @@ the client also recovers the arguments from the permission frame's own
 rawInput at all) and hands every touched file to the gate under a list-valued
 `paths` argument that `classify_tool_args` governs element by element — see
 [acp-client.md](acp-client.md) § Tool Permission Protocol. Without this the two
-arg-derived scopes would be inert in production.
+arg-derived scopes would be inert in production. The mirrored readers cap distinct spellings and raw list entries at `MAX_TARGET_PATHS` (2048); an oversized `paths` list returns the shared overlong `PATH_LIMIT_SENTINEL` before iteration, including repeated or non-path entries. `hooks.on_tool_call` enforces that count/length hard deny before governance evaluates scopes, and ACP location/diff recovery preserves it across merges.
 
 The `kind` field is **spec-optional**: some ACP backends omit it (it arrives
 `""`). `classify_tool_args` therefore falls back to the param SHAPE when the kind

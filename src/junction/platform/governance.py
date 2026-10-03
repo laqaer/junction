@@ -56,7 +56,7 @@ from typing import (
 )
 
 from junction.config.paths import config_dir
-from junction.path_spellings import MAX_TARGET_PATHS, path_spellings
+from junction.path_spellings import MAX_TARGET_PATHS, PATH_LIMIT_SENTINEL, path_spellings
 from junction.platform.admission import (
     canonical_signing_bytes,
     hmac_signature,
@@ -459,7 +459,8 @@ def _tool_arg_paths(raw_params: Mapping[str, object]) -> Tuple[str, ...]:
     governed the same way, and so is the trimmed spelling of a value a harness
     would trim (``path_spellings``), because the harness opens that path.  The list is
     bounded the way ``hooks.target_paths`` bounds it; the hooks gate denies a call past
-    the bound before governance sees it.
+    the bound before governance sees it. An oversized raw list returns the same
+    denial sentinel without iterating, even when its elements repeat or are not paths.
     """
     paths: list[str] = []
     seen: set[str] = set()
@@ -477,6 +478,8 @@ def _tool_arg_paths(raw_params: Mapping[str, object]) -> Tuple[str, ...]:
         values = raw_params.get(key)
         if not isinstance(values, (list, tuple)):
             continue
+        if len(values) > MAX_TARGET_PATHS:
+            return (*paths, PATH_LIMIT_SENTINEL)
         for value in values:
             if len(paths) > MAX_TARGET_PATHS:
                 return tuple(paths)

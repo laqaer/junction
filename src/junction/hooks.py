@@ -26,7 +26,12 @@ from pathlib import Path
 
 from junction import platform_compat, security, webhooks
 from junction.config import paths as _config_paths
-from junction.path_spellings import MAX_TARGET_PATHS, exceeds_path_limits, path_spellings
+from junction.path_spellings import (
+    MAX_TARGET_PATHS,
+    PATH_LIMIT_SENTINEL,
+    exceeds_path_limits,
+    path_spellings,
+)
 from junction.platform import current_context, redact_via_context
 from junction.platform.governance import (
     CU_CLASS_OBSERVE,
@@ -496,9 +501,9 @@ class HookManager:
         default; those forwarding an event should pass both the command and the
         event's ``is_shell`` flag.
 
-        ``mcp_server_name`` is the NON-model-authored MCP server identity from
-        the ACP event's ``_meta.kiro.mcpServerName`` (``AcpEvent.mcp_server_name``),
-        set by kiro-cli ONLY for MCP-served tool calls and empty for shell /
+        ``mcp_server_name`` is the resolved MCP server identity from a preceding
+        harness notification (Kiro's ``_meta.kiro.mcpServerName`` or Codex's marked
+        MCP wrapper), carried in ``AcpEvent.mcp_server_name`` and empty for shell /
         built-in tools. It is the trusted discriminator "this call was genuinely
         served by MCP server X" — as opposed to the LLM-authored ``tool_name``
         title, which a prompt-injected agent can forge (e.g. titling a Bash call
@@ -506,8 +511,8 @@ class HookManager:
         on the title, so a forged title cannot win an auto-approval. Empty (the
         default, or a backend that omits ``_meta.kiro``) fails closed: no match.
 
-        ``mcp_tool_name`` is the sibling NON-model-authored tool identity from
-        ``_meta.kiro.toolName`` (``AcpEvent.tool_name``). Despite the name it is
+        ``mcp_tool_name`` is the sibling resolved tool identity from that
+        notification (``AcpEvent.tool_name``). Despite the name it is
         NOT MCP-only: kiro-cli sets it for every tool call it serves, built-ins
         included, and sets ``mcp_server_name`` only for MCP-served ones. It is
         therefore evaluated on the deny and governance planes whenever present,
@@ -1500,7 +1505,9 @@ def target_paths(raw_params: Mapping | None) -> list[str]:
     A value a harness would trim (``path_spellings``) contributes the trimmed path as
     well, since the harness opens that one. Collection stops one past
     ``MAX_TARGET_PATHS`` so the caller can see the bound was exceeded without this
-    function walking an attacker-sized list to the end.
+    function walking an attacker-sized list to the end. A list with more raw
+    entries than that bound returns the path-limit denial sentinel before any
+    iteration, including lists filled with duplicates or non-path objects.
     """
     if not isinstance(raw_params, Mapping):
         return []
@@ -1520,6 +1527,8 @@ def target_paths(raw_params: Mapping | None) -> list[str]:
         values = raw_params.get(key)
         if not isinstance(values, (list, tuple)):
             continue
+        if len(values) > MAX_TARGET_PATHS:
+            return [*found, PATH_LIMIT_SENTINEL]
         for value in values:
             if len(found) > MAX_TARGET_PATHS:
                 return found
