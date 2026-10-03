@@ -4464,7 +4464,9 @@ class TestInitializeSession:
 
         call_idx = [0]
 
-        async def fake_wait(req_id, timeout=50.0, *, method="", expected_mcp=None):
+        async def fake_wait(
+            req_id, timeout=50.0, *, method="", expected_mcp=None, allow_model_substitution=True
+        ):
             call_idx[0] += 1
             if call_idx[0] == 1:
                 return {"protocolVersion": "2025-08-22", "agentCapabilities": {"loadSession": True}}
@@ -9597,7 +9599,9 @@ class TestSubstitutionWrappersAndRedaction:
         async def _send(method, params):
             return 1
 
-        async def _wait(req_id, timeout=0.0, *, method="", expected_mcp=None):
+        async def _wait(
+            req_id, timeout=0.0, *, method="", expected_mcp=None, allow_model_substitution=True
+        ):
             return {"protocolVersion": 1, "agentCapabilities": {"loadSession": False}}
 
         client._send_request = _send  # type: ignore[assignment]

