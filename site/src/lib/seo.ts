@@ -1,5 +1,11 @@
 import { site } from "../data/site";
 
+const publisher = {
+  "@type": "Organization",
+  name: site.publisher.name,
+  url: site.publisher.url,
+};
+
 /**
  * JSON-LD builders (site-spec §1). No aggregateRating, ever.
  * `softwareVersion` is set only from a real release tag; while none exists the
@@ -17,6 +23,7 @@ export function softwareApplication(releaseTag = "") {
     license: "https://www.apache.org/licenses/LICENSE-2.0",
     url: site.domain + "/",
     downloadUrl: site.githubRepo,
+    publisher,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   };
 }
@@ -38,6 +45,7 @@ export function webSite() {
     "@type": "WebSite",
     name: site.name,
     url: site.domain + "/",
+    publisher,
   };
 }
 

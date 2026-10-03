@@ -8,6 +8,10 @@
 export const site = {
   name: "Warding",
   company: "Warding Labs",
+  publisher: {
+    name: "Myrmitis",
+    url: "https://myrmitis.com",
+  },
   // The owner flips this to "https://warding.dev" once that domain is bought and
   // live; getjunction.dev is the host that serves today. Every canonical URL,
   // OG image URL, sitemap entry and the footer domain text derive from it.
