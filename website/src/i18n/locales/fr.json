@@ -6177,6 +6177,7 @@
       "no_matches": "Aucun résultat"
     },
     "modelEffortDropdown": {
+      "check_again": "Vérifier à nouveau",
       "default_for_agent": "Modèle par défaut pour <agent/>",
       "filter_models": "Filtrer les modèles",
       "model_list": "Liste des modèles",
@@ -6185,6 +6186,10 @@
       "reasoning": "Raisonnement",
       "set_default_for_agent": "Définir <model/> comme modèle par défaut pour <agent/>",
       "set_default_for_new_sessions": "Valeur par défaut globale pour les nouvelles sessions…",
+      "sign_in_generic": "Connectez-vous à {{agent}}, puis vérifiez à nouveau.",
+      "sign_in_run_command": "Exécutez <command/> dans un terminal, puis vérifiez à nouveau.",
+      "sign_in_to_see_models": "Connectez-vous pour voir les modèles de {{agent}}",
+      "still_not_signed_in": "Toujours pas connecté.",
       "type_to_filter": "Saisir pour filtrer…"
     },
     "monacoCodeBlock": {
@@ -8426,6 +8431,9 @@
         "delete": "Supprimer"
       },
       "errorCard": {
+        "auth_required_run_command": "Exécutez <command/> dans un terminal, puis renvoyez votre message.",
+        "auth_required_sign_in": "Connectez-vous à {{agent}}, puis renvoyez votre message.",
+        "auth_required_title": "{{agent}} n’est pas connecté",
         "continue": "Reprendre",
         "continue_hint": "Reprendre là où ça s’est arrêté. Le travail déjà écrit sur le disque reste intact."
       },

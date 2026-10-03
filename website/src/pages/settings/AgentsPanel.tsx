@@ -232,7 +232,11 @@ function HarnessCard({ row, index, checking, onCheck, onEdit, onResume, saving, 
   // Installed but unable to start for want of a piece (Claude Code without its
   // ACP adapter) is still an install problem: offer the install command.
   const needsInstall = !row.installed || status === 'not_installed'
-  const showDetail = !!row.probe.detail && (status === 'error' || status === 'needs_login' || status === 'not_installed')
+  // A sign-in refusal is already said by the badge, the Sign in button and the
+  // command row, in the user's language. The probe's own detail is whatever the
+  // agent wrote (an older record can still hold a raw JSON-RPC error), so it is
+  // never shown for it.
+  const showDetail = !!row.probe.detail && (status === 'error' || status === 'not_installed')
   return (
     <SettingsCard index={index}>
       <div className="flex items-start justify-between gap-4" data-testid={`agent-${row.harness}`}>

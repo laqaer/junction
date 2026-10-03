@@ -5985,6 +5985,7 @@
       "no_matches": "일치 항목 없음"
     },
     "modelEffortDropdown": {
+      "check_again": "다시 확인",
       "default_for_agent": "<agent/>의 기본 모델",
       "filter_models": "모델 필터",
       "model_list": "모델 목록",
@@ -5993,6 +5994,10 @@
       "reasoning": "추론",
       "set_default_for_agent": "<model/>을(를) <agent/>의 기본 모델로 설정",
       "set_default_for_new_sessions": "새 세션의 전역 기본값…",
+      "sign_in_generic": "{{agent}}에 로그인한 다음 다시 확인하세요.",
+      "sign_in_run_command": "터미널에서 <command/>을(를) 실행한 다음 다시 확인하세요.",
+      "sign_in_to_see_models": "{{agent}} 모델을 보려면 로그인하세요",
+      "still_not_signed_in": "아직 로그인되지 않았습니다.",
       "type_to_filter": "입력하여 필터…"
     },
     "monacoCodeBlock": {
@@ -8186,6 +8191,9 @@
         "delete": "삭제"
       },
       "errorCard": {
+        "auth_required_run_command": "터미널에서 <command/>을(를) 실행한 다음 메시지를 다시 보내세요.",
+        "auth_required_sign_in": "{{agent}}에 로그인한 다음 메시지를 다시 보내세요.",
+        "auth_required_title": "{{agent}}에 로그인되어 있지 않습니다",
         "continue": "계속",
         "continue_hint": "중단된 지점부터 다시 시작합니다. 이미 디스크에 기록된 작업은 그대로 유지됩니다."
       },

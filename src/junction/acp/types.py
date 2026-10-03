@@ -81,6 +81,16 @@ JSONRPC_METHOD_NOT_FOUND = -32601
 #: treats any rejection as an expired-token signal, so the exact code is not
 #: load-bearing; -32000 is the ACP server-error range.
 KAS_AUTH_CALLBACK_ERROR_CODE = -32000
+#: ACP's reserved ``auth_required`` error code. The ACP SDK's
+#: ``RequestError.authRequired`` builds it with the message "Authentication
+#: required" plus an optional ": <detail>". -32000 opens JSON-RPC's server-error
+#: range and agents reuse it for unrelated failures, so the code alone is not
+#: proof of a sign-in problem and the client also matches that message prefix.
+ACP_ERROR_AUTH_REQUIRED = -32000
+#: The machine-readable ``code`` a dashboard payload carries when a harness is not
+#: signed in: the error row of a refused turn (``meta.code``) and the
+#: ``/api/models`` body. The dashboard translates its own copy from it.
+AUTH_REQUIRED_CODE = "auth_required"
 
 # kiro-cli exposes its task/TODO list as an ordinary tool call whose real name
 # arrives in `_meta.kiro.toolName` (the visible `title` is a prose sentence like

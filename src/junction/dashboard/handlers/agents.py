@@ -17,7 +17,7 @@ from aiohttp import web
 
 from junction import agent_state, model_registry
 from junction.acp.client import advertised_model_ids, model_is_unusable
-from junction.acp.types import ACP_BACKENDS_KIRO_READINESS
+from junction.acp.types import ACP_BACKENDS_KIRO_READINESS, AUTH_REQUIRED_CODE
 from junction.agent import (
     AGENT_FILENAME,
     clear_model_pin,
@@ -1059,6 +1059,20 @@ async def api_models(request: web.Request) -> web.Response:
     return await _api_harness_models(request, active_backend(request))
 
 
+def _started_after(sessions: Any, provider: object, moment: float) -> bool:
+    """True when *provider*'s session finished a successful start after *moment*.
+
+    A session is registered only once its start succeeded, so its registration
+    time is the latest instant it is known to have worked. An unreadable or
+    unknown time is "not known to be after", never "after".
+    """
+    try:
+        started = sessions.provider_started_at(provider)
+    except (AttributeError, TypeError):
+        return False
+    return isinstance(started, (int, float)) and started > moment
+
+
 async def _api_harness_models(request: web.Request, backend: str) -> web.Response:
     """``/api/models`` for a harness outside the Kiro prerequisite.
 
@@ -1070,40 +1084,75 @@ async def _api_harness_models(request: web.Request, backend: str) -> web.Respons
     When neither has a list yet, a probe that connected with nothing advertised
     is a real answer (the agent picks its model itself, so ``auto`` alone). An
     agent never seen is the degraded 503 the picker polls through, which here
-    costs a dictionary walk and a small file read, never a spawn.
+    costs a dictionary walk and a small file read, never a spawn. An agent whose
+    last start was refused for want of a sign-in is the same 503 with
+    ``code: "auth_required"`` and the agent's id, label and login command, so the
+    picker can say what to do instead of showing nothing. A resident session's
+    list overrides that refusal only when the session finished starting after it:
+    a session that predates the refusal still holds the list an earlier login
+    produced.
     """
     from junction.harness_router.connect import (
         STATUS_CONNECTED,
+        STATUS_NEEDS_LOGIN,
         AdvertisedModel,
         parse_advertised,
+        sign_in_facts,
     )
     from junction.harness_router.lanes import harness_name
     from junction.harness_router.service import get_router
 
     advertised: tuple[AdvertisedModel, ...] = ()
+    sessions: Any = None
     try:
         state: DashboardState = request.app["state"]
-        providers = state.sessions.active_providers()
+        sessions = state.sessions
+        providers = sessions.active_providers()
     except (KeyError, AttributeError):
         providers = []
-    for provider in reversed(providers):
-        if _provider_backend(provider) == backend:
-            getter = getattr(provider, "available_models", None)
-            try:
-                advertised = parse_advertised(getter() if callable(getter) else None)
-            except Exception:
-                advertised = ()
-            if advertised:
-                break
     probe = None
-    if not advertised:
+    try:
+        probes = await asyncio.to_thread(get_router().probes.load)
+        probe = probes.get(harness_name(backend))
+    except Exception:
+        logger.debug("api_models: probe record unreadable", exc_info=True)
+    refused_at: float | None = (
+        probe.checked_at if probe is not None and probe.status == STATUS_NEEDS_LOGIN else None
+    )
+    for provider in reversed(providers):
+        if _provider_backend(provider) != backend:
+            continue
+        if refused_at is not None and not _started_after(sessions, provider, refused_at):
+            # A session that was resident before the refused start holds the list
+            # an earlier login produced. A later start proved that login is gone,
+            # so the list cannot say the agent is usable now.
+            continue
+        getter = getattr(provider, "available_models", None)
         try:
-            probes = await asyncio.to_thread(get_router().probes.load)
-            probe = probes.get(harness_name(backend))
+            advertised = parse_advertised(getter() if callable(getter) else None)
         except Exception:
-            logger.debug("api_models: probe record unreadable", exc_info=True)
-        if probe is not None:
-            advertised = probe.advertised
+            advertised = ()
+        if advertised:
+            break
+    if not advertised and probe is not None and refused_at is None:
+        advertised = probe.advertised
+    if not advertised and probe is not None and probe.status == STATUS_NEEDS_LOGIN:
+        # Not "pending": the last attempt to start this agent was refused for want
+        # of a sign-in, and no amount of polling changes that until the operator
+        # signs in. Still a 503, the degraded contract every /api/models consumer
+        # already treats as "keep the last good list and poll", so the picker heals
+        # on its own once a check or a live session produces a list.
+        facts = sign_in_facts(harness_name(backend))
+        return web.json_response(
+            {
+                "error": f"{facts['agent']} is not signed in",
+                "code": AUTH_REQUIRED_CODE,
+                "harness": facts["harness"],
+                "agent": facts["agent"],
+                "login": facts["login"],
+            },
+            status=503,
+        )
     if not advertised and not (probe is not None and probe.status == STATUS_CONNECTED):
         return web.json_response(
             {"error": "model list not available yet", "code": "harness_models_pending"},

@@ -5985,6 +5985,7 @@
       "no_matches": "一致するものがありません"
     },
     "modelEffortDropdown": {
+      "check_again": "もう一度確認",
       "default_for_agent": "<agent/> のデフォルトモデル",
       "filter_models": "モデルをフィルター",
       "model_list": "モデルリスト",
@@ -5993,6 +5994,10 @@
       "reasoning": "推論",
       "set_default_for_agent": "<model/> を <agent/> のデフォルトモデルに設定",
       "set_default_for_new_sessions": "新規セッションのグローバルデフォルト…",
+      "sign_in_generic": "{{agent}} にサインインしてから、もう一度確認してください。",
+      "sign_in_run_command": "ターミナルで <command/> を実行してから、もう一度確認してください。",
+      "sign_in_to_see_models": "{{agent}} のモデルを表示するにはサインインしてください",
+      "still_not_signed_in": "まだサインインしていません。",
       "type_to_filter": "フィルターするには入力…"
     },
     "monacoCodeBlock": {
@@ -8186,6 +8191,9 @@
         "delete": "削除"
       },
       "errorCard": {
+        "auth_required_run_command": "ターミナルで <command/> を実行してから、メッセージをもう一度送信してください。",
+        "auth_required_sign_in": "{{agent}} にサインインしてから、メッセージをもう一度送信してください。",
+        "auth_required_title": "{{agent}} にサインインしていません",
         "continue": "続行",
         "continue_hint": "停止した箇所から再開します。ディスクに書き込まれた作業内容はそのまま残ります。"
       },

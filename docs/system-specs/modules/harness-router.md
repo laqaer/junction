@@ -279,6 +279,22 @@ agent means running that agent's own login command, then probing it.
   recorded for the new harness cannot land between the lookup and the write.
   The stored probe
   status stays `connected`; the gates below read it as "the harness starts".
+- **A refused start records `needs_login`.** When a spec-family harness answers
+  the handshake with ACP's `auth_required` (`AcpAuthRequired` carrying its
+  `backend`), the chat turn, the eager session start and the side-chat turn each
+  save a `needs_login` probe result for that harness. `/api/models` and Settings
+  > Agents & plans read it, so a signed-out agent says so before and after the
+  first send instead of showing nothing. That is the only thing they record: the
+  Kiro prerequisite latch (`mark_signed_out`) belongs to kiro-cli and KAS alone,
+  so Codex being signed out never marks kiro-cli signed out. The record is replaced
+  by the next probe: Check in Agents & plans, the model picker's Check again,
+  `warding route check`, or a session that advertises models and **started after
+  the record** (`SessionManager.provider_started_at`, the time the session was
+  registered, which happens only after its start succeeded). A session that was
+  already resident when the refused start happened holds a list an earlier login
+  produced, so `/api/models` ignores it while a `needs_login` record is newer and
+  keeps answering `auth_required`; a session whose start time is unknown is
+  treated the same way.
 - `service.check_harness` (probe now) and `service.verified_connection` (reuse a
   `connected` probe younger than `max_age_secs`, else probe) hold one lock per
   harness, so a double-clicked Check or a burst of gated requests starts one
@@ -289,7 +305,9 @@ agent means running that agent's own login command, then probing it.
   lane controls (use for routing, billing, plan size, window limit, model),
   plus the current pick per kind. On first load it probes every installed agent
   that was never checked. Every displayed word is a catalog key; commands and
-  statuses are machine data.
+  statuses are machine data. A `needs_login` card shows the "Needs sign-in" badge,
+  Sign in and the command row, and never the probe's own `detail` (an older record
+  can still hold a raw JSON-RPC error); `error` and `not_installed` still show it.
   The task-step routing switch writes `routing.json`, not the main config
   hierarchy. Its `routing.route_tasks` UI key supports direct Settings links
   and highlighting; the drift guard validates this separate namespace against
@@ -308,7 +326,7 @@ assume kiro-cli reads it:
 | Surface | kiro-cli / KAS | Any other agent |
 |---|---|---|
 | Regenerate, edit-resend, rewind, `/v1/chat/completions` | Kiro prerequisite gate | `verified_connection` (5 min, 45 s budget); 503 `harness_not_connected` unless `connected` |
-| `/api/models` | `kiro-cli --list-models` | that agent's advertised models: newest live session, else last probe; `auto` first; 503 `harness_models_pending` while neither exists |
+| `/api/models` | `kiro-cli --list-models` | that agent's advertised models: newest live session, else last probe; `auto` first; 503 `harness_models_pending` while neither exists; 503 `auth_required` (with `harness`, `agent`, `login`) when no current list exists and the last start was refused for want of a sign-in (a resident session's list counts only if the session started after that refusal) |
 | `/api/sessions/usage` | Kiro credit scrape | `{"available": false, "reason": "harness_not_kiro"}` (pill hidden) |
 | Task runner steps | shared `AcpRuntime` | one dedicated provider per step on the configured agent |
 | Background one-liners | `_bg` runtime session | provider-backed `_ProviderBgSession` |

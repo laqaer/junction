@@ -978,6 +978,20 @@ class SessionManager:
         """
         return [sess.provider for sess in self._sessions.values()]
 
+    def provider_started_at(self, provider: LLMProvider) -> float | None:
+        """Wall-clock time *provider*'s session was registered, or None if it is not resident.
+
+        A session is registered only after its provider's start succeeded (and
+        again when ``adopt_provider`` swaps in a fresh one), so this is the latest
+        instant the provider is known to have authenticated. Dashboard handlers
+        use it to tell a model list that predates a sign-out from one that
+        postdates it.
+        """
+        for sess in self._sessions.values():
+            if sess.provider is provider:
+                return sess.created_at
+        return None
+
     def any_active_turn(self) -> bool:
         """True if ANY live session currently has a turn in flight.
 

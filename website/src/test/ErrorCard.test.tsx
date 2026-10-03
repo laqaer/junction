@@ -43,4 +43,56 @@ describe('ErrorCard', () => {
     render(<ErrorCard content="⟳ Session busy — please retry." onContinue={() => {}} />)
     expect(screen.getByTestId('error-card')).toHaveTextContent('⟳ Session busy — please retry.')
   })
+
+  describe('a harness that is not signed in', () => {
+    const meta = { code: 'auth_required', harness: 'codex', agent: 'Codex (ChatGPT)', login: 'codex login' }
+
+    it('renders the translated notice with the agent and its command in a code span', () => {
+      render(<ErrorCard content="Codex (ChatGPT) is not signed in. Run `codex login`." meta={meta} />)
+      const card = screen.getByTestId('error-card')
+      expect(card).toHaveAttribute('data-code', 'auth_required')
+      expect(card).toHaveAttribute('data-harness', 'codex')
+      expect(screen.getByTestId('error-card-title')).toHaveTextContent('Codex (ChatGPT) is not signed in')
+      const detail = screen.getByTestId('error-card-detail')
+      expect(detail).toHaveTextContent('Run codex login in a terminal, then send your message again.')
+      const code = detail.querySelector('code')
+      expect(code?.textContent).toBe('codex login')
+    })
+
+    it('never prints the raw server prose or a JSON-RPC error', () => {
+      render(<ErrorCard content="JSON-RPC error: {'code': -32000}" meta={meta} />)
+      expect(screen.getByTestId('error-card').textContent).not.toMatch(/JSON-RPC|-32000/)
+    })
+
+    it('offers no Continue even when the caller passes one', () => {
+      // Nothing can resume until the user signs in, so the control would promise
+      // a recovery that cannot happen.
+      render(<ErrorCard content="x" meta={meta} onContinue={() => {}} />)
+      expect(screen.queryByTestId('error-card-continue')).toBeNull()
+      expect(screen.getByTestId('error-card')).not.toHaveAttribute('data-continuable')
+    })
+
+    it('names no command for an agent that publishes none', () => {
+      render(<ErrorCard content="x" meta={{ code: 'auth_required', harness: 'kimi', agent: 'Kimi Code', login: '' }} />)
+      const detail = screen.getByTestId('error-card-detail')
+      expect(detail).toHaveTextContent('Sign in to Kimi Code, then send your message again.')
+      expect(detail.querySelector('code')).toBeNull()
+    })
+
+    it('falls back to the harness id when the agent label is missing', () => {
+      render(<ErrorCard content="x" meta={{ code: 'auth_required', harness: 'codex' }} />)
+      expect(screen.getByTestId('error-card-title')).toHaveTextContent('codex is not signed in')
+    })
+
+    it('uses no emoji icon', () => {
+      render(<ErrorCard content="x" meta={meta} />)
+      expect(screen.getByTestId('error-card').textContent).not.toMatch(/\p{Extended_Pictographic}/u)
+    })
+
+    it('leaves any other code on the plain card', () => {
+      render(<ErrorCard content="boom" meta={{ code: 'something_else' }} onContinue={() => {}} />)
+      expect(screen.getByTestId('error-card')).toHaveTextContent('boom')
+      expect(screen.getByTestId('error-card-continue')).toBeTruthy()
+    })
+  })
 })

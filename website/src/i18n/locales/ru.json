@@ -6273,6 +6273,7 @@
       "no_matches": "Совпадений нет"
     },
     "modelEffortDropdown": {
+      "check_again": "Проверить снова",
       "default_for_agent": "Модель по умолчанию для <agent/>",
       "filter_models": "Фильтр моделей",
       "model_list": "Список моделей",
@@ -6281,6 +6282,10 @@
       "reasoning": "Рассуждения",
       "set_default_for_agent": "Сделать <model/> моделью по умолчанию для <agent/>",
       "set_default_for_new_sessions": "Глобальное значение по умолчанию для новых сессий…",
+      "sign_in_generic": "Войдите в {{agent}}, затем проверьте снова.",
+      "sign_in_run_command": "Выполните <command/> в терминале, затем проверьте снова.",
+      "sign_in_to_see_models": "Войдите, чтобы увидеть модели {{agent}}",
+      "still_not_signed_in": "Вход всё ещё не выполнен.",
       "type_to_filter": "Введите для фильтрации…"
     },
     "monacoCodeBlock": {
@@ -8546,6 +8551,9 @@
         "delete": "Удалить"
       },
       "errorCard": {
+        "auth_required_run_command": "Выполните <command/> в терминале, затем отправьте сообщение ещё раз.",
+        "auth_required_sign_in": "Войдите в {{agent}}, затем отправьте сообщение ещё раз.",
+        "auth_required_title": "{{agent}}: вход не выполнен",
         "continue": "Продолжить",
         "continue_hint": "Продолжить с места остановки. Уже записанные на диск изменения не тронуты."
       },

@@ -226,6 +226,54 @@ describe('ChatPage — Continue appears only on an interrupted turn', { timeout:
 })
 
 /**
+ * A turn that ended because the agent is not signed in cannot be resumed, so
+ * neither the card's Continue nor the composer's Resume is offered for it. The
+ * transcript is shape-identical to an interrupted one (user row, or an error
+ * trailing the reply), which is why the gate keys on the card's `meta.code`.
+ */
+describe('ChatPage — no Resume or Continue for a sign-in refusal', { timeout: 15_000 }, () => {
+  const signIn = { code: 'auth_required', harness: 'codex', agent: 'Codex (ChatGPT)', login: 'codex login' }
+
+  it('shows the sign-in card and neither control after a refused first turn', async () => {
+    await renderWith([
+      { role: 'user', content: 'do the thing', cls: '' },
+      { role: 'error', content: 'Codex (ChatGPT) is not signed in. Run `codex login`.', cls: '', meta: signIn },
+    ])
+
+    const card = screen.getByTestId('error-card')
+    expect(card).toHaveAttribute('data-code', 'auth_required')
+    expect(card).toHaveTextContent('Codex (ChatGPT) is not signed in')
+    expect(card.querySelector('code')?.textContent).toBe('codex login')
+    expect(screen.queryByTestId('error-card-continue')).toBeNull()
+    expect(screen.queryByTestId('composer-continue')).toBeNull()
+    expect(screen.getByLabelText('Send')).toBeTruthy()
+  })
+
+  it('shows neither control when the card trails a partial reply', async () => {
+    await renderWith([
+      { role: 'user', content: 'do the thing', cls: '' },
+      { role: 'assistant', content: 'starting on it', cls: '' },
+      { role: 'error', content: 'not signed in', cls: '', meta: signIn },
+    ])
+
+    expect(screen.queryByTestId('error-card-continue')).toBeNull()
+    expect(screen.queryByTestId('composer-continue')).toBeNull()
+  })
+
+  it('brings Resume back when a later send fails some other way', async () => {
+    await renderWith([
+      { role: 'user', content: 'first ask', cls: '' },
+      { role: 'error', content: 'not signed in', cls: '', meta: signIn },
+      { role: 'user', content: 'second ask', cls: '' },
+      { role: 'error', content: 'connection lost', cls: '' },
+    ])
+
+    expect(screen.getByTestId('composer-continue')).toBeTruthy()
+    expect(screen.getAllByTestId('error-card-continue')).toHaveLength(1)
+  })
+})
+
+/**
  * A successful Continue says nothing.
  *
  * The refusal path lives in `ChatPage.refusedPress.test.tsx` alongside the other
