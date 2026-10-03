@@ -14,6 +14,16 @@ value degrades to `auto`, not kiro-cli. Spec-family agents handshake with ACP
 protocolVersion `1` on `AcpClient` (one process per session). kiro-cli and KAS
 keep their existing `AcpRuntime` multiplex path. See [TREE.md](../../../TREE.md).
 
+A running gateway adopts a changed `agent.acp_backend` for its next **new**
+session, however the value was written (`junction config set`, a hand edit,
+`config edit`): the cold start compares the persisted value with the one its
+provider factory was built from and, on a difference, rebuilds the factory
+through `SessionManager.refresh_defaults` (see [session.md](session.md)). Live
+sessions keep the harness their process runs. `junction config set
+agent.acp_backend` refuses a value `resolve_acp_backend_override` does not know,
+because the loader would otherwise degrade it to `auto` silently (H3), and
+confirms with the same harness line `junction planes` prints.
+
 `AcpClient(acp_backend=...)` selects which subprocess to launch:
 
 - `"auto"` (`ACP_BACKEND_AUTO`, config default): resolved at spawn by `select_runtime`.

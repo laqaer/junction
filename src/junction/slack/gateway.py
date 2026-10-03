@@ -2541,9 +2541,11 @@ class GatewayOrchestrator:
         self.conv_log.init()
         self.ctx_builder.conversation_log = self.conv_log
 
-        # Session manager
+        # Session manager. ``adopt_backend_changes``: a harness switched in
+        # config.json while the gateway runs (``warding config set
+        # agent.acp_backend``) reaches the next NEW session without a restart.
         self.sessions = SessionManager(
-            self._cfg, provider_factory=factory
+            self._cfg, provider_factory=factory, adopt_backend_changes=True
         )  # type: ignore[arg-type]
 
         # History consolidator
