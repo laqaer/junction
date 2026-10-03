@@ -5275,7 +5275,8 @@
       "used": "Usado",
       "voice_input": "Entrada de voz",
       "finishing": "Finalizando…",
-      "keep_holding_to_record": "Mantén pulsado para grabar"
+      "keep_holding_to_record": "Mantén pulsado para grabar",
+      "harness": "Funciona con {{name}}"
     },
     "chatPane": {
       "agent_list": "Lista de agentes",
@@ -12738,7 +12739,20 @@
         "kind_research": "Investigación",
         "kind_docs": "Documentación escrita",
         "kind_quick": "Cambios rápidos",
-        "kind_bulk": "Cambios masivos"
+        "kind_bulk": "Cambios masivos",
+        "chat_harness_title": "Agente del chat",
+        "chat_harness_description": "El agente de programación que responde a los chats nuevos. Un chat que ya está abierto conserva el agente con el que empezó hasta que termina. El enrutamiento de abajo solo decide adónde van las tareas de los subagentes.",
+        "chat_harness_auto": "Automático",
+        "chat_harness_auto_description": "El primer agente instalado. Ahora mismo: {{agent}}.",
+        "chat_harness_auto_none": "El primer agente instalado. Todavía no hay ninguno instalado.",
+        "chat_harness_active": "Activo",
+        "chat_harness_not_installed_reason": "No instalado. Instálalo abajo y luego elígelo aquí.",
+        "chat_harness_needs_login_note": "Puedes elegirlo ya. Los chats con él fallan hasta que inicies sesión.",
+        "chat_harness_starts_on": "Los chats nuevos empiezan en {{agent}}.",
+        "chat_harness_none_ready": "Ningún agente instalado puede iniciar un chat todavía. Instala uno abajo.",
+        "chat_harness_save_failed": "No se pudo cambiar el agente del chat.",
+        "chat_harness_unknown": "{{productName}} no puede ejecutar ese agente, así que no se cambió nada.",
+        "chat_harness_overridden": "Guardado, pero config.local.json define otro agente y tiene prioridad."
       }
     },
     "settingsPage": {

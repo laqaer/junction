@@ -79,8 +79,9 @@ turn runs through an installed ACP harness that you have already logged in to.
 the preference order (Cursor, Claude Code, Codex, and so on), not the first one
 on `PATH`. To choose one — Codex, say — install the
 [Codex CLI](https://github.com/openai/codex#quickstart) and sign in with your
-own account, then run `warding config set agent.acp_backend codex` before
-`warding up`, or pick it in the dashboard's first-run **Dock an agent** step
+own account, then pick it in the dashboard under **Settings ▸ Agents & plans ▸
+Chat harness** (it applies to new chats; no restart), or run
+`warding config set agent.acp_backend codex`
 ([install guide](docs/guides/install.md)). `warding planes` shows what is
 docked. kiro-cli is not required.
 

@@ -36,6 +36,7 @@ from junction.dashboard.chat_compaction_notice import deliver_channel_compaction
 from junction.dashboard.session_pulse_counter import increment_user_session_count_off_loop
 from junction.dashboard.side_state import SideState
 from junction.dashboard.system_notices import is_system_notice
+from junction.harness_router.lanes import harness_identity
 from junction.history import latest_transcript_ts, monotonic_transcript_ts
 from junction.knowledge.store import KnowledgeStore
 from junction.loop_lock import LoopBoundLock
@@ -2776,6 +2777,7 @@ class _ChatSlot:
         "_active_turn_session_key",
         "_side",
         "_acp_client",
+        "_harness_backend",
         "_last_turn_awaiting_permission",
         "_last_turn_children_announced",
         "_steer_segment_cut",
@@ -3270,6 +3272,14 @@ class _ChatSlot:
         # dashboard steer handler) reach the running session's client to inject
         # a mid-turn steer. None when idle.
         self._acp_client = None
+        # The ACP backend this slot's latest turn ran on (or, when that turn's
+        # session failed to start, the one it tried to start), recorded by
+        # _run_chat from the live provider. ``None`` until a turn has run, and
+        # not persisted: it names a process, so a restart has nothing to say
+        # until the next turn starts one. Read by ``serialize_slot`` so the
+        # composer can name the harness actually answering, which is not the
+        # configured one once ``agent.acp_backend`` changes under an open chat.
+        self._harness_backend: str | None = None
         # Hang-attribution snapshot stashed by _run_chat's finally just before
         # _acp_client is dropped; read by finish_turn_task when the dashboard
         # ceiling cut the turn (junction.turn.timeout.cause).
@@ -7975,6 +7985,9 @@ class DashboardState:
                 "slack_linked": slack_linked,
                 "slack_channel": slack_channel,
                 "slack_thread_ts": slack_thread_ts,
+                # ``{"id", "label"}`` of the harness the slot's latest turn ran on,
+                # ``None`` before any turn has.
+                "harness": harness_identity(slot._harness_backend),
             }
         )
         return payload

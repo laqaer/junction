@@ -23,6 +23,10 @@ from junction.sel import sel
 
 _MISSING = object()
 
+#: The harness setting. A running gateway adopts a new value for its next NEW
+#: session, so its confirmation says what that session will run.
+_ACP_BACKEND_KEY = "agent.acp_backend"
+
 
 def _config_cmd(args: argparse.Namespace) -> None:
     """Get or set config values."""
@@ -138,6 +142,12 @@ def _config_cmd(args: argparse.Namespace) -> None:
                         file=sys.stderr,
                     )
                     sys.exit(1)
+            # Refused here, before the local/base split, for the same reason as
+            # the gates above: an unknown harness is not an error at load time,
+            # it silently degrades to ``auto`` (H3), so writing one would print
+            # success for a setting the gateway then ignores.
+            if key == _ACP_BACKEND_KEY:
+                _refuse_unknown_harness(parsed)
             if use_local:
                 top_key = key.split(".")[0]
                 _known_sections = {f.name for f in dataclasses.fields(JunctionConfig)}
@@ -173,6 +183,8 @@ def _config_cmd(args: argparse.Namespace) -> None:
                     resources=f"{key}={json.dumps(parsed)}",
                 )
                 print(f"✅ {key} = {json.dumps(parsed)} (saved to config.local.json)")
+                if key == _ACP_BACKEND_KEY:
+                    _print_harness_effect()
             else:
                 # Validate the key exists before taking the lock.
                 cfg = JunctionConfig.load()
@@ -213,6 +225,8 @@ def _config_cmd(args: argparse.Namespace) -> None:
                     resources=f"{key}={json.dumps(parsed)}",
                 )
                 print(f"✅ {key} = {json.dumps(parsed)}")
+                if key == _ACP_BACKEND_KEY:
+                    _print_harness_effect()
     elif action == "edit":
 
         p = config_path()
@@ -232,6 +246,38 @@ def _config_cmd(args: argparse.Namespace) -> None:
     else:
         print("Usage: warding config {get,set,edit}", file=sys.stderr)
         sys.exit(1)
+
+
+def _refuse_unknown_harness(parsed: object) -> None:
+    """Exit before writing a harness the loader would replace with ``auto``."""
+    from junction.config.loader import resolve_acp_backend_override
+
+    try:
+        resolve_acp_backend_override(parsed if isinstance(parsed, str) else str(parsed))
+    except ValueError as e:
+        print(f"❌ {e}", file=sys.stderr)
+        print("   Not writing config — the gateway would ignore it and run auto.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _print_harness_effect() -> None:
+    """Say what the next new session runs, in the planes screen's own words.
+
+    Reads the merged config back rather than echoing the typed value, so an
+    overlay in config.local.json that outranks the write shows up here.
+    """
+    from junction.planes import format_harness_line, harness_snapshot
+
+    try:
+        line = format_harness_line(harness_snapshot())
+    except Exception:
+        return
+    print(line)
+    print(
+        "   New sessions start on it without a gateway restart. Open chats and the "
+        "background session keep the harness they started on until they end or the "
+        "gateway restarts."
+    )
 
 
 def _dict_get(d: dict, key: str) -> object:

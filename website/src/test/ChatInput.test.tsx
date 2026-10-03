@@ -770,6 +770,85 @@ describe('ChatInput', () => {
     })
   })
 
+  // ── Harness label (the agent actually answering this session) ──
+  describe('harness label', () => {
+    it('names the harness the gateway reports, beside the model', () => {
+      renderWithProviders(
+        <ChatInput {...defaultProps} modelName="auto" onModelClick={vi.fn()} harnessLabel="Claude Code" />
+      )
+      const label = screen.getByTestId('composer-harness')
+      expect(label).toHaveTextContent('Claude Code')
+      expect(label).toHaveAttribute('title', 'Running on Claude Code')
+    })
+
+    it('is plain text, not a control: the harness cannot be switched mid-chat', () => {
+      renderWithProviders(
+        <ChatInput {...defaultProps} modelName="auto" onModelClick={vi.fn()} harnessLabel="Codex (ChatGPT)" />
+      )
+      expect(screen.getByTestId('composer-harness').closest('button')).toBeNull()
+    })
+
+    it('is absent until the gateway names a harness', () => {
+      renderWithProviders(<ChatInput {...defaultProps} modelName="auto" onModelClick={vi.fn()} />)
+      expect(screen.queryByTestId('composer-harness')).not.toBeInTheDocument()
+    })
+
+    // jsdom has no ResizeObserver, so the shelf reads as wide. Stub one that
+    // reports a fixed width the moment the shelf is observed.
+    function stubShelfWidth(width: number) {
+      vi.stubGlobal('ResizeObserver', class {
+        constructor(private cb: ResizeObserverCallback) {}
+        observe() { this.cb([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver) }
+        unobserve() {}
+        disconnect() {}
+      })
+    }
+
+    describe('on a narrow shelf', () => {
+      afterEach(() => { vi.unstubAllGlobals() })
+
+      it('collapses to a mark that keeps the name as its accessible name and tooltip', () => {
+        stubShelfWidth(358) // a 390px phone
+        renderWithProviders(
+          <ChatInput {...defaultProps} modelName="auto" onModelClick={vi.fn()} harnessLabel="Claude Code" />
+        )
+        const mark = screen.getByRole('img', { name: 'Running on Claude Code' })
+        expect(mark).toBe(screen.getByTestId('composer-harness'))
+        expect(mark).toHaveAttribute('title', 'Running on Claude Code')
+        // The name is not drawn as text, so it cannot squeeze the agent and project chips.
+        expect(screen.queryByText('Claude Code')).not.toBeInTheDocument()
+      })
+
+      it('shows the name as text from 440px, and as a mark just below it', () => {
+        stubShelfWidth(440)
+        const wide = renderWithProviders(
+          <ChatInput {...defaultProps} modelName="auto" onModelClick={vi.fn()} harnessLabel="Claude Code" />
+        )
+        expect(screen.getByText('Claude Code')).toBeInTheDocument()
+        expect(screen.queryByRole('img', { name: /Running on/ })).not.toBeInTheDocument()
+        wide.unmount()
+
+        stubShelfWidth(439)
+        renderWithProviders(
+          <ChatInput {...defaultProps} modelName="auto" onModelClick={vi.fn()} harnessLabel="Claude Code" />
+        )
+        expect(screen.queryByText('Claude Code')).not.toBeInTheDocument()
+        expect(screen.getByRole('img', { name: 'Running on Claude Code' })).toBeInTheDocument()
+      })
+
+      it('leaves the agent and project chips as they were', () => {
+        stubShelfWidth(358)
+        renderWithProviders(
+          <ChatInput {...defaultProps} agentName="default" onAgentClick={vi.fn()} modelName="auto"
+            onModelClick={vi.fn()} onProjectClick={vi.fn()} project="/w/workspace" harnessLabel="Codex (ChatGPT)" />
+        )
+        // 358px is above the 340px icon-only line, so both chips still carry their text.
+        expect(screen.getByText('default')).toBeInTheDocument()
+        expect(screen.getByText('workspace')).toBeInTheDocument()
+      })
+    })
+  })
+
   // ── Reasoning effort merged into model button ──
   describe('reasoning effort button', () => {
     it('renders for acp provider', () => {

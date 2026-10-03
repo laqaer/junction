@@ -1886,6 +1886,26 @@ def _validate_role_model(
     return None
 
 
+def _validate_chat_harness(value: str, request: web.Request) -> str | None:
+    """Refuse an ``agent.acp_backend`` the loader would silently replace; ``None`` = allow.
+
+    The same validator ``junction config set agent.acp_backend`` runs
+    (``resolve_acp_backend_override``): an unknown harness is not an error at load
+    time, it degrades to ``auto`` (H3), so persisting one would report success for
+    a setting the gateway then ignores. Membership in ``ACP_BACKENDS_SELECTABLE``
+    is the only test; whether the harness is installed or signed in is not, because
+    the CLI does not refuse on that either and a harness installed later must stay
+    selectable.
+    """
+    from junction.config.loader import resolve_acp_backend_override
+
+    try:
+        resolve_acp_backend_override(value)
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
 # Keys a caller may reasonably try to PATCH that have a dedicated endpoint whose
 # side effects the generic config write cannot reproduce. Naming the endpoint turns
 # a dead end ("field not editable") into a next step.
@@ -1926,6 +1946,16 @@ _EDITABLE_CONFIG: dict[str, dict] = {
         "validate_fn": _validate_role_model,
     },
     "agent.reasoning_effort": {"type": "enum", "values": ["", *EFFORT_LEVELS]},
+    # The harness NEW chats start on (Settings > Agents & plans). Free-form str
+    # with a validator rather than an enum so the accepted set is exactly
+    # ``ACP_BACKENDS_SELECTABLE`` and cannot drift from the loader's. ``code`` is
+    # the machine-readable refusal the dashboard maps to a catalog string.
+    "agent.acp_backend": {
+        "type": "str",
+        "max_len": 32,
+        "validate_fn": _validate_chat_harness,
+        "code": "unknown_harness",
+    },
     "agent.approval_mode": {"type": "enum", "values": ["auto", "interactive"]},
     # How long an AD-HOC auto-approve grant lasts. Editable from Settings because
     # every value here still ends: the timed ones are capped at the SafetyOverride
@@ -2166,9 +2196,10 @@ async def api_junction_config_patch(request: web.Request) -> web.Response:
             resources=resources,
         )
 
-    def _deny(msg: str, resources: str = "", status: int = 400) -> web.Response:
+    def _deny(msg: str, resources: str = "", status: int = 400, code: str = "") -> web.Response:
         _log_sel("denied", resources or msg)
-        return web.json_response({"error": msg}, status=status)
+        payload = {"error": msg, "code": code} if code else {"error": msg}
+        return web.json_response(payload, status=status)
 
     try:
         body = await request.json()
@@ -2217,24 +2248,31 @@ async def api_junction_config_patch(request: web.Request) -> web.Response:
         if value < lo or value > hi:
             return _deny(f"must be between {lo} and {hi}", f"{path_key}={value}")
     elif spec["type"] == "str":
+        # A spec may name a machine-readable ``code`` for its refusals, so the
+        # dashboard maps them to its own catalog instead of rendering ``error``.
+        code = spec.get("code", "")
         if not isinstance(value, str):
-            return _deny("must be a string", f"{path_key}={value}")
+            return _deny("must be a string", f"{path_key}={value}", code=code)
         max_len = spec.get("max_len", 256)
         if len(value) > max_len:
-            return _deny(f"must be at most {max_len} characters", f"{path_key}={value}")
+            return _deny(f"must be at most {max_len} characters", f"{path_key}={value}", code=code)
         if "values" in spec and value not in spec["values"]:
-            return _deny(f"invalid value, must be one of {spec['values']}", f"{path_key}={value}")
+            return _deny(
+                f"invalid value, must be one of {spec['values']}",
+                f"{path_key}={value}",
+                code=code,
+            )
         pattern = spec.get("pattern")
         if pattern and not re.fullmatch(pattern, value):
-            return _deny(f"invalid value for {path_key}", f"{path_key}={value}")
+            return _deny(f"invalid value for {path_key}", f"{path_key}={value}", code=code)
         values_fn = spec.get("values_fn")
         if values_fn and value not in values_fn():
-            return _deny(f"invalid value for {path_key}", f"{path_key}={value}")
+            return _deny(f"invalid value for {path_key}", f"{path_key}={value}", code=code)
         validate_fn = spec.get("validate_fn")
         if validate_fn:
             reason = validate_fn(value, request)
             if reason:
-                return _deny(reason, f"{path_key}={value}")
+                return _deny(reason, f"{path_key}={value}", code=code)
     elif spec["type"] == "dict":
         # One-level record written ATOMICALLY as a single value, for settings
         # where multiple scalar fields form one verdict and a partial write is
@@ -2463,6 +2501,22 @@ async def api_junction_config_patch(request: web.Request) -> web.Response:
         state = request.app["state"]
         await state.sessions.refresh_defaults()
         logger.info("%s set to %r — session defaults refreshed", path_key, value)
+
+    # The chat harness is a default for NEW sessions in the same way: the factory
+    # and the session manager's config capture ``agent.acp_backend`` when built.
+    # Adopting it here moves the models list and the warm pool at once; the cold
+    # start would adopt it anyway (``SessionManager._adopt_persisted_backend``),
+    # so a failed rebuild is logged and left to that retry rather than failing a
+    # write that already landed. Live sessions keep the harness they started on.
+    if path_key == "agent.acp_backend":
+        state = request.app["state"]
+        try:
+            await state.sessions.refresh_defaults()
+            logger.info("agent.acp_backend set to %r — new sessions use it", value)
+        except Exception:
+            logger.warning(
+                "Could not adopt agent.acp_backend now; next session retries", exc_info=True
+            )
 
     # The background role model is baked into the lite / heartbeat kiro specs at
     # agent-build time, so a change must rewrite them to take effect without a

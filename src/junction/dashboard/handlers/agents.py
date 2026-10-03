@@ -817,23 +817,14 @@ def _advertised_cc_models(request: web.Request) -> list[dict]:
 
 
 def _provider_backend(provider: object) -> str | None:
-    """The backend a live provider runs on, or ``None`` when it cannot say.
+    """The backend a live provider runs on; see ``providers.acp.provider_backend``.
 
-    Read from the backend string the way ``providers.acp.provider_label`` does,
-    so a runtime-backed session (whose client became an ``AcpSessionProvider``)
-    and a per-process one both answer. Model ids are spelled per harness (H12),
-    so a model list must only ever be read from providers on the harness it is
-    for.
+    Model ids are spelled per harness (H12), so a model list must only ever be
+    read from providers on the harness it is for.
     """
-    from junction.acp.session_provider import AcpSessionProvider
-    from junction.providers.acp import AcpProvider
+    from junction.providers.acp import provider_backend
 
-    if isinstance(provider, AcpSessionProvider):
-        return provider.backend
-    if isinstance(provider, AcpProvider):
-        backend = getattr(getattr(provider, "client", None), "backend", None)
-        return backend if isinstance(backend, str) else None
-    return None
+    return provider_backend(provider)
 
 
 def _advertised_ids_of(provider: object) -> list[str]:

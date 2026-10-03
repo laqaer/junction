@@ -5275,7 +5275,8 @@
       "used": "Utilisé",
       "voice_input": "Saisie vocale",
       "finishing": "Finalisation…",
-      "keep_holding_to_record": "Maintenir pour enregistrer"
+      "keep_holding_to_record": "Maintenir pour enregistrer",
+      "harness": "Fonctionne avec {{name}}"
     },
     "chatPane": {
       "agent_list": "Liste des agents",
@@ -12738,7 +12739,20 @@
         "kind_research": "Recherche",
         "kind_docs": "Rédaction de documentation",
         "kind_quick": "Modifications rapides",
-        "kind_bulk": "Modifications en masse"
+        "kind_bulk": "Modifications en masse",
+        "chat_harness_title": "Agent du chat",
+        "chat_harness_description": "L’agent de programmation qui répond aux nouveaux chats. Un chat déjà ouvert garde celui avec lequel il a démarré jusqu’à sa fin. Le routage ci-dessous décide seulement où vont les tâches des sous-agents.",
+        "chat_harness_auto": "Automatique",
+        "chat_harness_auto_description": "Le premier agent installé. Actuellement : {{agent}}.",
+        "chat_harness_auto_none": "Le premier agent installé. Aucun n’est encore installé.",
+        "chat_harness_active": "Actif",
+        "chat_harness_not_installed_reason": "Non installé. Installez-le ci-dessous, puis choisissez-le ici.",
+        "chat_harness_needs_login_note": "Vous pouvez le choisir dès maintenant. Les chats qui l’utilisent échouent tant qu’il n’est pas connecté.",
+        "chat_harness_starts_on": "Les nouveaux chats démarrent sur {{agent}}.",
+        "chat_harness_none_ready": "Aucun agent installé ne peut encore démarrer de chat. Installez-en un ci-dessous.",
+        "chat_harness_save_failed": "Impossible de changer l’agent du chat.",
+        "chat_harness_unknown": "{{productName}} ne peut pas exécuter cet agent, donc rien n’a été modifié.",
+        "chat_harness_overridden": "Enregistré, mais config.local.json définit un autre agent et prend le dessus."
       }
     },
     "settingsPage": {
