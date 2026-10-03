@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } fr
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useModelsDegraded } from '../providers/modelListHealth'
+import { useModelsAuthRequired, useModelsDegraded } from '../providers/modelListHealth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useImeGuard } from '../hooks/useImeGuard'
 import { useRailWidth } from '../hooks/useRailWidth'
@@ -25,6 +25,7 @@ import {
   setSlotRunning, startLocalTurn, syncSlotRunningFromServer, setPendingInput, setAgentSwitchNotice, resolveByApprovalId, clearPendingPermissions, cancelQueuedMessage, editQueuedMessage,
   selectComposerBusy,
   selectContinuable,
+  selectSignInBlocked,
   selectTurnInterrupted,
   setVoiceAudio,
   toggleActivity, openActivityPanel, openActivityToTab,
@@ -5073,6 +5074,7 @@ export default function ChatPage({ mode, embedded, embedMode, popout, noUrlSync 
   // while /api/models fails is stale, not authoritative — and is subscribed to
   // rather than read, because it can flip without the list changing.
   const _modelsDegraded = useModelsDegraded(provider.id)
+  const modelsSignIn = useModelsAuthRequired(provider.id)
   const shownModel = displayModel(
     currentSlot?.model || resolvedModel || '',
     availableModels,
@@ -5289,7 +5291,12 @@ export default function ChatPage({ mode, embedded, embedMode, popout, noUrlSync 
   // none of the busy checks, so a card would offer a Continue that `handleContinue`
   // early-returns on — a dead control in the one place recovery is promised.
   const continuable = useAppSelector(selectContinuable)
-  const interrupted = useAppSelector(selectTurnInterrupted)
+  // A transcript that ends on the "not signed in" card reads as interrupted, but
+  // nothing can resume until the user signs in, so neither Continue nor Resume is
+  // offered for it.
+  const turnInterrupted = useAppSelector(selectTurnInterrupted)
+  const signInBlocked = useAppSelector(selectSignInBlocked)
+  const interrupted = turnInterrupted && !signInBlocked
   const [continuing, setContinuing] = useState(false)
   // Why the refusal is rendered rather than logged: the server re-checks under
   // the slot lock and can refuse a press the client believed was available
@@ -6210,6 +6217,7 @@ export default function ChatPage({ mode, embedded, embedMode, popout, noUrlSync 
       <ErrorCard
         key={key}
         content={m.content}
+        meta={m.meta}
         onContinue={continuable && interrupted && i === lastErrorIdx ? handleContinue : undefined}
         continuing={continuing}
       />
@@ -7654,6 +7662,7 @@ export default function ChatPage({ mode, embedded, embedMode, popout, noUrlSync 
                 pinModelName={_modelPinActive || 'auto'}
                 pinModelUnavailable={pinIsWithheld(_modelPinActive, shownModel)}
                 pinnedToAgent={_modelPinPinned}
+                signIn={modelsSignIn}
                 onPinToAgent={() => {
                   setModelDropdown(false)
                   pinModelToAgentMut.mutate({

@@ -6082,6 +6082,7 @@
       "no_matches": "কোনো মিল নেই"
     },
     "modelEffortDropdown": {
+      "check_again": "আবার যাচাই করুন",
       "default_for_agent": "<agent/>-এর ডিফল্ট মডেল",
       "filter_models": "মডেল ফিল্টার করুন",
       "model_list": "মডেল তালিকা",
@@ -6090,6 +6091,10 @@
       "reasoning": "রিজনিং",
       "set_default_for_agent": "<model/>-কে <agent/>-এর ডিফল্ট মডেল করো",
       "set_default_for_new_sessions": "নতুন সেশনের জন্য গ্লোবাল ডিফল্ট…",
+      "sign_in_generic": "{{agent}}-এ সাইন ইন করুন, তারপর আবার যাচাই করুন।",
+      "sign_in_run_command": "টার্মিনালে <command/> চালান, তারপর আবার যাচাই করুন।",
+      "sign_in_to_see_models": "{{agent}}-এর মডেল দেখতে সাইন ইন করুন",
+      "still_not_signed_in": "এখনও সাইন ইন করা হয়নি।",
       "type_to_filter": "ফিল্টার করতে টাইপ করুন…"
     },
     "monacoCodeBlock": {
@@ -8307,6 +8312,9 @@
         "delete": "মুছুন"
       },
       "errorCard": {
+        "auth_required_run_command": "টার্মিনালে <command/> চালান, তারপর আপনার বার্তাটি আবার পাঠান।",
+        "auth_required_sign_in": "{{agent}}-এ সাইন ইন করুন, তারপর আপনার বার্তাটি আবার পাঠান।",
+        "auth_required_title": "{{agent}}-এ সাইন ইন করা নেই",
         "continue": "চালিয়ে যান",
         "continue_hint": "যেখানে থেমেছিল সেখান থেকে চালান। ডিস্কে লেখা কাজ অপরিবর্তিত থাকে।"
       },

@@ -1065,6 +1065,23 @@ A later sign-out is therefore surfaced by the failing *turn*, not by the poll:
 `chat_runner`'s `AcpAuthRequired` handler puts the actionable `kiro-cli login`
 message straight into the transcript.
 
+**A signed-out spec-family agent (Codex, Claude Code, …) gets an in-context
+card too.** Its `AcpAuthRequired` (see `modules/acp-client.md`) is handled by the
+same `_run_chat` branch, with three differences from kiro-cli. The error row
+carries `meta: {code: "auth_required", harness, agent, login}`
+(`_auth_required_card_meta`, `AUTH_REQUIRED_CODE`), and the dashboard renders its
+own translated card from it: the agent's name, one sentence, and the command in a
+code span; the English `content` is the fallback for surfaces that show raw text
+(Slack, an older bundle) and is redacted like any card text. The failure is
+recorded as a `needs_login` connection result for that harness
+(`_record_auth_required`) instead of latching `KiroPrerequisiteService`, which is
+kiro-cli's alone. And Continue and Resume are not offered for it:
+`selectSignInBlocked` (chatSlice) is true when the newest error row carries the
+code, and ChatPage drops `interrupted` for it, which removes both the card's
+Continue and the composer's Resume (and its placeholder and loop chip) at once. A
+later send that fails differently, or that replies, restores them. The eager
+session start and the side-chat turn record the same result.
+
 **The dashboard does not guide the user to sign in.** There is no
 reauthentication banner, no "Sessions paused" state, and no disabled composer or
 session-creation control. The `ReauthenticationBanner`, the

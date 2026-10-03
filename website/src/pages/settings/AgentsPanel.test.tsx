@@ -141,12 +141,38 @@ describe('AgentsPanel', () => {
 
     const codex = await screen.findByTestId('agent-codex')
     expect(within(codex).getByText('Connected')).toBeInTheDocument()
-    expect(within(await screen.findByTestId('agent-grok')).getByText('Needs sign-in')).toBeInTheDocument()
-    expect(screen.getByText('Authentication required')).toBeInTheDocument()
+    const grok = await screen.findByTestId('agent-grok')
+    expect(within(grok).getByText('Needs sign-in')).toBeInTheDocument()
+    // The status says it; the agent's own words are not repeated under it.
+    expect(screen.queryByText('Authentication required')).toBeNull()
     expect(within(screen.getByTestId('agent-cursor')).getByText('Not installed')).toBeInTheDocument()
     // The pick grid names the lane's agent, and says so when a kind has none.
     expect(screen.getByText('Planning')).toBeInTheDocument()
     expect(screen.getByText('No agent available')).toBeInTheDocument()
+  })
+
+  it('shows Needs sign-in and the command, never a raw JSON-RPC error, for a refused sign-in', async () => {
+    const raw = "JSON-RPC error: {'code': -32000, 'message': 'Authentication required'}"
+    harnesses.mockResolvedValue(view([
+      row({ probe: { status: 'needs_login', detail: raw, models: 0, checked_at: 1_800_000_000 } }),
+    ]))
+    mount()
+
+    const codex = await screen.findByTestId('agent-codex')
+    expect(within(codex).getByText('Needs sign-in')).toBeInTheDocument()
+    expect(codex.textContent).not.toMatch(/JSON-RPC|-32000|Authentication required/)
+    // The command is on screen for the user to run or copy.
+    expect(screen.getByText('codex login')).toBeInTheDocument()
+    expect(within(codex).getByRole('button', { name: /Sign in/ })).toBeInTheDocument()
+  })
+
+  it('still shows the detail for a failure that is not a sign-in', async () => {
+    harnesses.mockResolvedValue(view([
+      row({ probe: { status: 'error', detail: 'spawn failed: EACCES', models: 0, checked_at: 1_800_000_000 } }),
+    ]))
+    mount()
+
+    expect(await screen.findByText('spawn failed: EACCES')).toBeInTheDocument()
   })
 
   it('runs the sign-in command in the dock terminal', async () => {

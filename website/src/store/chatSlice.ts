@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import { addSlotOptimistic, updateSlot, removeSlotOptimistic, markSlotRead, fetchSlots, slotSurfaceKey, sseSlots, sseConnected } from './dashboardSlice'
 import { resolveDefaultColor } from '../utils/sessionColors'
 import { isChatPageSurface } from '../utils/channelOrigin'
+import { authRequiredOf } from '../lib/authRequired'
 import { isSystemNoticeKind } from '../lib/systemNotice'
 import { gcSessionStorage } from '../utils/storageGc'
 import type { RootState } from './index'
@@ -2359,6 +2360,32 @@ export const selectTurnInterrupted = (state: RootState): boolean => {
     if ((m.role === 'user' || m.role === 'assistant') && m.content) {
       if (m.role === 'assistant' && isSystemNoticeKind((m.meta as { kind?: string } | undefined)?.kind)) continue
       return m.role === 'user' ? true : sawTrailingError
+    }
+  }
+  return false
+}
+
+/**
+ * True when the newest turn ended on the card that says the agent is not signed
+ * in (`meta.code === 'auth_required'`).
+ *
+ * Continue and Resume cannot succeed until the user signs in, so ChatPage drops
+ * both while this holds: `selectTurnInterrupted` is true for that transcript
+ * (a user row, or an error row trailing the assistant's), and offering to resume
+ * a turn that never started is the misleading control this exists to remove. Only
+ * the NEWEST error row counts, so a later send that fails differently, or one that
+ * succeeds, restores the normal affordances.
+ */
+export const selectSignInBlocked = (state: RootState): boolean => {
+  const msgs = state.chat.messages
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i]
+    if (isStopEvent(m)) return false
+    if (m.role === 'error') return authRequiredOf(m.meta) !== null
+    if (CONTINUE_SCAN_SKIP.has(m.role)) continue
+    if ((m.role === 'user' || m.role === 'assistant') && m.content) {
+      if (m.role === 'assistant' && isSystemNoticeKind((m.meta as { kind?: string } | undefined)?.kind)) continue
+      return false
     }
   }
   return false

@@ -64,6 +64,7 @@ from junction.acp.types import (
     ACP_BACKENDS_SPEC_FAMILY,
     ACP_BACKENDS_STEER,
     ACP_CLIENT_CAPABILITIES,
+    ACP_ERROR_AUTH_REQUIRED,
     ACP_PERMISSION_MODE_PINS,
     EVENT_AGENT_SWITCHED,
     EVENT_CLEAR_STATUS,
@@ -1123,12 +1124,27 @@ class AcpProcessDied(AcpError):  # noqa: N818
 
 
 class AcpAuthRequired(AcpError):  # noqa: N818
-    """kiro-cli is not authenticated — the user must run ``kiro-cli login``.
+    """The agent is not signed in, so the user must run its own login command.
 
     Non-retryable: respawning the process hits the same wall, so callers must
     surface the actionable message and skip the retry ladder rather than
     reset-and-requeue the turn.
+
+    *backend* names the harness that refused and *login* is its sign-in command
+    (empty when none is published). Both stay at their defaults on the kiro-cli
+    and KAS raise sites, whose message already names ``kiro-cli login``.
     """
+
+    def __init__(
+        self,
+        *args: object,
+        backend: str = ACP_BACKEND_KIRO,
+        login: str = "",
+        transient: bool | None = None,
+    ) -> None:
+        super().__init__(*args, transient=transient)
+        self.backend = backend
+        self.login = login
 
 
 class AcpModelUnavailable(AcpError):  # noqa: N818
@@ -1321,6 +1337,69 @@ def _relogin_command(backend: str | None) -> str:
         if setup is not None:
             return setup.login
     return "kiro-cli login"
+
+
+# The message prefix the ACP SDK's ``RequestError.authRequired`` always writes.
+# Anchored, so a -32000 that merely mentions authentication somewhere in its
+# text is not read as a sign-in failure.
+_RE_ACP_AUTH_REQUIRED_MESSAGE = re.compile(r"^\s*authentication\s+required\b", re.IGNORECASE)
+# Longest slice of a refused handshake's error frame written to the log.
+_AUTH_REQUIRED_LOG_MAX_CHARS = 300
+
+
+def _is_acp_auth_required(error: object) -> bool:
+    """True when a JSON-RPC error frame is ACP's ``auth_required``.
+
+    Requires both the reserved code and the SDK's message prefix. -32000 opens
+    JSON-RPC's server-error range, and agents reuse it for unrelated failures,
+    so the code alone could report an ordinary error as a sign-in problem.
+    """
+    if not isinstance(error, dict) or error.get("code") != ACP_ERROR_AUTH_REQUIRED:
+        return False
+    return bool(_RE_ACP_AUTH_REQUIRED_MESSAGE.search(str(error.get("message") or "")))
+
+
+def _auth_required_error(backend: str, error: object) -> AcpAuthRequired:
+    """Build the non-retryable sign-in error for *backend*'s ``auth_required`` frame.
+
+    The message is assembled from the harness label and its published login
+    command only (empty when the harness publishes none, which is never replaced
+    by another CLI's command the way :func:`_relogin_command` falls back to
+    kiro-cli). Nothing the adapter wrote reaches the user, so there is no
+    backend-derived text to redact there; the frame itself is redacted before it
+    is logged.
+    """
+    from junction.harness_router.connect import sign_in_facts
+    from junction.harness_router.lanes import harness_name
+
+    harness = harness_name(backend)
+    facts = sign_in_facts(harness)
+    login = facts["login"]
+    next_step = f"Run `{login}` in a terminal" if login else "Sign in to it"
+    frame, _ = redact_exfiltration_urls(str(error))
+    frame, _ = redact_credentials(frame)
+    logger.warning(
+        "ACP %s reported auth_required: %s", harness, frame[:_AUTH_REQUIRED_LOG_MAX_CHARS]
+    )
+    return AcpAuthRequired(
+        f"{facts['agent']} is not signed in. {next_step}, then send your message again.",
+        backend=backend,
+        login=login,
+        transient=False,
+    )
+
+
+def _raise_if_auth_required(backend: str | None, error: object) -> None:
+    """Raise :class:`AcpAuthRequired` when *error* is a spec-family harness's ``auth_required``.
+
+    The one classification shared by the handshake (``_wait_for_response``) and a
+    prompt's error response (``_raise_acp_error``): a credential that expires in a
+    live session is refused on ``session/prompt`` with the same frame a signed-out
+    start gets on ``session/new``. Membership is positive, so kiro-cli, KAS and a
+    caller that names no backend (the runtime path) never take it.
+    """
+    if backend is not None and backend in ACP_BACKENDS_SPEC_FAMILY and _is_acp_auth_required(error):
+        raise _auth_required_error(backend, error)
 
 
 # Account/plan capacity is EXHAUSTED — terminal. Distinct from a throttle: a
@@ -1814,15 +1893,20 @@ def _raise_acp_error(
 ) -> None:
     """Format and raise the appropriate AcpError subclass for *error*.
 
-    Delegates formatting to ``_format_acp_error`` and raises either
-    ``AcpPromptBusy`` (when the backend reports a concurrent in-flight prompt)
-    or the generic ``AcpError`` for all other cases.
+    Delegates formatting to ``_format_acp_error`` and raises ``AcpAuthRequired``
+    (a spec-family harness's ``auth_required`` frame), ``AcpPromptBusy`` (when the
+    backend reports a concurrent in-flight prompt) or the generic ``AcpError`` for
+    all other cases.
 
     *available_models* is passed to BOTH the formatter and the transient
     classifier so a model-rejection's wording and its retry verdict are decided
     from the same evidence. *backend* selects the harness named in sign-in
     guidance.
     """
+    # A credential that expired in a live spec-family session is refused on the
+    # prompt with the same frame as a signed-out start, and must reach the same
+    # handler: the formatter below only words it as a generic session expiry.
+    _raise_if_auth_required(backend, error)
     formatted = _format_acp_error(error, available_models, backend=backend)
     # Detect prompt-busy from the raw error (before formatting rewrites it)
     raw_data = ""
@@ -3926,7 +4010,9 @@ class AcpClient:
         Fails closed. A mode the backend did not advertise, a rejected ``set_mode`` and a
         timeout all raise, because continuing would run the session in a mode that may
         never ask Warding about a tool call, and nothing would show it. The raise is
-        retried once on a fresh process by ``ensure_ready``, like any startup failure.
+        retried once on a fresh process by ``ensure_ready``, like any startup failure,
+        except a sign-in refusal (``AcpAuthRequired``), which keeps its own type and
+        is not retried.
         """
         if self._modes_advertised and self._current_mode_id == mode_id:
             return
@@ -3946,6 +4032,12 @@ class AcpClient:
                 method=METHOD_SET_MODE,
                 allow_model_substitution=False,
             )
+        except AcpAuthRequired:
+            # Still refuses the session, as the non-retryable sign-in error the
+            # dashboard card and ``ensure_ready`` key on. Wrapping it below would
+            # respawn the process for an account problem and bury the sign-in
+            # command inside a permission-mode message.
+            raise
         except AcpError as exc:
             raise AcpError(
                 f"Could not set {self.backend} to permission mode {mode_id!r}: {exc}. "
@@ -4002,6 +4094,14 @@ class AcpClient:
                     _startup_outcome = "ready"
                     return
                 except (AcpTimeoutError, AcpError) as exc:
+                    if isinstance(exc, AcpAuthRequired) and exc.backend in ACP_BACKENDS_SPEC_FAMILY:
+                        # A spec-family agent reported ACP's auth_required. A fresh
+                        # process asks the same account the same question, so skip
+                        # the respawn below and surface the one error.
+                        _startup_outcome = "auth_required"
+                        await self._kill_process(force=True)
+                        self._reset_state()
+                        raise
                     if attempt == 0:
                         logger.warning("ACP init failed (%s), retrying with fresh process...", exc)
                         await self._kill_process(force=True)
@@ -4009,8 +4109,8 @@ class AcpClient:
                     else:
                         # AcpAuthRequired subclasses AcpError; label it distinctly
                         # so a not-logged-in exit is never counted as a generic
-                        # startup error. (The fork has no separate auth fail-fast
-                        # branch — retry semantics stay unchanged.)
+                        # startup error. (A kiro-cli AcpAuthRequired keeps the
+                        # retry above; only the spec-family branch skips it.)
                         _startup_outcome = (
                             "auth_required" if isinstance(exc, AcpAuthRequired) else "error"
                         )
@@ -4290,6 +4390,12 @@ class AcpClient:
                             _payload_log,
                         )
                         return msg.result or {}
+                    # A spec-family agent that refuses the handshake for want of a
+                    # sign-in raises the non-retryable error that names the
+                    # harness's own login command; ensure_ready skips its respawn
+                    # for it. kiro-cli and KAS report a signed-out CLI through
+                    # their own banner and runtime paths, so they never take it.
+                    _raise_if_auth_required(self.backend, msg.error)
                     # Dual-redact msg.error before interpolating into the AcpError.
                     # msg.error is the wire-derived JSON-RPC error frame from the ACP
                     # backend; AcpError propagates to the dashboard activity feed and

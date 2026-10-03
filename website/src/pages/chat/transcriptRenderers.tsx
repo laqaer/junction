@@ -248,6 +248,7 @@ export function createTranscriptRenderers(
         ctx.row(
           <ErrorCard
             content={m.content}
+            meta={m.meta}
             onContinue={
               o.onContinue && o.continuable && o.interrupted && ctx.index === lastErrorIndex(ctx.messages)
                 ? o.onContinue

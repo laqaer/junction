@@ -5986,6 +5986,7 @@
       "no_matches": "无匹配项"
     },
     "modelEffortDropdown": {
+      "check_again": "再次检查",
       "default_for_agent": "<agent/> 的默认模型",
       "filter_models": "筛选模型",
       "model_list": "模型列表",
@@ -5994,6 +5995,10 @@
       "reasoning": "推理",
       "set_default_for_agent": "将 <model/> 设为 <agent/> 的默认模型",
       "set_default_for_new_sessions": "新会话的全局默认…",
+      "sign_in_generic": "请先登录 {{agent}}，然后再次检查。",
+      "sign_in_run_command": "请在终端运行 <command/>，然后再次检查。",
+      "sign_in_to_see_models": "登录后可查看 {{agent}} 的模型",
+      "still_not_signed_in": "仍未登录。",
       "type_to_filter": "输入以筛选…"
     },
     "monacoCodeBlock": {
@@ -8187,6 +8192,9 @@
         "delete": "删除"
       },
       "errorCard": {
+        "auth_required_run_command": "请在终端运行 <command/>，然后重新发送消息。",
+        "auth_required_sign_in": "请先登录 {{agent}}，然后重新发送消息。",
+        "auth_required_title": "{{agent}} 尚未登录",
         "continue": "继续",
         "continue_hint": "从中断处继续。已经写入磁盘的改动都还在。"
       },

@@ -2452,6 +2452,13 @@
     "shortcutsModal": {
       "panel_toggles": "Panel toggles",
       "unset": "Not set"
+    },
+    "modelEffortDropdown": {
+      "check_again": "Check again",
+      "sign_in_generic": "Sign in to {{agent}}, then check again.",
+      "sign_in_run_command": "Run <command/> in a terminal, then check again.",
+      "sign_in_to_see_models": "Sign in to see {{agent}} models",
+      "still_not_signed_in": "Still not signed in."
     }
   },
   "hooks": {
@@ -3116,6 +3123,11 @@
         "hide_tool_calls": "Hide tool calls",
         "worked_through_step_one": "Worked through {{count}} step",
         "worked_through_step_other": "Worked through {{count}} steps"
+      },
+      "errorCard": {
+        "auth_required_run_command": "Run <command/> in a terminal, then send your message again.",
+        "auth_required_sign_in": "Sign in to {{agent}}, then send your message again.",
+        "auth_required_title": "{{agent}} is not signed in"
       }
     },
     "chatPage": {

@@ -6082,6 +6082,7 @@
       "no_matches": "कोई मेल नहीं"
     },
     "modelEffortDropdown": {
+      "check_again": "दोबारा जाँचो",
       "default_for_agent": "<agent/> का डिफ़ॉल्ट मॉडल",
       "filter_models": "मॉडल फ़िल्टर करें",
       "model_list": "मॉडल सूची",
@@ -6090,6 +6091,10 @@
       "reasoning": "रीज़निंग",
       "set_default_for_agent": "<model/> को <agent/> का डिफ़ॉल्ट मॉडल बनाओ",
       "set_default_for_new_sessions": "नए सेशन के लिए ग्लोबल डिफ़ॉल्ट…",
+      "sign_in_generic": "{{agent}} में साइन इन करो, फिर दोबारा जाँचो।",
+      "sign_in_run_command": "टर्मिनल में <command/> चलाओ, फिर दोबारा जाँचो।",
+      "sign_in_to_see_models": "{{agent}} के मॉडल देखने के लिए साइन इन करो",
+      "still_not_signed_in": "अभी भी साइन इन नहीं है।",
       "type_to_filter": "फ़िल्टर करने के लिए टाइप करें…"
     },
     "monacoCodeBlock": {
@@ -8307,6 +8312,9 @@
         "delete": "हटाएँ"
       },
       "errorCard": {
+        "auth_required_run_command": "टर्मिनल में <command/> चलाओ, फिर अपना संदेश दोबारा भेजो।",
+        "auth_required_sign_in": "{{agent}} में साइन इन करो, फिर अपना संदेश दोबारा भेजो।",
+        "auth_required_title": "{{agent}} में साइन इन नहीं है",
         "continue": "जारी रखें",
         "continue_hint": "जहाँ रुका था वहीं से फिर शुरू करें। डिस्क पर लिखा हुआ काम जैसा है वैसा रहेगा।"
       },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { selectContinuable, selectTurnInterrupted } from '../store/chatSlice'
+import { selectContinuable, selectSignInBlocked, selectTurnInterrupted } from '../store/chatSlice'
 import type { ChatMessage } from '../types'
 
 /**
@@ -220,5 +220,56 @@ describe('selectTurnInterrupted', () => {
     expect(selectTurnInterrupted(state({
       messages: [msg('user'), msg('inject', '[Continue — requested by the user]\nresume')],
     }))).toBe(true)
+  })
+})
+
+describe('selectSignInBlocked', () => {
+  const signIn = { code: 'auth_required', harness: 'codex', agent: 'Codex (ChatGPT)', login: 'codex login' }
+
+  it('is true when the newest turn ended on the sign-in card', () => {
+    const s = state({ messages: [msg('user', 'hi'), msg('error', 'not signed in', signIn)] })
+    expect(selectSignInBlocked(s)).toBe(true)
+    // The case it exists for: the transcript still reads as interrupted and
+    // continuable, so without it Continue and Resume would both be offered.
+    expect(selectTurnInterrupted(s)).toBe(true)
+    expect(selectContinuable(s)).toBe(true)
+  })
+
+  it('is true when the card trails an assistant reply', () => {
+    expect(selectSignInBlocked(state({
+      messages: [msg('user'), msg('assistant', 'starting…'), msg('error', 'not signed in', signIn)],
+    }))).toBe(true)
+  })
+
+  it('walks past tool and queue rows to the card', () => {
+    expect(selectSignInBlocked(state({
+      messages: [msg('user'), msg('error', 'x', signIn), msg('queued', 'next')],
+    }))).toBe(true)
+  })
+
+  it('is false for any other error row', () => {
+    expect(selectSignInBlocked(state({ messages: [msg('user'), msg('error', 'boom')] }))).toBe(false)
+    expect(selectSignInBlocked(state({
+      messages: [msg('user'), msg('error', 'boom', { code: 'slot_running' })],
+    }))).toBe(false)
+  })
+
+  it('is false once a later send fails differently', () => {
+    expect(selectSignInBlocked(state({
+      messages: [msg('user', 'a'), msg('error', 'x', signIn), msg('user', 'b'), msg('error', 'boom')],
+    }))).toBe(false)
+  })
+
+  it('is false once a later turn replied', () => {
+    expect(selectSignInBlocked(state({
+      messages: [msg('user', 'a'), msg('error', 'x', signIn), msg('user', 'b'), msg('assistant', 'done')],
+    }))).toBe(false)
+  })
+
+  it('is false for an empty chat and for a stop card', () => {
+    expect(selectSignInBlocked(state())).toBe(false)
+    expect(selectSignInBlocked(state({
+      messages: [msg('user'), msg('system', 'Stopped', { kind: 'stop_event' })],
+    }))).toBe(false)
   })
 })
