@@ -1230,6 +1230,38 @@ class TestFilesystemEgressAtGate:
             ("filesystem.write", "/home/user/.ssh/id_rsa"),
         )
 
+    def test_every_element_of_a_path_list_is_classified(self):
+        """A multi-file edit names its targets in a list, and each one is governed."""
+        from junction.platform.governance import classify_tool_args
+
+        assert classify_tool_args("edit", {"paths": ["/srv/a", "/srv/b", "", 7]}) == (
+            ("filesystem.write", "/srv/a"),
+            ("filesystem.write", "/srv/b"),
+        )
+        assert classify_tool_args("read", {"path": "/srv/a", "paths": ["/srv/a", "/srv/b"]}) == (
+            ("filesystem.read", "/srv/a"),
+            ("filesystem.read", "/srv/b"),
+        )
+        assert classify_tool_args("edit", {"paths": "/srv/not-a-list"}) == ()
+
+    def test_a_path_list_element_outside_the_write_allowlist_denies_at_the_gate(self):
+        _install(
+            {
+                "version": 1,
+                "boot": {"fail_closed": True},
+                "filesystem": {"write": {"mode": "allow", "allow": ["/tmp/**"]}},
+            }
+        )
+        from junction.hooks import TOOL_DENY, HookManager
+
+        decision = HookManager().on_tool_call(
+            "Edit files",
+            session_key="cli_chat",
+            tool_kind="edit",
+            raw_params={"paths": ["/tmp/allowed.txt", "/srv/outside.txt"]},
+        )
+        assert decision.action == TOOL_DENY
+
     def test_conflicting_path_alias_cannot_bypass_gate(self):
         _install(
             {

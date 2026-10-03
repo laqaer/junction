@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -30,6 +31,7 @@ import sys
 import time
 from collections import deque
 from contextlib import aclosing
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, AsyncGenerator, AsyncIterator, Callable, Sequence, TypeVar
 
@@ -112,6 +114,7 @@ from junction.acp.types import (
     TurnUsage,
 )
 from junction.agent import ensure_agent_materialized
+from junction.atomic_write import atomic_write
 from junction.config.paths import kiro_sessions_dir
 from junction.constants import (
     COMPACT_WAIT_TIMEOUT_SECS,
@@ -124,10 +127,12 @@ from junction.hooks import (
     HOOK_EVENT_POST_TOOL_USE,
     fire_tool_hooks,
     get_global_hook_store,
+    target_paths,
 )
 from junction.kiro_cli import resolve_kiro_cli
 from junction.mcp_gateway.claim import schedule_claim
 from junction.mcp_gateway.session_servers import pooled_session_servers
+from junction.path_spellings import MAX_TARGET_PATHS, path_spellings
 from junction.resource_status import inject_xdist_auto_cap
 from junction.sandbox import (
     RLIMIT_PROFILE_SESSION_HOST,
@@ -759,6 +764,98 @@ def _mentions_skill_file(raw_params: dict | None, command: str | None) -> bool:
             if any(isinstance(v, str) and _SKILL_FILE_BASENAME in v for v in value):
                 return True
     return False
+
+
+#: Extra ``rawInput`` keys a spec-family harness names a target file under, beyond
+#: the three ``hooks.target_paths`` already reads. Claude Code's notebook editor
+#: uses this one and reports no ``locations`` for it.
+_FRAME_EXTRA_PATH_KEYS: tuple[str, ...] = ("notebook_path",)
+
+
+def _frame_target_paths(frame: dict, raw_params: dict | None) -> list[str]:
+    """Every file path a spec-family ``ToolCall`` / ``ToolCallUpdate`` names.
+
+    Three places carry them, and a harness fills a different subset of the three:
+    the call's own arguments (``rawInput``), the ACP-spec ``locations`` list, and
+    the ``path`` of each ``diff`` content block. Codex reports a multi-file patch
+    ONLY through ``locations`` and the diff blocks — its permission frame has no
+    ``rawInput`` at all — so a gate that read one of the three would see nothing
+    for it. A rename carries its destination only in the diff block's ``path``.
+
+    The result is a deny-only input: the caller hands every path to the same
+    sensitive-path and write-protected checks, which deny if ANY of them is
+    forbidden. A path a harness lists but never touches can therefore only make
+    the gate stricter, never looser, which is why nothing here needs to decide
+    which of the three sources to believe. A path a harness would trim
+    (``path_spellings``) is listed in both spellings for the same reason. Collection
+    stops one past ``MAX_TARGET_PATHS``: the gate denies a call that names more, so
+    walking an attacker-sized list to the end would only stall the loop.
+    """
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def _add(value: object) -> None:
+        if len(found) > MAX_TARGET_PATHS:
+            return
+        if isinstance(value, str) and value.strip():
+            for spelling in path_spellings(value):
+                if spelling not in seen:
+                    seen.add(spelling)
+                    found.append(spelling)
+
+    if isinstance(raw_params, dict):
+        for path in target_paths(raw_params):
+            _add(path)
+        for key in _FRAME_EXTRA_PATH_KEYS:
+            _add(raw_params.get(key))
+    locations = frame.get("locations")
+    if isinstance(locations, list):
+        for location in locations:
+            if isinstance(location, dict):
+                _add(location.get("path"))
+    content = frame.get("content")
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "diff":
+                _add(block.get("path"))
+    return found
+
+
+def _file_digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _read_bytes_or_none(path: Path) -> bytes | None:
+    """The file's bytes, or None when it is absent or unreadable."""
+    try:
+        return path.read_bytes()
+    except OSError:
+        return None
+
+
+def _mode_or_none(path: Path) -> int | None:
+    try:
+        return stat.S_IMODE(path.stat().st_mode)
+    except OSError:
+        return None
+
+
+@dataclass(frozen=True)
+class _SeededSettings:
+    """What a settings seed changed in ``<work_dir>/.claude/settings.local.json``.
+
+    The file is the user's own per-project Claude Code config as often as it is
+    ours, so the undo at session end must be able to prove it is undoing OUR write:
+    ``digest`` is the hash of the bytes the seed left behind (a file edited since
+    is no longer ours), and ``prior`` holds what was there before the seed (``None``
+    when the seed created the file), so overwriting a user's file is reverted
+    rather than turned into a deletion.
+    """
+
+    path: Path
+    digest: str
+    prior: bytes | None
+    prior_mode: int | None
 
 
 # Emitted by kiro-cli as a plain agent_message_chunk when its built-in, non-overridable
@@ -2310,6 +2407,16 @@ class AcpClient:
         # which carries only a truncated title — can recover the real path/url
         # the governance gate needs (filesystem.write / network.egress scopes).
         self._tool_call_params: dict[str, dict] = {}
+        # Files a spec-family tool_call / tool_call_update frame names (its
+        # ``locations`` and diff-block paths), keyed by toolCallId. Codex reports a
+        # file change ONLY this way — no rawInput anywhere — and a rename's
+        # destination appears only in the diff block of the earlier tool_call, so
+        # the permission frame (which lists the source) cannot supply it alone.
+        # Same per-turn lifecycle and cap as _tool_call_params.
+        self._tool_call_paths: dict[str, tuple[str, ...]] = {}
+        # What this client's settings seed wrote into settings.local.json, so the
+        # undo at reset touches only a file we changed. None = nothing of ours.
+        self._claude_seeded_settings: _SeededSettings | None = None
         # Map JSON-RPC request id → {"once": optionId, "always": optionId} so
         # the host can echo back the exact optionIds the agent advertised.
         # kiro-cli uses "allow_once"/"allow_always"; claude-agent-acp uses
@@ -2869,12 +2976,7 @@ class AcpClient:
             # model-substitution retry at _new_session_following_substitution —
             # or a claude session collapses to the 200K default. Guarded via
             # getattr so the public core (no such method) is byte-identical.
-            _seed = getattr(self, "_write_claude_local_settings", None)
-            if callable(_seed):
-                try:
-                    _seed()
-                except (OSError, ValueError, TypeError):
-                    logger.warning("initial seed of settings.local.json failed", exc_info=True)
+            self._seed_claude_local_settings("initial seed of settings.local.json failed")
             global _claude_acp_argv_cache  # noqa: PLW0603
             claude_argv = _claude_acp_argv_cache
             if not isinstance(claude_argv, list):
@@ -3324,6 +3426,84 @@ class AcpClient:
         retiring = getattr(self, "_liveness_oracle", None)
         self._liveness_oracle = retiring.fresh() if retiring is not None else LivenessOracle()
 
+    def _claude_local_settings_path(self) -> Path:
+        return self._work_dir / ".claude" / "settings.local.json"
+
+    def _seed_claude_local_settings(self, failure_message: str) -> None:
+        """Run the companion's settings seed and record what it changed.
+
+        The seed hook (``_write_claude_local_settings``) is attached by an edition
+        that drives the claude seam; the public core has none and this is a no-op.
+        The record is what lets ``_undo_claude_settings_seed`` tell a file the seed
+        wrote from the user's own ``settings.local.json``, which is a normal,
+        usually version-control-ignored per-project Claude Code config.
+        """
+        seed = getattr(self, "_write_claude_local_settings", None)
+        if not callable(seed):
+            return
+        path = self._claude_local_settings_path()
+        before = _read_bytes_or_none(path)
+        before_mode = _mode_or_none(path) if before is not None else None
+        try:
+            seed()
+        except (OSError, ValueError, TypeError):
+            # Narrow to realistic seed failure modes: OSError covers disk /
+            # permission errors on the atomic write; ValueError and TypeError cover
+            # registry / json shape surprises.
+            logger.warning(failure_message, exc_info=True)
+        finally:
+            # Record in every case, including an exception this handler does not
+            # catch: a seed that raised halfway may still have changed the file, and
+            # an unrecorded change is one that can never be undone.
+            self._record_claude_settings_seed(path, before, before_mode)
+
+    def _record_claude_settings_seed(
+        self, path: Path, before: bytes | None, before_mode: int | None
+    ) -> None:
+        """Remember what a seed left in *path* so the undo reverts it and nothing else."""
+        after = _read_bytes_or_none(path)
+        if after is None or after == before:
+            return
+        previous = getattr(self, "_claude_seeded_settings", None)
+        if (
+            previous is not None
+            and previous.path == path
+            and before is not None
+            and _file_digest(before) == previous.digest
+        ):
+            # A re-seed on the same client over the file the previous seed left: the
+            # original content is what to restore, not the previous seed's. A file the
+            # user edited (or deleted) in between is theirs now, so what the re-seed
+            # found is what to restore.
+            before, before_mode = previous.prior, previous.prior_mode
+        self._claude_seeded_settings = _SeededSettings(
+            path=path, digest=_file_digest(after), prior=before, prior_mode=before_mode
+        )
+
+    def _undo_claude_settings_seed(self) -> None:
+        """Revert a settings seed this client wrote, and nothing else.
+
+        With no record (the public core, which never seeds) the file is never
+        touched. With a record, the file is reverted only while it still holds the
+        exact bytes the seed left: a user who edited it since owns those edits now,
+        and deleting them is the data loss this guard exists to prevent. A seed that
+        overwrote a pre-existing file restores that file rather than deleting it.
+        """
+        seeded = getattr(self, "_claude_seeded_settings", None)
+        self._claude_seeded_settings = None
+        if seeded is None:
+            return
+        current = _read_bytes_or_none(seeded.path)
+        if current is None or _file_digest(current) != seeded.digest:
+            return
+        try:
+            if seeded.prior is None:
+                seeded.path.unlink(missing_ok=True)
+            else:
+                atomic_write(seeded.path, seeded.prior, mode=seeded.prior_mode)
+        except OSError:
+            logger.warning("could not revert the settings.local.json seed", exc_info=True)
+
     def _reset_state(self) -> None:
         """Reset all session state (call after process is dead)."""
         if self._process:
@@ -3335,13 +3515,11 @@ class AcpClient:
                         pass
         # Clean up sandbox temp files (macOS seatbelt profile)
         self._discard_sandbox_cleanup()
-        # Remove settings.local.json so bypassPermissions doesn't persist after crash
+        # Undo OUR settings seed so a bypassPermissions it carried does not outlive
+        # the session. Only what the seed wrote: the file belongs to the user's
+        # project, and a session that never seeded it must leave it alone.
         if self._is_claude:
-            _stale = self._work_dir / ".claude" / "settings.local.json"
-            try:
-                _stale.unlink(missing_ok=True)
-            except OSError:
-                pass
+            self._undo_claude_settings_seed()
         # Save PIDs before clearing state — needed for untracking
         saved_pid = self._pid
         saved_child_pids = self._child_pids
@@ -3489,18 +3667,10 @@ class AcpClient:
             # settings sources each session/new). The re-seed helper lives in the
             # internal companion's cc_agent glue; guard so the public core (which
             # never reaches this dormant _is_claude branch) does not AttributeError.
-            _reseed = getattr(self, "_write_claude_local_settings", None)
-            if callable(_reseed):
-                try:
-                    _reseed()
-                except (OSError, ValueError, TypeError):
-                    # Narrow to realistic re-seed failure modes: OSError covers
-                    # disk / permission errors on the atomic write; ValueError
-                    # and TypeError cover registry / json shape surprises.
-                    # Never let re-seed failure mask the retry -- worst case, the
-                    # adapter resolves to whatever it had cached and we still
-                    # retry session/new on the substitute path.
-                    logger.warning("re-seed of settings.local.json failed", exc_info=True)
+            # Never let a re-seed failure mask the retry -- worst case, the adapter
+            # resolves to whatever it had cached and we still retry session/new on
+            # the substitute path.
+            self._seed_claude_local_settings("re-seed of settings.local.json failed")
             self._last_substitution_model = None
             retry_id = await self._send_request(METHOD_SESSION_NEW, new_params)
             session_resp = await self._wait_for_response(
@@ -4652,6 +4822,7 @@ class AcpClient:
         self._tool_call_mcp_server.clear()
         self._tool_call_tool_name.clear()
         self._tool_call_params.clear()
+        self._tool_call_paths.clear()
         # Reset the per-turn observed-tool-call bookkeeping (see __init__).
         self._observed_tool_calls.clear()
         # Clear stale permission options so an aborted/cancelled request from
@@ -5624,6 +5795,7 @@ class AcpClient:
             )
             # Build initial tool input string from raw params
             tool_call_id = update.get("toolCallId", "")
+            self._note_frame_paths(update, tool_call_id)
             input_str = ""
             if tool_call_id and raw_input:
                 input_str = (
@@ -5817,6 +5989,9 @@ class AcpClient:
         tool_use_id = update.get("toolCallId", "")
         if not tool_use_id:
             return None
+        # Before the early return below: a progress update carrying only diff
+        # content or locations still names files the later permission must see.
+        self._note_frame_paths(update, tool_use_id)
         title = update.get("title")
         kind = update.get("kind")
         raw_input = update.get("rawInput")
@@ -5855,6 +6030,19 @@ class AcpClient:
             input_str = safe_input
             self._tool_call_inputs[tool_use_id] = input_str
             self._tool_call_input_redacted[tool_use_id] = input_redacted
+        # The refinement's rawInput is the COMPLETE params object (the initial
+        # tool_call streamed it empty), so it is the one the later permission event
+        # must resolve its structured params from. Without this cache claude-agent-acp
+        # permissions reach the gate with no arguments: the keystone path check, the
+        # write-protected-config tier and the arg-derived governance scopes
+        # (filesystem.write / network.egress) all read raw_tool_params. Mirrors
+        # _dispatch._build_tool_refinement_event, which the runtime path already uses.
+        # Spec family only: a kiro-cli session on this client keeps resolving its
+        # params from the initial tool_call alone, so a refinement cannot replace them.
+        if self._is_spec and isinstance(raw_input, dict) and raw_input:
+            if len(self._tool_call_params) > _MAX_CACHED_TOOL_PARAMS:
+                self._tool_call_params.clear()
+            self._tool_call_params[tool_use_id] = raw_input
         # Refresh the cached shell signal only when this refinement carries a
         # kind. A refinement that omits kind must NOT clobber a True cached by
         # the initial tool_call notification (kind is optional on updates).
@@ -5967,6 +6155,144 @@ class AcpClient:
             logger.debug("JSONL: read %d tool result(s) from %s", len(results), jsonl_path.name)
         return results
 
+    def _note_frame_paths(self, update: dict, tool_call_id: str) -> None:
+        """Remember the files a spec-family tool_call / tool_call_update names.
+
+        Union across every frame of one call, because a harness spreads them
+        (Codex puts the diff blocks on the first frame and the locations on the
+        permission request). Spec family only: kiro-cli resolves its paths through
+        the raw-params cache it has always had, and caching for it would be a cache
+        nothing reads.
+        """
+        if not tool_call_id or not self._is_spec:
+            return
+        if update.get("status") in ("completed", "failed"):
+            # A permission request precedes the work it authorizes, so a finished call
+            # has nothing left to be asked about. Dropping it keeps the map to the calls
+            # that are pending right now, which is what bounds it in practice.
+            self._tool_call_paths.pop(tool_call_id, None)
+            return
+        names = _frame_target_paths(update, None)
+        if not names:
+            return
+        known = self._tool_call_paths.get(tool_call_id, ())
+        seen = set(known)
+        merged = [*known, *(n for n in names if n not in seen)]
+        # Past the bound the permission gate denies the call outright, so the tail is
+        # not worth holding; the cap keeps one call from growing without limit.
+        self._tool_call_paths[tool_call_id] = tuple(merged[: MAX_TARGET_PATHS + 1])
+        # Evict the OLDEST call, never the whole map: dropping every entry would let
+        # a handful of extra calls erase the rename destination an earlier frame
+        # recorded for the call a later permission names. Only more than the cap of
+        # calls pending at once can still evict a live one.
+        while len(self._tool_call_paths) > _MAX_CACHED_TOOL_PARAMS:
+            del self._tool_call_paths[next(iter(self._tool_call_paths))]
+
+    def _anchored_to_work_dir(self, paths: Sequence[str]) -> list[str]:
+        """The location of each relative path in *paths* under this session's work dir.
+
+        ``~``-prefixed and absolute paths are skipped: the sensitive-path checks expand
+        and resolve those themselves. Never raises on a hostile string.
+        """
+        anchored: list[str] = []
+        for path in paths:
+            if not path or path.startswith("~") or os.path.isabs(path):
+                continue
+            try:
+                anchored.append(os.path.normpath(os.path.join(str(self._work_dir), path)))
+            except (ValueError, TypeError):
+                continue
+        return anchored
+
+    def _recover_permission_arguments(self, event: AcpEvent, msg: JsonRpcMessage) -> None:
+        """Give a spec-family permission event the arguments the gate reads.
+
+        ``hooks.on_tool_call`` decides on ``event.raw_tool_params``: the keystone
+        path check, the write-protected-config tier and the arg-derived governance
+        scopes (``filesystem.write`` / ``network.egress``) all read it, and a title
+        carries none of that. The shared ``build_permission_event`` resolves it from
+        the raw-params cache or from a ``toolCall.input`` / ``toolCall.params`` field
+        — kiro-cli's spellings. An ACP-spec harness sends the arguments as
+        ``toolCall.rawInput`` and a file change as ``locations`` plus diff blocks, so
+        on a cache miss such a permission would reach the gate argument-free and a
+        write to a keystone path would be judged on its (cwd-relative,
+        model-influenced) title alone. This runs AFTER the shared builder and only
+        on this client, so that builder, and with it the kiro-cli and KAS paths, is
+        unchanged (H13).
+
+        Provenance, which the event states honestly:
+
+        * Params the preceding tool_call / tool_call_update cached keep
+          ``raw_params_trusted=True``; nothing here replaces them.
+        * Params taken from the permission frame itself are agent-supplied, so they
+          are NOT trusted: ``raw_params_trusted`` stays False, the same as the
+          shared builder's inline fallback. Trust only matters to the subagent
+          fidelity gate; the durable-trust key never reads it and is withheld
+          whenever any structured params exist.
+        * Paths gathered from ``locations`` and diff blocks (this frame's and the
+          earlier tool_call's) are added under ``paths`` ONLY when the params do not
+          already name them. They are deny-only inputs — every path is checked and
+          any forbidden one denies — so a path the harness reports but never
+          touches makes the gate stricter, never looser. They are written onto a
+          copy, so the cached params are never mutated.
+
+        When the cache and the frame disagree the cache stays authoritative for the
+        params, exactly as the shared builder's contract says, and the frame's paths
+        are still checked on top of it.
+        """
+        params = msg.params if isinstance(msg.params, dict) else {}
+        tool_call = params.get("toolCall")
+        if not isinstance(tool_call, dict):
+            return
+        frame_raw = tool_call.get("rawInput")
+        frame_params = frame_raw if isinstance(frame_raw, dict) and frame_raw else None
+        base = event.raw_tool_params
+        if base is None and frame_params is not None:
+            # Shallow copy: the dict is the harness's frame, and later consumers
+            # (and the paths merge below) must not write into it.
+            base = dict(frame_params)
+            event.raw_tool_params = base
+        if not event.tool_input and frame_params is not None:
+            # Same display fallback the shared builder applies to ``input`` /
+            # ``params``, so the approval card shows the real command or target
+            # (Codex titles a read "Read file" and keeps the command only here).
+            try:
+                rendered = json.dumps(frame_params, indent=2)
+            except (TypeError, ValueError, RecursionError):
+                # RecursionError: ``json.loads`` accepts nesting deeper than
+                # ``json.dumps`` can render, and the arguments are agent-supplied.
+                rendered = ""
+            if rendered:
+                safe, _ = redact_exfiltration_urls(rendered)
+                safe, _ = redact_credentials(safe)
+                event.tool_input = safe
+                event.tool_input_redacted = safe != rendered
+        named = _frame_target_paths(tool_call, frame_params)
+        if event.tool_call_id:
+            have = set(named)
+            named.extend(
+                p for p in self._tool_call_paths.get(event.tool_call_id, ()) if p not in have
+            )
+        covered = set(target_paths(base))
+        # A harness resolves a relative path against the session's working directory,
+        # and the gate resolves it against its own, so each relative path (from the
+        # cached params as much as from the frame) is also checked where the harness
+        # will actually open it.
+        anchored = self._anchored_to_work_dir([*covered, *named])
+        extra = [p for p in dict.fromkeys([*named, *anchored]) if p not in covered]
+        if not extra:
+            return
+        merged = dict(base) if isinstance(base, dict) else {}
+        existing = merged.get("paths")
+        if isinstance(existing, (list, tuple)):
+            head = list(existing)
+        elif isinstance(existing, str) and existing.strip():
+            head = [existing]
+        else:
+            head = []
+        merged["paths"] = [*head, *extra]
+        event.raw_tool_params = merged
+
     def _build_permission_event(self, msg: JsonRpcMessage) -> AcpEvent:
         """Build one permission event through the transport-shared parser.
 
@@ -5990,6 +6316,12 @@ class AcpClient:
             mcp_server_name_cache=self._tool_call_mcp_server,
             tool_name_cache=self._tool_call_tool_name,
         )
+        # Spec-family frames carry their arguments in ACP-spec fields the shared
+        # builder does not read (see _recover_permission_arguments). Positive
+        # membership, so the kiro-cli path through this client is untouched and a
+        # harness added later does not inherit the recovery by not being excluded.
+        if self._is_spec:
+            self._recover_permission_arguments(event, msg)
         if recorded is not None:
             self._permission_options[event.request_id] = recorded
         logger.info("Permission requested for tool: %s (req=%s)", event.title, event.request_id)
