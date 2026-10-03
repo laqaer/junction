@@ -1185,6 +1185,22 @@ def warm_backend(timeout: float = _WARM_JOIN_TIMEOUT_SECS) -> None:
         thread.join(timeout)
 
 
+def warm_backend_before_loop() -> None:
+    """``warm_backend`` for a CLI command about to ``asyncio.run`` a harness spawn.
+
+    Every CLI invocation is a fresh process, so its probe cache is always cold,
+    and the spawn inside ``asyncio.run`` reaches ``detect_backend`` on a running
+    loop, where a cold cache is refused as "no sandbox backend". Calling this
+    first, outside the loop, is what lets ``warding chat`` / ``warding run``
+    spawn at all on Linux. A failed warm is non-fatal: the cache stays cold and
+    the self-healing transient path applies, so it never aborts the command.
+    """
+    try:
+        warm_backend()
+    except Exception:
+        logger.debug("sandbox warm-up failed; the spawn will re-probe", exc_info=True)
+
+
 def _probe_unshare() -> bool:
     """Return True if user + mount namespaces work (Linux).
 
