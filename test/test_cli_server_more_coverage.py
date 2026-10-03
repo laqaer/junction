@@ -752,8 +752,11 @@ def taskrunner_env(monkeypatch, tmp_path):
             def __init__(self, **kw) -> None:
                 state["runner_kwargs"] = kw
 
-            async def run(self, spec_path, name=""):
+            async def run(self, spec_path, name="", workspace_dir=""):
                 state["ran"] = (spec_path, name)
+                state["workspace_dir"] = workspace_dir
+                if isinstance(result, Exception):
+                    raise result
                 return result
 
         monkeypatch.setattr(cli_server, "TaskRunner", _Runner)
@@ -797,6 +800,29 @@ class TestRunTask:
         assert taskrunner_env["observed"]  # skill-read observer registered
         out = capsys.readouterr().out
         assert "Task completed" in out and "(3 steps)" in out
+        assert taskrunner_env["workspace_dir"] == ""  # no --workspace: runner default
+
+    def test_workspace_flag_is_forwarded_to_the_run(self, taskrunner_env, tmp_path) -> None:
+        taskrunner_env["install_runner"](_Result("completed"))
+        spec = _spec(tmp_path)
+        args = argparse.Namespace(
+            spec=str(spec), no_test=True, fresh=False, timeout=0, name="", workspace=str(tmp_path)
+        )
+        asyncio.run(cli_server._run_task(args))
+        assert taskrunner_env["workspace_dir"] == str(tmp_path)
+
+    def test_refused_workspace_exits_nonzero_with_the_reason(
+        self, taskrunner_env, tmp_path, capsys
+    ) -> None:
+        taskrunner_env["install_runner"](ValueError("workspace_dir resolves to a sensitive path"))
+        spec = _spec(tmp_path)
+        args = argparse.Namespace(
+            spec=str(spec), no_test=True, fresh=False, timeout=0, name="", workspace="~/.ssh"
+        )
+        with pytest.raises(SystemExit) as exc:
+            asyncio.run(cli_server._run_task(args))
+        assert exc.value.code == 1
+        assert "sensitive path" in capsys.readouterr().err
 
     def test_builtin_sync_runs_through_the_explicit_seam(
         self, taskrunner_env, tmp_path, monkeypatch

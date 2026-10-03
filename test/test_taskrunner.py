@@ -2505,7 +2505,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def testself_review_fail_then_retry_succeeds(self, tmp_path: Path) -> None:
-        """Self-review fails → step retried → succeeds without second review."""
+        """Self-review fails → step retried → the retry is reviewed and passes."""
         sessions = _make_mock_sessions()
         provider = _make_mock_provider("done")
         sessions.get_or_create = AsyncMock(return_value=(provider, True, False))
@@ -2529,8 +2529,48 @@ class TestEdgeCases:
             success = await runner._execute_single_task(run, step, "key")
 
         assert success is True
-        # Self-review called once (not called again after retry)
-        assert review_calls == 1
+        assert step.status == StepStatus.PASSED
+        # The retry is reviewed too: one rejected review, one passing re-review.
+        assert review_calls == 2
+
+    @pytest.mark.asyncio
+    async def testself_review_fails_again_after_retry_fails_task(self, tmp_path: Path) -> None:
+        """A retry the reviewer rejects again is FAILED, never PASSED unreviewed."""
+        sessions = _make_mock_sessions()
+        provider = _make_mock_provider("done")
+        sessions.get_or_create = AsyncMock(return_value=(provider, True, False))
+
+        runner = TaskRunner(sessions=sessions, auto_test=False, work_dir=tmp_path)
+        run = TaskRun(spec_path=str(tmp_path / "t.md"), spec_content="s", status="running")
+        step = Step(index=1, title="Create done.txt", description="d")
+        run.tasks = [step]
+
+        async def _review_always_fails(r, s, sessions, agent, session_key=""):
+            s.error = "Self-review: done.txt does not exist"
+            return False
+
+        with patch("junction.task_executor.self_review", side_effect=_review_always_fails) as rv:
+            success = await runner._execute_single_task(run, step, "key")
+
+        assert success is False
+        assert step.status == StepStatus.FAILED
+        assert step.error == "Self-review: done.txt does not exist"
+        assert rv.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_try_replan_refuses_a_run_a_task_already_failed(self, tmp_path: Path) -> None:
+        """A task that failed the run itself (headless block) is not replanned around."""
+        sessions = _make_mock_sessions()
+        runner = TaskRunner(sessions=sessions, auto_test=False, work_dir=tmp_path)
+        run = TaskRun(spec_path=str(tmp_path / "t.md"), spec_content="s", status="failed")
+        failed = Step(index=1, title="Create done.txt", description="d", error="Blocked: x")
+        run.tasks = [failed]
+        runner._decompose = AsyncMock(return_value=[Step(index=1, title="Other", description="d")])
+
+        assert await runner._try_replan(run, failed) is False
+        runner._decompose.assert_not_awaited()
+        assert run.replan_count == 0
+        assert len(run.tasks) == 1
 
     def test_group_parallel_tasks_deadlock(self) -> None:
         """Steps with circular deps → fallback to sequential."""

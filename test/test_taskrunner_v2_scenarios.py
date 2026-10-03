@@ -1392,12 +1392,12 @@ class TestScenarioReplanRecursiveStepLimit:
         assert "Task limit" in run.error
 
 
-class TestScenarioReviewRetryNoSecondReview:
-    """After review fails → revert → retry succeeds, the step should pass
-    without a second review call (current design)."""
+class TestScenarioReviewRetryGetsSecondReview:
+    """After review fails → revert → retry succeeds, the retry is reviewed again
+    before the step passes."""
 
     @pytest.mark.asyncio
-    async def test_no_second_review_after_retry(self, tmp_path: Path) -> None:
+    async def test_second_review_after_retry(self, tmp_path: Path) -> None:
         sessions = _mock_sessions()
         runner = TaskRunner(sessions=sessions, auto_test=False, work_dir=tmp_path)
         run = TaskRun(spec_path=str(tmp_path / "t.md"), spec_content="s", status="running")
@@ -1410,7 +1410,7 @@ class TestScenarioReviewRetryNoSecondReview:
         async def _review_once(r, s, sessions, agent, session_key=""):
             nonlocal review_calls
             review_calls += 1
-            return review_calls > 1  # fail first, pass second would need 2 calls
+            return review_calls > 1  # fail first, pass the re-review
 
         async def _exec_step(
             r,
@@ -1437,10 +1437,12 @@ class TestScenarioReviewRetryNoSecondReview:
             mock_git.revert_step = AsyncMock()
             result = await runner._execute_single_task(run, step, "hk")
 
-        # Review called once (failed), then retry succeeded — no second review
-        assert review_calls == 1
+        # Review failed, the retry was committed and then re-reviewed (passed).
+        assert review_calls == 2
         assert result is True
         assert step.status == StepStatus.PASSED
+        assert mock_git.commit_step.await_count == 2
+        mock_git.revert_step.assert_awaited_once()
 
 
 class TestScenarioProcessCrashDoesNotConsumeRetry:
@@ -2532,10 +2534,8 @@ class TestScenarioReviewRetrySuccessGetsReview:
         # The step should pass (retry succeeded + second review passed)
         assert result is True
         assert run.tasks[0].status == StepStatus.PASSED
-        # self_review called once (the retry path calls execute_task which
-        # doesn't call self_review — only execute_single_task does)
-        # After retry success, the code just commits. No second review.
-        assert review_calls == 1
+        # The retry was reviewed a second time before it passed.
+        assert review_calls == 2
 
 
 # ── Working Memory Not Updated (Non-Git Runs) ──
