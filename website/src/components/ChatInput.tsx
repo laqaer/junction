@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, useId, memo } from 'react'
-import { ArrowUpFromLine, ArrowUp, Loader2, RotateCw, Plus, Crop, Bot, Mic, Keyboard, Square, BookOpen, X, ClipboardList, CheckCircle, Ban, Sparkles, Target, Lock, Folder, FolderOpen, FileText } from 'lucide-react'
+import { ArrowUpFromLine, ArrowUp, Loader2, RotateCw, Plus, Crop, Bot, Mic, Keyboard, Square, BookOpen, X, ClipboardList, CheckCircle, Ban, Sparkles, Target, Lock, Folder, FolderOpen, FileText, Cpu } from 'lucide-react'
 import CopyBranchButton from './CopyBranchButton'
 import { usePointerDrag } from '../hooks/usePointerDrag'
 import { useScrollEdges } from '../hooks/useScrollEdges'
@@ -394,6 +394,9 @@ interface ChatInputProps {
   agentName?: string
   agentSource?: string
   modelName?: string
+  /** Product name of the harness the session actually runs on (from the gateway,
+   *  not from config: an open chat keeps the harness it started on). Not translated. */
+  harnessLabel?: string
   onAgentClick?: (rect: DOMRect) => void
   onModelClick?: (rect: DOMRect) => void
   onProjectClick?: (rect: DOMRect) => void
@@ -696,6 +699,9 @@ const noopSelectDevice = () => {}
  *  `noopSelectDevice`, whose one parameter makes it unassignable to `() => void`. */
 const noopVoiceControl = () => {}
 
+/** Shelf width (px) from which the harness name shows as text rather than a mark. */
+const HARNESS_NAME_MIN_SHELF_PX = 440
+
 function ChatInput({
   aboveComposer,
   value,
@@ -745,6 +751,7 @@ function ChatInput({
   agentName,
   agentSource,
   modelName,
+  harnessLabel,
   onAgentClick,
   onModelClick,
   onProjectClick,
@@ -1106,6 +1113,11 @@ function ChatInput({
   // Below ~340px the labels no longer fit comfortably alongside the context bar
   // + model chip, so collapse the chips (agent/project) to icon-only.
   const shelfCompact = shelfWidth < 340
+  // The harness name needs about 85px beside the agent and project chips, the
+  // context meter and the model chip. Below this shelf width (a phone, or a
+  // narrow split pane) it would truncate the chips instead, so it collapses to a
+  // mark that keeps the name as its accessible name and tooltip.
+  const harnessMarkOnly = shelfWidth < HARNESS_NAME_MIN_SHELF_PX
   // Tooltip for the project chip. The chip itself shows the basename (plus the
   // branch when known); the tooltip carries the full path so nothing that was
   // previously discoverable is lost, and names the branch even when the label
@@ -3572,6 +3584,18 @@ function ChatInput({
           )}
           </div>
           <div className="flex items-center shrink-0">
+          {harnessLabel && (
+            <span
+              className="inline-flex items-center h-7 px-2 text-[12px] text-muted shrink-0"
+              title={i18nT('components.chatInput.harness', { name: harnessLabel })}
+              data-testid="composer-harness"
+              {...(harnessMarkOnly ? { role: 'img', 'aria-label': i18nT('components.chatInput.harness', { name: harnessLabel }) } : {})}
+            >
+              {harnessMarkOnly
+                ? <Cpu className="lucide-inline" aria-hidden="true" />
+                : <span className="truncate max-w-[160px]">{harnessLabel}</span>}
+            </span>
+          )}
           {contextPct != null && (() => {
             const pct = Math.round(contextPct)
             const win = contextWindowTokens || 0

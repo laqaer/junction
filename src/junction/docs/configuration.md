@@ -45,6 +45,11 @@ Set via `junction config set agent.sandbox auto`.
 stays `acp` either way — the backend is a choice *within* ACP, not a different
 provider.
 
+The dashboard sets it under **Settings ▸ Agents & plans ▸ Chat harness**, which
+lists only the agents this gateway reports as selectable and shows whether each is
+installed and signed in. A change applies to new chats; a chat that is already
+open keeps the agent it started on until it ends, and no restart is needed.
+
 | Value | Agent | Status |
 |-------|-------|--------|
 | `""` (default) | kiro-cli | full support |

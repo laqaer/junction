@@ -5101,7 +5101,8 @@
       "used": "已用",
       "voice_input": "语音输入",
       "finishing": "收尾中…",
-      "keep_holding_to_record": "按住才能录音"
+      "keep_holding_to_record": "按住才能录音",
+      "harness": "运行于 {{name}}"
     },
     "chatPane": {
       "agent_list": "代理列表",
@@ -12417,7 +12418,20 @@
         "kind_research": "调研",
         "kind_docs": "编写文档",
         "kind_quick": "快速修改",
-        "kind_bulk": "批量更改"
+        "kind_bulk": "批量更改",
+        "chat_harness_title": "聊天所用代理",
+        "chat_harness_description": "负责回复新聊天的编码代理。已经打开的聊天会一直使用它启动时的代理，直到结束。下方的路由只决定子代理任务的去向。",
+        "chat_harness_auto": "自动",
+        "chat_harness_auto_description": "第一个已安装的代理。当前：{{agent}}。",
+        "chat_harness_auto_none": "第一个已安装的代理。目前尚未安装任何代理。",
+        "chat_harness_active": "使用中",
+        "chat_harness_not_installed_reason": "尚未安装。请先在下方安装，再在此选择。",
+        "chat_harness_needs_login_note": "现在就可以选择它。在它登录之前，使用它的聊天会失败。",
+        "chat_harness_starts_on": "新聊天将在 {{agent}} 上启动。",
+        "chat_harness_none_ready": "目前没有已安装的代理可以启动聊天。请在下方安装一个。",
+        "chat_harness_save_failed": "无法更改聊天所用的代理。",
+        "chat_harness_unknown": "{{productName}} 无法运行该代理，因此未做任何更改。",
+        "chat_harness_overridden": "已保存，但 config.local.json 指定了另一个代理，并且优先生效。"
       }
     },
     "settingsPage": {

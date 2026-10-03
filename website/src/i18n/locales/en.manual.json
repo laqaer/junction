@@ -1427,7 +1427,8 @@
       "queue_run_after_the_current_work_finishes_desc": "Run after the current work finishes",
       "steer_act_on_this_right_away_desc": "Act on this right away",
       "finishing": "Finishing…",
-      "keep_holding_to_record": "Keep holding to record"
+      "keep_holding_to_record": "Keep holding to record",
+      "harness": "Running on {{name}}"
     },
     "chatPane": {
       "earlier_messages_load_failed": "Couldn't load earlier messages. Scroll to the top of the session to try again.",
@@ -5007,7 +5008,20 @@
         "kind_research": "Research",
         "kind_docs": "Writing docs",
         "kind_quick": "Quick edits",
-        "kind_bulk": "Bulk changes"
+        "kind_bulk": "Bulk changes",
+        "chat_harness_title": "Chat harness",
+        "chat_harness_description": "The coding agent that answers new chats. A chat that is already open keeps the one it started with until it ends. Routing below only decides where subagent tasks go.",
+        "chat_harness_auto": "Automatic",
+        "chat_harness_auto_description": "The first installed agent. Right now: {{agent}}.",
+        "chat_harness_auto_none": "The first installed agent. None is installed yet.",
+        "chat_harness_active": "Active",
+        "chat_harness_not_installed_reason": "Not installed. Install it below, then choose it here.",
+        "chat_harness_needs_login_note": "You can choose it now. Chats on it fail until it is signed in.",
+        "chat_harness_starts_on": "New chats start on {{agent}}.",
+        "chat_harness_none_ready": "No installed agent can start a chat yet. Install one below.",
+        "chat_harness_save_failed": "Could not change the chat harness.",
+        "chat_harness_unknown": "{{productName}} cannot run that agent, so nothing was changed.",
+        "chat_harness_overridden": "Saved, but config.local.json sets a different agent and takes precedence."
       }
     },
     "systemPage": {},

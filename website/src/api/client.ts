@@ -1767,6 +1767,29 @@ export interface RoutingHarnessRow {
   probe: RoutingProbe
 }
 
+/** One entry of the chat-harness picker: `auto`, or a harness the backend advertises
+ *  as selectable. `installed` is `null` where the host cannot tell (a harness outside
+ *  the runtime registry); `status` is `''` for `auto`. */
+export interface RoutingChatChoice {
+  id: string
+  label: string
+  installed: boolean | null
+  status: RoutingProbeStatus | ''
+  setup: { install: string; login: string; docs_url: string } | null
+  hint: string
+  /** On `auto` only: the harness `auto` would pick now, `''` when none is installed. */
+  resolves_to?: string
+}
+
+/** The harness new chats start on (`agent.acp_backend`) and what it may be set to. */
+export interface RoutingChatHarness {
+  /** As persisted, spelled for operators: `auto`, a harness id, `kiro` for kiro-cli. */
+  configured: string
+  /** What a new chat runs now, `auto` resolved; `''` when nothing is installed. */
+  selected: string
+  choices: RoutingChatChoice[]
+}
+
 export interface RoutingHarnessesView {
   code: string
   enabled: boolean
@@ -1778,6 +1801,8 @@ export interface RoutingHarnessesView {
   kinds: string[]
   preview: Record<string, string>
   harnesses: RoutingHarnessRow[]
+  /** Optional: gateways older than the chat-harness picker omit it. */
+  chat?: RoutingChatHarness
 }
 
 /* ── Inbound webhooks (GET /api/webhooks) ──
@@ -2526,6 +2551,10 @@ export const api = {
       code: string
       settings: { route_tasks: boolean }
     }>,
+  // The chat harness is the `agent.acp_backend` setting, written through the same
+  // validated config path as every other editable key. A refusal carries a
+  // machine-readable `code` in the error body (`unknown_harness`).
+  setChatHarness: (harness: string) => patch('/api/config/junction', { path: 'agent.acp_backend', value: harness }).then(j),
   clearRoutingCooldown: (lane?: string) =>
     post('/api/routing/cooldown/clear', lane ? { lane } : {}).then(j) as Promise<{ code: string; cleared: string[] }>,
   planes: () =>

@@ -72,6 +72,21 @@ def harness_name(backend: str) -> str:
     return backend
 
 
+def harness_identity(backend: str | None) -> dict[str, str] | None:
+    """``{"id", "label"}`` naming a concrete backend for display, else ``None``.
+
+    ``None`` for an unknown backend (``None``) and for ``auto``, which names a
+    choice rather than a harness: a label has to say what actually runs. The
+    ``id`` is the operator-facing spelling (``kiro``, never the empty backend
+    string) and the ``label`` is the harness's product name, which is not
+    translated.
+    """
+    if backend is None or backend == ACP_BACKEND_AUTO:
+        return None
+    name = harness_name(backend)
+    return {"id": name, "label": profile_for(name).label}
+
+
 def is_routable_harness(harness: str) -> bool:
     """True for a concrete, selectable harness. ``auto`` is not a lane."""
     if not harness or harness == ACP_BACKEND_AUTO:

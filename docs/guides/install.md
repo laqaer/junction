@@ -416,7 +416,9 @@ alone; probe whatever already owns it instead of starting a second listener.
 
 ### Route work across your subscriptions
 
-Chat sessions run the one agent `agent.acp_backend` names. Work handed to a
+Chat sessions run the one agent `agent.acp_backend` names; pick it in
+**Settings ▸ Agents & plans ▸ Chat harness** (new chats only: a chat that is
+already open keeps the agent it started on). Work handed to a
 spawned subagent can go to whichever installed coding agent you already pay for
 is best placed to do it: Claude Code, Codex (ChatGPT), Cursor, Grok Build, and
 OpenCode (OpenRouter and any other provider it logs into). The router picks an

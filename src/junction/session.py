@@ -98,6 +98,7 @@ if TYPE_CHECKING:
 from junction import model_registry, platform_compat, shutdown_event
 from junction.acp.client import advertised_model_ids, model_is_unusable
 from junction.acp.types import (
+    ACP_BACKEND_AUTO,
     ACP_BACKEND_CLAUDE,
     ACP_BACKEND_KIRO,
     ACP_BACKENDS_ACP_RUNTIME,
@@ -1413,6 +1414,29 @@ class SessionManager:
             resolved = ACP_BACKEND_KIRO
         self._backend_resolution = (configured, resolved, now)
         return resolved
+
+    def targeted_backend(self) -> str | None:
+        """The concrete backend a cold start spawns now, or ``None`` when none can be named.
+
+        Unlike :meth:`resolved_backend`, whose callers need an answer to route on
+        and take kiro-cli as the fallback, this never invents one: ``auto`` with
+        no installed runtime, or an unreadable config, is ``None``. The dashboard
+        labels a session that failed to start with it, and a label must not name
+        a harness that was never attempted. Not cached: it runs only on that
+        failure path.
+        """
+        from junction.acp.runtimes import RuntimeNotFoundError, select_runtime
+
+        try:
+            configured = str(self._cfg.agent.acp_backend)
+        except Exception:
+            return None
+        if configured == ACP_BACKEND_AUTO:
+            try:
+                return select_runtime(ACP_BACKEND_AUTO).id
+            except RuntimeNotFoundError:
+                return None
+        return configured
 
     def _runs_on_acp_runtime(self) -> bool:
         """True when the configured harness is one the multiplexed ``AcpRuntime``

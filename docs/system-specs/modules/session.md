@@ -32,7 +32,11 @@ for NEW sessions, captured when the provider factory is built.
 `refresh_defaults(cfg=None)` rebuilds the factory and `_cfg` from one config
 snapshot and drains the warm pool, leaving live sessions alone. The dashboard's
 PATCH handler calls it for the model and effort keys, and the MCP-gateway
-enable path for its overlay. A harness switch usually
+enable path for its overlay. The same handler calls it after a write of
+`agent.acp_backend` (Settings ▸ Agents & plans ▸ Chat harness; best effort,
+because the cold-start adoption below is the retry), so a harness chosen in the
+dashboard reaches the models list and the warm pool at once. A harness switch
+from `junction config set` or a hand edit
 arrives from outside the gateway instead (`junction config set
 agent.acp_backend`), so a manager built with `adopt_backend_changes=True` (the
 gateway's) checks on every cold start: `_adopt_persisted_backend` re-reads the
