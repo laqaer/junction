@@ -306,6 +306,14 @@ _CONFIG_CACHE = ConfigCache()
 _CONFIG_CACHE_LOCK = _CONFIG_CACHE._lock
 
 
+def _is_unset_value(value: object) -> bool:
+    """True for a value that carries no setting: ``None`` or an empty str/list/dict.
+
+    ``False`` and ``0`` are settings, so they are deliberately not unset.
+    """
+    return value is None or (isinstance(value, (str, list, dict)) and not value)
+
+
 def validate_config_data(data: dict) -> dict:
     """Validate *data* against the config JSON Schema.
 
@@ -331,7 +339,11 @@ def validate_config_data(data: dict) -> dict:
     if unknown:
         logger.warning("Config: unrecognized top-level keys: %s", ", ".join(unknown))
 
-    # 2. Detect deprecated fields and log warnings
+    # 2. Detect deprecated fields and log warnings. Only a deprecated field
+    # that carries a value warns: save() writes every section back with its
+    # defaults, so an empty map or string is Warding's own round-trip, not the
+    # operator's setting, and warning on it scolds every fresh install on every
+    # command.
     for entry in SCHEMA_REGISTRY:
         if not entry.deprecated:
             continue
@@ -345,7 +357,7 @@ def validate_config_data(data: dict) -> dict:
             else:
                 found = False
                 break
-        if found:
+        if found and not _is_unset_value(node):
             logger.warning(
                 "Config: deprecated field '%s': %s",
                 entry.path,
