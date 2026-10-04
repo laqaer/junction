@@ -61,7 +61,7 @@ SSM_UNREACHABLE = "ssm_unreachable"
 _REASONS = {
     OK: "All checks passed — SSH, remote dashboard, and local forward are healthy.",
     SSH_UNREACHABLE: "Can't SSH to the host (check SSH access or the host alias).",
-    REMOTE_DOWN: "SSH works but the remote Junction dashboard isn't responding (is the "
+    REMOTE_DOWN: "SSH works but the remote Warding dashboard isn't responding (is the "
     "remote gateway running?).",
     TUNNEL_DOWN: "SSH and the remote dashboard are up, but the local forward isn't "
     "reachable (tunnel down — reconnect).",
@@ -78,7 +78,7 @@ _REASONS = {
 # never tells an SSM user to "check SSH access".
 _SSM_REASONS = {
     OK: "All checks passed — SSM session, remote dashboard, and local forward are healthy.",
-    REMOTE_DOWN: "SSM reaches the instance but the remote Junction dashboard isn't "
+    REMOTE_DOWN: "SSM reaches the instance but the remote Warding dashboard isn't "
     "responding (is the remote gateway running?).",
     TUNNEL_DOWN: "SSM and the remote dashboard are up, but the local forward isn't "
     "reachable (tunnel down — reconnect).",

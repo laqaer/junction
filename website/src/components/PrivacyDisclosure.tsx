@@ -5,13 +5,11 @@ import { Toggle } from './ui'
 import { api } from '../api/client'
 import { i18nT } from '../i18n/t'
 import { SettingRef } from './settingRef/SettingRef'
+import { TELEMETRY_COMMANDS } from './settingRef/envShellCommands'
 
 /** Read-only CLI twins of the toggle, kept for headless hosts and for the one
  * case the toggle cannot win: a `config.local.json` overlay or the env var. */
-export const COMMANDS = [
-  'junction telemetry status',
-  'junction telemetry disable',
-] as const
+export const COMMANDS = TELEMETRY_COMMANDS
 
 // Keys held in an indexed `as const` map of full literals rather than inline on each
 // SHELL_COMMANDS entry: check-i18n-keys.mjs resolves a map access to the map's value

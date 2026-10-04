@@ -84,7 +84,7 @@ _DENIED_BUNDLE_PREFIXES: tuple[DeniedApp, ...] = (
         # the agent is trusted with the desktop, and a shipped list of "apps you may
         # not automate" was both incomplete by construction and in the operator's way.
         reason=(
-            "Junction's own dashboard can change the agent's security settings, "
+            "Warding's own dashboard can change the agent's security settings, "
             "which must only be done by the operator out-of-band"
         ),
         bundle_prefixes=("dev.junction",),

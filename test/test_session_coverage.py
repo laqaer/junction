@@ -1004,6 +1004,32 @@ class TestRegistrySnapshots:
         b = _register(mgr, "d2").provider
         assert set(map(id, mgr.active_providers())) == {id(a), id(b)}
 
+    def test_provider_started_at_is_the_registration_time_of_a_resident_provider(
+        self, mgr
+    ) -> None:
+        """A session registers only after its start succeeded, so this is the latest
+        instant its provider is known to have authenticated."""
+        a = _register(mgr, "d1")
+        b = _register(mgr, "d2")
+        a.created_at, b.created_at = 100.0, 200.0
+
+        assert mgr.provider_started_at(a.provider) == 100.0
+        assert mgr.provider_started_at(b.provider) == 200.0
+
+    def test_provider_started_at_follows_an_adopted_replacement(self, mgr) -> None:
+        sess = _register(mgr, "d1")
+        sess.created_at = 100.0
+        replacement = _stub_provider()
+
+        sess.adopt_provider(replacement)
+
+        assert mgr.provider_started_at(replacement) == sess.created_at
+        assert sess.created_at > 100.0
+
+    def test_provider_started_at_is_none_for_a_provider_that_is_not_resident(self, mgr) -> None:
+        _register(mgr, "d1")
+        assert mgr.provider_started_at(_stub_provider()) is None
+
     def test_any_active_turn_filters_on_the_real_turn_signal(self, mgr) -> None:
         """A provider that does not implement the probe contributes nothing,
         rather than a false positive that would keep the host awake."""

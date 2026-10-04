@@ -3476,7 +3476,7 @@ async def _zombie_diagnostic(
 def _build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="junction-mcp-gatewayd",
-        description="Junction MCP gateway daemon — pools MCP backends across sessions",
+        description="Warding MCP gateway daemon — pools MCP backends across sessions",
     )
     p.add_argument(
         "--socket",

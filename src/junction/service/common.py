@@ -269,7 +269,7 @@ def headless_auth_warning(environ: "Mapping[str, str] | None" = None) -> str:
         f"   to {dotenv} (0600) and restart the service:",
         "",
         f"     {remedy}",
-        "     junction service restart",
+        "     warding restart",
     ]
     if _home_override_is_set(environ):
         lines.append("")
@@ -388,4 +388,4 @@ def restart_command_hint() -> str:
     """
     if current_platform() is Platform.SYSTEMD:
         return f"sudo systemctl restart {SERVICE_NAME}"
-    return "junction restart"
+    return "warding restart"

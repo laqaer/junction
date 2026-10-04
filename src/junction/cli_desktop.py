@@ -287,7 +287,7 @@ def _desktop_metrics(args: argparse.Namespace) -> int:
         # Fail loudly rather than misreading a future shape as v1.
         print(
             f"{path} has version {version!r}, but this build understands "
-            f"version {SUPPORTED_VERSION}. Update junction to read it.",
+            f"version {SUPPORTED_VERSION}. Update Warding to read it.",
             file=sys.stderr,
         )
         return 5

@@ -250,7 +250,7 @@ def test_a_leading_flag_or_empty_argv_is_refused(argv):
 def test_the_refusal_names_a_pod_native_equivalent_where_one_exists():
     with pytest.raises(rt.PodError) as exc:
         rt.require_pod_safe_verb(["restart"], "wt-feature")
-    assert "junction pod down wt-feature" in str(exc.value)
+    assert "warding pod down wt-feature" in str(exc.value)
     assert "pod up wt-feature" in str(exc.value)
 
 
@@ -346,7 +346,7 @@ def test_logs_is_refused_and_points_at_the_pod_journal():
     pod it would confidently show the LIVE gateway's journal."""
     with pytest.raises(rt.PodError) as exc:
         rt.require_pod_safe_verb(["logs"], "wt-feature")
-    assert "junction pod logs wt-feature" in str(exc.value)
+    assert "warding pod logs wt-feature" in str(exc.value)
 
 
 def test_snapshot_is_refused_because_its_destination_is_configurable():

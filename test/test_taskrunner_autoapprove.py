@@ -20,7 +20,7 @@ from junction import task_executor
 from junction.context import ContextBuilder
 from junction.hooks import TOOL_ALLOW, TOOL_AUTO_APPROVE, HookManager, ToolHookResult
 from junction.providers.base import LLMEvent
-from junction.task_models import Project, Task
+from junction.task_models import Project, Task, TaskStatus
 
 
 def _mock_sessions(provider):
@@ -105,6 +105,45 @@ async def test_headless_no_authorization_rejects(tmp_path):
         )
     provider.reject_tool.assert_awaited_once_with("req-1")
     provider.approve_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_headless_rejection_fails_task_not_passes(tmp_path):
+    """A turn that ended after a headless rejection is not a completed task.
+
+    The agent stops and says it is waiting for approval; the stream still
+    completes normally, and a normally completed stream is not evidence the
+    work happened (with --no-test nothing else checks it). The rejection fails
+    the task AND the run, so the runner neither retries nor replans around a
+    permission nothing in the process can grant.
+    """
+    provider = _provider_one_tool_then_done()
+    sessions = _mock_sessions(provider)
+    run, task = _run_and_task()
+    ctx = _ctx_with_hook_action(TOOL_ALLOW)
+    with patch.object(task_executor.JunctionConfig, "load") as cfg:
+        cfg.return_value.agent.provider = "acp"
+        ok = await task_executor.execute_task(
+            run=run, task=task, sessions=sessions, ctx=ctx, agent="",
+            on_tool_approval=None, auto_test=False, test_cmd=None,
+            work_dir=Path(tmp_path), on_notify=AsyncMock(), session_key="k",
+        )
+    assert ok is False
+    assert task.status == TaskStatus.FAILED
+    assert task.error.startswith("Blocked:")
+    assert "read" in task.error  # names the title to allowlist
+    assert run.status == "failed"
+    assert task.attempts == 1  # no retry: a retry is refused the same way
+
+
+def test_headless_block_error_redacts_and_caps_titles():
+    """Titles are agent-authored: the error is redacted and lists a bounded set."""
+    key = "AKIA" + "ABCDEFGHIJKLMNOP"
+    titles = [f"echo {key}", "Write a.txt", "Write a.txt", "Write b.txt", "Write c.txt"]
+    text = task_executor._headless_block_error(titles)
+    assert key not in text
+    assert "5 tool call(s)" in text
+    assert "(+1 more)" in text  # 4 distinct titles, 3 shown
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import re as _re
 from dataclasses import dataclass, field
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 # ── ACP Event Kinds ──
 
@@ -80,6 +81,16 @@ JSONRPC_METHOD_NOT_FOUND = -32601
 #: treats any rejection as an expired-token signal, so the exact code is not
 #: load-bearing; -32000 is the ACP server-error range.
 KAS_AUTH_CALLBACK_ERROR_CODE = -32000
+#: ACP's reserved ``auth_required`` error code. The ACP SDK's
+#: ``RequestError.authRequired`` builds it with the message "Authentication
+#: required" plus an optional ": <detail>". -32000 opens JSON-RPC's server-error
+#: range and agents reuse it for unrelated failures, so the code alone is not
+#: proof of a sign-in problem and the client also matches that message prefix.
+ACP_ERROR_AUTH_REQUIRED = -32000
+#: The machine-readable ``code`` a dashboard payload carries when a harness is not
+#: signed in: the error row of a refused turn (``meta.code``) and the
+#: ``/api/models`` body. The dashboard translates its own copy from it.
+AUTH_REQUIRED_CODE = "auth_required"
 
 # kiro-cli exposes its task/TODO list as an ordinary tool call whose real name
 # arrives in `_meta.kiro.toolName` (the visible `title` is a prose sentence like
@@ -202,6 +213,33 @@ ACP_BACKENDS_STEER = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 # qualifies; a Node or Python harness does not, however it is spawned.
 ACP_BACKENDS_INTERNAL_SANDBOX = frozenset({ACP_BACKEND_KIRO})
 
+# Harnesses whose permission mode Warding pins at session start, mapped to the mode
+# id each is pinned to (harness-parity H17). The PreToolUse gate only sees a call the
+# harness ASKS about, and every one of these harnesses can be configured, by the user's
+# own files or by its own default, to stop asking:
+#
+# * Claude Code starts in whatever ``permissions.defaultMode`` its settings name
+#   (``acceptEdits`` and ``bypassPermissions`` never ask about an edit or a command,
+#   ``auto`` hands the decision to a classifier). ``default`` asks about everything that
+#   is not a read.
+# * Codex starts in ``agent``, whose reviewer is a model that approves actions it judges
+#   safe without a request, and offers ``agent-full-access``, which never asks.
+#   ``read-only`` (labelled "Ask for approval") routes the approvals it requires to the
+#   client.
+#
+# The pin routes the approvals the harness REQUIRES; it does not make every call ask. A
+# read inside the harness's own boundary (a Claude Code read in the session's cwd, a Codex
+# read anywhere its sandbox allows) raises no permission request in any of these modes,
+# so the gate's read-side checks never run on it.
+#
+# Membership is an explicit decision per harness, like every other capability set: a
+# harness absent from the mapping keeps the mode it starts in, and a harness is added
+# only with its own mode vocabulary and evidence the mode routes approvals to the client.
+# Kiro-cli and KAS are never members; their agent-mode activation is a separate path.
+ACP_PERMISSION_MODE_PINS: Mapping[str, str] = MappingProxyType(
+    {ACP_BACKEND_CLAUDE: "default", ACP_BACKEND_CODEX: "read-only"}
+)
+
 # Backends served by AcpRuntime + AcpSessionHandle — the kiro-agent family
 # (kiro-cli and KAS) whose single process hosts N sessions via demux. The
 # dormant claude-agent-acp seam runs one AcpClient per session and is NOT a
@@ -243,6 +281,23 @@ ACP_BACKENDS_KIRO_READINESS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
 # (harness-parity H12). Positive membership rather than "not a spec-family
 # harness", which would sweep in whatever harness is added next.
 ACP_BACKENDS_KIRO_MODELS = frozenset({ACP_BACKEND_KIRO, ACP_BACKEND_KAS})
+
+# Backends handed Warding's always-on MCP servers (``junction-core``: memory,
+# knowledge, subagents, ask_question; ``junction-cron``) in the ``mcpServers``
+# array of ``session/new`` and ``session/load``. A spec-family harness reads no
+# Warding agent spec, so for it this array is the ONLY way those tools exist.
+# kiro-cli and KAS are deliberately not members: they take the same servers from
+# their agent spec (``~/.kiro/agents/junction.json``), and a session-injected
+# entry would shadow that one. A harness joins only when its adapter is shown to
+# launch a stdio entry carrying an ``env`` list and to raise a permission request
+# for the tools, so every call reaches the PreToolUse gate, and only while it is
+# also a key of ``ACP_PERMISSION_MODE_PINS``: a harness that started in a mode that
+# never asks (Claude Code ``bypassPermissions``, a Codex tool set to auto-approve)
+# would run these memory, cron and subagent tools without the gate ever seeing a
+# call, and the pin is what makes the permission request the adapter raises
+# unavoidable. Every other spec-family harness stays out until someone demonstrates
+# all of that, rather than inheriting the tools from a negation.
+ACP_BACKENDS_MANAGED_MCP = frozenset({ACP_BACKEND_CLAUDE, ACP_BACKEND_CODEX})
 
 # Backends that retry a failed model call (a provider rate limit, an overload)
 # INSIDE the harness without telling the ACP client: the turn goes silent before
@@ -586,7 +641,9 @@ class AcpEvent:
     #: PROVENANCE flags for the child-fidelity gate (see child_low_fidelity).
     #: raw_params_trusted: raw_tool_params came from the tool_call cache (a
     #: frame this client parsed), not the permission payload's agent-authored
-    #: inline fallback. shell_classified: is_shell reflects a resolved
+    #: inline fallback or its spec-family ``rawInput``. A ``paths`` list added
+    #: from the permission frame's locations / diff blocks is deny-only and does
+    #: not change this flag. shell_classified: is_shell reflects a resolved
     #: classification (cache hit), not the miss-default False.
     raw_params_trusted: bool = False
     shell_classified: bool = False

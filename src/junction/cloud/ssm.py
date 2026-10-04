@@ -215,7 +215,7 @@ def session_manager_plugin_install_hint() -> str:
     """Human-readable install hint for the local SSM plugin prerequisite."""
     return (
         "session-manager-plugin is not installed locally. Install the AWS "
-        f"Session Manager plugin, then rerun `junction cloud connect`: "
+        f"Session Manager plugin, then rerun `warding cloud connect`: "
         f"{_SESSION_MANAGER_PLUGIN_DOC_URL}"
     )
 

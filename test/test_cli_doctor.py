@@ -522,7 +522,7 @@ class TestPathLauncherOwnership:
         # Compare like with like: the check prints realpath, and on Windows a
         # realpath can differ in form (short vs long name, case) from str(path).
         assert os.path.realpath(wheel) in out and os.path.realpath(package) in out
-        assert "junction setup" in out
+        assert "warding setup" in out
 
     def test_no_launcher_on_path_is_informational(self, monkeypatch, capsys) -> None:
         """The desktop app runs its bundled backend directly, so an absent
@@ -1048,7 +1048,7 @@ class TestEffectiveModelSection:
         out = capsys.readouterr().out
         assert "effective:   'claude-opus-4.8'" in out
         assert "decided by:  default spec pin" in out
-        assert "junction agent reset-model" in out
+        assert "warding agent reset-model" in out
         # Advisory, not a setup failure: the state is legal and may be wanted.
         assert issues == []
 
@@ -1159,7 +1159,7 @@ class TestEffectiveModelSection:
         assert "effective:   'claude-opus-4.8'" in out
         assert "decided by:  bound agent pin ('custom-agent')" in out
         # The repair must name the agent that actually holds the pin.
-        assert "junction agent reset-model --agent 'custom-agent'" in out
+        assert "warding agent reset-model --agent 'custom-agent'" in out
         # And the tier the resolver skipped for the built-in agent is shown here.
         assert "bound agent pin ('custom-agent'):" in out
         assert "out of date" not in out, "report must agree with the resolver"
@@ -1176,7 +1176,7 @@ class TestEffectiveModelSection:
         out = capsys.readouterr().out
         assert "bound agent pin" not in out
         assert "decided by:  default spec pin" in out
-        assert "junction agent reset-model" in out
+        assert "warding agent reset-model" in out
         assert "--agent" not in out, "the built-in agent needs no --agent flag"
 
     def test_tracking_names_the_agent_it_describes(self, capsys) -> None:

@@ -49,7 +49,7 @@ def _register_core_skills() -> None:
             if not (link / _MANAGED_MARKER).exists():
                 logger.warning(
                     "Skipping deploy skill %s: user-placed directory at %s "
-                    "(remove it manually to allow Junction to manage this skill)",
+                    "(remove it manually to allow Warding to manage this skill)",
                     skill_dir.name,
                     link,
                 )

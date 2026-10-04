@@ -26,6 +26,12 @@ from pathlib import Path
 
 from junction import platform_compat, security, webhooks
 from junction.config import paths as _config_paths
+from junction.path_spellings import (
+    MAX_TARGET_PATHS,
+    PATH_LIMIT_SENTINEL,
+    exceeds_path_limits,
+    path_spellings,
+)
 from junction.platform import current_context, redact_via_context
 from junction.platform.governance import (
     CU_CLASS_OBSERVE,
@@ -495,9 +501,9 @@ class HookManager:
         default; those forwarding an event should pass both the command and the
         event's ``is_shell`` flag.
 
-        ``mcp_server_name`` is the NON-model-authored MCP server identity from
-        the ACP event's ``_meta.kiro.mcpServerName`` (``AcpEvent.mcp_server_name``),
-        set by kiro-cli ONLY for MCP-served tool calls and empty for shell /
+        ``mcp_server_name`` is the resolved MCP server identity from a preceding
+        harness notification (Kiro's ``_meta.kiro.mcpServerName`` or Codex's marked
+        MCP wrapper), carried in ``AcpEvent.mcp_server_name`` and empty for shell /
         built-in tools. It is the trusted discriminator "this call was genuinely
         served by MCP server X" — as opposed to the LLM-authored ``tool_name``
         title, which a prompt-injected agent can forge (e.g. titling a Bash call
@@ -505,8 +511,8 @@ class HookManager:
         on the title, so a forged title cannot win an auto-approval. Empty (the
         default, or a backend that omits ``_meta.kiro``) fails closed: no match.
 
-        ``mcp_tool_name`` is the sibling NON-model-authored tool identity from
-        ``_meta.kiro.toolName`` (``AcpEvent.tool_name``). Despite the name it is
+        ``mcp_tool_name`` is the sibling resolved tool identity from that
+        notification (``AcpEvent.tool_name``). Despite the name it is
         NOT MCP-only: kiro-cli sets it for every tool call it serves, built-ins
         included, and sets ``mcp_server_name`` only for MCP-served ones. It is
         therefore evaluated on the deny and governance planes whenever present,
@@ -595,10 +601,15 @@ class HookManager:
         # accepted) reached NEITHER of the two snake_case reads this used to do, so
         # a write to ~/.ssh under that key was never gated and the human was asked
         # to approve a path the keystone should have refused outright.
-        if raw_params:
-            for real_path in target_paths(raw_params):
-                if is_sensitive_path(real_path):
-                    return ToolHookResult.deny(f"Blocked: access to sensitive path: {real_path}")
+        call_paths = target_paths(raw_params) if raw_params else []
+        if exceeds_path_limits(call_paths):
+            return ToolHookResult.deny(
+                "Blocked: the tool call names more file paths, or a longer one, than a file "
+                "operation can"
+            )
+        for real_path in call_paths:
+            if is_sensitive_path(real_path):
+                return ToolHookResult.deny(f"Blocked: access to sensitive path: {real_path}")
         # Config files are WRITE-protected (reads stay allowed): block the agent's
         # file-EDIT tool from modifying config.json / config.local.json so a
         # prompt-injected agent cannot rewrite its own resource ceilings
@@ -621,11 +632,11 @@ class HookManager:
         # write-only tier. Empty-kind edits are rare (the ACP fs_write tool sets
         # ``edit``); not hard-denying them keeps the two write-gates from drifting
         # into a read regression, and the bash gate covers the shell surface.
-        if tool_kind == _EDIT_TOOL_KIND and raw_params:
+        if tool_kind in _FILE_CHANGE_TOOL_KINDS and call_paths:
             # Same spelling coverage as the sensitive-path keystone above, for the
             # same reason: the write-protected tier is worthless if a config edit
             # can name its target under a key the check never reads.
-            for wpath in target_paths(raw_params):
+            for wpath in call_paths:
                 if is_sensitive_write_path(wpath):
                     return ToolHookResult.deny(
                         f"Blocked: modification of write-protected config path: {wpath}"
@@ -1432,11 +1443,11 @@ def _audit_governance(session_key: str, agent: str, tool_name: str, decision: ob
 # Display prefixes that kiro-cli ACP adds to tool titles
 _TOOL_TITLE_PREFIXES = ("Running: ", "Reading ")
 
-# ACP semantic tool kind for a file write/edit (fs_write / code). The kind that
-# carries a real target path in ``raw_params['path']`` and maps to the
-# ``filesystem.write`` scope. Used to gate the write-only config-file protection
-# so reads are not affected.
-_EDIT_TOOL_KIND = "edit"
+# ACP semantic tool kinds that change a file: ``edit`` (fs_write / code) and the spec's
+# ``delete`` and ``move``. They carry a real target path in ``raw_params`` and map to the
+# ``filesystem.write`` scope. Used to gate the write-only config-file protection so reads
+# are not affected; the tier must not depend on which of the three a harness reports.
+_FILE_CHANGE_TOOL_KINDS = frozenset({"edit", "delete", "move"})
 
 # Fixed prefix of the synthesized file-search deny target. A NAMESPACE, not a trust
 # boundary: it exists so a rule can address a search's SCOPE distinctly from a command
@@ -1473,6 +1484,13 @@ _SEARCH_PATH_FIELD = "path"
 #: below read only the two snake_case forms.
 TARGET_PATH_KEYS: tuple[str, ...] = ("path", "file_path", "filePath")
 
+#: Argument names whose value is a LIST of target paths. A single call can touch
+#: several files (a multi-file patch, a batched read) and the three scalar keys
+#: above hold one path each, so a call naming a fourth file had nowhere to carry
+#: it. Every element is checked exactly like a scalar value; the ACP client fills
+#: this from the locations a spec-family harness reports for a call.
+TARGET_PATH_LIST_KEYS: tuple[str, ...] = ("paths",)
+
 
 def target_paths(raw_params: Mapping | None) -> list[str]:
     """Every non-empty string path in *raw_params*, under any accepted spelling.
@@ -1483,14 +1501,38 @@ def target_paths(raw_params: Mapping | None) -> list[str]:
     and picking wrong is how a sensitive path slips past. Checking every value
     present cannot be gamed by adding a second, innocent-looking alias, and needs
     no adjudication.
+
+    A value a harness would trim (``path_spellings``) contributes the trimmed path as
+    well, since the harness opens that one. Collection stops one past
+    ``MAX_TARGET_PATHS`` so the caller can see the bound was exceeded without this
+    function walking an attacker-sized list to the end. A list with more raw
+    entries than that bound returns the path-limit denial sentinel before any
+    iteration, including lists filled with duplicates or non-path objects.
     """
     if not isinstance(raw_params, Mapping):
         return []
     found: list[str] = []
+    seen: set[str] = set()
+
+    def _add(value: object) -> None:
+        if isinstance(value, str) and value.strip():
+            for spelling in path_spellings(value):
+                if spelling not in seen:
+                    seen.add(spelling)
+                    found.append(spelling)
+
     for key in TARGET_PATH_KEYS:
-        value = raw_params.get(key)
-        if isinstance(value, str) and value.strip() and value not in found:
-            found.append(value)
+        _add(raw_params.get(key))
+    for key in TARGET_PATH_LIST_KEYS:
+        values = raw_params.get(key)
+        if not isinstance(values, (list, tuple)):
+            continue
+        if len(values) > MAX_TARGET_PATHS:
+            return [*found, PATH_LIMIT_SENTINEL]
+        for value in values:
+            if len(found) > MAX_TARGET_PATHS:
+                return found
+            _add(value)
     return found
 
 

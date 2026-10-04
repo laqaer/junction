@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from junction import cli_chat
+from junction import cli_chat, sandbox
 from junction.config import JunctionConfig
 
 
@@ -80,7 +80,28 @@ def test_run_chat_renders_keyboard_interrupt_as_clean_exit(monkeypatch, capsys) 
         raise KeyboardInterrupt
 
     monkeypatch.setattr(cli_chat.asyncio, "run", interrupt)
+    monkeypatch.setattr(sandbox, "warm_backend_before_loop", lambda: None)
 
     cli_chat._run_chat(None, None)
 
     assert capsys.readouterr().out == "\nBye!\n"
+
+
+def test_run_chat_warms_the_sandbox_probe_before_the_loop_starts(monkeypatch) -> None:
+    """A CLI process always starts with a cold probe cache.
+
+    On a running loop a cold cache is refused as "no sandbox backend", so the
+    harness spawn inside ``asyncio.run`` fails unless the cache is filled first.
+    """
+    calls: list[str] = []
+    monkeypatch.setattr(sandbox, "warm_backend_before_loop", lambda: calls.append("warm"))
+
+    def run(coro) -> None:
+        coro.close()
+        calls.append("loop")
+
+    monkeypatch.setattr(cli_chat.asyncio, "run", run)
+
+    cli_chat._run_chat("hello", None)
+
+    assert calls == ["warm", "loop"]

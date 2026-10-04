@@ -718,6 +718,22 @@ def _computer_use_spec_gate() -> bool:
         return False
 
 
+def _spec_gate_closed(name: str, spec: dict) -> bool:
+    """Whether one managed server's ``spec_gate`` is closed (no gate = open).
+
+    A gate that raises is treated as closed, for the same fail-closed reason the
+    computer-use gate itself is.
+    """
+    gate = spec.get("spec_gate")
+    if gate is None:
+        return False
+    try:
+        return not gate()
+    except Exception:
+        logger.debug("spec gate for %s raised; treating as closed", name, exc_info=True)
+        return True
+
+
 def _gated_off_servers() -> frozenset[str]:
     """Managed servers whose ``spec_gate`` is CLOSED right now.
 
@@ -728,21 +744,11 @@ def _gated_off_servers() -> frozenset[str]:
     withheld when it was emitted, or staying silent when it was withheld. That
     record is read during incident response, against the config it describes.
 
-    A gate that raises is treated as closed, for the same fail-closed reason the
-    computer-use gate itself is.
+    A gate that raises is treated as closed (:func:`_spec_gate_closed`).
     """
-    closed: set[str] = set()
-    for name, spec in _MANAGED_MCP_SERVERS.items():
-        gate = spec.get("spec_gate")
-        if gate is None:
-            continue
-        try:
-            if not gate():
-                closed.add(name)
-        except Exception:
-            logger.debug("spec gate for %s raised; treating as closed", name, exc_info=True)
-            closed.add(name)
-    return frozenset(closed)
+    return frozenset(
+        name for name, spec in _MANAGED_MCP_SERVERS.items() if _spec_gate_closed(name, spec)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -795,6 +801,96 @@ _MANAGED_MCP_SERVERS: dict[str, dict] = {
         "opt_in": True,
     },
 }
+
+# The managed servers a docked harness (``acp.types.ACP_BACKENDS_MANAGED_MCP``)
+# is handed in the ``mcpServers`` array of ACP ``session/new`` / ``session/load``.
+# An explicit list rather than "every always-on row of the table", for two
+# reasons. ``junction-computer`` carries a ``spec_gate`` and is deliberately NOT
+# offered to these harnesses: computer use is its own operator opt-in and has not
+# been reviewed for them. And a server added to the table later must be granted
+# here by a decision, not by inheriting a default that reaches an agent nobody
+# assessed it for. ``opt_in`` servers stay assignable sets and are never emitted.
+_HARNESS_SESSION_MCP_SERVERS: tuple[str, ...] = ("junction-cron", "junction-core")
+
+# The only per-session values a harness-launched MCP child is told. A harness
+# starts its stdio servers with a reduced environment, so the identity the
+# gateway put in the harness's own env does not reach them. These are ids, not
+# credentials; every other variable (tokens, owner id, API keys) stays out by
+# construction because callers pass named arguments, never an environment.
+_HARNESS_MCP_ENV_SESSION_KEY = "JUNCTION_SESSION_KEY"
+_HARNESS_MCP_ENV_CHANNEL_ID = "JUNCTION_CHANNEL_ID"
+
+
+def _managed_server_invocation(spec: dict) -> tuple[str, list[str]]:
+    """``(command, args)`` for one ``_MANAGED_MCP_SERVERS`` row."""
+    if "invocation_fn" in spec:
+        command, args = spec["invocation_fn"]()
+        return command, list(args)
+    return spec.get("command") or spec["command_fn"](), list(spec["args"])
+
+
+def harness_session_mcp_servers(
+    *, session_key: str = "", channel_id: str = ""
+) -> list[dict[str, Any]]:
+    """ACP ``mcpServers`` entries giving a docked harness the managed servers.
+
+    kiro-cli takes ``junction-core`` / ``junction-cron`` from its agent spec; a
+    spec-family harness reads no such file, so without these entries its session
+    has no memory, cron or subagent tools at all. Each entry is the ACP stdio
+    shape ``{"name", "command", "args", "env": [{"name", "value"}]}`` built from
+    the SAME invocation the kiro spec uses (:func:`_junction_mcp_invocation`), so
+    the launcher, venv and arguments have one source of truth. ``type`` is left
+    out on purpose: the Claude adapter keeps a stdio entry only when the key is
+    absent, and Codex's schema treats it as the stdio default.
+
+    No ``autoApprove`` (or any pre-authorization key) is emitted, and none may be:
+    a tool call must still raise a permission request so it reaches
+    ``hooks.on_tool_call``, the PreToolUse gate. Adapters drop unknown keys, so an
+    approval key would be ignored at best and a bypass at worst.
+
+    ``env`` carries the data-home pin (:func:`_managed_mcp_env`) and the caller's
+    session key and channel id. The MCP server resolves WHO is calling per call
+    from ``JUNCTION_SESSION_KEY`` (``mcp_core._resolve_session_key_strict``), and
+    the harness would not otherwise forward it. The caller's identity is
+    per-session, so nothing here is cached.
+
+    Returns ``[]`` — after a warning, never raising — when the launcher cannot be
+    resolved to an absolute standalone binary. The ``<python> -m junction``
+    fallback is refused for the reason ``mcp_discovery._is_first_party_managed_argv``
+    refuses it: ``-m`` puts the child's working directory (the user's project) on
+    ``sys.path``, so a repository carrying a ``junction/`` package would shadow
+    the real one. Starting a session without these tools is the safe degradation.
+    """
+    identity: dict[str, str] = {}
+    if session_key:
+        identity[_HARNESS_MCP_ENV_SESSION_KEY] = session_key
+    if channel_id:
+        identity[_HARNESS_MCP_ENV_CHANNEL_ID] = channel_id
+    env_pairs = [{"name": k, "value": v} for k, v in {**_managed_mcp_env(), **identity}.items()]
+
+    entries: list[dict[str, Any]] = []
+    for name in _HARNESS_SESSION_MCP_SERVERS:
+        spec = _MANAGED_MCP_SERVERS.get(name)
+        if spec is None or spec.get("opt_in") or _spec_gate_closed(name, spec):
+            continue
+        command, args = _managed_server_invocation(spec)
+        if not Path(command).is_absolute() or args[:2] == ["-m", "junction"]:
+            logger.warning(
+                "Not offering the managed MCP servers to the harness session: no "
+                "absolute standalone junction launcher resolved (got %r %r)",
+                command,
+                args,
+            )
+            return []
+        entries.append(
+            {
+                "name": name,
+                "command": command,
+                "args": args,
+                "env": [dict(pair) for pair in env_pairs],
+            }
+        )
+    return entries
 
 
 def _extra_mcp_servers() -> dict[str, dict]:
@@ -2989,7 +3085,7 @@ def _decline_shared_agent_home(*, audit: bool = True) -> Path | None:
             "servers at this instance's venv and data home, and break them outright "
             "when it is torn down. This instance will use the existing specs instead. "
             "Deliberately no remedy is suggested here: redirecting the agent home via "
-            "KIRO_HOME also relocates kiro-cli's session storage, which Junction still "
+            "KIRO_HOME also relocates kiro-cli's session storage, which Warding still "
             "reads from the host path -- see kiro_home()'s scope caveat.",
             target,
             Path(__file__).resolve().parents[2],

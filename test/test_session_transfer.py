@@ -1317,7 +1317,7 @@ async def test_send_bundle_names_an_older_peer_when_the_importer_is_missing(stat
     assert ok is False
     assert payload["code"] == "transfer_peer_too_old"
     # The message must say what to DO; a bare status code is what this replaces.
-    assert "older Junction" in payload["error"]
+    assert "older Warding" in payload["error"]
     assert "update it" in payload["error"]
     assert str(status) not in payload["error"]
     assert posts["n"] == 1, "a missing route is final — no downgrade retry"

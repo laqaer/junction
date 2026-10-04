@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "Colle l’URL du token ou le token brut…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "Débit limité par la bordure du tunnel (HTTP 429) — trop de requêtes d’un coup. Le tableau de bord réessaie automatiquement ; si cela persiste, attends quelques secondes et recharge la page.",
       "session_expired": "Session expirée.",
-      "session_expired_sign_in_again": "Session expirée. Exécutez junction token dans un terminal, puis collez l'URL dans la bannière en haut de cette page pour vous reconnecter.",
+      "session_expired_sign_in_again": "Session expirée. Exécutez warding token dans un terminal, puis collez l'URL dans la bannière en haut de cette page pour vous reconnecter.",
       "stale_owner_session": "Cette session est antérieure au propriétaire configuré. Reconnectez-vous.",
-      "stale_owner_session_sign_in_again": "Cette session est antérieure au propriétaire configuré (elle a été ouverte avant la définition de JUNCTION_OWNER_ID). Exécutez junction token dans un terminal, puis collez l'URL dans la bannière en haut de cette page pour vous reconnecter.",
+      "stale_owner_session_sign_in_again": "Cette session est antérieure au propriétaire configuré (elle a été ouverte avant la définition de JUNCTION_OWNER_ID). Exécutez warding token dans un terminal, puis collez l'URL dans la bannière en haut de cette page pour vous reconnecter.",
       "stream_ended_without_completion": "Flux interrompu avant la fin",
       "unexpected_server_response": "Réponse inattendue du serveur"
     }
@@ -539,10 +539,10 @@
         "highlight_2": "Aucune messagerie privée entre agents — chaque échange a lieu dans le canal",
         "highlight_3": "C’est toujours toi qui donnes l’approbation finale pour toute opération qui modifie un état",
         "highlight_4": "Les agents persistent dans le canal jusqu’à ce qu’ils soient congédiés ou expirés",
-        "highlight_5": "Masqué dans la grille des applications ; à activer avec `junction app enable channels`",
+        "highlight_5": "Masqué dans la grille des applications ; à activer avec `warding app enable channels`",
         "page_label": "Canaux",
         "use_case_1": "Gère une réponse à incident, une recherche ou une revue de code avec plusieurs rôles d'agent nommés dans une transcription partagée et auditable.",
-        "configuration_1": "Active l'app masquée avec junction app enable channels, crée un canal depuis un modèle ou avec Custom, attribue les agents et leurs modes d'écoute, puis utilise les @mentions pour transmettre le travail."
+        "configuration_1": "Active l'app masquée avec warding app enable channels, crée un canal depuis un modèle ou avec Custom, attribue les agents et leurs modes d'écoute, puis utilise les @mentions pour transmettre le travail."
       }
     },
     "codeReviewSage": {
@@ -4645,7 +4645,7 @@
         "highlight_5": "Livré avec des exemples exécutables comme point de départ",
         "page_label": "Workflows",
         "use_case_1": "Valide et inspecte des scripts de workflow restreints ou surveille les exécutions principales de workflows multi-agents phase par phase.",
-        "configuration_1": "Active l'app masquée avec junction app enable workflows ; valide le Python DSL dans Author, ou utilise les outils de workflow du chat ou MCP pour une véritable orchestration d'agents et suis-la dans Runs."
+        "configuration_1": "Active l'app masquée avec warding app enable workflows ; valide le Python DSL dans Author, ou utilise les outils de workflow du chat ou MCP pour une véritable orchestration d'agents et suis-la dans Runs."
       },
       "workflowRunTree": {
         "agent_many": "{{count}} agents",
@@ -5054,7 +5054,6 @@
         "install_failed": "Échec de l’installation",
         "install_from_path": "Installer depuis un chemin",
         "installing": "Installation…",
-        "junction_app_install_path": "junction app install <path>",
         "manage_app_sources": "Gérer les sources d’applications",
         "path_to_app_directory": "/path/to/app-directory"
       },
@@ -5276,7 +5275,8 @@
       "used": "Utilisé",
       "voice_input": "Saisie vocale",
       "finishing": "Finalisation…",
-      "keep_holding_to_record": "Maintenir pour enregistrer"
+      "keep_holding_to_record": "Maintenir pour enregistrer",
+      "harness": "Fonctionne avec {{name}}"
     },
     "chatPane": {
       "agent_list": "Liste des agents",
@@ -6178,6 +6178,7 @@
       "no_matches": "Aucun résultat"
     },
     "modelEffortDropdown": {
+      "check_again": "Vérifier à nouveau",
       "default_for_agent": "Modèle par défaut pour <agent/>",
       "filter_models": "Filtrer les modèles",
       "model_list": "Liste des modèles",
@@ -6186,6 +6187,10 @@
       "reasoning": "Raisonnement",
       "set_default_for_agent": "Définir <model/> comme modèle par défaut pour <agent/>",
       "set_default_for_new_sessions": "Valeur par défaut globale pour les nouvelles sessions…",
+      "sign_in_generic": "Connectez-vous à {{agent}}, puis vérifiez à nouveau.",
+      "sign_in_run_command": "Exécutez <command/> dans un terminal, puis vérifiez à nouveau.",
+      "sign_in_to_see_models": "Connectez-vous pour voir les modèles de {{agent}}",
+      "still_not_signed_in": "Toujours pas connecté.",
       "type_to_filter": "Saisir pour filtrer…"
     },
     "monacoCodeBlock": {
@@ -7388,7 +7393,7 @@
       "no_microphone_found_connect_one_or_pick_a_differ": "Aucun microphone trouvé. Connectez-en un ou choisissez un autre périphérique dans les Paramètres."
     },
     "theme": {
-      "high_contrast": "🔆 Contraste élevé"
+      "high_contrast": "Contraste élevé"
     },
     "useCronActions": {
       "failed_to_cancel_job": "Échec de l’annulation de la tâche",
@@ -8427,6 +8432,9 @@
         "delete": "Supprimer"
       },
       "errorCard": {
+        "auth_required_run_command": "Exécutez <command/> dans un terminal, puis renvoyez votre message.",
+        "auth_required_sign_in": "Connectez-vous à {{agent}}, puis renvoyez votre message.",
+        "auth_required_title": "{{agent}} n’est pas connecté",
         "continue": "Reprendre",
         "continue_hint": "Reprendre là où ça s’est arrêté. Le travail déjà écrit sur le disque reste intact."
       },
@@ -9253,7 +9261,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "démarre n'importe quel worktree comme une\n              passerelle jetable isolée, pour tester une branche de fonctionnalité sans toucher à votre instance active.",
       "branch": "Branche :",
       "build_pending": "build en attente",
-      "build_pending_restart_gateway_to_apply_junction": "build en attente — redémarrez la passerelle pour appliquer (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "build en attente — redémarrez la passerelle pour appliquer (warding restart)",
       "building": "Compilation…",
       "build_finished_restarting_gateway": "Build terminé — redémarrage du gateway…",
       "built": "compilé",
@@ -9297,7 +9305,7 @@
       "force_remove_confirm_title": "Forcer la suppression des worktrees ?",
       "force_remove_warning": "Les worktrees sélectionnés ont du travail non fusionné — la suppression est définitive et irréversible.",
       "force_remove": "Forcer la suppression de {{name}}",
-      "gateway_did_not_come_back_within_60s_reload_the": "La passerelle n’est pas revenue en 60 s — recharge la page manuellement ou consulte `junction logs`.",
+      "gateway_did_not_come_back_within_60s_reload_the": "La passerelle n’est pas revenue en 60 s — recharge la page manuellement ou consulte `warding logs`.",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "la passerelle a redémarré en pleine synchronisation — exécution perdue ; vérifie l’état git et relance Pull+Build",
       "git_status_failed": "échec de git status",
       "has_unmerged_work_removing_deletes_permanently": "Contient du travail non fusionné — le retirer le SUPPRIME définitivement.",
@@ -10149,7 +10157,7 @@
         "path_placeholder": "/chemin/vers/votre-modele.gguf",
         "reembed_done": "Recalcul terminé",
         "reembed_failed": "Échec du recalcul",
-        "reembed_failed_hint": "Le modèle n'a pas pu être appliqué. Survolez pour les détails, ou lancez « junction doctor ».",
+        "reembed_failed_hint": "Le modèle n'a pas pu être appliqué. Survolez pour les détails, ou lancez « warding doctor ».",
         "reembedding": "Recalcul des embeddings…",
         "subtitle": "Fonctionne localement. Le changer relance le calcul des embeddings des mémoires en arrière-plan.",
         "title": "Modèle d'embeddings",
@@ -10312,7 +10320,7 @@
         "no_lessons": "Aucune leçon",
         "no_lessons_yet": "Aucune leçon pour le moment",
         "no_sessions_to_consolidate_start_a_chat_first": "Aucune session à consolider — démarrez d'abord une conversation",
-        "persistent_lessons_injected_into_every_session_a": "Leçons persistantes injectées dans chaque session. Extraites automatiquement des échecs de l’Task Runner. Ajoute-les manuellement via 'junction learn add'. Quand la mémoire vectorielle est active, les leçons sont gérées dans l’onglet Sémantique en tant qu’entrées lesson.*.",
+        "persistent_lessons_injected_into_every_session_a": "Leçons persistantes injectées dans chaque session. Extraites automatiquement des échecs de l’Task Runner. Ajoute-les manuellement via 'warding learn add'. Quand la mémoire vectorielle est active, les leçons sont gérées dans l’onglet Sémantique en tant qu’entrées lesson.*.",
         "preference": "préférence",
         "preferences": "Préférences",
         "projects": "Projets",
@@ -11762,7 +11770,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "instances distantes restent chaudes (tunnel actif) à la fois ; les autres se reconnectent à\n                la demande. À régler avec",
         "is_installed_somewhere_non_standard_on_the_remot": "est installé à un\n            emplacement non standard sur l'hôte distant. Laissez vide pour une installation pip normale dans le PATH. Pour le\n            trouver, exécutez sur l'hôte distant :",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "Chargement…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "La gestion des instances distantes est",
@@ -12739,7 +12747,20 @@
         "kind_research": "Recherche",
         "kind_docs": "Rédaction de documentation",
         "kind_quick": "Modifications rapides",
-        "kind_bulk": "Modifications en masse"
+        "kind_bulk": "Modifications en masse",
+        "chat_harness_title": "Agent du chat",
+        "chat_harness_description": "L’agent de programmation qui répond aux nouveaux chats. Un chat déjà ouvert garde celui avec lequel il a démarré jusqu’à sa fin. Le routage ci-dessous décide seulement où vont les tâches des sous-agents.",
+        "chat_harness_auto": "Automatique",
+        "chat_harness_auto_description": "Le premier agent installé. Actuellement : {{agent}}.",
+        "chat_harness_auto_none": "Le premier agent installé. Aucun n’est encore installé.",
+        "chat_harness_active": "Actif",
+        "chat_harness_not_installed_reason": "Non installé. Installez-le ci-dessous, puis choisissez-le ici.",
+        "chat_harness_needs_login_note": "Vous pouvez le choisir dès maintenant. Les chats qui l’utilisent échouent tant qu’il n’est pas connecté.",
+        "chat_harness_starts_on": "Les nouveaux chats démarrent sur {{agent}}.",
+        "chat_harness_none_ready": "Aucun agent installé ne peut encore démarrer de chat. Installez-en un ci-dessous.",
+        "chat_harness_save_failed": "Impossible de changer l’agent du chat.",
+        "chat_harness_unknown": "{{productName}} ne peut pas exécuter cet agent, donc rien n’a été modifié.",
+        "chat_harness_overridden": "Enregistré, mais config.local.json définit un autre agent et prend le dessus."
       }
     },
     "settingsPage": {

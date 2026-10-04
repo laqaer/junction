@@ -1495,7 +1495,7 @@ async def _start_site(
                     outcome = ""
                 if outcome == RECLAIMED:
                     logger.warning(
-                        "Reclaimed port %d from a stale Junction gateway — rebinding.",
+                        "Reclaimed port %d from a stale Warding gateway — rebinding.",
                         port,
                     )
                 elif outcome not in (HEALTHY_PEER, FOREIGN_HOLDER):
@@ -3380,7 +3380,7 @@ async def start_dashboard(
         if _age_h < 168:  # Only surface dumps less than 7 days old
             logger.warning(
                 "⚠️  Prior loop-stall crash dump found: %s (%.1f hours ago). "
-                "Run `junction doctor` for details.",
+                "Run `warding doctor` for details.",
                 _prior_dump,
                 _age_h,
             )

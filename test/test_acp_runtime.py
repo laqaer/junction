@@ -515,7 +515,7 @@ async def test_missing_agent_spec_error_reaches_caller_actionable(tmp_path):
     text = str(excinfo.value)
     assert "'junction.json'" in text  # the file that is missing
     assert str(tmp_path) in text  # where it was looked for
-    assert "junction setup --agent-only --clean" in text  # the repair
+    assert "warding setup --agent-only --clean" in text  # the repair
     assert "-32603" not in text  # no raw protocol frame
 
 

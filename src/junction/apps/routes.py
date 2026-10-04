@@ -1710,7 +1710,7 @@ async def handle_open_app(request: web.Request) -> web.Response:
                 "name": name,
                 "remote": True,
                 "command": open_cmd,
-                "message": f"Junction is running remotely. Run this on your local machine: {open_cmd}",
+                "message": f"Warding is running remotely. Run this on your local machine: {open_cmd}",
             }
         )
 

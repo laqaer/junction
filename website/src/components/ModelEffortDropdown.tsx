@@ -4,6 +4,8 @@ import { Trans } from 'react-i18next'
 import { ChevronRight, ChevronLeft, Settings2, Pin, Check, Ban } from 'lucide-react'
 import { Input } from './ui'
 import ModelDropdownList, { type ModelItem } from './ModelDropdownList'
+import ModelSignInNotice from './ModelSignInNotice'
+import type { AuthRequiredInfo } from '../lib/authRequired'
 import ReasoningEffortDropdown from './ReasoningEffortDropdown'
 import { effortLabel } from './ChatInput'
 
@@ -52,6 +54,9 @@ interface Props {
   /** True when that agent already pins the active model, so the row reports the
    *  state instead of offering a no-op write. */
   pinnedToAgent?: boolean
+  /** Set when the agent's last start was refused for want of a sign-in, so the
+   *  list has nothing to show. Renders the notice that says how to sign in. */
+  signIn?: AuthRequiredInfo | null
 }
 
 const WIDTH = 340
@@ -65,7 +70,7 @@ export default function ModelEffortDropdown({
   anchorRect, dropdownRef, inputRef, models, activeModel, onSelectModel,
   filter, setFilter, onClose, hasEffort, slot, currentEffort, onListKeyDown, onSetDefault,
   defaultEffort = '', onPinToAgent, agentName = '', pinModelName = '',
-  pinModelUnavailable = false, pinnedToAgent = false,
+  pinModelUnavailable = false, pinnedToAgent = false, signIn = null,
 }: Props) {
   const [showEffort, setShowEffort] = useState(false)
   const modelPage = useRef<HTMLDivElement>(null)
@@ -76,7 +81,7 @@ export default function ModelEffortDropdown({
   useLayoutEffect(() => {
     const el = showEffort ? effortPage.current : modelPage.current
     if (el) setHeight(el.offsetHeight)
-  }, [showEffort, models.length, filter, currentEffort, hasEffort, onSetDefault, onPinToAgent, agentName, pinModelName, pinModelUnavailable, pinnedToAgent])
+  }, [showEffort, models.length, filter, currentEffort, hasEffort, onSetDefault, onPinToAgent, agentName, pinModelName, pinModelUnavailable, pinnedToAgent, signIn])
 
   // Right-align the dropdown to the button's right edge (clamped to viewport).
   const left = Math.max(8, Math.min(anchorRect.right - WIDTH, window.innerWidth - WIDTH - 8))
@@ -93,6 +98,7 @@ export default function ModelEffortDropdown({
         <motion.div className="flex w-[200%] items-start" animate={{ x: showEffort ? '-50%' : '0%' }} transition={SPRING}>
           {/* Page 1 — model list + non-scrolling effort footer */}
           <div ref={modelPage} className="w-1/2 flex flex-col p-1">
+            {signIn && <ModelSignInNotice info={signIn} />}
             <div className="px-1.5 pt-1.5 pb-1">
               <Input
                 ref={inputRef}

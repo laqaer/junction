@@ -117,7 +117,7 @@ async def handle_get_config(request: web.Request) -> web.Response:
             "config": config,
             "task_providers": taskprov.available_task_providers(),
             "calendar_providers": cal.available_calendar_providers(),
-            "stt_providers": [{"id": k.STT_PROVIDER_JUNCTION, "label": "Junction speech-to-text"}],
+            "stt_providers": [{"id": k.STT_PROVIDER_JUNCTION, "label": "Warding speech-to-text"}],
         }
     )
 

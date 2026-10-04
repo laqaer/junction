@@ -57,8 +57,8 @@ def installed_unit_path() -> "Path | None":
 
 def _unsupported_message() -> None:
     print(
-        "❌ junction service management is only supported on Linux (systemd)\n"
-        "   and macOS (launchd). On other platforms run `junction up`\n"
+        "❌ Service management is only supported on Linux (systemd)\n"
+        "   and macOS (launchd). On other platforms run `warding up`\n"
         "   directly or wrap it in tmux/screen yourself.",
         file=sys.stderr,
     )
@@ -82,7 +82,7 @@ def install_service() -> int:
         except linux.ServiceInstallError as exc:
             print(f"❌ {exc}", file=sys.stderr)
             return 1
-        print("✅ junction service installed and started.")
+        print("✅ Warding service installed and started.")
         print(f"   unit: {linux.UNIT_PATH}")
         # Reported here, but performed inside linux.install() before the unit is
         # started — the directive only applies at service start. Deliberately
@@ -91,9 +91,9 @@ def install_service() -> int:
             print(f"   {'⚠️ ' if not profile.ok else ''}{profile.message}")
         _print_headless_auth_warning()
         print()
-        print("   Status: junction service status")
-        print("   Logs:   junction logs -f")
-        print("   Remove: junction service uninstall")
+        print("   Status: warding service status")
+        print("   Logs:   warding logs -f")
+        print("   Remove: warding service uninstall")
         return 0
     if plat == Platform.LAUNCHD:
         try:
@@ -101,13 +101,13 @@ def install_service() -> int:
         except macos.ServiceInstallError as exc:
             print(f"❌ {exc}", file=sys.stderr)
             return 1
-        print("✅ junction service installed and started.")
+        print("✅ Warding service installed and started.")
         print(f"   plist: {macos.PLIST_PATH}")
         _print_headless_auth_warning()
         print()
-        print("   Status: junction service status")
+        print("   Status: warding service status")
         print(f"   Logs:   tail -f {macos.STDOUT_LOG}")
-        print("   Remove: junction service uninstall")
+        print("   Remove: warding service uninstall")
         return 0
     _unsupported_message()
     return 2
@@ -129,13 +129,13 @@ def uninstall_service() -> int:
         except linux.ServiceInstallError as exc:
             print(f"❌ {exc}", file=sys.stderr)
             return 1
-        print("✅ junction service stopped and removed.")
+        print("✅ Warding service stopped and removed.")
         if profile.message:
             print(f"   {'⚠️ ' if not profile.ok else ''}{profile.message}")
         return 0
     if plat == Platform.LAUNCHD:
         macos.uninstall()
-        print("✅ junction service stopped and removed.")
+        print("✅ Warding service stopped and removed.")
         return 0
     _unsupported_message()
     return 2

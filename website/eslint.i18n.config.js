@@ -1206,4 +1206,13 @@ export default [
       'i18next/no-literal-string': 'off',
     },
   },
+  // Built-in color theme names: proper nouns (Dracula, Nord, IntelliJ, ...) that
+  // do not translate. Kept in their own module, like fontFamilyOptions.ts above,
+  // so the exemption stays one file wide.
+  {
+    files: ['src/utils/builtinThemeNames.ts'],
+    rules: {
+      'i18next/no-literal-string': 'off',
+    },
+  },
 ]

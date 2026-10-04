@@ -402,7 +402,7 @@ class TestDoctorDiscordSection:
 
         assert "token:       ❌" in out
         assert "the channel never starts" in out
-        assert "junction restart" in out
+        assert "warding restart" in out
         assert "discord: enabled without a bot token" in issues
 
     def test_empty_user_allowlist_is_called_out_as_denying_everything(
@@ -669,7 +669,7 @@ class TestDoctorLiveConnection:
         )
 
         assert "connection:  ⚠️" in out
-        assert "junction" in out and "restart" in out
+        assert "warding" in out and "restart" in out
         assert issues == []
 
     def test_unreachable_gateway_is_not_a_discord_fault(self, monkeypatch, capsys) -> None:

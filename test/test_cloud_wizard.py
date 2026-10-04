@@ -585,7 +585,7 @@ class TestLaunchResume:
             x == "i-new" for x in calls["login"]
         )  # sign-in + verify both check i-new
         assert save_calls == [("dev", "us-west-2", "jn-new")]
-        assert choices[0][0] == "Existing Junction cloud deployment"
+        assert choices[0][0] == "Existing Warding cloud deployment"
         assert choices[0][1][0][0] == "Keep and resume existing"
         assert choices[0][1][1][0] == "Create a new installation"
         assert "existing stack is unchanged" in capsys.readouterr().out
@@ -641,7 +641,7 @@ class TestLaunchResume:
         assert save_calls == [("dev", "us-west-2", "jn-b")]
         assert choices == [
             (
-                "Existing Junction cloud deployments",
+                "Existing Warding cloud deployments",
                 [
                     ("Keep jn-a", "junction-jn-a"),
                     ("Keep jn-b", "junction-jn-b"),
@@ -670,7 +670,7 @@ class TestLaunchResume:
 
         assert wizard.launch(profile="dev", region="us-west-2", assume_yes=True) == 1
         out = capsys.readouterr().out
-        assert "multiple existing Junction cloud stacks found" in out
+        assert "multiple existing Warding cloud stacks found" in out
         assert "jn-a" in out and "jn-b" in out
 
 

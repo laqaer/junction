@@ -279,6 +279,22 @@ agent means running that agent's own login command, then probing it.
   recorded for the new harness cannot land between the lookup and the write.
   The stored probe
   status stays `connected`; the gates below read it as "the harness starts".
+- **A refused start records `needs_login`.** When a spec-family harness answers
+  the handshake with ACP's `auth_required` (`AcpAuthRequired` carrying its
+  `backend`), the chat turn, the eager session start and the side-chat turn each
+  save a `needs_login` probe result for that harness. `/api/models` and Settings
+  > Agents & plans read it, so a signed-out agent says so before and after the
+  first send instead of showing nothing. That is the only thing they record: the
+  Kiro prerequisite latch (`mark_signed_out`) belongs to kiro-cli and KAS alone,
+  so Codex being signed out never marks kiro-cli signed out. The record is replaced
+  by the next probe: Check in Agents & plans, the model picker's Check again,
+  `warding route check`, or a session that advertises models and **started after
+  the record** (`SessionManager.provider_started_at`, the time the session was
+  registered, which happens only after its start succeeded). A session that was
+  already resident when the refused start happened holds a list an earlier login
+  produced, so `/api/models` ignores it while a `needs_login` record is newer and
+  keeps answering `auth_required`; a session whose start time is unknown is
+  treated the same way.
 - `service.check_harness` (probe now) and `service.verified_connection` (reuse a
   `connected` probe younger than `max_age_secs`, else probe) hold one lock per
   harness, so a double-clicked Check or a burst of gated requests starts one
@@ -289,14 +305,92 @@ agent means running that agent's own login command, then probing it.
   lane controls (use for routing, billing, plan size, window limit, model),
   plus the current pick per kind. On first load it probes every installed agent
   that was never checked. Every displayed word is a catalog key; commands and
-  statuses are machine data.
+  statuses are machine data. A `needs_login` card shows the "Needs sign-in" badge,
+  Sign in and the command row, and never the probe's own `detail` (an older record
+  can still hold a raw JSON-RPC error); `error` and `not_installed` still show it.
   The task-step routing switch writes `routing.json`, not the main config
   hierarchy. Its `routing.route_tasks` UI key supports direct Settings links
   and highlighting; the drift guard validates this separate namespace against
   routing.json's editable fields and parser, not the main config schema.
 - The first-run gate shows the same panel in compact form above the Kiro steps,
   with **Continue with these agents** once any agent is connected
-  (`POST /api/kiro-prerequisite/complete-with-agents`). kiro-cli is optional.
+  (`POST /api/kiro-prerequisite/complete-with-agents`). kiro-cli is optional. The
+  compact form carries no chat harness picker: first-run leaves `agent.acp_backend`
+  on `auto`.
+
+## Choosing the chat harness
+
+Chat runs one harness, `agent.acp_backend`. Settings ▸ **Agents & plans** opens
+with a **Chat harness** radio group that reads and writes it; routing (below it)
+only decides where subagent tasks go, and the description says so.
+
+**The list is the gateway's, never the page's.** `GET /api/routing/harnesses`
+carries a `chat` block, built by `HarnessRouter.chat_view`:
+
+| Field | Meaning |
+|---|---|
+| `configured` | `agent.acp_backend` read fresh (not the session manager's copy, which moves only at the next cold start), spelled for operators: `auto`, a harness id, `kiro` for kiro-cli (never the empty backend string) |
+| `selected` | What a new chat runs now. `auto` resolves with `acp.runtimes.select_runtime`, the provider factory's own rule; `""` when nothing is installed |
+| `choices[]` | `id`, `label` (product name, untranslated), `installed` (`true` / `false` / `null`), `status`, `setup` (`install`, `login`, `docs_url`, or `null`), `hint`; the `auto` entry also carries `resolves_to`, the harness `auto` would pick now (`""` when none is installed), which stays the same whichever harness is configured |
+
+`choices` is `auto` (`label: ""`, `installed: null`, `status: ""`; the dashboard
+words it), then the featured harnesses (listed not-installed rather than hidden,
+so the operator sees what to install), every other installed harness, **the Kiro
+harness unconditionally** (H1: it stays selectable whatever the host has), and the
+configured harness when it is none of those (KAS). Membership is the
+`ACP_BACKENDS_SELECTABLE` test (`lanes.is_routable_harness`) and nothing else, so
+a name the loader would degrade to `auto` is never offered. `installed` is `null`
+for a harness outside the runtime registry (KAS has no install probe) and the
+dashboard leaves it selectable. `status` is the last probe (`connected`,
+`needs_login`, `error`, `timeout`) or `unknown` when never probed, and
+`not_installed` whenever `installed` is `false`, whatever an older probe recorded.
+
+**The write is the existing validated config path**, `PATCH /api/config/junction`
+with `{"path": "agent.acp_backend", "value": "<id>"}`. Its validator is
+`resolve_acp_backend_override`, the one `junction config set agent.acp_backend`
+runs, so the two cannot disagree: an unknown harness is refused `400` with
+`code: "unknown_harness"` and nothing is written (the loader would otherwise
+degrade it to `auto` silently, H3). A non-string value is refused with the same
+code. Neither path refuses a harness for being uninstalled or signed out: the
+dashboard control disables an uninstalled entry with its reason (Kiro included,
+because a chat on it could not start), and keeps a signed-out one selectable with
+its `setup.login` command beside it, because signing in after choosing is the
+usual order and the harness reports its own failure on the turn. After the file
+write the handler calls `SessionManager.refresh_defaults()` (best effort: a failed
+rebuild is logged and the next cold start retries, see
+[session.md](session.md#harness-changes-on-disk)), so the models list and the
+warm pool follow at once and no restart is needed.
+
+**What changes, and what does not.** The setting applies to NEW chats. A chat
+that is open keeps the harness its process runs (an ACP session cannot be moved
+to another agent) until it ends, and the page says so. The write lands in
+`config.json`; `config.local.json` outranks it, so the page re-reads the merged
+value after saving and says when an overlay kept a different harness.
+
+**The chat names its harness.** `DashboardState.serialize_slot` adds
+`harness: {"id", "label"} | null` to every slot, read from
+`_ChatSlot._harness_backend`: the backend of the slot's latest turn's live
+provider (`providers.acp.provider_backend`, positive on the client's backend
+string, both provider shapes). A turn whose session failed to start (a harness
+that is not signed in) records `SessionManager.targeted_backend()`, the concrete
+backend the cold start targeted (read after it adopted a changed config), so the
+failure card and the label name the same harness. `targeted_backend` is not
+`resolved_backend`: that one answers kiro-cli when `auto` finds no installed
+runtime, which is a routing fallback and not an attempt, so the label would name
+a harness nothing started. Here that case, an unreadable config and a provider
+that cannot name its backend all leave the label null, and the null replaces a
+previous session's value rather than keeping it. The label is never a guess from
+config, which has moved on once `agent.acp_backend` changes under an open chat.
+A change is pushed with `push_slots_update()` at once, from the turn's session
+acquisition and from the eager spawn once its session has survived the
+deleted-slot and changed-binding checks (a session removed by either runs nothing,
+so it is never labelled); the browser's snapshot predates the session, and the
+next ordinary update could be the end of a long response. Not persisted; a
+restart has nothing to say until the next turn starts a process. The composer
+shows the label as plain text beside the model (`data-testid="composer-harness"`);
+on a shelf narrower than 440px it collapses to a `Cpu` mark whose accessible name
+and tooltip are the same "Running on {name}" string, so it never squeezes the
+agent and project chips.
 
 ## The dashboard on a non-Kiro agent
 
@@ -308,7 +402,7 @@ assume kiro-cli reads it:
 | Surface | kiro-cli / KAS | Any other agent |
 |---|---|---|
 | Regenerate, edit-resend, rewind, `/v1/chat/completions` | Kiro prerequisite gate | `verified_connection` (5 min, 45 s budget); 503 `harness_not_connected` unless `connected` |
-| `/api/models` | `kiro-cli --list-models` | that agent's advertised models: newest live session, else last probe; `auto` first; 503 `harness_models_pending` while neither exists |
+| `/api/models` | `kiro-cli --list-models` | that agent's advertised models: newest live session, else last probe; `auto` first; 503 `harness_models_pending` while neither exists; 503 `auth_required` (with `harness`, `agent`, `login`) when no current list exists and the last start was refused for want of a sign-in (a resident session's list counts only if the session started after that refusal) |
 | `/api/sessions/usage` | Kiro credit scrape | `{"available": false, "reason": "harness_not_kiro"}` (pill hidden) |
 | Task runner steps | shared `AcpRuntime` | one dedicated provider per step on the configured agent |
 | Background one-liners | `_bg` runtime session | provider-backed `_ProviderBgSession` |
@@ -333,7 +427,7 @@ gate.
 | `GET /api/routing/status` | Same payload as `route status --json` |
 | `GET /api/routing/decide?kind=&role=&prefer=&exclude=` | One decision; "no lane" is a 200 with `code: no_lane` |
 | `POST /api/routing/cooldown/clear {lane?}` | Lift a cooldown |
-| `GET /api/routing/harnesses` | Every connectable agent: installed, last probe, setup commands, its lane, picks per kind |
+| `GET /api/routing/harnesses` | Every connectable agent: installed, last probe, setup commands, its lane, picks per kind, and the `chat` block (the chat harness and its choices) |
 | `POST /api/routing/harnesses/{harness}/check` | Probe one agent now (one at a time per agent) and record the result |
 | `PUT /api/routing/settings` | Change routing.json switches (`route_tasks`); `400` `invalid_settings_edit` on an unknown field or non-boolean value. Same materialize/refuse rules as the lane edit |
 | `PUT /api/routing/harnesses/{harness}/lane` | Edit that agent's lane (`enabled`, `billing`, `weight`, `window_limit`, `daily_limit`, `model`) in `routing.json`; `400` `invalid_lane_edit` on a bad value. A missing file is materialized from the detected lanes; a broken one is refused, never overwritten |

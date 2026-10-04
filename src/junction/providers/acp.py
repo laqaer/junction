@@ -680,7 +680,7 @@ class AcpProvider(LLMProvider):
             "Resume of kiro session %s failed after %d attempts (lock still "
             "active in another process — a stale lock from an uncleanly-killed "
             "holder, or a rare same-gateway session-key alias miss); migrating "
-            "to a fresh session with Junction history replay",
+            "to a fresh session with Warding history replay",
             resume_sid,
             _RESUME_MAX_ATTEMPTS,
         )
@@ -1498,6 +1498,24 @@ def is_claude_backend(provider: Any) -> bool:
     property without an isinstance gate.
     """
     return isinstance(provider, AcpProvider) and provider.is_claude_backend
+
+
+def provider_backend(provider: object) -> str | None:
+    """The backend a live provider runs on, or ``None`` when it cannot say.
+
+    Read from the client's backend STRING the way :func:`provider_label` does, so
+    a runtime-backed session (whose client became an ``AcpSessionProvider``) and a
+    per-process one both answer, and a ``MagicMock(spec=...)`` provider answers
+    ``None`` instead of every backend at once. Model ids are spelled per harness
+    (H12), so a model list must only be read from providers on the harness it is
+    for; the dashboard also reads this to name the harness a chat actually runs on.
+    """
+    if isinstance(provider, AcpSessionProvider):
+        return provider.backend
+    if isinstance(provider, AcpProvider):
+        backend = getattr(getattr(provider, "client", None), "backend", None)
+        return backend if isinstance(backend, str) else None
+    return None
 
 
 def provider_label(provider: Any) -> str:

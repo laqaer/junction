@@ -118,7 +118,7 @@ def validate(raw: str) -> Path:
         return _reject(f"the live target's {cli_bin} is not executable")
     if not (checkout / "src" / "junction").is_dir():
         return _reject(
-            f"the live target does not look like a Junction checkout "
+            f"the live target does not look like a Warding checkout "
             f"(no src/junction): {checkout}"
         )
     return checkout

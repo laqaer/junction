@@ -141,7 +141,7 @@ def test_doctor_planes_never_fails(capsys: pytest.CaptureFixture[str]) -> None:
     out = capsys.readouterr().out
     assert "Planes" in out
     assert "vendor CLI optional" in out
-    assert "starts with junction up" in out
+    assert "starts with warding up" in out
     assert "orchestration=economy" in out
     assert "never paste provider keys" in out
     assert "sidecar injects" not in out
@@ -155,7 +155,7 @@ def test_doctor_quick_skips_the_full_probe(capsys: pytest.CaptureFixture[str]) -
     assert "Planes" in out
     assert "Platform" not in out
     assert "Dependencies" not in out
-    assert "junction doctor" in out
+    assert "warding doctor" in out
 
 
 @pytest.mark.asyncio
@@ -185,7 +185,7 @@ def test_human_planes_format_is_shared(plane_ports: PlanePorts) -> None:
     text = format_human_planes(snap, heading="Planes")
     assert text.startswith("Planes\n")
     assert "vendor CLI optional" in text
-    assert "starts with junction up" in text
+    assert "starts with warding up" in text
     assert "orchestration=economy" in text
     assert "never paste provider keys" in text
 
@@ -198,3 +198,98 @@ def test_compose_banner_writes_the_given_stream() -> None:
     text = buf.getvalue()
     assert "Warding compose" in text
     assert "vendor CLI optional" in text
+
+
+def _which_only(*names: str):
+    """A ``which`` that finds exactly *names*, so availability is the test's."""
+    found = set(names)
+    return lambda name: f"/usr/bin/{name}" if name in found else None
+
+
+def test_snapshot_reports_the_configured_harness_not_auto() -> None:
+    # The defect: ``agent.acp_backend = codex`` on a host that also has Claude
+    # Code reported selected=claude, because the snapshot always resolved auto.
+    snap = snapshot_planes(
+        configured="codex",
+        which=_which_only("claude", "codex", "npx"),
+        home=Path("/tmp"),
+        router_port=9,
+        gateway_port=9,
+    )
+    harness = snap["harness"]
+    assert harness["default"] == ACP_BACKEND_AUTO
+    assert harness["configured"] == "codex"
+    assert harness["selected"] == "codex"
+    assert harness["selected_available"] is True
+
+
+def test_snapshot_auto_still_picks_the_first_installed_runtime() -> None:
+    snap = snapshot_planes(
+        configured=ACP_BACKEND_AUTO,
+        which=_which_only("claude", "codex", "npx"),
+        home=Path("/tmp"),
+        router_port=9,
+        gateway_port=9,
+    )
+    assert snap["harness"]["configured"] == ACP_BACKEND_AUTO
+    assert snap["harness"]["selected"] == "claude"
+
+
+def test_snapshot_keeps_a_missing_configured_harness_and_says_so() -> None:
+    # The factory spawns the configured harness, installed or not, so the
+    # snapshot must not swap in whatever auto would have picked.
+    from junction.planes import format_human_planes
+
+    snap = snapshot_planes(
+        configured="codex",
+        which=_which_only("claude"),
+        home=Path("/tmp"),
+        router_port=9,
+        gateway_port=9,
+    )
+    assert snap["harness"]["selected"] == "codex"
+    assert snap["harness"]["selected_available"] is False
+    line = format_human_planes(snap, heading="Planes").splitlines()[1]
+    assert line == "  harness: codex (selected=codex, not installed; vendor CLI optional)"
+
+
+def test_snapshot_labels_a_configured_kiro_cli() -> None:
+    from junction.acp.types import ACP_BACKEND_KIRO
+
+    snap = snapshot_planes(
+        configured=ACP_BACKEND_KIRO,
+        which=_which_only("kiro-cli"),
+        home=Path("/tmp"),
+        router_port=9,
+        gateway_port=9,
+    )
+    assert snap["harness"]["configured"] == "kiro-cli"
+    assert snap["harness"]["selected"] == "kiro-cli"
+    assert snap["harness"]["selected_available"] is True
+
+
+def test_snapshot_reads_the_persisted_harness() -> None:
+    # No ``configured`` argument: planes, doctor and the up banner all call it
+    # this way, so the persisted value is what they must report.
+    from junction.config.loader import config_path
+
+    path = config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"agent": {"acp_backend": "codex"}}), encoding="utf-8")
+    snap = snapshot_planes(which=_which_only(), home=Path("/tmp"), router_port=9, gateway_port=9)
+    assert snap["harness"]["configured"] == "codex"
+    assert snap["harness"]["selected"] == "codex"
+
+
+def test_human_harness_line_names_the_configured_value() -> None:
+    from junction.planes import format_human_planes
+
+    snap = snapshot_planes(
+        configured="codex",
+        which=_which_only("codex", "npx"),
+        home=Path("/tmp"),
+        router_port=9,
+        gateway_port=9,
+    )
+    line = format_human_planes(snap, heading="Planes").splitlines()[1]
+    assert line == "  harness: codex (selected=codex; vendor CLI optional)"

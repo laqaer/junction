@@ -164,7 +164,7 @@ def _token(args: argparse.Namespace) -> None:
     port = resolve_client_port(args.port)
     secret = read_local_secret(port)
     if not secret:
-        print("❌ Gateway not running — start it with: junction up", file=sys.stderr)
+        print(f"❌ Gateway not running — start it with: {CLI_BIN} up", file=sys.stderr)
         sys.exit(1)
 
     url = f"http://{_CLI_LOOPBACK}:{port}/api/token/local?ttl={args.ttl}"
@@ -269,7 +269,7 @@ def _emit_session_urls(port: int, token: str) -> None:
                     f"be the service published at {tailnet_url} "
                     f"({state.detail}). The URL carries a session, so handing it out "
                     "while another service holds that name would leak it. Run "
-                    "`junction tailnet up` to publish this dashboard, then re-run.",
+                    "`warding tailnet up` to publish this dashboard, then re-run.",
                     file=sys.stderr,
                 )
         elif not tailnet_url:
@@ -290,7 +290,7 @@ def _logout(port: int) -> None:
     """Revoke all dashboard sessions by calling the gateway's /api/logout endpoint."""
     secret = read_local_secret(port)
     if not secret:
-        print("❌ Gateway not running — start it with: junction up")
+        print(f"❌ Gateway not running — start it with: {CLI_BIN} up")
         sys.exit(1)
 
     url = f"http://{_CLI_LOOPBACK}:{port}/api/logout"
@@ -312,7 +312,7 @@ def _logout(port: int) -> None:
         print(f"❌ Failed to revoke sessions: HTTP {e.code}")
         sys.exit(1)
     except (urllib.error.URLError, OSError):
-        print("❌ Gateway not running — start it with: junction up")
+        print(f"❌ Gateway not running — start it with: {CLI_BIN} up")
         sys.exit(1)
 
 
@@ -337,7 +337,7 @@ def _stop(cli_port: int | None = None) -> None:
             source="cli",
             resources=f"port={port} via=service",
         )
-        print("✅ Stopped junction service. To remove it: junction service uninstall")
+        print("✅ Stopped the Warding service. To remove it: warding service uninstall")
         return
 
     # Cross-platform port -> listening PID lookup (lsof on POSIX, netstat -ano
@@ -816,7 +816,7 @@ def _print_token_url(port: int) -> None:
             pass
         time.sleep(1)
     # Non-fatal — gateway might just be slow to start
-    print("\n⚠️  Could not generate token (gateway still starting?). Run: junction token")
+    print(f"\n⚠️  Could not generate token (gateway still starting?). Run: {CLI_BIN} token")
 
 
 def _restart(cli_port: int | None = None) -> None:
@@ -848,7 +848,7 @@ def _restart(cli_port: int | None = None) -> None:
             source="cli",
             resources=f"port={port} via=service",
         )
-        print("✅ Restarted junction service.")
+        print("✅ Restarted the Warding service.")
         _print_token_url(port)
         return
 
@@ -908,7 +908,7 @@ def _restart(cli_port: int | None = None) -> None:
                 f"{int(_RESTART_STOP_TIMEOUT)}s. Not starting a replacement.\n"
                 f"   The old gateway still owns {config_dir()}, so a new one "
                 f"would be refused and exit immediately.\n"
-                f"   To inspect the shutdown, run: junction logs -f\n"
+                f"   To inspect the shutdown, run: warding logs -f\n"
                 f"   If the process is wedged, force it: kill -9 {pids}"
             )
             sys.exit(1)
@@ -939,7 +939,7 @@ def _restart(cli_port: int | None = None) -> None:
                 f"(exit status {exit_status}). Nothing is serving port {port}.\n"
                 f"   A replacement that exits at once is usually refused startup — "
                 f"another process still owning {config_dir()}, or a broken config.\n"
-                f"   To see why it exited, run: junction logs -f"
+                f"   To see why it exited, run: warding logs -f"
             )
         else:
             print(
@@ -948,7 +948,7 @@ def _restart(cli_port: int | None = None) -> None:
                 f"serving port {port}.\n"
                 f"   It may be slow to start or wedged during startup; nothing is "
                 f"serving the dashboard yet.\n"
-                f"   To follow its startup, run: junction logs -f"
+                f"   To follow its startup, run: warding logs -f"
             )
         sys.exit(1)
 
@@ -959,7 +959,7 @@ def _restart(cli_port: int | None = None) -> None:
         source="cli",
         resources=f"port={port} via=fork pid={pid}",
     )
-    print(f"✅ Started detached gateway (pid {pid}). Logs: junction logs -f")
+    print(f"✅ Started detached gateway (pid {pid}). Logs: warding logs -f")
     _print_token_url(port)
 
 
@@ -997,7 +997,7 @@ def _update(force: bool = False) -> None:
         if applied:
             print("\n✅ Update applied by the policy-defined update command.")
             print("\n  Restart the gateway to use the new version:")
-            print("    junction restart")
+            print("    warding restart")
         else:
             print("\n❌ The policy-defined update command failed — see the log above.")
             print("  Not falling back to the built-in updater: this host's policy")
@@ -1174,7 +1174,7 @@ def _update(force: bool = False) -> None:
             print("  A hard reset would discard the local commits. Reconcile instead:")
             print(f"      git rebase origin/{branch}    (or: git merge origin/{branch})")
             print("  Or discard the local commits explicitly:")
-            print("      junction update --force")
+            print("      warding update --force")
             sys.exit(1)
         print(f"  ⚠️  --force: discarding {ahead} local commit(s) not on origin/{branch}.")
 
@@ -1334,12 +1334,12 @@ def _refresh_agent_config(proj: str) -> None:
         logging.getLogger(__name__).warning(
             "agent-only config refresh timed out after %ss; skipping (best-effort)", exc.timeout
         )
-        print("  ⚠️  Agent config refresh timed out — run: junction setup --agent-only")
+        print("  ⚠️  Agent config refresh timed out — run: warding setup --agent-only")
         return
     if r.returncode == 0:
         print("  ✅ Agent config refreshed (deniedCommands + hooks updated)")
     else:
-        print("  ⚠️  Agent config refresh failed — run: junction setup --agent-only")
+        print("  ⚠️  Agent config refresh failed — run: warding setup --agent-only")
 
 
 def _update_wheel(layout) -> None:
@@ -1483,7 +1483,7 @@ def _update_wheel(layout) -> None:
 
     print(f"\n✅ {PRODUCT_NAME} updated to {remote_version}!")
     print("\n  Restart the gateway to use the new version:")
-    print("    junction restart")
+    print("    warding restart")
 
 
 def _status(args: argparse.Namespace) -> None:
@@ -1502,7 +1502,7 @@ def _status(args: argparse.Namespace) -> None:
         return
     except (urllib.error.URLError, OSError):
         print(f"{PRODUCT_NAME} gateway is not running.")
-        print("  Start it with: junction up")
+        print(f"  Start it with: {CLI_BIN} up")
         return
     except Exception:
         print(f"{PRODUCT_NAME} gateway is running but returned an unexpected response.")
@@ -1750,7 +1750,15 @@ async def _run_task(args: argparse.Namespace) -> None:
     else:
         print(f"Running spec: {spec_path}")
     task_name = getattr(args, "name", "")
-    result = await runner.run(spec_path, name=task_name)
+    try:
+        result = await runner.run(
+            spec_path, name=task_name, workspace_dir=getattr(args, "workspace", "")
+        )
+    except ValueError as exc:
+        # Refusals raised before the run starts: an empty spec, or a
+        # --workspace that resolves to a sensitive/credential path.
+        print(f"❌ {exc}", file=sys.stderr)
+        sys.exit(1)
 
     label = result.name or result.task_id
     if result.status == "completed":
@@ -1803,7 +1811,7 @@ def _service_cmd(args: argparse.Namespace) -> int:
             resources=f"rc={rc}",
         )
         return rc
-    print("Usage: junction service {install|uninstall|status}", file=sys.stderr)
+    print("Usage: warding service {install|uninstall|status}", file=sys.stderr)
     return 2
 
 
@@ -1844,7 +1852,7 @@ def _sandbox_cmd(args: argparse.Namespace) -> int:
         # be polled by the desktop app on every launch.
         return service_controller.sandbox_profile_status(path)
     print(
-        "Usage: junction sandbox {install-profile|remove-profile|status}",
+        "Usage: warding sandbox {install-profile|remove-profile|status}",
         file=sys.stderr,
     )
     return 2
@@ -1936,8 +1944,8 @@ def _logs_cmd(args: argparse.Namespace) -> None:
     if not fallback.exists():
         print(
             "No gateway logs found. Either install the service "
-            "(`junction service install`) or start the gateway "
-            "(`junction up`).",
+            "(`warding service install`) or start the gateway "
+            "(`warding up`).",
             file=sys.stderr,
         )
         sys.exit(1)

@@ -294,7 +294,7 @@ def migrate_env_secrets(
                 f"vault already has an entry for {key!r} that cannot be "
                 f"decrypted ({exc.__class__.__name__}); refusing to migrate so "
                 f"the usable plaintext in the .env is not lost. Repair or remove "
-                f"the vault entry, then re-run `junction secrets import --apply`."
+                f"the vault entry, then re-run `warding secrets import --apply`."
             ) from exc
         if secret is None:
             # Listed a moment ago but gone now — a concurrent delete between
@@ -304,7 +304,7 @@ def migrate_env_secrets(
             raise MigrationConflictError(
                 f"vault entry for {key!r} disappeared during migration "
                 f"(concurrent change); no rewrite performed. Re-run "
-                f"`junction secrets import --apply` to reconcile."
+                f"`warding secrets import --apply` to reconcile."
             )
         stored = secret.reveal()
         # The vault entry decrypts, but to a DIFFERENT value than the .env
@@ -322,8 +322,8 @@ def migrate_env_secrets(
                 f"vault already has an entry for {key!r} whose value differs "
                 f"from the plaintext in the .env; refusing to migrate so neither "
                 f"value is silently discarded. Reconcile them (update the .env to "
-                f"match the vault, or `junction secrets set {key}`), then re-run "
-                f"`junction secrets import --apply`."
+                f"match the vault, or `warding secrets set {key}`), then re-run "
+                f"`warding secrets import --apply`."
             )
         already_in_vault.add(key)
     to_store = {k: v for k, v in to_migrate.items() if k not in already_in_vault}
@@ -357,7 +357,7 @@ def migrate_env_secrets(
         if not platform_compat.try_acquire_lock(lock_fd, exclusive=True):
             raise MigrationConflictError(
                 f"{ep} is being written by another process; no rewrite "
-                f"performed. Re-run `junction secrets import --apply` to finish."
+                f"performed. Re-run `warding secrets import --apply` to finish."
             )
         try:
             current_bytes = ep.read_bytes()
@@ -366,7 +366,7 @@ def migrate_env_secrets(
         if current_bytes != original_bytes:
             raise MigrationConflictError(
                 f"{ep} changed during migration (a concurrent write); no rewrite "
-                f"performed. Re-run `junction secrets import --apply` to finish "
+                f"performed. Re-run `warding secrets import --apply` to finish "
                 f"rewriting the .env references."
             )
 
@@ -402,7 +402,7 @@ def migrate_env_secrets(
                     raise MigrationConflictError(
                         f"another writer stored {key!r} in the vault during the "
                         f"import; no rewrite performed so its value is not "
-                        f"overwritten. Re-run `junction secrets import --apply` "
+                        f"overwritten. Re-run `warding secrets import --apply` "
                         f"to reconcile."
                     )
                 newly_written[key] = entry
@@ -460,19 +460,19 @@ def migrate_env_secrets(
                             f"vault entry for {_key!r} could not be read after "
                             f"storing ({_exc.__class__.__name__}); no .env rewrite "
                             f"performed so the plaintext is not lost — re-run "
-                            f"`junction secrets import --apply`."
+                            f"`warding secrets import --apply`."
                         ) from _exc
                     if _entry is None:
                         raise MigrationConflictError(
                             f"vault entry for {_key!r} was deleted during migration; "
                             f"no .env rewrite performed so the plaintext is not lost "
-                            f"— re-run `junction secrets import --apply`."
+                            f"— re-run `warding secrets import --apply`."
                         )
                     if _entry.reveal() != _expected:
                         raise MigrationConflictError(
                             f"vault entry for {_key!r} was changed during migration; "
                             f"no .env rewrite performed so the plaintext is not lost "
-                            f"— re-run `junction secrets import --apply`."
+                            f"— re-run `warding secrets import --apply`."
                         )
 
                 # The .env was decoded with errors="surrogateescape", so new_text may
@@ -500,7 +500,7 @@ def migrate_env_secrets(
                     raise MigrationConflictError(
                         f"{ep} changed during migration (a concurrent write) just "
                         f"before the rewrite; no rewrite performed so the concurrent "
-                        f"change is not clobbered. Re-run `junction secrets import "
+                        f"change is not clobbered. Re-run `warding secrets import "
                         f"--apply` to finish rewriting the .env references."
                     )
                 atomic_write(
@@ -563,7 +563,7 @@ def migrate_env_secrets(
                                     "secrets import rollback: failed to delete vault"
                                     " entry for %r (%s: %s). The entry may persist"
                                     " and shadow future rotations — run"
-                                    " `junction secrets rm %s` to clean it up.",
+                                    " `warding secrets rm %s` to clean it up.",
                                     _k,
                                     type(_rb_exc).__name__,
                                     _rb_exc,
@@ -613,7 +613,7 @@ def format_report(report: MigrationReport) -> str:
             lines.append("")
             lines.append("The original values were REWRITTEN in place to secret:// references;")
             lines.append("the plaintext is no longer present for these keys. Any values that")
-            lines.append("Junction does not recognize as credentials were left untouched. If")
+            lines.append("Warding does not recognize as credentials were left untouched. If")
             lines.append(f"you keep a backup of {ep}, delete the plaintext copy once verified.")
 
     if report.already_referenced:

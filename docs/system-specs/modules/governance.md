@@ -864,10 +864,16 @@ real arguments** the ACP event carries:
 (`llm_helpers`, `subagent`, `task_executor`, `task_planner`, dashboard
 `chat_runner`, slack `handler`). **The `EVENT_PERMISSION_REQUEST` event the gate
 runs on must carry `raw_tool_params`** — `acp/client.py` caches the structured
-rawInput at the ToolCall notification (`_tool_call_params`, keyed by
-`toolCallId`) and attaches it to the later permission event, because that
-message itself carries only a truncated title. Without this the two arg-derived
-scopes would be inert in production.
+rawInput at the ToolCall notification AND at each `tool_call_update` refinement
+(`_tool_call_params`, keyed by `toolCallId`; claude-agent-acp streams the
+initial rawInput empty) and attaches it to the later permission event, because
+that message itself carries only a truncated title. For spec-family harnesses
+the client also recovers the arguments from the permission frame's own
+`rawInput`, `locations` and diff blocks (Codex sends a file change with no
+rawInput at all) and hands every touched file to the gate under a list-valued
+`paths` argument that `classify_tool_args` governs element by element — see
+[acp-client.md](acp-client.md) § Tool Permission Protocol. Without this the two
+arg-derived scopes would be inert in production. The mirrored readers cap distinct spellings and raw list entries at `MAX_TARGET_PATHS` (2048); an oversized `paths` list returns the shared overlong `PATH_LIMIT_SENTINEL` before iteration, including repeated or non-path entries. `hooks.on_tool_call` enforces that count/length hard deny before governance evaluates scopes, and ACP location/diff recovery preserves it across merges.
 
 The `kind` field is **spec-optional**: some ACP backends omit it (it arrives
 `""`). `classify_tool_args` therefore falls back to the param SHAPE when the kind

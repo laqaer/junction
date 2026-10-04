@@ -387,9 +387,9 @@ _LINUX_REMEDY_GUIDANCE = {
         "This host looks like Ubuntu 23.10 or newer with "
         "kernel.apparmor_restrict_unprivileged_userns=1: the user namespace was "
         "created, then the mount namespace was denied because the restricted "
-        "AppArmor profile carries no CAP_SYS_ADMIN. Run `junction service "
+        "AppArmor profile carries no CAP_SYS_ADMIN. Run `warding service "
         "install` to install the narrow junction-userns AppArmor profile (it "
-        "grants only `userns` and applies to the junction service alone). "
+        "grants only `userns` and applies to the gateway service alone). "
         "systemd is what attaches that profile, so the service is the only path "
         "that applies it — a gateway started by hand stays unconfined, and "
         "`aa-exec -p` cannot fix that for an unprivileged user because entering "
@@ -1183,6 +1183,22 @@ def warm_backend(timeout: float = _WARM_JOIN_TIMEOUT_SECS) -> None:
     thread = _warm_thread
     if thread is not None and thread.is_alive():
         thread.join(timeout)
+
+
+def warm_backend_before_loop() -> None:
+    """``warm_backend`` for a CLI command about to ``asyncio.run`` a harness spawn.
+
+    Every CLI invocation is a fresh process, so its probe cache is always cold,
+    and the spawn inside ``asyncio.run`` reaches ``detect_backend`` on a running
+    loop, where a cold cache is refused as "no sandbox backend". Calling this
+    first, outside the loop, is what lets ``warding chat`` / ``warding run``
+    spawn at all on Linux. A failed warm is non-fatal: the cache stays cold and
+    the self-healing transient path applies, so it never aborts the command.
+    """
+    try:
+        warm_backend()
+    except Exception:
+        logger.debug("sandbox warm-up failed; the spawn will re-probe", exc_info=True)
 
 
 def _probe_unshare() -> bool:
@@ -2285,7 +2301,7 @@ def _delegate_to_kiro_internal_sandbox(
         # backend, raises SandboxUnavailableError rather than run unaudited.
         logger.warning(
             "SEL audit failed for sandbox delegation — refusing unaudited "
-            "delegation; falling back to Junction's sandbox policy",
+            "delegation; falling back to Warding's sandbox policy",
             exc_info=True,
         )
         return None
@@ -2296,7 +2312,7 @@ def _delegate_to_kiro_internal_sandbox(
         _kiro_delegation_warned = True
         logger.warning(
             "SECURITY: delegating this %s kiro-cli spawn to kiro-cli's internal "
-            "sandbox and skipping Junction's OS wrapper. Env scrubbing still "
+            "sandbox and skipping Warding's OS wrapper. Env scrubbing still "
             "applies.",
             "Windows" if sys.platform == "win32" else "macOS",
         )
@@ -2753,7 +2769,7 @@ def _no_backend_guidance() -> str:
             # it, and it is the same binary the desktop app already spawns.
             cli = _bundled_cli_invocation() or "junction"
             where = (
-                " (that path is inside the running app, so run it while Junction " "is open)"
+                " (that path is inside the running app, so run it while Warding " "is open)"
                 if cli != "junction"
                 else ""
             )
@@ -2779,7 +2795,7 @@ def _no_backend_guidance() -> str:
         return (
             base
             + (
-                "Run `junction service install` to install the profile and have "
+                "Run `warding service install` to install the profile and have "
                 "systemd apply it to the gateway unit. Do NOT set the sysctl to 0: "
                 "that disables a kernel-wide protection for every application on the "
                 "machine. "
@@ -3058,7 +3074,7 @@ def _warn_first_party_unconfined_once(argv: list[str]) -> None:
     _warn_first_party_unconfined_once._warned = True  # type: ignore[attr-defined]
     logger.warning(
         "SECURITY: no OS-level sandbox backend on this host — spawning a "
-        "first-party fixed-argv Junction helper UNCONFINED (its full command "
+        "first-party fixed-argv Warding helper UNCONFINED (its full command "
         "line is derived inside this package with no agent, repo, or "
         "user-config input; the credential environment is scrubbed). "
         "Hostile-input spawn paths are unaffected: they keep failing closed "
@@ -3728,12 +3744,12 @@ def wrap_argv(
                 guidance = (
                     "This host's sandbox is NOT broken: the kernel reports this "
                     "process is already inside a macOS Seatbelt sandbox that "
-                    "Junction did not create, and Seatbelt cannot nest, so "
-                    "sandbox-exec fails with EPERM. Spawns under Junction's OWN "
+                    "Warding did not create, and Seatbelt cannot nest, so "
+                    "sandbox-exec fails with EPERM. Spawns under Warding's OWN "
                     "sandbox are unaffected — they carry an isolation marker and "
                     "pass through. The usual cause is kiro-cli's internal "
                     'sandbox: set {"sandbox": false} in '
-                    "~/.kiro/settings/amazon-internal.json so Junction's own "
+                    "~/.kiro/settings/amazon-internal.json so Warding's own "
                     "profile owns isolation (that profile is the one that hides "
                     "the credential directories, so this keeps isolation rather "
                     "than weakening it), then restart the gateway. Other outer "
@@ -3753,7 +3769,7 @@ def wrap_argv(
                     f"(probe: {probe_reason}). "
                     "This is a container policy restriction, not a host kernel "
                     "limitation. To resolve, choose one of:\n"
-                    "  (a) Use the Junction custom seccomp profile (adds "
+                    "  (a) Use the Warding custom seccomp profile (adds "
                     "unconditional unshare/clone/mount allows to the Docker "
                     "default — less permissive than seccomp=unconfined):\n"
                     "        # With a repo checkout:\n"
@@ -3786,7 +3802,7 @@ def wrap_argv(
                     "agent.sandbox_allow_unsandboxed_exec — that flag is set on "
                     "this host and is deliberately powerless against the policy, "
                     "so editing config.json cannot resolve this. A governed host "
-                    "also withholds the first-party carve-out, so Junction's own "
+                    "also withholds the first-party carve-out, so Warding's own "
                     "built-in spawns are refused here too: this host runs no "
                     "agent subprocess until it has a working sandbox backend "
                     "(see docs/system-specs/modules/security.md) or the policy "

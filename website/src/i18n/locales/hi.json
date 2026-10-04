@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "टोकन URL या सीधा टोकन पेस्ट करें…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "टनल एज ने रेट-लिमिट लगा दिया (HTTP 429) — कम समय में बहुत ज़्यादा अनुरोध। डैशबोर्ड अपने आप फिर कोशिश करता है; अगर यह बना रहे, तो कुछ सेकंड रुककर रीलोड करें।",
       "session_expired": "सत्र समाप्त हो गया।",
-      "session_expired_sign_in_again": "सत्र समाप्त हो गया। टर्मिनल में junction token चलाएँ, फिर फिर से साइन इन करने के लिए इस पृष्ठ के शीर्ष पर बैनर में URL पेस्ट करें।",
+      "session_expired_sign_in_again": "सत्र समाप्त हो गया। टर्मिनल में warding token चलाएँ, फिर फिर से साइन इन करने के लिए इस पृष्ठ के शीर्ष पर बैनर में URL पेस्ट करें।",
       "stale_owner_session": "यह सत्र कॉन्फ़िगर किए गए स्वामी से पहले का है। फिर से साइन इन करें।",
-      "stale_owner_session_sign_in_again": "यह सत्र कॉन्फ़िगर किए गए स्वामी से पहले का है (साइन इन JUNCTION_OWNER_ID सेट होने से पहले हुआ था)। टर्मिनल में junction token चलाएँ, फिर फिर से साइन इन करने के लिए इस पृष्ठ के शीर्ष पर बैनर में URL पेस्ट करें।",
+      "stale_owner_session_sign_in_again": "यह सत्र कॉन्फ़िगर किए गए स्वामी से पहले का है (साइन इन JUNCTION_OWNER_ID सेट होने से पहले हुआ था)। टर्मिनल में warding token चलाएँ, फिर फिर से साइन इन करने के लिए इस पृष्ठ के शीर्ष पर बैनर में URL पेस्ट करें।",
       "stream_ended_without_completion": "स्ट्रीम पूरी होने से पहले समाप्त हो गई",
       "unexpected_server_response": "सर्वर से अनपेक्षित प्रतिक्रिया"
     }
@@ -529,12 +529,12 @@
         "description": "एक साझा कमरा जहाँ अकेले एक एजेंट की जगह कई एजेंट मिलकर एक समस्या पर काम करते हैं। हर एजेंट को तुम एक भूमिका देते हो, और वे चैनल में प्रगति पोस्ट करते हैं और एक-दूसरे के @mentions का जवाब सबके सामने देते हैं — एजेंट से एजेंट के बीच निजी मैसेजिंग नहीं है, इसलिए पूरी बातचीत पढ़ी जा सकती है, और स्थिति बदलने वाली हर चीज़ के लिए मंज़ूरी देने वाले तुम ही रहते हो। एजेंट चैनल में तब तक बने रहते हैं जब तक उन्हें हटाया न जाए या उनका समय खत्म न हो जाए।",
         "display_name": "चैनल",
         "use_case_1": "एक ही ऑडिट योग्य साझा ट्रांसक्रिप्ट में कई नामित एजेंट भूमिकाओं के साथ घटना प्रतिक्रिया, शोध या कोड समीक्षा चलाएँ।",
-        "configuration_1": "junction app enable channels से छिपा हुआ ऐप सक्षम करें, preset या Custom से चैनल बनाएँ, एजेंट और listen mode तय करें, फिर @mention से काम सौंपें।",
+        "configuration_1": "warding app enable channels से छिपा हुआ ऐप सक्षम करें, preset या Custom से चैनल बनाएँ, एजेंट और listen mode तय करें, फिर @mention से काम सौंपें।",
         "highlight_1": "भूमिका सौंपे गए कई एजेंट एक साझा, पढ़ने योग्य ट्रांसक्रिप्ट में मिलकर काम करते हैं",
         "highlight_2": "एजेंट से एजेंट के बीच निजी मैसेजिंग नहीं — हर बातचीत चैनल में ही होती है",
         "highlight_3": "स्थिति बदलने वाले किसी भी ऑपरेशन के लिए आख़िरी मंज़ूरी तुम्हारी ही रहती है",
         "highlight_4": "एजेंट चैनल में तब तक बने रहते हैं जब तक हटाए न जाएँ या उनका समय खत्म न हो",
-        "highlight_5": "App Store ग्रिड में नहीं दिखता; `junction app enable channels` से चालू करो",
+        "highlight_5": "App Store ग्रिड में नहीं दिखता; `warding app enable channels` से चालू करो",
         "page_label": "चैनल"
       }
     },
@@ -4518,7 +4518,7 @@
         "description": "डायनैमिक वर्कफ़्लो लिखो, चलाओ और देखो: Python स्क्रिप्ट, जो आम तौर पर आम अंग्रेज़ी में बताए लक्ष्य से एजेंट तुम्हारे लिए लिख देता है, और जो कई Warding एजेंट को क्रम से चरणों में चलाती हैं। कुछ भी चलने से पहले स्क्रिप्ट को सैंडबॉक्स किए वर्कफ़्लो कमांड के सेट के हिसाब से जाँचा जाता है, इसलिए गलतियाँ बिना चले सामने आ जाती हैं, और उसके बाद पेज रन के आगे बढ़ने पर हर चरण और एजेंट इवेंट स्ट्रीम करता है। शुरू करने के लिए चलाने योग्य उदाहरण ऐप के साथ आते हैं।",
         "display_name": "वर्कफ़्लो",
         "use_case_1": "प्रतिबंधित workflow script को validate और inspect करें या मुख्य multi-agent workflow run को फेज-दर-फेज देखें।",
-        "configuration_1": "junction app enable workflows से छिपा ऐप सक्षम करें; Author में DSL Python validate करें, या असली agent orchestration के लिए chat अथवा MCP workflow tool का उपयोग करके Runs में निगरानी करें।",
+        "configuration_1": "warding app enable workflows से छिपा ऐप सक्षम करें; Author में DSL Python validate करें, या असली agent orchestration के लिए chat अथवा MCP workflow tool का उपयोग करके Runs में निगरानी करें।",
         "highlight_1": "वर्कफ़्लो चलाने से पहले उसे जाँचो — कुछ भी चले बिना गलतियाँ सामने आ जाती हैं",
         "highlight_2": "रन को लाइव देखो, चरण दर चरण, हर एजेंट की प्रगति के इवेंट के साथ",
         "highlight_3": "स्क्रिप्ट मनमाने Python की जगह सैंडबॉक्स किए वर्कफ़्लो API तक सीमित रहती हैं",
@@ -4970,7 +4970,6 @@
         "install_failed": "इंस्टॉल विफल",
         "install_from_path": "पाथ से इंस्टॉल करें",
         "installing": "इंस्टॉल हो रहा है…",
-        "junction_app_install_path": "junction app install <path>",
         "manage_app_sources": "ऐप स्रोत प्रबंधित करें",
         "path_to_app_directory": "/path/to/app-directory"
       },
@@ -5189,7 +5188,8 @@
       "used": "उपयोग",
       "voice_input": "वॉइस इनपुट",
       "finishing": "पूरा हो रहा है…",
-      "keep_holding_to_record": "रिकॉर्ड करने के लिए दबाए रखें"
+      "keep_holding_to_record": "रिकॉर्ड करने के लिए दबाए रखें",
+      "harness": "{{name}} पर चल रहा है"
     },
     "chatPane": {
       "agent_list": "एजेंट सूची",
@@ -6082,6 +6082,7 @@
       "no_matches": "कोई मेल नहीं"
     },
     "modelEffortDropdown": {
+      "check_again": "दोबारा जाँचो",
       "default_for_agent": "<agent/> का डिफ़ॉल्ट मॉडल",
       "filter_models": "मॉडल फ़िल्टर करें",
       "model_list": "मॉडल सूची",
@@ -6090,6 +6091,10 @@
       "reasoning": "रीज़निंग",
       "set_default_for_agent": "<model/> को <agent/> का डिफ़ॉल्ट मॉडल बनाओ",
       "set_default_for_new_sessions": "नए सेशन के लिए ग्लोबल डिफ़ॉल्ट…",
+      "sign_in_generic": "{{agent}} में साइन इन करो, फिर दोबारा जाँचो।",
+      "sign_in_run_command": "टर्मिनल में <command/> चलाओ, फिर दोबारा जाँचो।",
+      "sign_in_to_see_models": "{{agent}} के मॉडल देखने के लिए साइन इन करो",
+      "still_not_signed_in": "अभी भी साइन इन नहीं है।",
       "type_to_filter": "फ़िल्टर करने के लिए टाइप करें…"
     },
     "monacoCodeBlock": {
@@ -7284,7 +7289,7 @@
       "no_microphone_found_connect_one_or_pick_a_differ": "कोई माइक्रोफ़ोन नहीं मिला। एक कनेक्ट करें या सेटिंग में कोई दूसरा डिवाइस चुनें।"
     },
     "theme": {
-      "high_contrast": "🔆 हाई कॉन्ट्रास्ट"
+      "high_contrast": "हाई कॉन्ट्रास्ट"
     },
     "useCronActions": {
       "failed_to_cancel_job": "जॉब रद्द करने में विफल",
@@ -8307,6 +8312,9 @@
         "delete": "हटाएँ"
       },
       "errorCard": {
+        "auth_required_run_command": "टर्मिनल में <command/> चलाओ, फिर अपना संदेश दोबारा भेजो।",
+        "auth_required_sign_in": "{{agent}} में साइन इन करो, फिर अपना संदेश दोबारा भेजो।",
+        "auth_required_title": "{{agent}} में साइन इन नहीं है",
         "continue": "जारी रखें",
         "continue_hint": "जहाँ रुका था वहीं से फिर शुरू करें। डिस्क पर लिखा हुआ काम जैसा है वैसा रहेगा।"
       },
@@ -9112,7 +9120,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "किसी भी वर्कट्री को एक\n              अलग, अस्थायी गेटवे के रूप में चालू करता है, ताकि आप अपने लाइव इंस्टेंस को छुए बिना किसी फ़ीचर ब्रांच का QA कर सकें।",
       "branch": "ब्रांच:",
       "build_pending": "बिल्ड बाकी है",
-      "build_pending_restart_gateway_to_apply_junction": "बिल्ड बाकी है — लागू करने के लिए गेटवे रीस्टार्ट करें (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "बिल्ड बाकी है — लागू करने के लिए गेटवे रीस्टार्ट करें (warding restart)",
       "building": "बिल्ड हो रहा है…",
       "build_finished_restarting_gateway": "बिल्ड पूरा हुआ — गेटवे पुनः प्रारंभ हो रहा है…",
       "built": "बिल्ड हो गया",
@@ -9155,7 +9163,7 @@
       "force_remove_confirm_title": "worktree ज़बरन हटाएँ?",
       "force_remove_warning": "चुनी गई worktree में अनमर्ज्ड काम है — हटाना स्थायी है और वापस नहीं लाया जा सकता।",
       "force_remove": "{{name}} बलपूर्वक हटाएं",
-      "gateway_did_not_come_back_within_60s_reload_the": "गेटवे 60s में वापस नहीं आया — पेज खुद रीलोड करें, या `junction logs` देखें।",
+      "gateway_did_not_come_back_within_60s_reload_the": "गेटवे 60s में वापस नहीं आया — पेज खुद रीलोड करें, या `warding logs` देखें।",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "सिंक के बीच गेटवे पुनः आरंभ हुआ — रन खो गया; git स्थिति जाँचें और पुल+बिल्ड दोबारा चलाएँ",
       "git_status_failed": "git status विफल",
       "has_unmerged_work_removing_deletes_permanently": "इसमें अनमर्ज्ड काम है — हटाने पर यह स्थायी रूप से मिट जाएगा।",
@@ -10003,7 +10011,7 @@
         "path_placeholder": "/पथ/मॉडल.gguf",
         "reembed_done": "फिर से एम्बेड करना पूर्ण",
         "reembed_failed": "फिर से एम्बेड करना विफल",
-        "reembed_failed_hint": "मॉडल लागू नहीं किया जा सका। विवरण के लिए होवर करें, या 'junction doctor' चलाएँ।",
+        "reembed_failed_hint": "मॉडल लागू नहीं किया जा सका। विवरण के लिए होवर करें, या 'warding doctor' चलाएँ।",
         "reembedding": "स्मृतियाँ फिर से एम्बेड हो रही हैं…",
         "subtitle": "स्थानीय रूप से चलता है। इसे बदलने पर संग्रहीत स्मृतियाँ पृष्ठभूमि में फिर से एम्बेड होती हैं।",
         "title": "एम्बेडिंग मॉडल",
@@ -10164,7 +10172,7 @@
         "no_lessons": "कोई सीख नहीं",
         "no_lessons_yet": "अभी तक कोई सबक नहीं",
         "no_sessions_to_consolidate_start_a_chat_first": "समेकित करने के लिए कोई सत्र नहीं — पहले चैट शुरू करें",
-        "persistent_lessons_injected_into_every_session_a": "हर सेशन में डाले जाने वाले स्थायी सबक। Task Runner की विफलताओं से अपने-आप निकाले जाते हैं। खुद जोड़ने के लिए 'junction learn add' चलाएँ। वेक्टर मेमोरी चालू होने पर सबक सिमेंटिक टैब में lesson.* एंट्रीज़ के रूप में संभाले जाते हैं।",
+        "persistent_lessons_injected_into_every_session_a": "हर सेशन में डाले जाने वाले स्थायी सबक। Task Runner की विफलताओं से अपने-आप निकाले जाते हैं। खुद जोड़ने के लिए 'warding learn add' चलाएँ। वेक्टर मेमोरी चालू होने पर सबक सिमेंटिक टैब में lesson.* एंट्रीज़ के रूप में संभाले जाते हैं।",
         "preference": "प्राथमिकता",
         "preferences": "प्राथमिकताएँ",
         "projects": "प्रोजेक्ट",
@@ -11603,7 +11611,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "रिमोट इंस्टेंस एक साथ वार्म (लाइव टनल) रहते हैं; बाकी मांग पर पुनः कनेक्ट होते\n                हैं। ट्यून करने के लिए उपयोग करो:",
         "is_installed_somewhere_non_standard_on_the_remot": "रिमोट पर किसी\n            गैर-मानक जगह इंस्टॉल है। PATH पर सामान्य pip इंस्टॉल के लिए खाली छोड़ें। इसे खोजने के\n            लिए, रिमोट होस्ट पर चलाएँ:",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "लोड हो रहा है…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "रिमोट इंस्टेंस प्रबंधन",
@@ -12579,7 +12587,20 @@
         "kind_research": "शोध",
         "kind_docs": "दस्तावेज़ लिखना",
         "kind_quick": "छोटे बदलाव",
-        "kind_bulk": "बड़े पैमाने पर बदलाव"
+        "kind_bulk": "बड़े पैमाने पर बदलाव",
+        "chat_harness_title": "चैट का एजेंट",
+        "chat_harness_description": "नई चैट का जवाब देने वाला कोडिंग एजेंट। जो चैट पहले से खुली है, वह खत्म होने तक उसी एजेंट पर रहती है जिससे शुरू हुई थी। नीचे की रूटिंग सिर्फ़ यह तय करती है कि सब-एजेंट के काम कहाँ जाएँ।",
+        "chat_harness_auto": "स्वचालित",
+        "chat_harness_auto_description": "पहला इंस्टॉल किया हुआ एजेंट। अभी: {{agent}}।",
+        "chat_harness_auto_none": "पहला इंस्टॉल किया हुआ एजेंट। अभी कोई इंस्टॉल नहीं है।",
+        "chat_harness_active": "सक्रिय",
+        "chat_harness_not_installed_reason": "इंस्टॉल नहीं है। पहले नीचे इंस्टॉल करो, फिर यहाँ चुनो।",
+        "chat_harness_needs_login_note": "इसे अभी चुन सकते हो। साइन इन होने तक इस पर चैट विफल होंगी।",
+        "chat_harness_starts_on": "नई चैट {{agent}} पर शुरू होंगी।",
+        "chat_harness_none_ready": "अभी कोई इंस्टॉल किया हुआ एजेंट चैट शुरू नहीं कर सकता। नीचे से एक इंस्टॉल करो।",
+        "chat_harness_save_failed": "चैट का एजेंट बदला नहीं जा सका।",
+        "chat_harness_unknown": "{{productName}} उस एजेंट को नहीं चला सकता, इसलिए कुछ नहीं बदला गया।",
+        "chat_harness_overridden": "सेव हो गया, लेकिन config.local.json में दूसरा एजेंट तय है और वही लागू होता है।"
       }
     },
     "settingsPage": {

@@ -118,7 +118,7 @@ _CALL_KEY_TOOL = "tool"
 _CALL_KEY_ARGS = "args"
 _CALL_KEYS: frozenset[str] = frozenset({_CALL_KEY_TOOL, _CALL_KEY_ARGS})
 
-_USAGE = """junction computer — desktop automation (computer use) diagnostics
+_USAGE = """warding computer — desktop automation (computer use) diagnostics
 
 Commands:
   doctor           Show platform support, whether computer use is enabled, and
@@ -170,7 +170,7 @@ def run_computer(args: list[str]) -> None:
     if cmd == "call":
         _cmd_call(args[1:])
         return
-    print(f"Unknown command: {cmd}. Run 'junction computer' for help.", file=sys.stderr)
+    print(f"Unknown command: {cmd}. Run 'warding computer' for help.", file=sys.stderr)
     sys.exit(_EXIT_PROBLEM)
 
 
@@ -204,7 +204,7 @@ def _cmd_doctor(*, as_json: bool) -> None:
         print()
         print(
             "Note: these permission readings are advisory. macOS attributes a\n"
-            "grant to the process that launched Junction, so 'missing' does not\n"
+            "grant to the process that launched Warding, so 'missing' does not\n"
             "always mean unavailable — and computer use is never gated on them."
         )
 

@@ -298,7 +298,7 @@ def _tui(args: argparse.Namespace) -> None:
 
     if not tui_js:
         print("TUI not built. Run: cd tui && npm install && npm run build")
-        print("  (or use: junction chat  /  junction up)")
+        print("  (or use: warding chat  /  warding up)")
         sys.exit(1)
 
     # Check node against the shared floor
@@ -388,6 +388,9 @@ async def _chat(message: str | None, model: str | None, agent: str | None = None
 
 def _run_chat(message: str | None, model: str | None, agent: str | None = None) -> None:
     """Run chat at the sync CLI boundary and render SIGINT as a clean exit."""
+    from junction.sandbox import warm_backend_before_loop
+
+    warm_backend_before_loop()
     try:
         asyncio.run(_chat(message, model, agent=agent))
     except KeyboardInterrupt:
@@ -888,7 +891,7 @@ async def _answer_permission(
             _print_permission_notice(
                 f"\nDenied automatically: {safe_title} needs approval, "
                 "and this invocation cannot ask.\n"
-                "   Run `junction chat` from a terminal to approve tool calls."
+                "   Run `warding chat` from a terminal to approve tool calls."
             )
         except Exception:
             logger.warning("Could not prepare the CLI noninteractive-denial notice", exc_info=True)

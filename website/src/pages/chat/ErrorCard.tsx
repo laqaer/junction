@@ -1,6 +1,8 @@
 import { memo } from 'react'
-import { Loader2, Play } from 'lucide-react'
+import { Trans } from 'react-i18next'
+import { Loader2, LogIn, Play } from 'lucide-react'
 
+import { authRequiredOf } from '../../lib/authRequired'
 import { i18nT } from '../../i18n/t'
 import { useLanguageGeneration } from '../../i18n/useLanguageGeneration'
 
@@ -15,6 +17,12 @@ export interface ErrorCardProps {
   onContinue?: () => void
   /** True while a continue request is in flight, so the press cannot double-fire. */
   continuing?: boolean
+  /**
+   * The row's `meta`. An `auth_required` code turns the card into the translated
+   * sign-in notice built from the agent and command the gateway named, and drops
+   * the Continue action: nothing can resume until the user signs in.
+   */
+  meta?: Record<string, unknown>
 }
 
 /**
@@ -30,8 +38,36 @@ export interface ErrorCardProps {
  * resumable — a permanently greyed control on a red card reads as a broken
  * feature, and there is no state the user could reach that would enable it.
  */
-export const ErrorCard = memo(function ErrorCard({ content, onContinue, continuing }: ErrorCardProps) {
+export const ErrorCard = memo(function ErrorCard({ content, onContinue, continuing, meta }: ErrorCardProps) {
   useLanguageGeneration() // memo() bails out of the provider-level repaint; subscribe directly
+  const signIn = authRequiredOf(meta)
+  if (signIn) {
+    return (
+      <div
+        className="bg-warn-subtle ring-1 ring-inset forced-colors:border ring-warn/25 rounded-md self-center w-full max-w-full min-w-0 px-3 py-2.5 flex items-start gap-2.5 text-[13px] leading-5 animate-scale-in"
+        data-testid="error-card"
+        data-code="auth_required"
+        data-harness={signIn.harness}
+      >
+        <LogIn className="lucide-inline shrink-0 mt-[3px] text-warn" aria-hidden="true" />
+        <div className="min-w-0 flex flex-col gap-0.5" style={{ overflowWrap: 'anywhere' }}>
+          <p className="m-0 font-medium text-text-strong" data-testid="error-card-title">
+            {i18nT('pages.chat.errorCard.auth_required_title', { agent: signIn.agent })}
+          </p>
+          <p className="m-0 text-muted" data-testid="error-card-detail">
+            {signIn.login
+              ? (
+                <Trans
+                  i18nKey="pages.chat.errorCard.auth_required_run_command"
+                  components={{ command: <code className="font-mono text-[12px] text-text bg-bg-hover rounded px-1 py-px">{signIn.login}</code> }}
+                />
+              )
+              : i18nT('pages.chat.errorCard.auth_required_sign_in', { agent: signIn.agent })}
+          </p>
+        </div>
+      </div>
+    )
+  }
   if (!onContinue) {
     return (
       <div

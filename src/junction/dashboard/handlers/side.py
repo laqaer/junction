@@ -493,8 +493,8 @@ async def _run_side_turn(
     except AcpAuthRequired as exc:
         # A signed-out CLI is actionable, so surface its own message rather than
         # the generic failure below — the side panel has no other channel to tell
-        # the user what to do. Latch the service signed-out too, so the
-        # fail-closed gates stop trusting a stale ready value.
+        # the user what to do. Record the sign-out against the harness too, so
+        # the fail-closed gates stop trusting a stale ready value.
         logger.warning("Side turn auth required: slot=%s run_id=%s", slot.key, run_id)
         # Non-retryable: every queued question would hit the same wall. Draining
         # would spend the whole queue on identical failures and leave nothing to
@@ -503,9 +503,9 @@ async def _run_side_turn(
         auth_required = True
         # Local import: chat_runner imports from this package, so a module-level
         # import would close a cycle.
-        from junction.dashboard.chat_runner import _mark_kiro_signed_out
+        from junction.dashboard.chat_runner import _record_auth_required
 
-        _mark_kiro_signed_out(state)
+        await _record_auth_required(state, exc)
         broadcast_side_result(
             state,
             slot_key=slot.key,

@@ -106,7 +106,7 @@ def write_config() -> Path | None:
     except OSError:
         logger.warning(
             "could not write the browser launch config at %s; playwright-cli will "
-            "fall back to its own default browser channel, which Junction does "
+            "fall back to its own default browser channel, which Warding does "
             "not install",
             path,
         )

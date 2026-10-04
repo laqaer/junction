@@ -3058,7 +3058,7 @@ async def test_sync_refuses_without_a_repo():
     with patch.object(mod, "MAIN_REPO", ""):
         res = await mod._sync_start_locked()
     assert res["ok"] is False
-    assert "no Junction checkout" in res["error"]
+    assert "no Warding checkout" in res["error"]
 
 
 @pytest.mark.asyncio
@@ -5000,7 +5000,7 @@ async def test_loaded_but_inactive_user_unit_is_not_drivable(monkeypatch):
     assert "(user_unit_inactive)" not in reason
     # And it composes into the staged notice, which leads with the remedy.
     notice = mod._staged_notice("main", "user_unit_inactive")
-    assert notice.index("junction restart") < notice.index("not running")
+    assert notice.index("warding restart") < notice.index("not running")
 
 
 @pytest.mark.asyncio

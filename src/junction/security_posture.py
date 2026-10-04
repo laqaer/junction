@@ -123,7 +123,7 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
         "browser_cli/install.py",
         "The stderr of a failed `npm install -g @playwright/cli` / browser download, "
         "which reaches TWO surfaces: a `logger.warning` line (durable, and pasted "
-        "into bug reports via `junction logs`) and the Settings > Browser error card. "
+        "into bug reports via `warding logs`) and the Settings > Browser error card. "
         "npm quotes the command's own environment back on failure, so the text can "
         "carry a registry `_authToken`, an inline-credential proxy URL, or a "
         "`*_TOKEN=` echo -- shapes the shared credential family does NOT match, so "
@@ -234,7 +234,7 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
     (
         "Session transfer bundle",
         "dashboard/session_transfer.py",
-        "Transcript content copied to another Junction instance over an Instances "
+        "Transcript content copied to another Warding instance over an Instances "
         "tunnel. The bundle LEAVES this host, so it is an output boundary: a "
         "transcript written before the redactors existed (or carried in from a "
         "channel) can still hold a raw credential on disk, and relying on the "
@@ -267,7 +267,7 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
     (
         "Profile artifact",
         "perf_sampler.py",
-        "Folded-stack profiles written by `junction perf sample`. Frame labels are "
+        "Folded-stack profiles written by `warding perf sample`. Frame labels are "
         "code identifiers and shortened paths, but the artifact exists to be sent "
         "to a maintainer, and py-spy's raw output embeds absolute paths from the "
         "target process — so it is an egress boundary, redacted on the way out.",
@@ -554,7 +554,7 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
     (
         "Onboarding import",
         "onboarding_import.py",
-        "Imported foreign-agent history and config before it enters Junction.",
+        "Imported foreign-agent history and config before it enters Warding.",
     ),
     (
         "Discord / Telegram / WeCom / Webex",
@@ -1025,7 +1025,7 @@ _REDACTION_SINKS: tuple[tuple[str, str, str], ...] = (
     (
         "Diagnostics support bundle",
         "diagnostics.py",
-        "The redacted zip built by `junction doctor --bundle` and Settings › About › "
+        "The redacted zip built by `warding doctor --bundle` and Settings › About › "
         "Report a Problem, plus the pre-filled GitHub issue URL it returns. The most "
         "external boundary in this list: the artifact exists to be attached to a "
         "PUBLIC issue, and its members are raw gateway/kiro-cli logs and crash "
@@ -1552,7 +1552,7 @@ def _sensitive_path_items() -> list[PostureItem]:
         # as ours just because it shares a string prefix.
         first = entry.split("/", 1)[0]
         if first in own:
-            detail = "Junction trust root — the agent can neither read nor write it"
+            detail = "Warding trust root — the agent can neither read nor write it"
         else:
             detail = "Third-party credential store"
         items.append(PostureItem(label=f"~/{entry}", detail=detail))

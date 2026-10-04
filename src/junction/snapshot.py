@@ -640,7 +640,7 @@ def snapshot_main(
     if parsed is None:
         p = argparse.ArgumentParser(
             prog="junction-snapshot",
-            description="Create a portable .tar.gz snapshot of Junction state.",
+            description="Create a portable .tar.gz snapshot of Warding state.",
         )
         p.add_argument("output_dir", nargs="?", default=_default_snapshot_dir())
         p.add_argument("--keep", type=int, default=7)
@@ -1386,7 +1386,7 @@ def _is_gateway_running() -> bool:
 def restore_main(argv: list[str] | None = None, *, parsed: argparse.Namespace | None = None) -> int:
     if parsed is None:
         p = argparse.ArgumentParser(
-            prog="junction-restore", description="Restore Junction state from a snapshot."
+            prog="junction-restore", description="Restore Warding state from a snapshot."
         )
         p.add_argument("snapshot", nargs="?")
         p.add_argument("--mode", choices=("replace", "merge"))

@@ -2962,7 +2962,7 @@ class TestRestartReadinessVerdict:
         # and the log is where the reason is.
         assert "exit status 1" in out
         assert "4321" in out
-        assert "junction logs -f" in out
+        assert "warding logs -f" in out
         # The audit must record what actually happened, not an optimistic
         # "allowed" logged before any verdict existed.
         assert self._outcomes(mock_sel) == ["denied"]
@@ -3596,7 +3596,7 @@ class TestDoctorMcpTools:
         out = capsys.readouterr().out
         assert "@junction-core: ❌ missing from mcpServers" in out
         assert "@junction-cron: ❌ missing from mcpServers" in out
-        assert "re-run `junction setup`" in out
+        assert "re-run `warding setup`" in out
         assert "@junction-core config" in issues
         assert "@junction-cron config" in issues
         probe_mock.assert_not_called()
@@ -5180,7 +5180,7 @@ class TestPrintTokenUrl:
         _print_token_url(7777)
 
         out = capsys.readouterr().out
-        assert "junction token" in out
+        assert "warding token" in out
 
     def test_fallback_on_no_secret(self, tmp_path, capsys, monkeypatch):
         from junction.cli_server import _print_token_url
@@ -5191,7 +5191,7 @@ class TestPrintTokenUrl:
         _print_token_url(7777)
 
         out = capsys.readouterr().out
-        assert "junction token" in out
+        assert "warding token" in out
 
 
 @pytest.mark.skipif(

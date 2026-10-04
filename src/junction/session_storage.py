@@ -932,7 +932,7 @@ def reclaim_block_reason() -> str:
                 return (
                     f"{len(refusals)} other instance(s) sharing this kiro-cli session "
                     f"store make reclaiming unsafe ({listed}). Evict them with "
-                    "`junction pod down <name>` to reclaim from here."
+                    "`warding pod down <name>` to reclaim from here."
                 )
         return ""
     # An isolated instance may reclaim only when its replay store is provably its

@@ -169,7 +169,7 @@ class TestProfileAbsent:
         out = capsys.readouterr().out
         assert "❌" in out
         assert "not installed" in out
-        assert "junction service install" in out
+        assert "warding service install" in out
         assert "cannot be verified from this shell" not in out
         assert issues
 

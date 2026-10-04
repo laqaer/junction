@@ -210,7 +210,7 @@ class TestStopViaService:
 
         monkeypatch.setattr(platform_compat, "find_listening_pids", unreachable)
         cli_server._stop(None)
-        assert "Stopped junction service" in capsys.readouterr().out
+        assert "Stopped the Warding service" in capsys.readouterr().out
         assert sel_rec.calls[0]["resources"].endswith("via=service")
 
     def test_explicit_port_bypasses_the_service(self, monkeypatch, sel_rec, capsys) -> None:
@@ -331,7 +331,7 @@ class TestServiceCmd:
 
     def test_unknown_action_prints_usage_and_returns_2(self, sel_rec, capsys) -> None:
         assert cli_server._service_cmd(argparse.Namespace(service_action=None)) == 2
-        assert "Usage: junction service" in capsys.readouterr().err
+        assert "Usage: warding service" in capsys.readouterr().err
         assert sel_rec.calls == []
 
 
@@ -377,7 +377,7 @@ class TestSandboxCmd:
 
     def test_unknown_action_prints_usage_and_returns_2(self, sel_rec, capsys) -> None:
         assert cli_server._sandbox_cmd(argparse.Namespace(sandbox_action="bogus")) == 2
-        assert "Usage: junction sandbox" in capsys.readouterr().err
+        assert "Usage: warding sandbox" in capsys.readouterr().err
         assert sel_rec.calls == []
 
 
@@ -752,8 +752,11 @@ def taskrunner_env(monkeypatch, tmp_path):
             def __init__(self, **kw) -> None:
                 state["runner_kwargs"] = kw
 
-            async def run(self, spec_path, name=""):
+            async def run(self, spec_path, name="", workspace_dir=""):
                 state["ran"] = (spec_path, name)
+                state["workspace_dir"] = workspace_dir
+                if isinstance(result, Exception):
+                    raise result
                 return result
 
         monkeypatch.setattr(cli_server, "TaskRunner", _Runner)
@@ -797,6 +800,29 @@ class TestRunTask:
         assert taskrunner_env["observed"]  # skill-read observer registered
         out = capsys.readouterr().out
         assert "Task completed" in out and "(3 steps)" in out
+        assert taskrunner_env["workspace_dir"] == ""  # no --workspace: runner default
+
+    def test_workspace_flag_is_forwarded_to_the_run(self, taskrunner_env, tmp_path) -> None:
+        taskrunner_env["install_runner"](_Result("completed"))
+        spec = _spec(tmp_path)
+        args = argparse.Namespace(
+            spec=str(spec), no_test=True, fresh=False, timeout=0, name="", workspace=str(tmp_path)
+        )
+        asyncio.run(cli_server._run_task(args))
+        assert taskrunner_env["workspace_dir"] == str(tmp_path)
+
+    def test_refused_workspace_exits_nonzero_with_the_reason(
+        self, taskrunner_env, tmp_path, capsys
+    ) -> None:
+        taskrunner_env["install_runner"](ValueError("workspace_dir resolves to a sensitive path"))
+        spec = _spec(tmp_path)
+        args = argparse.Namespace(
+            spec=str(spec), no_test=True, fresh=False, timeout=0, name="", workspace="~/.ssh"
+        )
+        with pytest.raises(SystemExit) as exc:
+            asyncio.run(cli_server._run_task(args))
+        assert exc.value.code == 1
+        assert "sensitive path" in capsys.readouterr().err
 
     def test_builtin_sync_runs_through_the_explicit_seam(
         self, taskrunner_env, tmp_path, monkeypatch
@@ -1121,7 +1147,7 @@ class TestUpdateGitPath:
         assert exc.value.code == 1
         out = capsys.readouterr().out
         assert "diverged" in out
-        assert "junction update --force" in out
+        assert "warding update --force" in out
         assert not any(c[:2] == ["git", "reset"] for c in stub.calls)
 
     def test_diverged_checkout_resets_under_force(self, monkeypatch, git_checkout, capsys) -> None:
@@ -1527,7 +1553,7 @@ class TestUpdateWheelInstaller:
         cli_server._update_wheel(_LAYOUT)
         out = capsys.readouterr().out
         assert "updated to 999.0.0" in out
-        assert "junction restart" in out
+        assert "warding restart" in out
         assert seen[0][:2] == ["sh", "-c"]
 
     def test_unparseable_remote_version_updates_anyway(

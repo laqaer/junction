@@ -292,7 +292,7 @@ def ensure(spec: DatasetSpec | str, *, allow_download: bool = True) -> Path:
         if not allow_download:
             raise CorpusFetchError(
                 f"{spec.key} is not cached at {dest} and downloading is disabled.\n"
-                f"Fetch it with: junction bench fetch {spec.key}   "
+                f"Fetch it with: warding bench fetch {spec.key}   "
                 f"(~{spec.approx_bytes / 1e6:.0f} MB)"
             )
         _download(spec.url, dest)

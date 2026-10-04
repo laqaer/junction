@@ -822,6 +822,11 @@ class TaskRunner:
         )
 
     async def _try_replan(self, run: Project, failed_task: Task) -> bool:
+        if run.status == "failed":
+            # A task already failed the run itself (a headless permission block,
+            # a force_approval gate with no handler). That decided the outcome;
+            # a revised plan must not route around it.
+            return False
         if run.replan_count >= _MAX_REPLAN:
             run.status = "failed"
             clean_err, _ = redact_exfiltration_urls(failed_task.error or "")

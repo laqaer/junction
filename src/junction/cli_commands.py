@@ -99,7 +99,7 @@ from junction.vector_memory import LessonWriteOutcome, VectorMemoryStore, _lesso
 # keystone policy files. The refusal is deliberate — say so, and say what to pass
 # instead, rather than the bare "invalid directory path" this used to print.
 _WS_DIR_OUTSIDE_HOME = (
-    "Error: --dir must resolve inside the Junction data home ({home}); got {given!r}. "
+    "Error: --dir must resolve inside the Warding data home ({home}); got {given!r}. "
     "Pass a relative directory name (e.g. 'workspace-myproject')."
 )
 
@@ -230,7 +230,7 @@ def _spawn(args: argparse.Namespace) -> None:
         _spawn_run(args, base)
         return
 
-    print("Usage: junction spawn {run|list}")
+    print("Usage: warding spawn {run|list}")
 
 
 def _spawn_run(args: argparse.Namespace, base: str) -> None:
@@ -515,7 +515,7 @@ def _handle_workspace(args: argparse.Namespace) -> None:
         print(f"Deleted workspace: {args.name}")
 
     else:
-        print("Usage: junction workspace {list|create|update|delete}")
+        print("Usage: warding workspace {list|create|update|delete}")
 
 
 def _cleanup_app_crons_from_scheduler(app_name: str) -> int:
@@ -648,7 +648,7 @@ def _handle_app(args: argparse.Namespace) -> None:
             if reg.errors:
                 for e in reg.errors:
                     print(f"   ⚠️  {e}")
-            print(f"\n   Run: junction app enable {result.name}")
+            print(f"\n   Run: warding app enable {result.name}")
         else:
             print(f"❌ {result.error}", file=sys.stderr)
             sys.exit(1)
@@ -729,7 +729,7 @@ def _handle_app(args: argparse.Namespace) -> None:
             print("   UI files served with no-store; edits under ui/ trigger a live reload")
             print("   in the dashboard within ~1s (picked up by the gateway watcher).")
             print("   Tip: symlink the installed ui/ to your source tree for zero-copy edits.")
-            print(f"   Turn off with: junction app dev {args.name} --off")
+            print(f"   Turn off with: warding app dev {args.name} --off")
         else:
             print(f"✅ {args.name} dev mode off (normal caching restored)")
 
@@ -764,10 +764,10 @@ def _handle_app(args: argparse.Namespace) -> None:
         print("   Edit app.json, add agents and skills, then:")
         if include_ui:
             print(f"   cd {app_dir}/ui && npm install && npm run build")
-        print(f"   junction app install {app_dir}")
+        print(f"   warding app install {app_dir}")
 
     else:
-        print("Usage: junction app {install|list|enable|disable|uninstall|info|init}")
+        print("Usage: warding app {install|list|enable|disable|uninstall|info|init}")
 
 
 def _handle_agent(args: argparse.Namespace) -> None:
@@ -834,7 +834,7 @@ def _handle_agent(args: argparse.Namespace) -> None:
         _agent_reset_model(args)
 
     else:
-        print("Usage: junction agent {list|create|update|delete|reset-model}")
+        print("Usage: warding agent {list|create|update|delete|reset-model}")
 
 
 def _agent_reset_model(args: argparse.Namespace) -> None:
@@ -1146,7 +1146,7 @@ def _cron(args: argparse.Namespace) -> None:
         _cron_preview(args)
 
     else:
-        print("Usage: junction cron {list|add|update|remove|pause|resume|trigger|preview}")
+        print("Usage: warding cron {list|add|update|remove|pause|resume|trigger|preview}")
 
 
 def _cron_preview(args: argparse.Namespace) -> None:
@@ -1434,7 +1434,7 @@ def _security(args: argparse.Namespace) -> None:
                 f"valid, {result.total - result.valid} tampered."
             )
     else:
-        print("Usage: junction security {audit|deny-list|events|verify}")
+        print("Usage: warding security {audit|deny-list|events|verify}")
 
 
 def _print_denied_command_summary(*, ids: bool) -> None:
@@ -1590,7 +1590,7 @@ def _policy(args: argparse.Namespace) -> None:
             print(f"   • {scope}: {prof.controls[scope]}")
 
     else:
-        print("Usage: junction policy {show|validate|explain <scope> <item>|profile <name>}")
+        print("Usage: warding policy {show|validate|explain <scope> <item>|profile <name>}")
 
 
 async def _run_eval(args: argparse.Namespace) -> None:
@@ -1840,7 +1840,7 @@ def _learn(args: argparse.Namespace) -> None:
                 print(f"No lessons match: {args.query}")
 
         else:
-            print("Usage: junction learn {add|list|remove}")
+            print("Usage: warding learn {add|list|remove}")
     finally:
         vs.close()
 
@@ -1998,7 +1998,7 @@ def _memory_cmd(args: argparse.Namespace) -> None:
         elif action == "import":
             import_file = getattr(args, "file", None)
             if not import_file:
-                print("Usage: junction memory import <file>")
+                print("Usage: warding memory import <file>")
                 return
             path = Path(import_file)
             if not path.is_file():
@@ -2020,7 +2020,7 @@ def _memory_cmd(args: argparse.Namespace) -> None:
                 )
 
         else:
-            print("Usage: junction memory {list|search|show|stats|audit|export|migrate|import}")
+            print("Usage: warding memory {list|search|show|stats|audit|export|migrate|import}")
     finally:
         store.close()
 
@@ -2190,7 +2190,7 @@ def _artifact(args: argparse.Namespace) -> None:
         return
 
     print(
-        "Usage: junction artifact {list|show|save|update|delete|versions}",
+        "Usage: warding artifact {list|show|save|update|delete|versions}",
         file=sys.stderr,
     )
     sys.exit(2)
@@ -2373,8 +2373,8 @@ def _tailnet(args: argparse.Namespace) -> None:
             f"❌ Cannot tell which port the dashboard is on, so refusing to publish "
             f"{port} — nothing is verified to be listening there, and `tailscale "
             f"serve` would expose whatever is. Start the dashboard "
-            f"(`junction dashboard`) and re-run, or name the port yourself with "
-            f"`junction tailnet up --port <port>`.",
+            f"(`warding up`) and re-run, or name the port yourself with "
+            f"`warding tailnet up --port <port>`.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -2404,7 +2404,7 @@ def _tailnet(args: argparse.Namespace) -> None:
         if name and published is True:
             print(f"   URL:        https://{name}")
         if name and enabled and published is not True:
-            print("   Next:       junction tailnet up")
+            print("   Next:       warding tailnet up")
         return
 
     if action not in ("up", "down"):
@@ -2453,9 +2453,9 @@ def _tailnet(args: argparse.Namespace) -> None:
             "your tailnet origin even once published — refusing to publish a "
             "dashboard that would answer 403.\n"
             "   Enable it once, then re-run this command:\n"
-            "     junction config set dashboard.tailscale.enabled true\n"
+            "     warding config set dashboard.tailscale.enabled true\n"
             "   (If config.local.json disables it, set it there instead: "
-            "`junction config set --local dashboard.tailscale.enabled true`.)",
+            "`warding config set --local dashboard.tailscale.enabled true`.)",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -2630,7 +2630,7 @@ def _telemetry(args: argparse.Namespace) -> None:
 
     if want:
         print("✅ Anonymous usage beacon ENABLED (one heartbeat per day).")
-        print("   Run 'junction telemetry status' to see exactly what is sent.")
+        print("   Run 'warding telemetry status' to see exactly what is sent.")
     else:
         print("✅ Anonymous usage beacon DISABLED. Nothing will be sent.")
         print(f"   You can also delete {beacon.INSTALL_ID_FILE} from the data home.")
@@ -2665,11 +2665,11 @@ def _handle_secrets(args: argparse.Namespace) -> None:
             print(
                 f"error: could not read the secrets vault "
                 f"({exc.__class__.__name__}: {exc}); repair or remove the vault "
-                f"store, then re-run `junction secrets import --apply`.",
+                f"store, then re-run `warding secrets import --apply`.",
                 file=sys.stderr,
             )
             sys.exit(1)
         print(format_report(report))
     else:
-        print("Usage: junction secrets import [--apply]", file=sys.stderr)
+        print("Usage: warding secrets import [--apply]", file=sys.stderr)
         sys.exit(1)

@@ -5617,7 +5617,7 @@ class TestAgentSpecRepair:
         status = await self._service(tmp_path).repair_agent_specs("owner")
 
         assert "still missing" in status["agent_spec_repair_error"]
-        assert "junction setup --agent-only --clean" in status["agent_spec_repair_error"]
+        assert "warding setup --agent-only --clean" in status["agent_spec_repair_error"]
         assert status["ready"] is False
 
     @pytest.mark.asyncio

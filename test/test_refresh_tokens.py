@@ -1499,7 +1499,7 @@ def test_tr_u_36_unreadable_counter_file_logs_recovery(
 
     assert str(counter) in caplog.text
     assert "delete only" in caplog.text
-    assert "re-enables unexpired sessions revoked by junction logout" in caplog.text
+    assert "re-enables unexpired sessions revoked by warding logout" in caplog.text
 
     token, _cid, _jti, _exp = generate_refresh_token("alice")  # mint degrades to gen 0
     valid, _, reason, _, _, _ = validate_refresh_token(token)

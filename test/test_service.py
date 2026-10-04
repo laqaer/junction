@@ -1593,13 +1593,13 @@ class TestRestartCommandHint:
         from junction.service import common as svc_common
 
         monkeypatch.setattr(svc_common, "current_platform", lambda: Platform.LAUNCHD)
-        assert svc_common.restart_command_hint() == "junction restart"
+        assert svc_common.restart_command_hint() == "warding restart"
 
     def test_unsupported_returns_service_aware_cli(self, monkeypatch):
         from junction.service import common as svc_common
 
         monkeypatch.setattr(svc_common, "current_platform", lambda: Platform.UNSUPPORTED)
-        assert svc_common.restart_command_hint() == "junction restart"
+        assert svc_common.restart_command_hint() == "warding restart"
 
     def test_never_returns_broken_user_scope_command(self, monkeypatch):
         """Regression: no platform may emit the broken `systemctl --user`
@@ -2544,7 +2544,7 @@ class TestAppArmorNeverFailsTheInstall:
 
         assert rc == 0, "a failed hardening step must not fail the service install"
         out = capsys.readouterr().out
-        assert "junction service installed and started" in out
+        assert "Warding service installed and started" in out
         assert "⚠️" in out, "the failure must still be surfaced, not swallowed"
         assert "could not be installed" in out
 
@@ -3243,7 +3243,7 @@ class TestLauncherStatusTellsTheTruth:
         ok, detail = aa.launcher_status("/home/u/Apps/junction.AppImage")
 
         assert ok is False
-        assert "junction sandbox install-profile" in detail
+        assert "warding sandbox install-profile" in detail
 
     def test_missing_profile_without_an_appimage_points_at_the_service(self, monkeypatch):
         """A foreground gateway has no safe path to attach to."""
@@ -3256,7 +3256,7 @@ class TestLauncherStatusTellsTheTruth:
         ok, detail = aa.launcher_status(None)
 
         assert ok is False
-        assert "junction service install" in detail
+        assert "warding service install" in detail
 
     def test_a_moved_appimage_is_reported_as_not_covered(self, monkeypatch, durable_dir):
         """The kernel reports nothing here — the profile simply never matches."""
@@ -3701,7 +3701,7 @@ class TestHeadlessApiKeyWarning:
         assert warning, "a dropped credential must produce a warning"
         assert self.API_KEY in warning
         assert str(dotenv) in warning, "the warning must name the file to edit"
-        assert "junction service restart" in warning
+        assert "warding restart" in warning
 
     def test_the_signed_out_claim_is_qualified(self, monkeypatch, tmp_path):
         """A login credential store under the baked `HOME` can still authenticate.

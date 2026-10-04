@@ -164,7 +164,7 @@ def status(client: Any | None = None) -> dict[str, Any]:
         detail = "No channel set — enter a channel ID (e.g. C0123456789)."
     elif not has_client:
         detail = (
-            "Junction's own Slack integration is not connected, so there is "
+            "Warding's own Slack integration is not connected, so there is "
             "nothing to post with. This app deliberately stores no Slack token "
             "of its own — configure Slack in Settings and it will work here."
         )

@@ -59,7 +59,7 @@ describe('auth-expired error copy', () => {
     expect(apiErr.status).toBe(403)
     expect(isAuthExpiredError(apiErr)).toBe(true)
     expect(apiErr.message).not.toContain('invalid signature')
-    expect(apiErr.message.toLowerCase()).toContain('junction token')
+    expect(apiErr.message.toLowerCase()).toContain('warding token')
     // The reason is still recoverable for diagnostics even though it is not shown.
     expect(apiErr.body).toContain('invalid signature')
   })

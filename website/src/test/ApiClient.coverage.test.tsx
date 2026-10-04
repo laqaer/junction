@@ -373,7 +373,7 @@ describe('session-expired banner', () => {
     const el = banner() as HTMLElement
     // The recovery instructions are the point of the banner: the command to run
     // and a field to paste the resulting URL into.
-    expect(el.querySelector('code')?.textContent).toBe('junction token')
+    expect(el.querySelector('code')?.textContent).toBe('warding token')
     expect(el.querySelector('input')).not.toBeNull()
     expect(el.querySelector('button')?.textContent).toBe('✕')
   })

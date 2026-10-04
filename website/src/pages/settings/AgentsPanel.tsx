@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, Check, Copy, ExternalLink, Loader2, LogIn, Download, RefreshCw, TimerReset } from 'lucide-react'
+import { Bot, Check, CheckCircle2, Circle, Copy, ExternalLink, Loader2, LogIn, Download, RefreshCw, TimerReset } from 'lucide-react'
 
 import { SettingsCard, SettingsInput, SettingsSection, SettingsSelect, SettingsToggle } from '../../components/settings'
 import { Badge, Btn } from '../../components/ui'
@@ -8,6 +8,8 @@ import ErrorNotice from '../../components/ErrorNotice'
 import {
   api,
   type RoutingBilling,
+  type RoutingChatChoice,
+  type RoutingChatHarness,
   type RoutingHarnessRow,
   type RoutingHarnessesView,
   type RoutingLaneEdit,
@@ -16,6 +18,7 @@ import {
 import { addTab as addDockTerminal } from '../../hooks/useBottomTerminal'
 import { onTerminalReady, sendToTerminalSession, useTerminalEnabled } from '../../utils/terminalRegistry'
 import { copyToClipboard } from '../../utils/clipboard'
+import { parseErrorCode } from '../../utils/errorReport'
 import { fmtNumber, fmtRelative, fmtTime } from '../../i18n/format'
 import { i18nT } from '../../i18n/t'
 
@@ -27,7 +30,8 @@ import { i18nT } from '../../i18n/t'
  * agent keeps its own login, so "Sign in" runs that agent's own login command in
  * the dashboard terminal (or copies it when the terminal is off), and "Check"
  * asks the gateway to start the agent once and report whether it is signed in.
- * Routing controls write the lane for that agent in `routing.json`.
+ * Routing controls write the lane for that agent in `routing.json`. The chat
+ * harness picker writes `agent.acp_backend`, the one agent new chats start on.
  */
 
 export const ROUTING_HARNESSES_QUERY_KEY = ['routing', 'harnesses'] as const
@@ -232,7 +236,11 @@ function HarnessCard({ row, index, checking, onCheck, onEdit, onResume, saving, 
   // Installed but unable to start for want of a piece (Claude Code without its
   // ACP adapter) is still an install problem: offer the install command.
   const needsInstall = !row.installed || status === 'not_installed'
-  const showDetail = !!row.probe.detail && (status === 'error' || status === 'needs_login' || status === 'not_installed')
+  // A sign-in refusal is already said by the badge, the Sign in button and the
+  // command row, in the user's language. The probe's own detail is whatever the
+  // agent wrote (an older record can still hold a raw JSON-RPC error), so it is
+  // never shown for it.
+  const showDetail = !!row.probe.detail && (status === 'error' || status === 'not_installed')
   return (
     <SettingsCard index={index}>
       <div className="flex items-start justify-between gap-4" data-testid={`agent-${row.harness}`}>
@@ -366,11 +374,116 @@ function HarnessCard({ row, index, checking, onCheck, onEdit, onResume, saving, 
   )
 }
 
+/** The row's name: the catalog word for `auto`, else the harness's own product name. */
+function chatChoiceName(choice: RoutingChatChoice): string {
+  return choice.id === 'auto' ? i18nT('pages.settings.agentsPanel.chat_harness_auto') : choice.label
+}
+
+/**
+ * The harness new chats start on. Every entry comes from the gateway's own list
+ * (selectable harnesses plus what the host has installed), never from a list here.
+ * An agent that is not installed cannot be chosen; one that needs sign-in can,
+ * because signing in later is the usual order, and its sign-in command sits beside
+ * it. A chat that is already open keeps the agent it started on, which the
+ * description says in so many words.
+ */
+export function ChatHarnessPicker({ chat, pending, error, onPick }: {
+  chat: RoutingChatHarness
+  /** The agent being saved right now, shown as chosen while the write is in flight. */
+  pending: string | null
+  error: string
+  onPick: (harness: string) => void
+}) {
+  const current = pending ?? chat.configured
+  const startsOn = chat.choices.find(c => c.id === chat.selected)
+  // What `auto` would pick, shown on its own row whichever harness is chosen now.
+  const autoId = chat.choices.find(c => c.id === 'auto')?.resolves_to
+  const autoTarget = autoId ? chat.choices.find(c => c.id === autoId) : undefined
+  return (
+    <SettingsSection title={i18nT('pages.settings.agentsPanel.chat_harness_title')}>
+      <SettingsCard>
+        <div
+          data-setting-label={i18nT('pages.settings.agentsPanel.chat_harness_title')}
+          data-setting-key="agent.acp_backend"
+        >
+          <p className="text-[12px] text-muted mb-2 leading-relaxed">
+            {i18nT('pages.settings.agentsPanel.chat_harness_description')}
+          </p>
+          <div
+            className="flex flex-col gap-1.5"
+            role="radiogroup"
+            aria-label={i18nT('pages.settings.agentsPanel.chat_harness_title')}
+          >
+            {chat.choices.map(choice => {
+              const selected = choice.id === current
+              const unavailable = choice.installed === false
+              const needsLogin = choice.status === 'needs_login'
+              const login = choice.setup?.login ?? ''
+              return (
+                <div
+                  key={choice.id}
+                  data-testid={`chat-harness-${choice.id}`}
+                  className={`rounded-md border px-3 py-2 transition-colors ${selected ? 'border-accent bg-accent-subtle' : 'border-border'} ${unavailable ? 'opacity-70' : ''}`}
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={unavailable || pending !== null}
+                    onClick={() => { if (!selected) onPick(choice.id) }}
+                    className="flex w-full items-center gap-2.5 flex-wrap text-left bg-transparent border-none p-0 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {selected
+                      ? <CheckCircle2 className="lucide-inline text-accent shrink-0" aria-hidden="true" />
+                      : <Circle className="lucide-inline text-muted shrink-0" aria-hidden="true" />}
+                    <span className="text-[13px] font-medium text-text-strong">{chatChoiceName(choice)}</span>
+                    {choice.id !== 'auto' && (
+                      <StatusBadge status={unavailable ? 'not_installed' : choice.status || 'unknown'} checking={false} />
+                    )}
+                    {selected && <Badge variant="ok">{i18nT('pages.settings.agentsPanel.chat_harness_active')}</Badge>}
+                  </button>
+                  {choice.id === 'auto' && (
+                    <p className="text-[12px] text-muted mt-1 pl-6">
+                      {autoTarget
+                        ? i18nT('pages.settings.agentsPanel.chat_harness_auto_description', { agent: autoTarget.label })
+                        : i18nT('pages.settings.agentsPanel.chat_harness_auto_none')}
+                    </p>
+                  )}
+                  {unavailable && (
+                    <p className="text-[12px] text-muted mt-1 pl-6">
+                      {i18nT('pages.settings.agentsPanel.chat_harness_not_installed_reason')}
+                    </p>
+                  )}
+                  {needsLogin && !unavailable && (
+                    <div className="mt-1 flex flex-col gap-1 pl-6">
+                      <p className="text-[12px] text-warn">{i18nT('pages.settings.agentsPanel.chat_harness_needs_login_note')}</p>
+                      {login
+                        ? <CopyCommand command={login} />
+                        : choice.hint && <p className="text-[12px] text-muted">{choice.hint}</p>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-[12px] text-muted mt-2" aria-live="polite">
+            {startsOn
+              ? i18nT('pages.settings.agentsPanel.chat_harness_starts_on', { agent: startsOn.label })
+              : i18nT('pages.settings.agentsPanel.chat_harness_none_ready')}
+          </p>
+          <ErrorNotice message={error} className="mt-2" />
+        </div>
+      </SettingsCard>
+    </SettingsSection>
+  )
+}
+
 /** The panel. `compact` (first-run setup) shows connection state only: no
  *  routing controls and no pick grid, which mean nothing before an agent works. */
 export function AgentsPanel({ compact = false }: { compact?: boolean } = {}) {
   const qc = useQueryClient()
   const [error, setError] = useState('')
+  const [chatError, setChatError] = useState('')
   const [checking, setChecking] = useState<Set<string>>(new Set())
 
   const view = useQuery<RoutingHarnessesView | null>({
@@ -398,6 +511,26 @@ export function AgentsPanel({ compact = false }: { compact?: boolean } = {}) {
     onError: () => setError(i18nT('pages.settings.agentsPanel.save_failed')),
     onSuccess: () => setError(''),
     onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  })
+
+  const chatHarness = useMutation({
+    mutationFn: (harness: string) => api.setChatHarness(harness),
+    onError: err => {
+      // ApiError keeps the raw response body, where the backend's `code` lives.
+      const code = parseErrorCode((err as { body?: string }).body)
+      setChatError(code === 'unknown_harness'
+        ? i18nT('pages.settings.agentsPanel.chat_harness_unknown')
+        : i18nT('pages.settings.agentsPanel.chat_harness_save_failed'))
+    },
+    onSuccess: () => setChatError(''),
+    onSettled: async (_data, err, harness) => {
+      await qc.invalidateQueries({ queryKey: QUERY_KEY })
+      if (err) return
+      // A local overlay (config.local.json) outranks the file this write lands in.
+      // The view reads the merged value back, so a difference is said, not hidden.
+      const now = qc.getQueryData<RoutingHarnessesView | null>(QUERY_KEY)?.chat?.configured
+      if (now && now !== harness) setChatError(i18nT('pages.settings.agentsPanel.chat_harness_overridden'))
+    },
   })
 
   const resume = useMutation({
@@ -432,6 +565,14 @@ export function AgentsPanel({ compact = false }: { compact?: boolean } = {}) {
 
   return (
     <>
+      {view.data?.chat && !compact && (
+        <ChatHarnessPicker
+          chat={view.data.chat}
+          pending={chatHarness.isPending ? chatHarness.variables ?? null : null}
+          error={chatError}
+          onPick={harness => chatHarness.mutate(harness)}
+        />
+      )}
       <SettingsSection
         title={i18nT('pages.settings.agentsPanel.your_agents_and_plans')}
         badge={installed.length > 0

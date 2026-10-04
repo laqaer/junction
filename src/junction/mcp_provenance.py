@@ -139,7 +139,7 @@ def resolve_write(
         return stamp(candidate)
     logger.warning(
         "Declining to rewrite unmarked MCP entry %r in %s: the name is managed but "
-        "the entry carries no Junction marker, so it reads as hand-authored and is "
+        "the entry carries no Warding marker, so it reads as hand-authored and is "
         "left as-is",
         name,
         surface,

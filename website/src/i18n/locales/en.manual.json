@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "Paste token URL or raw token…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "Rate limited by the tunnel edge (HTTP 429) — too many requests in a burst. The dashboard retries automatically; if this persists, wait a few seconds and reload.",
       "session_expired": "Session expired.",
-      "session_expired_sign_in_again": "Session expired. Run junction token in a terminal, then paste the URL into the banner at the top of this page to sign back in.",
+      "session_expired_sign_in_again": "Session expired. Run warding token in a terminal, then paste the URL into the banner at the top of this page to sign back in.",
       "stale_owner_session": "This session predates the configured owner. Sign in again.",
-      "stale_owner_session_sign_in_again": "This session predates the configured owner (it was signed in before JUNCTION_OWNER_ID was set). Run junction token in a terminal, then paste the URL into the banner at the top of this page to sign back in.",
+      "stale_owner_session_sign_in_again": "This session predates the configured owner (it was signed in before JUNCTION_OWNER_ID was set). Run warding token in a terminal, then paste the URL into the banner at the top of this page to sign back in.",
       "stream_ended_without_completion": "Stream ended without completion",
       "unexpected_server_response": "Unexpected server response"
     }
@@ -1427,7 +1427,8 @@
       "queue_run_after_the_current_work_finishes_desc": "Run after the current work finishes",
       "steer_act_on_this_right_away_desc": "Act on this right away",
       "finishing": "Finishing…",
-      "keep_holding_to_record": "Keep holding to record"
+      "keep_holding_to_record": "Keep holding to record",
+      "harness": "Running on {{name}}"
     },
     "chatPane": {
       "earlier_messages_load_failed": "Couldn't load earlier messages. Scroll to the top of the session to try again.",
@@ -2451,6 +2452,13 @@
     "shortcutsModal": {
       "panel_toggles": "Panel toggles",
       "unset": "Not set"
+    },
+    "modelEffortDropdown": {
+      "check_again": "Check again",
+      "sign_in_generic": "Sign in to {{agent}}, then check again.",
+      "sign_in_run_command": "Run <command/> in a terminal, then check again.",
+      "sign_in_to_see_models": "Sign in to see {{agent}} models",
+      "still_not_signed_in": "Still not signed in."
     }
   },
   "hooks": {
@@ -2548,7 +2556,7 @@
       "unknown": "Unknown"
     },
     "theme": {
-      "high_contrast": "🔆 High Contrast"
+      "high_contrast": "High Contrast"
     },
     "usePanelTabs": {
       "artifacts": "Artifacts",
@@ -3115,6 +3123,11 @@
         "hide_tool_calls": "Hide tool calls",
         "worked_through_step_one": "Worked through {{count}} step",
         "worked_through_step_other": "Worked through {{count}} steps"
+      },
+      "errorCard": {
+        "auth_required_run_command": "Run <command/> in a terminal, then send your message again.",
+        "auth_required_sign_in": "Sign in to {{agent}}, then send your message again.",
+        "auth_required_title": "{{agent}} is not signed in"
       }
     },
     "chatPage": {
@@ -3341,7 +3354,7 @@
       "force_remove_confirm_title": "Force remove worktrees?",
       "force_remove_warning": "Selected worktrees have unmerged work — removal is permanent and cannot be undone.",
       "force_remove": "Force remove {{name}}",
-      "gateway_did_not_come_back_within_60s_reload_the": "Gateway did not come back within 60s — reload the page manually, or check `junction logs`.",
+      "gateway_did_not_come_back_within_60s_reload_the": "Gateway did not come back within 60s — reload the page manually, or check `warding logs`.",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "gateway restarted mid-sync — run lost; check git state and re-run Pull+Build",
       "git_status_failed": "git status failed",
       "has_unmerged_work_removing_deletes_permanently": "Has unmerged work — removing DELETES permanently.",
@@ -3828,7 +3841,7 @@
         "lesson_already_covered": "An existing lesson already covers this ({{reason}}). Reword it to add something new.",
         "lesson_already_stored": "This lesson is already stored.",
         "lesson_not_saved": "Lesson not saved ({{reason}}). Edit it and try again.",
-        "persistent_lessons_injected_into_every_session_a": "Persistent lessons injected into every session. Auto-extracted from task runner failures. Add manually via 'junction learn add'. When vector memory is active, lessons are managed in the Semantic tab as lesson.* entries.",
+        "persistent_lessons_injected_into_every_session_a": "Persistent lessons injected into every session. Auto-extracted from task runner failures. Add manually via 'warding learn add'. When vector memory is active, lessons are managed in the Semantic tab as lesson.* entries.",
         "save": "Save"
       },
       "promptsTab": {
@@ -5007,7 +5020,20 @@
         "kind_research": "Research",
         "kind_docs": "Writing docs",
         "kind_quick": "Quick edits",
-        "kind_bulk": "Bulk changes"
+        "kind_bulk": "Bulk changes",
+        "chat_harness_title": "Chat harness",
+        "chat_harness_description": "The coding agent that answers new chats. A chat that is already open keeps the one it started with until it ends. Routing below only decides where subagent tasks go.",
+        "chat_harness_auto": "Automatic",
+        "chat_harness_auto_description": "The first installed agent. Right now: {{agent}}.",
+        "chat_harness_auto_none": "The first installed agent. None is installed yet.",
+        "chat_harness_active": "Active",
+        "chat_harness_not_installed_reason": "Not installed. Install it below, then choose it here.",
+        "chat_harness_needs_login_note": "You can choose it now. Chats on it fail until it is signed in.",
+        "chat_harness_starts_on": "New chats start on {{agent}}.",
+        "chat_harness_none_ready": "No installed agent can start a chat yet. Install one below.",
+        "chat_harness_save_failed": "Could not change the chat harness.",
+        "chat_harness_unknown": "{{productName}} cannot run that agent, so nothing was changed.",
+        "chat_harness_overridden": "Saved, but config.local.json sets a different agent and takes precedence."
       }
     },
     "systemPage": {},

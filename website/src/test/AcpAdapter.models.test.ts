@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook } from '@testing-library/react'
 
 // Mock the API client so fetchAvailableModels reads our canned /api/models.
 vi.mock('../api/client', () => ({
@@ -10,10 +11,13 @@ vi.mock('../api/client', () => ({
 import { api } from '../api/client'
 import { AcpAdapter } from '../providers/adapters/acp'
 import {
+  markModelsAuthRequired,
   markModelsDegraded,
   modelsDegraded,
   modelListRefetchInterval,
+  useModelsAuthRequired,
 } from '../providers/modelListHealth'
+import { authRequiredOf } from '../lib/authRequired'
 
 describe('AcpAdapter.fetchAvailableModels', () => {
   beforeEach(() => {
@@ -189,5 +193,65 @@ describe('model-list liveness (self-heal signal)', () => {
 
   it('does not poll an unmarked/unknown provider', () => {
     expect(modelListRefetchInterval({ queryKey: ['available-models', 'other'] })).toBe(false)
+  })
+})
+
+describe('sign-in refusal from /api/models', () => {
+  const body = {
+    error: 'Codex (ChatGPT) is not signed in',
+    code: 'auth_required',
+    harness: 'codex',
+    agent: 'Codex (ChatGPT)',
+    login: 'codex login',
+  }
+  /** What the client's `apiFailure` throws: the raw response body rides on it. */
+  const apiError = (status: number, payload: unknown) =>
+    Object.assign(new Error(`HTTP ${status}`), { status, body: JSON.stringify(payload) })
+  /** The picker reads the state through this hook. */
+  const signIn = () => renderHook(() => useModelsAuthRequired('acp')).result.current
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    markModelsDegraded('acp', false)
+    markModelsAuthRequired('acp', null)
+  })
+
+  it('records the sign-in facts, stays degraded, and still serves auto', async () => {
+    ;(api.models as any).mockRejectedValue(apiError(503, body))
+    const models = await new AcpAdapter().fetchAvailableModels()
+    expect(models.map(m => m.name)).toEqual(['auto'])
+    // Still the degraded poll: it heals the moment a check or a session lists models.
+    expect(modelsDegraded('acp')).toBe(true)
+    expect(modelListRefetchInterval({ queryKey: ['available-models', 'acp'] })).toBe(8_000)
+    expect(signIn()).toEqual({ harness: 'codex', agent: 'Codex (ChatGPT)', login: 'codex login' })
+  })
+
+  it.each([
+    ['another coded 503', apiError(503, { error: 'model list not available yet', code: 'harness_models_pending' })],
+    ['a body that is not JSON', Object.assign(new Error('HTTP 503'), { status: 503, body: 'not json' })],
+    ['a transport failure', new Error('network down')],
+  ])('records nothing for %s', async (_label, err) => {
+    ;(api.models as any).mockRejectedValue(err)
+    await new AcpAdapter().fetchAvailableModels()
+    expect(signIn()).toBeNull()
+  })
+
+  it('clears the sign-in state on a live success', async () => {
+    const adapter = new AcpAdapter()
+    ;(api.models as any).mockRejectedValue(apiError(503, body))
+    await adapter.fetchAvailableModels()
+    expect(signIn()).not.toBeNull()
+    ;(api.models as any).mockResolvedValue([{ model_name: 'auto' }, { model_name: 'gpt-x' }])
+    await adapter.fetchAvailableModels()
+    expect(signIn()).toBeNull()
+  })
+
+  it('parses only an auth_required payload', () => {
+    expect(authRequiredOf(body)).toEqual({ harness: 'codex', agent: 'Codex (ChatGPT)', login: 'codex login' })
+    expect(authRequiredOf({ code: 'harness_models_pending' })).toBeNull()
+    expect(authRequiredOf(null)).toBeNull()
+    expect(authRequiredOf('auth_required')).toBeNull()
+    expect(authRequiredOf({ code: 'auth_required', harness: 'kimi' })).toEqual({ harness: 'kimi', agent: 'kimi', login: '' })
   })
 })

@@ -80,7 +80,7 @@ from junction.config.loader import (
     data_home,
 )
 from junction.config.paths import kiro_agents_dir
-from junction.constants import DATA_WARNING, SUBAGENT_COMPLETION_META_KEY
+from junction.constants import DATA_WARNING, PRODUCT_NAME, SUBAGENT_COMPLETION_META_KEY
 from junction.context import ContextBuilder
 from junction.context_management import summarize_result
 from junction.cron import (
@@ -2262,7 +2262,7 @@ class GatewayOrchestrator:
         except (TimeoutError, asyncio.TimeoutError):
             await self._kill_startup_child(proc)
             await self._reap_startup_child(proc)
-            print("❌ pip install timed out — run manually: junction update")
+            print("❌ pip install timed out — run manually: warding update")
             logger.error("Dep repair timed out after %.0fs", self._DEP_INSTALL_TIMEOUT_SECS)
             return
         except asyncio.CancelledError:
@@ -2276,7 +2276,7 @@ class GatewayOrchestrator:
             importlib.invalidate_caches()
             print("✅ Dependencies installed")
         else:
-            print("❌ pip install failed — run manually: junction update")
+            print("❌ pip install failed — run manually: warding update")
             # pip stderr can echo an index URL with embedded credentials
             # (https://user:token@internal-index/...), so redact before the
             # volume cap: truncating first can bisect a token, and half a token
@@ -2318,7 +2318,7 @@ class GatewayOrchestrator:
                 "Browser was slow to open — skipping auto-open.\n"
                 "   Dashboard is running. Open this URL manually:\n"
                 f"   {dashboard_url}\n"
-                "   Or run: junction token"
+                "   Or run: warding token"
             )
 
     async def _warn_if_kiro_cli_outdated(self) -> None:
@@ -2455,7 +2455,7 @@ class GatewayOrchestrator:
             logger.error("Agent config install failed", exc_info=True)
             print(
                 "ERROR: agent config install failed — chat sessions cannot start. "
-                "Repair with: junction setup --agent-only --clean"
+                "Repair with: warding setup --agent-only --clean"
             )
 
         # Verify what actually landed on disk, whether or not the block above
@@ -2472,14 +2472,14 @@ class GatewayOrchestrator:
                 logger.error(
                     "Agent specs missing after install: %s (in %s) — every chat turn "
                     "will fail at session/set_mode with \"Mode '<name>' not found\". "
-                    "Repair with: junction setup --agent-only --clean",
+                    "Repair with: warding setup --agent-only --clean",
                     ", ".join(missing),
                     kiro_agents_dir(),
                 )
                 print(
                     f"ERROR: agent specs missing after install: {', '.join(missing)} — "
                     "chat sessions cannot start. "
-                    "Repair with: junction setup --agent-only --clean"
+                    "Repair with: warding setup --agent-only --clean"
                 )
         except Exception:
             logger.debug("Agent spec verification failed", exc_info=True)
@@ -2541,9 +2541,11 @@ class GatewayOrchestrator:
         self.conv_log.init()
         self.ctx_builder.conversation_log = self.conv_log
 
-        # Session manager
+        # Session manager. ``adopt_backend_changes``: a harness switched in
+        # config.json while the gateway runs (``warding config set
+        # agent.acp_backend``) reaches the next NEW session without a restart.
         self.sessions = SessionManager(
-            self._cfg, provider_factory=factory
+            self._cfg, provider_factory=factory, adopt_backend_changes=True
         )  # type: ignore[arg-type]
 
         # History consolidator
@@ -7919,7 +7921,7 @@ class GatewayOrchestrator:
             # resolve_custom_model() already logged the specific reason.
             logger.warning(
                 "Custom embedding model is not usable — memory falls back to keyword "
-                "search. Run 'junction doctor' for the reason."
+                "search. Run 'warding doctor' for the reason."
             )
         else:
             logger.info(
@@ -8528,7 +8530,7 @@ class GatewayOrchestrator:
                 if self.dashboard_state:
                     self.dashboard_state.push_update_progress(
                         "failed",
-                        "Update provider failed — see logs; run manually: junction update",
+                        "Update provider failed — see logs; run manually: warding update",
                     )
             return
 
@@ -8608,7 +8610,7 @@ class GatewayOrchestrator:
             else:
                 if self.dashboard_state:
                     self.dashboard_state.push_update_progress(
-                        "failed", "Update apply failed — run manually: junction update"
+                        "failed", "Update apply failed — run manually: warding update"
                     )
             return
 
@@ -8630,7 +8632,7 @@ class GatewayOrchestrator:
                 else:
                     if self.dashboard_state:
                         self.dashboard_state.push_update_progress(
-                            "failed", "Update apply failed — run manually: junction update"
+                            "failed", "Update apply failed — run manually: warding update"
                         )
             else:
                 self._publish_provider_update_state(result)
@@ -8754,7 +8756,7 @@ class GatewayOrchestrator:
                     logger.warning(
                         "Version compliance: running %s is below the policy minimum %s, "
                         "but this install (%s) updates by re-running the installer — "
-                        "run `junction update`",
+                        "run `warding update`",
                         _running_version,
                         min_version(),
                         info.get("managed_by") or "unknown",
@@ -8907,7 +8909,7 @@ class GatewayOrchestrator:
             if _git is None:
                 logger.warning(
                     "Auto-update: skipping — no trustworthy `git` outside PATH. "
-                    "Run `junction update` to apply this manually."
+                    "Run `warding update` to apply this manually."
                 )
                 if self.dashboard_state:
                     self.dashboard_state.clear_update_progress()
@@ -9122,7 +9124,7 @@ class GatewayOrchestrator:
             if ahead != 0:
                 logger.warning(
                     "Auto-update: skipping — %s is ahead of origin/%s by %s commit(s); "
-                    "a reset would discard them. Run `junction update` to decide.",
+                    "a reset would discard them. Run `warding update` to decide.",
                     branch,
                     branch,
                     "an unknown number of" if ahead is None else ahead,
@@ -9180,7 +9182,7 @@ class GatewayOrchestrator:
                 # irreversible — treat an unreadable status as dirty.
                 logger.warning(
                     "Auto-update: skipping — could not read the work-tree status of %s; "
-                    "a reset could discard uncommitted changes. Run `junction update`.",
+                    "a reset could discard uncommitted changes. Run `warding update`.",
                     loggable_path(proj),
                 )
                 if self.dashboard_state:
@@ -9195,7 +9197,7 @@ class GatewayOrchestrator:
             if tracked:
                 logger.warning(
                     "Auto-update: skipping — %s has %s uncommitted tracked change(s); "
-                    "a reset would discard them. Run `junction update` to decide.",
+                    "a reset would discard them. Run `warding update` to decide.",
                     loggable_path(proj),
                     len(tracked),
                 )
@@ -9215,7 +9217,7 @@ class GatewayOrchestrator:
                 logger.warning(
                     "Auto-update: skipping — %s has %s tracked change(s) hidden by "
                     "assume-unchanged/skip-worktree (e.g. %s); a reset would discard "
-                    "them. Run `junction update` to decide.",
+                    "them. Run `warding update` to decide.",
                     loggable_path(proj),
                     "an unknown number of" if hidden is None else len(hidden),
                     loggable_path(hidden[0]) if hidden else "unknown",
@@ -9270,7 +9272,7 @@ class GatewayOrchestrator:
             if added_proc.returncode != 0:
                 logger.warning(
                     "Auto-update: skipping — could not list the paths %s would add; "
-                    "a reset could overwrite untracked files. Run `junction update`.",
+                    "a reset could overwrite untracked files. Run `warding update`.",
                     branch,
                 )
                 if self.dashboard_state:
@@ -9336,7 +9338,7 @@ class GatewayOrchestrator:
                 logger.warning(
                     "Auto-update: skipping — %s would add %s path(s) that already "
                     "exist untracked here (e.g. %s); a reset would overwrite them. "
-                    "Run `junction update` to decide.",
+                    "Run `warding update` to decide.",
                     branch,
                     len(collisions),
                     # `loggable_path`, not the raw name: this is the one log line
@@ -9685,7 +9687,7 @@ class GatewayOrchestrator:
             logger.error("Auto-update (wheel): no trusted shell found — refusing to run")
             if self.dashboard_state:
                 self.dashboard_state.push_update_progress(
-                    "failed", "No trusted shell — run manually: junction update"
+                    "failed", "No trusted shell — run manually: warding update"
                 )
             return
         # Pinning the shell is only half of it: the installer line is
@@ -9698,7 +9700,7 @@ class GatewayOrchestrator:
             logger.error("Auto-update (wheel): no trusted PATH — refusing to run")
             if self.dashboard_state:
                 self.dashboard_state.push_update_progress(
-                    "failed", "No trusted PATH — run manually: junction update"
+                    "failed", "No trusted PATH — run manually: warding update"
                 )
             return
         proc: asyncio.subprocess.Process | None = None
@@ -9741,7 +9743,7 @@ class GatewayOrchestrator:
             logger.error("Auto-update (wheel): installer timed out (5 min)")
             if self.dashboard_state:
                 self.dashboard_state.push_update_progress(
-                    "failed", "Installer timed out — run manually: junction update"
+                    "failed", "Installer timed out — run manually: warding update"
                 )
             return
         except OSError:
@@ -9750,7 +9752,7 @@ class GatewayOrchestrator:
             logger.exception("Auto-update (wheel): could not start the installer")
             if self.dashboard_state:
                 self.dashboard_state.push_update_progress(
-                    "failed", "'sh' not available — run manually: junction update"
+                    "failed", "'sh' not available — run manually: warding update"
                 )
             return
 
@@ -9774,7 +9776,7 @@ class GatewayOrchestrator:
             if self.dashboard_state:
                 self.dashboard_state.push_update_progress(
                     "failed",
-                    f"Installer failed (exit {proc.returncode}) — " "run manually: junction update",
+                    f"Installer failed (exit {proc.returncode}) — " "run manually: warding update",
                 )
             return
 
@@ -9836,7 +9838,7 @@ class GatewayOrchestrator:
             return False
         try:
             await self._socket_client.connect()
-            print("Junction gateway connected to Slack")
+            print(f"{PRODUCT_NAME} gateway connected to Slack")
             return True
         except Exception as exc:
             # Keep a short reason for status surfaces (settings badge). Slack
@@ -10199,7 +10201,7 @@ class GatewayOrchestrator:
         self._background_tasks.add(_watchdog)
         _watchdog.add_done_callback(self._background_tasks.discard)
 
-        print("Junction gateway starting…")
+        print(f"{PRODUCT_NAME} gateway starting…")
         print(f"\n{DATA_WARNING}\n")
 
         connected = await self._connect_slack()

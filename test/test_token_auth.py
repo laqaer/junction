@@ -1449,7 +1449,7 @@ async def test_non_api_path_gets_html_403() -> None:
     assert resp.status == 403
     assert resp.content_type == "text/html"
     assert b"Settings \xe2\x86\x92 Security \xe2\x86\x92 Sign in on mobile" in resp.body
-    assert b"junction token" in resp.body
+    assert b"warding token" in resp.body
 
 
 # -- Property 12b: SPA shell is public so the app can cold-start refresh --
@@ -2434,7 +2434,7 @@ async def test_index_serves_guidance_when_bundle_missing(tmp_path, monkeypatch) 
     # Recognizable heading preserved + actionable guidance added.
     assert "<h1>Dashboard HTML not found</h1>" in body
     assert "restarting Warding" in body
-    assert "junction service restart" in body
+    assert "warding restart" in body
     # Request-independent and secret-free (same contract as the served shell).
     assert resp_anon.text == resp_authed.text
     assert "someminted.token.value" not in body

@@ -40,6 +40,16 @@ export const SETTINGS_REGISTRY: SettingEntry[] =
     "occurrence": 1
   },
   {
+    "id": "agents.chat-harness",
+    "labelKey": "pages.settings.agentsPanel.chat_harness_title",
+    "tab": "agents",
+    "type": "buttonGroup",
+    "occurrence": 1,
+    "configKey": "agent.acp_backend",
+    "label": "Chat harness",
+    "description": "The coding agent that answers new chats. A chat that is already open keeps the one it started with until it ends. Routing below only decides where subagent tasks go."
+  },
+  {
     "id": "agents.model",
     "label": "Model",
     "labelKey": "pages.settings.agentsPanel.model",

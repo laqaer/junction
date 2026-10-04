@@ -39,6 +39,7 @@ from junction.harness_router.limits import (
     FAILURE_UNAVAILABLE,
     classify_exception,
 )
+from junction.harness_router.profiles import profile_for
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,21 @@ FEATURED_HARNESSES: tuple[str, ...] = tuple(HARNESS_SETUP)
 
 def setup_for(harness: str) -> HarnessSetup | None:
     return HARNESS_SETUP.get(harness)
+
+
+def sign_in_facts(harness: str) -> dict[str, str]:
+    """What a client needs to tell the operator how to sign in to *harness*.
+
+    ``agent`` is the harness's label and ``login`` its published sign-in command,
+    empty for a harness that publishes none. Machine data: the dashboard owns
+    every sentence built from it, and the command is terminal input, never prose.
+    """
+    setup = setup_for(harness)
+    return {
+        "harness": harness,
+        "agent": profile_for(harness).label,
+        "login": setup.login if setup is not None else "",
+    }
 
 
 @dataclass(frozen=True)

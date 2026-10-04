@@ -588,7 +588,7 @@ def _diagnostic_port(gw_kwargs: dict) -> int | None:
 def _knowledge(args) -> None:
     """``junction knowledge dedup [--apply]`` -- collapse cross-source duplicate docs."""
     if getattr(args, "knowledge_action", None) != "dedup":
-        print("Usage: junction knowledge dedup [--apply]")
+        print("Usage: warding knowledge dedup [--apply]")
         return
     apply = bool(getattr(args, "apply", False))
     db_path = config_dir() / "workspace" / "knowledge" / "knowledge.db"
@@ -1033,9 +1033,9 @@ def main() -> None:
         "chat",
         epilog="""
 Examples:
-  junction chat                      # Interactive mode
-  junction chat -m 'check my CRs'    # Single message
-  junction chat --model claude-opus  # Use specific model
+  warding chat                      # Interactive mode
+  warding chat -m 'check my CRs'    # Single message
+  warding chat --model claude-opus  # Use specific model
 """,
         formatter_class=_fmt,
         parents=[_jail_opts],
@@ -1176,7 +1176,7 @@ Examples:
     setup_parser.add_argument(
         "--electron-only",
         action="store_true",
-        help="Only install the Junction desktop app (macOS), skip other setup",
+        help="Only install the Warding desktop app (macOS), skip other setup",
     )
     setup_parser.add_argument(
         "--clean",
@@ -1200,13 +1200,13 @@ Examples:
         "cron",
         epilog="""
 Examples:
-  junction cron list
-  junction cron add 'daily-status' 'show status' --every 86400
-  junction cron add 'weekday-9am' 'check tickets' --cron '0 9 * * MON-FRI' --approval-mode auto
-  junction cron add 'c360-check' 'check pipeline' --every 600 --agent customer360-code-agent
-  junction cron update <job-id> --approval-mode auto
-  junction cron update <job-id> --agent oncall-agent
-  junction cron remove <job-id>
+  warding cron list
+  warding cron add 'daily-status' 'show status' --every 86400
+  warding cron add 'weekday-9am' 'check tickets' --cron '0 9 * * MON-FRI' --approval-mode auto
+  warding cron add 'c360-check' 'check pipeline' --every 600 --agent customer360-code-agent
+  warding cron update <job-id> --approval-mode auto
+  warding cron update <job-id> --agent oncall-agent
+  warding cron remove <job-id>
 """,
         formatter_class=_fmt,
     )
@@ -1285,7 +1285,7 @@ Examples:
         "--session-of",
         metavar="SESSION",
         help='Dashboard slot name ("chat-3-1712793600") or a fully-qualified '
-        'session key ("dashboard:chat-3-1712793600"); see `junction cron list`',
+        'session key ("dashboard:chat-3-1712793600"); see `warding cron list`',
     )
     adopt_target.add_argument(
         "--release",
@@ -1311,9 +1311,9 @@ Examples:
         "spawn",
         epilog="""
 Examples:
-  junction spawn run 'check my open CRs'        # Wait for result
-  junction spawn run --async 'analyze logs'     # Fire-and-forget
-  junction spawn list                           # Show active subagents
+  warding spawn run 'check my open CRs'        # Wait for result
+  warding spawn run --async 'analyze logs'     # Fire-and-forget
+  warding spawn list                           # Show active subagents
 """,
         formatter_class=_fmt,
     )
@@ -1335,10 +1335,11 @@ Examples:
         "run",
         epilog="""
 Examples:
-  junction run TASK.md                  # Run task with auto-resume
-  junction run TASK.md --fresh          # Start from scratch
-  junction run TASK.md --no-test        # Skip test verification
-  junction run TASK.md --timeout 3600   # 1 hour timeout
+  warding run TASK.md                  # Run task with auto-resume
+  warding run TASK.md --fresh          # Start from scratch
+  warding run TASK.md --no-test        # Skip test verification
+  warding run TASK.md --workspace .    # Work in this folder, not a per-spec one
+  warding run TASK.md --timeout 3600   # 1 hour timeout
 """,
         formatter_class=_fmt,
         parents=[_jail_opts],
@@ -1358,6 +1359,14 @@ Examples:
         "--fresh",
         action="store_true",
         help="Ignore checkpoint, start task from scratch",
+    )
+    run_parser.add_argument(
+        "--workspace",
+        default="",
+        help=(
+            "Folder the task works in (default: taskrunner.workspace_dir, else a "
+            "per-spec folder under the workspace root, not the spec's own folder)"
+        ),
     )
     run_parser.add_argument(
         "--timeout",
@@ -1430,9 +1439,9 @@ Examples:
         "eval",
         epilog="""
 Examples:
-  junction eval                         # smoke test (~30s)
-  junction eval memory_recall_basic     # specific scenario
-  junction eval --all                   # all scenarios (slow)
+  warding eval                         # smoke test (~30s)
+  warding eval memory_recall_basic     # specific scenario
+  warding eval --all                   # all scenarios (slow)
 """,
         formatter_class=_fmt,
         parents=[_jail_opts],
@@ -1577,7 +1586,7 @@ Examples:
         choices=["reads", "yolo", "interactive"],
         help=(
             "Approval mode the pod's gateway boots with, forwarded to "
-            "`junction gateway --approval`. Persisted per pod so it survives a "
+            "`warding gateway --approval`. Persisted per pod so it survives a "
             "service-manager restart. Omit to leave the gateway's own default in "
             "force, which resolves from config agent.approval_mode (default: "
             "auto). Applies at boot, so re-up a stopped pod to change it."
@@ -1637,7 +1646,7 @@ Examples:
     pod_logs.add_argument("-n", "--lines", type=int, default=50, help="Lines to tail (default: 50)")
     pod_exec = pod_sub.add_parser(
         "exec",
-        help="Run a junction command against a pod, using the pod's own binary and data",
+        help="Run a warding command against a pod, using the pod's own binary and data",
     )
     pod_exec.add_argument("name", help="Worktree name")
     # REMAINDER so the pod's own flags (--json, -n, --ttl …) reach the child
@@ -1726,10 +1735,10 @@ Examples:
         "sandbox",
         epilog="""
 Examples:
-  junction sandbox status                      # is THIS launch covered?
-  junction sandbox install-profile             # attach to $APPIMAGE (sudo)
-  junction sandbox install-profile --path P    # attach to an explicit executable
-  junction sandbox remove-profile              # unload and delete it (sudo)
+  warding sandbox status                      # is THIS launch covered?
+  warding sandbox install-profile             # attach to $APPIMAGE (sudo)
+  warding sandbox install-profile --path P    # attach to an explicit executable
+  warding sandbox remove-profile              # unload and delete it (sudo)
 
 Only needed on hosts with kernel.apparmor_restrict_unprivileged_userns=1
 (Ubuntu 23.10+ and derivatives). Everywhere else these are no-ops.
@@ -1763,16 +1772,16 @@ Only needed on hosts with kernel.apparmor_restrict_unprivileged_userns=1
         "cloud",
         epilog="""
 Examples:
-  junction cloud launch                  # interactive: provision + configure + open dashboard
-  junction cloud launch --size power     # non-interactive size
-  junction cloud launch --new            # create a separate new instance
-  junction cloud launch --subnet subnet-0abc…  # pin the launch to an exact subnet
-  junction cloud list                    # list your cloud instances
-  junction cloud connect                 # reopen the dashboard over SSM
-  junction cloud stop | start            # pause / resume (save cost)
-  junction cloud destroy                 # remove EVERYTHING from AWS
-  junction cloud iam-policy              # print the least-privilege IAM policy
-  junction cloud doctor                  # check prerequisites + AWS reachability
+  warding cloud launch                  # interactive: provision + configure + open dashboard
+  warding cloud launch --size power     # non-interactive size
+  warding cloud launch --new            # create a separate new instance
+  warding cloud launch --subnet subnet-0abc…  # pin the launch to an exact subnet
+  warding cloud list                    # list your cloud instances
+  warding cloud connect                 # reopen the dashboard over SSM
+  warding cloud stop | start            # pause / resume (save cost)
+  warding cloud destroy                 # remove EVERYTHING from AWS
+  warding cloud iam-policy              # print the least-privilege IAM policy
+  warding cloud doctor                  # check prerequisites + AWS reachability
 """,
         formatter_class=_fmt,
     )
@@ -1820,7 +1829,7 @@ Examples:
         help="On bootstrap failure, keep the instance (disable rollback) for inspection",
     )
 
-    _c_list = cloud_sub.add_parser("list", help="List your Junction cloud instances")
+    _c_list = cloud_sub.add_parser("list", help="List your Warding cloud instances")
     _cloud_creds_opts(_c_list)
 
     _c_status = cloud_sub.add_parser("status", help="Show one instance's state")
@@ -2044,9 +2053,9 @@ Examples:
         "computer",
         epilog="""
 Examples:
-  junction computer doctor                     # Support + permission report
-  junction computer doctor --json              # The same report as JSON
-  junction computer apps                       # Apps with an on-screen window
+  warding computer doctor                     # Support + permission report
+  warding computer doctor --json              # The same report as JSON
+  warding computer apps                       # Apps with an on-screen window
 
 Computer use is OFF by default and is enabled only from the dashboard
 (Settings -> Computer Use). An agent cannot enable it.
@@ -2065,9 +2074,9 @@ Computer use is OFF by default and is enabled only from the dashboard
         "learn",
         epilog="""
 Examples:
-  junction learn list
-  junction learn add 'use snake_case for variables' --category tool
-  junction learn remove 'snake_case'
+  warding learn list
+  warding learn add 'use snake_case for variables' --category tool
+  warding learn remove 'snake_case'
 """,
         formatter_class=_fmt,
     )
@@ -2091,16 +2100,16 @@ Examples:
         "artifact",
         epilog="""
 Examples:
-  junction artifact list
-  junction artifact list --tag op --kind widget
-  junction artifact save --name "CR Queue" --content-file widget.html --tags ops,cr
-  cat widget.html | junction artifact save --name "Pipeline Health"
-  junction artifact show cr-queue
-  junction artifact show cr-queue --version 2
-  junction artifact show cr-queue --meta
-  junction artifact update cr-queue --content-file widget.html
-  junction artifact versions cr-queue
-  junction artifact delete cr-queue
+  warding artifact list
+  warding artifact list --tag op --kind widget
+  warding artifact save --name "CR Queue" --content-file widget.html --tags ops,cr
+  cat widget.html | warding artifact save --name "Pipeline Health"
+  warding artifact show cr-queue
+  warding artifact show cr-queue --version 2
+  warding artifact show cr-queue --meta
+  warding artifact update cr-queue --content-file widget.html
+  warding artifact versions cr-queue
+  warding artifact delete cr-queue
 """,
         formatter_class=_fmt,
     )
@@ -2192,18 +2201,18 @@ Examples:
     # agent
     agent_parser = cli_help.add_command(sub, "agent")
     agent_sub = agent_parser.add_subparsers(dest="agent_action")
-    agent_sub.add_parser("list", help="List Junction agents")
-    agent_create = agent_sub.add_parser("create", help="Create a Junction agent")
+    agent_sub.add_parser("list", help="List Warding agents")
+    agent_create = agent_sub.add_parser("create", help="Create a Warding agent")
     agent_create.add_argument("--name", required=True, help="Agent name")
     agent_create.add_argument("--kiro-agent", default="junction", help="Kiro agent name")
     agent_create.add_argument("--workspace", default="default", help="Workspace name")
     agent_create.add_argument("--memory-store", default="default", help="Memory store name")
-    agent_update = agent_sub.add_parser("update", help="Update a Junction agent")
+    agent_update = agent_sub.add_parser("update", help="Update a Warding agent")
     agent_update.add_argument("name", help="Agent name to update")
     agent_update.add_argument("--kiro-agent", help="New kiro agent name")
     agent_update.add_argument("--workspace", help="New workspace name")
     agent_update.add_argument("--memory-store", help="New memory store name")
-    agent_delete = agent_sub.add_parser("delete", help="Delete a Junction agent")
+    agent_delete = agent_sub.add_parser("delete", help="Delete a Warding agent")
     agent_delete.add_argument("name", help="Agent name to delete")
     agent_reset_model = agent_sub.add_parser(
         "reset-model",
@@ -2229,7 +2238,7 @@ Examples:
         "--dir",
         default=None,
         help=(
-            "Workspace directory NAME, relative to the Junction data home "
+            "Workspace directory NAME, relative to the Warding data home "
             "(default: workspace-<name>). Any path resolving outside the data "
             "home is rejected."
         ),
@@ -2240,7 +2249,7 @@ Examples:
     ws_update.add_argument(
         "--dir",
         help=(
-            "New workspace directory NAME, relative to the Junction data home. "
+            "New workspace directory NAME, relative to the Warding data home. "
             "Any path resolving outside the data home is rejected."
         ),
     )
@@ -2253,12 +2262,12 @@ Examples:
         "app",
         epilog="""
 Examples:
-  junction app install /path/to/oncall-watchtower
-  junction app list
-  junction app enable oncall-watchtower
-  junction app disable oncall-watchtower
-  junction app info oncall-watchtower
-  junction app uninstall oncall-watchtower
+  warding app install /path/to/oncall-watchtower
+  warding app list
+  warding app enable oncall-watchtower
+  warding app disable oncall-watchtower
+  warding app info oncall-watchtower
+  warding app uninstall oncall-watchtower
 """,
         formatter_class=_fmt,
     )
@@ -2304,10 +2313,10 @@ Examples:
         "config",
         epilog="""
 Examples:
-  junction config get                   # Show all config
-  junction config get agent.provider    # Get a specific value
-  junction config set dashboard.url http://localhost:5476
-  junction config edit                  # Open in $EDITOR
+  warding config get                   # Show all config
+  warding config get agent.provider    # Get a specific value
+  warding config set dashboard.url http://localhost:5476
+  warding config edit                  # Open in $EDITOR
 
 The dashboard port is set with the JUNCTION_PORT env var, not a config key.
 """,
@@ -2533,7 +2542,9 @@ The dashboard port is set with the JUNCTION_PORT env var, not a config key.
         _spawn(args)
     elif args.command == "run":
         from junction.cli_server import _run_task
+        from junction.sandbox import warm_backend_before_loop
 
+        warm_backend_before_loop()
         asyncio.run(_run_task(args))
     elif args.command == "learn":
         from junction.cli_commands import _learn

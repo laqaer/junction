@@ -688,7 +688,7 @@ def test_prepare_embedder_refuses_when_the_model_is_not_resident(
     assert "NULL embedding" in msg
     assert "FTS5 keyword LIKE matching" in msg
     assert "substring overlap, not memory retrieval" in msg
-    assert "junction doctor" in msg
+    assert "warding doctor" in msg
     assert fake_embeddings.waited_with == 0.25
 
 

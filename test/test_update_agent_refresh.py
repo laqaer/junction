@@ -84,7 +84,7 @@ class TestRefreshAgentConfigTimeout:
 
         out = capsys.readouterr().out
         assert "Agent config refresh timed out" in out
-        assert "junction setup --agent-only" in out
+        assert "warding setup --agent-only" in out
         assert any("timed out" in rec.message for rec in caplog.records)
 
 

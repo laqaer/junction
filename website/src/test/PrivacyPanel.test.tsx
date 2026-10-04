@@ -65,8 +65,8 @@ const REMOVED_FIELDS = [
 const EXCLUSION_DISCLOSURE = "Prompts, responses, files, credentials, hostnames, usernames, or your operating system. Your IP is not stored."
 
 const CONTROL_COMMANDS = [
-  'junction telemetry status',
-  'junction telemetry disable',
+  'warding telemetry status',
+  'warding telemetry disable',
   'export JUNCTION_TELEMETRY_DISABLED=1',
   "$env:JUNCTION_TELEMETRY_DISABLED = '1'",
   'set JUNCTION_TELEMETRY_DISABLED=1',

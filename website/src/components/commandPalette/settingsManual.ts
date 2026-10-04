@@ -28,6 +28,19 @@ import type { ManualSettingEntry } from './settingsTypes'
  */
 export const SETTINGS_MANUAL: ManualSettingEntry[] = [
   {
+    // A radiogroup of harness choices, written to ``agent.acp_backend``. Built from
+    // raw markup in AgentsPanel (a row carries a status and a sign-in command), so
+    // the extractor cannot see it; the panel's wrapper carries the
+    // ``data-setting-label`` anchor the highlight hook queries.
+    id: 'agents.chat-harness',
+    labelKey: 'pages.settings.agentsPanel.chat_harness_title',
+    descriptionKey: 'pages.settings.agentsPanel.chat_harness_description',
+    tab: 'agents',
+    type: 'buttonGroup',
+    occurrence: 1,
+    configKey: 'agent.acp_backend',
+  },
+  {
     // Override of the one primitive the extractor DOES see in SecurityPanel:
     // without `section=apps` the deep link lands on the security rail with the
     // toggle's section unmounted, so the highlight silently no-ops.

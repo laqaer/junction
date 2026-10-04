@@ -12,6 +12,8 @@
 // can never regress an unmarked provider into perpetual polling.
 import { useSyncExternalStore } from 'react'
 
+import type { AuthRequiredInfo } from '../lib/authRequired'
+
 const degradedByProvider = new Map<string, boolean>()
 const subscribers = new Set<() => void>()
 
@@ -67,4 +69,35 @@ export function modelListRefetchInterval(
 ): number | false {
   const providerId = typeof query.queryKey[1] === 'string' ? query.queryKey[1] : ''
   return modelsDegraded(providerId) ? 8_000 : false
+}
+
+// Whether the last degraded fetch was the agent saying it is not signed in. A
+// separate map from `degradedByProvider` because the two answer different
+// questions: degraded means "keep polling", this means "tell the user how to
+// sign in". The value is replaced only when it changes, so the snapshot a
+// component reads stays referentially stable between renders.
+const authRequiredByProvider = new Map<string, AuthRequiredInfo>()
+
+function sameAuthInfo(a: AuthRequiredInfo | undefined, b: AuthRequiredInfo | null): boolean {
+  if (!a || !b) return !a && !b
+  return a.harness === b.harness && a.agent === b.agent && a.login === b.login
+}
+
+/** Record that the provider's agent needs a sign-in (`info`), or that it no
+ *  longer does (`null`). The adapter calls this on every fetch outcome. */
+export function markModelsAuthRequired(providerId: string, info: AuthRequiredInfo | null): void {
+  if (sameAuthInfo(authRequiredByProvider.get(providerId), info)) return
+  if (info) authRequiredByProvider.set(providerId, info)
+  else authRequiredByProvider.delete(providerId)
+  for (const cb of subscribers) cb()
+}
+
+/** The sign-in facts when the provider's agent last refused for want of a
+ *  sign-in, else null. Reactive, for the picker that renders them. */
+export function useModelsAuthRequired(providerId: string): AuthRequiredInfo | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => authRequiredByProvider.get(providerId) ?? null,
+    () => null,
+  )
 }

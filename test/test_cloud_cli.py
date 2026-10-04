@@ -26,7 +26,7 @@ class TestDispatch:
 
     def test_no_action_prints_help(self, capsys):
         assert cli_cloud.handle_cloud(_args(cloud_action=None)) == 0
-        assert "junction cloud" in capsys.readouterr().out
+        assert "warding cloud" in capsys.readouterr().out
 
     def test_iam_policy(self, capsys):
         assert cli_cloud.handle_cloud(_args(cloud_action="iam-policy")) == 0
@@ -166,7 +166,7 @@ class TestListStatus:
     def test_list_empty(self, monkeypatch, capsys):
         monkeypatch.setattr(ec2, "list_instances", lambda *a, **k: [])
         assert cli_cloud._cloud_list(_args(profile="", region="")) == 0
-        assert "No Junction cloud instances" in capsys.readouterr().out
+        assert "No Warding cloud instances" in capsys.readouterr().out
 
     def test_list_rows(self, monkeypatch, capsys):
         monkeypatch.setattr(
@@ -388,7 +388,7 @@ class TestCloudLogin:
         out = capsys.readouterr().out
         assert rc == 0
         assert "Signed out" in out
-        assert "junction cloud login" in out
+        assert "warding cloud login" in out
 
     def test_logout_fails_when_session_survives(self, monkeypatch, capsys):
         monkeypatch.setattr(cli_cloud, "_resolve", lambda _a: ("dev", "us-east-1"))

@@ -557,7 +557,7 @@ class TestNoBackendGuidanceNamesTheRightRemedy:
 
         msg = sb._no_backend_guidance()
 
-        assert "junction service install" in msg
+        assert "warding service install" in msg
         assert "sandbox install-profile" not in msg
 
     def test_never_advises_disabling_the_kernel_wide_protection(self, monkeypatch):
@@ -650,7 +650,7 @@ class TestNoBackendGuidanceNamesTheRightRemedy:
         msg = sb._no_backend_guidance()
 
         assert str(bundled) in msg
-        assert "while Junction is open" in msg, "must say the path is live-only"
+        assert "while Warding is open" in msg, "must say the path is live-only"
 
     def test_which_is_not_trusted_as_evidence_the_user_has_the_cli(
         self, monkeypatch, tmp_path

@@ -383,7 +383,7 @@ def _az_bin() -> str:
     if sys.platform == "win32":
         raise ProviderCliError(
             "the Azure DevOps provider requires a POSIX platform (macOS/Linux); "
-            "Windows is not supported -- use WSL to run the Junction gateway. "
+            "Windows is not supported -- use WSL to run the Warding gateway. "
             "GitHub and GitLab repositories do work on Windows"
         )
 

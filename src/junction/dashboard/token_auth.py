@@ -710,7 +710,7 @@ _403_HTML = (
     "<p>This browser does not have a dashboard session.</p>"
     "<p>On a device already signed in, open <strong>Settings → Security → Sign in on mobile</strong>, "
     "then send the sign-in link to this device. Or paste a sign-in link below.</p>"
-    "<p>No other signed-in device? Run <code>junction token</code> in your terminal, then paste the URL below.</p>"
+    "<p>No other signed-in device? Run <code>warding token</code> in your terminal, then paste the URL below.</p>"
     "<input id='u' type='text' placeholder='Paste sign-in link or token…' autofocus>"
     "<button onclick='go()'>Connect</button>"
     "<div class='err' id='e'>Invalid URL</div>"

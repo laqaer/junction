@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "粘贴令牌 URL 或原始令牌…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "隧道边缘已限流（HTTP 429）— 短时间内请求过多。仪表板会自动重试；如果持续出现，等待几秒后重新加载。",
       "session_expired": "会话已过期。",
-      "session_expired_sign_in_again": "会话已过期。请在终端运行 junction token，然后将 URL 粘贴到本页顶部的横幅中重新登录。",
+      "session_expired_sign_in_again": "会话已过期。请在终端运行 warding token，然后将 URL 粘贴到本页顶部的横幅中重新登录。",
       "stale_owner_session": "此会话早于已配置的所有者。请重新登录。",
-      "stale_owner_session_sign_in_again": "此会话早于已配置的所有者（登录发生在设置 JUNCTION_OWNER_ID 之前）。请在终端运行 junction token，然后将 URL 粘贴到本页顶部的横幅中重新登录。",
+      "stale_owner_session_sign_in_again": "此会话早于已配置的所有者（登录发生在设置 JUNCTION_OWNER_ID 之前）。请在终端运行 warding token，然后将 URL 粘贴到本页顶部的横幅中重新登录。",
       "stream_ended_without_completion": "流在完成前结束",
       "unexpected_server_response": "服务器响应异常"
     }
@@ -520,14 +520,14 @@
     "channels": {
       "manifest": {
         "use_case_1": "让多个具名角色的代理在一份可审计的共享记录中协作处理事件响应、研究或代码审查。",
-        "configuration_1": "运行 `junction app enable channels` 启用隐藏的应用，使用预设或 Custom 创建频道，分配代理和收听模式，再用 @提及交接工作。",
+        "configuration_1": "运行 `warding app enable channels` 启用隐藏的应用，使用预设或 Custom 创建频道，分配代理和收听模式，再用 @提及交接工作。",
         "description": "一个共享房间，多个代理在这里一起解决问题，而不是单个代理独自干。你给每个代理分配角色，它们把进展发到频道里，公开回应彼此的 @提及 — 代理之间没有私聊，因此整段交流始终可读，而任何改变状态的操作仍由你批准。代理会一直留在频道里，直到被解散或超时。",
         "display_name": "频道",
         "highlight_1": "多个分配了角色的代理在同一份共享、可读的记录中协作",
         "highlight_2": "代理之间没有私聊 — 每一次交流都发生在频道里",
         "highlight_3": "任何改变状态的操作，最终都由你批准",
         "highlight_4": "代理会一直留在频道里，直到被解散或超时",
-        "highlight_5": "在应用商店网格中隐藏；用 `junction app enable channels` 启用",
+        "highlight_5": "在应用商店网格中隐藏；用 `warding app enable channels` 启用",
         "page_label": "频道"
       }
     },
@@ -4439,7 +4439,7 @@
     "workflows": {
       "manifest": {
         "use_case_1": "验证并检查受限的工作流脚本，或逐阶段监视核心多代理工作流的运行。",
-        "configuration_1": "运行 `junction app enable workflows` 启用隐藏的应用；在 Author 中验证 DSL Python 脚本，需要实际代理编排时则使用聊天或 MCP 工作流工具，并在 Runs 中监视。",
+        "configuration_1": "运行 `warding app enable workflows` 启用隐藏的应用；在 Author 中验证 DSL Python 脚本，需要实际代理编排时则使用聊天或 MCP 工作流工具，并在 Runs 中监视。",
         "description": "编写、运行并观察动态工作流：一些 Python 脚本，通常由代理根据你用自然语言写的目标生成，按顺序的阶段驱动多个 Warding 代理。脚本在任何东西开始运行之前，会先对照沙箱化的工作流命令集做检查，于是错误在不执行的情况下就能暴露出来；随后页面会随运行进展流式显示每个阶段和每次代理事件。应用自带可直接运行的示例，可以从它们开始。",
         "display_name": "工作流",
         "highlight_1": "运行之前先校验工作流 — 错误会在什么都没执行的情况下暴露出来",
@@ -4886,7 +4886,6 @@
         "install_failed": "安装失败",
         "install_from_path": "从路径安装",
         "installing": "正在安装…",
-        "junction_app_install_path": "junction app install <path>",
         "manage_app_sources": "管理应用来源",
         "path_to_app_directory": "/path/to/app-directory"
       },
@@ -5102,7 +5101,8 @@
       "used": "已用",
       "voice_input": "语音输入",
       "finishing": "收尾中…",
-      "keep_holding_to_record": "按住才能录音"
+      "keep_holding_to_record": "按住才能录音",
+      "harness": "运行于 {{name}}"
     },
     "chatPane": {
       "agent_list": "代理列表",
@@ -5986,6 +5986,7 @@
       "no_matches": "无匹配项"
     },
     "modelEffortDropdown": {
+      "check_again": "再次检查",
       "default_for_agent": "<agent/> 的默认模型",
       "filter_models": "筛选模型",
       "model_list": "模型列表",
@@ -5994,6 +5995,10 @@
       "reasoning": "推理",
       "set_default_for_agent": "将 <model/> 设为 <agent/> 的默认模型",
       "set_default_for_new_sessions": "新会话的全局默认…",
+      "sign_in_generic": "请先登录 {{agent}}，然后再次检查。",
+      "sign_in_run_command": "请在终端运行 <command/>，然后再次检查。",
+      "sign_in_to_see_models": "登录后可查看 {{agent}} 的模型",
+      "still_not_signed_in": "仍未登录。",
       "type_to_filter": "输入以筛选…"
     },
     "monacoCodeBlock": {
@@ -7180,7 +7185,7 @@
       "no_microphone_found_connect_one_or_pick_a_differ": "未找到麦克风。连接一个麦克风，或在设置中选择其他设备。"
     },
     "theme": {
-      "high_contrast": "🔆 高对比度"
+      "high_contrast": "高对比度"
     },
     "useCronActions": {
       "failed_to_cancel_job": "取消任务失败",
@@ -8187,6 +8192,9 @@
         "delete": "删除"
       },
       "errorCard": {
+        "auth_required_run_command": "请在终端运行 <command/>，然后重新发送消息。",
+        "auth_required_sign_in": "请先登录 {{agent}}，然后重新发送消息。",
+        "auth_required_title": "{{agent}} 尚未登录",
         "continue": "继续",
         "continue_hint": "从中断处继续。已经写入磁盘的改动都还在。"
       },
@@ -8971,7 +8979,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "将任意工作树启动为\n              独立的一次性网关，让你无需触碰正在运行的实例即可测试功能分支。",
       "branch": "分支：",
       "build_pending": "待构建",
-      "build_pending_restart_gateway_to_apply_junction": "待构建 — 重启网关以生效 (junction restart)",
+      "build_pending_restart_gateway_to_apply_junction": "待构建 — 重启网关以生效 (warding restart)",
       "building": "正在构建…",
       "build_finished_restarting_gateway": "构建完成 — 正在重启网关…",
       "built": "已构建",
@@ -9013,7 +9021,7 @@
       "force_remove_confirm_title": "强制移除工作树？",
       "force_remove_warning": "所选工作树存在未合并的改动 — 移除是永久性的，无法撤销。",
       "force_remove": "强制移除 {{name}}",
-      "gateway_did_not_come_back_within_60s_reload_the": "网关在 60 秒内未恢复 — 手动重新加载页面，或查看 `junction logs`。",
+      "gateway_did_not_come_back_within_60s_reload_the": "网关在 60 秒内未恢复 — 手动重新加载页面，或查看 `warding logs`。",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "网关在同步中重启 — 本次运行已丢失；检查 git 状态并重新运行拉取+构建",
       "git_status_failed": "git status 失败",
       "has_unmerged_work_removing_deletes_permanently": "存在未合并的改动 — 移除会永久删除。",
@@ -9857,7 +9865,7 @@
         "path_placeholder": "/路径/你的模型.gguf",
         "reembed_done": "重新嵌入完成",
         "reembed_failed": "重新嵌入失败",
-        "reembed_failed_hint": "无法应用该模型。悬停查看详情，或运行 'junction doctor'。",
+        "reembed_failed_hint": "无法应用该模型。悬停查看详情，或运行 'warding doctor'。",
         "reembedding": "正在重新嵌入记忆…",
         "subtitle": "在本地运行。更改后将在后台重新嵌入已存储的记忆。",
         "title": "嵌入模型",
@@ -10016,7 +10024,7 @@
         "no_lessons": "无经验",
         "no_lessons_yet": "暂无学习记录",
         "no_sessions_to_consolidate_start_a_chat_first": "没有可整合的会话 — 请先开始聊天",
-        "persistent_lessons_injected_into_every_session_a": "注入到每个会话的持久经验。自动从Task Runner失败中提取。可通过 'junction learn add' 手动添加。当向量记忆启用时，经验会在“语义”标签页中作为 lesson.* 条目管理。",
+        "persistent_lessons_injected_into_every_session_a": "注入到每个会话的持久经验。自动从Task Runner失败中提取。可通过 'warding learn add' 手动添加。当向量记忆启用时，经验会在“语义”标签页中作为 lesson.* 条目管理。",
         "preference": "偏好",
         "preferences": "偏好设置",
         "projects": "项目",
@@ -11443,7 +11451,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "个远程实例可同时保持预热（活动隧道）；其余按需重连。可通过\n                以下命令调整",
         "is_installed_somewhere_non_standard_on_the_remot": "安装在远程主机的\n            非标准位置时才需要。若为 PATH 上的常规 pip 安装，请留空。要查找路径，\n            请在远程主机上运行：",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "正在加载…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "远程实例管理",
@@ -12418,7 +12426,20 @@
         "kind_research": "调研",
         "kind_docs": "编写文档",
         "kind_quick": "快速修改",
-        "kind_bulk": "批量更改"
+        "kind_bulk": "批量更改",
+        "chat_harness_title": "聊天所用代理",
+        "chat_harness_description": "负责回复新聊天的编码代理。已经打开的聊天会一直使用它启动时的代理，直到结束。下方的路由只决定子代理任务的去向。",
+        "chat_harness_auto": "自动",
+        "chat_harness_auto_description": "第一个已安装的代理。当前：{{agent}}。",
+        "chat_harness_auto_none": "第一个已安装的代理。目前尚未安装任何代理。",
+        "chat_harness_active": "使用中",
+        "chat_harness_not_installed_reason": "尚未安装。请先在下方安装，再在此选择。",
+        "chat_harness_needs_login_note": "现在就可以选择它。在它登录之前，使用它的聊天会失败。",
+        "chat_harness_starts_on": "新聊天将在 {{agent}} 上启动。",
+        "chat_harness_none_ready": "目前没有已安装的代理可以启动聊天。请在下方安装一个。",
+        "chat_harness_save_failed": "无法更改聊天所用的代理。",
+        "chat_harness_unknown": "{{productName}} 无法运行该代理，因此未做任何更改。",
+        "chat_harness_overridden": "已保存，但 config.local.json 指定了另一个代理，并且优先生效。"
       }
     },
     "settingsPage": {

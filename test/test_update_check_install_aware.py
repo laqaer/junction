@@ -479,7 +479,7 @@ class TestGitCheckoutStillWorks:
         assert "### 0.1.3rc2" in str(info["changes"])
         assert info["channel"] == ""
         # A checkout's remediation is the CLI command, not an installer re-run.
-        assert updates.remediation_command(info) == "junction update"
+        assert updates.remediation_command(info) == "warding update"
         assert any("fetch" in c for c in calls)
 
     def test_commits_behind_with_an_unchanged_version_is_an_update(self, _git_install, monkeypatch):

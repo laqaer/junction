@@ -433,7 +433,7 @@ def derive_capability(
             can_apply=True,
             requires_restart=True,
             remediation=_command_remediation(
-                "Update this checkout from a terminal.", "junction update"
+                "Update this checkout from a terminal.", "warding update"
             ),
         )
 

@@ -131,7 +131,7 @@ class RealLaunchEngine:
         # the stack's DashboardPort default bound above — the two ends of one
         # remote Junction must name the same port or the tunnel forwards to nothing.
         registered = connect_mod.register_instance(
-            instance_id, name=f"Junction Cloud ({tag})", profile=profile, region=region,
+            instance_id, name=f"Warding Cloud ({tag})", profile=profile, region=region,
         )
         if registered is None:
             # register_instance is best-effort BY CONTRACT: it returns None both when the
@@ -142,7 +142,7 @@ class RealLaunchEngine:
             # instance list. Fail loudly, and name the instance so it can still be
             # recovered by hand.
             raise RuntimeError(
-                f"The remote Junction was created (instance {instance_id}, stack {tag}) but "
+                f"The remote Warding was created (instance {instance_id}, stack {tag}) but "
                 "could not be added to your instances. It is running and billing — add it "
                 "under Remote Instances, or delete it, so it does not sit idle."
             )

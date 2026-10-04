@@ -1,6 +1,7 @@
 import { api } from '../../api/client'
+import { authRequiredOf } from '../../lib/authRequired'
 import modelTokensRaw from '../../model_tokens.json'
-import { markModelsDegraded } from '../modelListHealth'
+import { markModelsAuthRequired, markModelsDegraded } from '../modelListHealth'
 import { isPricedMultiplier } from '../modelList'
 import type {
   ProviderAdapter,
@@ -147,6 +148,19 @@ interface RawModel {
    *  gateway/kiro-cli predating the field simply omits it, and we render no
    *  badge rather than inventing a price (see ModelInfo.rateMultiplier). */
   rate_multiplier?: number
+}
+
+/** The sign-in facts in a failed `/api/models` call, or null for any other failure.
+ *  Reads the raw response body an `ApiError` keeps (duck-typed, so a transport
+ *  failure with no body, or a test double, is simply "not a sign-in refusal"). */
+function authRequiredFromError(e: unknown) {
+  const body = (e as { body?: unknown } | null)?.body
+  if (typeof body !== 'string') return null
+  try {
+    return authRequiredOf(JSON.parse(body))
+  } catch {
+    return null
+  }
 }
 
 /** The window a /api/models row reports, or 0 when it reports none. */
@@ -362,12 +376,17 @@ export class AcpAdapter implements ProviderAdapter {
       })
       writeCachedModels(result) // remember this good live list for next hiccup
       markModelsDegraded(this.id, false) // live success → self-heal can stop polling
+      markModelsAuthRequired(this.id, null)
       return result
-    } catch {
+    } catch (e) {
       // Transient backend failure (503 / network): NOT live — keep polling.
       // Serve the last-good live list if we have one, else auto-only. Never
       // surface canonical registry keys — the ACP CLI rejects them (-32603).
       markModelsDegraded(this.id, true)
+      // The agent refused its last start for want of a sign-in: still degraded
+      // (the poll heals it once a check or a session produces a list), but the
+      // picker can say what to do instead of offering Auto alone in silence.
+      markModelsAuthRequired(this.id, authRequiredFromError(e))
       return readCachedModels() ?? this._defaultModels()
     }
   }

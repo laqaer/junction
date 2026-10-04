@@ -389,7 +389,7 @@ _QR_REFUSALS: dict[Step, tuple[str, str]] = {
     "restart_gateway": (
         "restart_required",
         "This running server has not loaded its validated tailnet origin yet. "
-        "Restart Junction, then scan.",
+        "Restart Warding, then scan.",
     ),
     "publish": (
         "not_published",

@@ -4,9 +4,9 @@
       "paste_token_url_or_raw_token": "トークン URL またはトークンを貼り付け…",
       "rate_limited_by_the_tunnel_edge_http_429_too_man": "トンネルエッジでレート制限されています (HTTP 429) — バーストでリクエストが多すぎます。ダッシュボードは自動的に再試行します。これが続く場合は、数秒待ってからリロードしてください。",
       "session_expired": "セッションの有効期限が切れました。",
-      "session_expired_sign_in_again": "セッションの有効期限が切れました。ターミナルで junction token を実行し、このページ上部のバナーに URL を貼り付けて再度サインインしてください。",
+      "session_expired_sign_in_again": "セッションの有効期限が切れました。ターミナルで warding token を実行し、このページ上部のバナーに URL を貼り付けて再度サインインしてください。",
       "stale_owner_session": "このセッションはオーナー設定前のものです。再度サインインしてください。",
-      "stale_owner_session_sign_in_again": "このセッションはオーナー設定前のものです（JUNCTION_OWNER_ID の設定前にサインインされました）。ターミナルで junction token を実行し、このページ上部のバナーに URL を貼り付けて再度サインインしてください。",
+      "stale_owner_session_sign_in_again": "このセッションはオーナー設定前のものです（JUNCTION_OWNER_ID の設定前にサインインされました）。ターミナルで warding token を実行し、このページ上部のバナーに URL を貼り付けて再度サインインしてください。",
       "stream_ended_without_completion": "ストリームが完了せずに終了しました",
       "unexpected_server_response": "予期しないサーバーレスポンス"
     }
@@ -520,14 +520,14 @@
     "channels": {
       "manifest": {
         "use_case_1": "名前付きの複数のエージェントロールを使い、監査可能な共有トランスクリプト上でインシデント対応、調査、コードレビューを進めます。",
-        "configuration_1": "junction app enable channels で非表示のアプリを有効にし、プリセットまたは Custom からチャンネルを作成して、エージェントとリッスンモードを割り当てます。その後、@メンションで作業を引き継ぎます。",
+        "configuration_1": "warding app enable channels で非表示のアプリを有効にし、プリセットまたは Custom からチャンネルを作成して、エージェントとリッスンモードを割り当てます。その後、@メンションで作業を引き継ぎます。",
         "description": "1 人のエージェントだけでなく、複数のエージェントが 1 つの問題に共同で取り組む共有ルームです。各エージェントに役割を割り当てると、進捗をチャネルに投稿し、互いの @mentions に公開で応答します。エージェント間の非公開メッセージはないため、やり取り全体を追跡でき、状態を変更する操作では引き続きあなたが承認者です。エージェントは終了またはタイムアウトするまでチャネルに残ります。",
         "display_name": "チャネル",
         "highlight_1": "複数のロール割り当てエージェントが 1 つの共有で読みやすいトランスクリプトで協力",
         "highlight_2": "プライベートエージェント間メッセージングなし — すべての交換がチャネルで発生",
         "highlight_3": "状態を変更するあらゆる操作に対して、あなたが最終的な承認者のままです",
         "highlight_4": "エージェントは終了またはタイムアウトするまでチャネルに残ります",
-        "highlight_5": "App Store グリッドから非表示。`junction app enable channels` で有効にします",
+        "highlight_5": "App Store グリッドから非表示。`warding app enable channels` で有効にします",
         "page_label": "チャネル"
       }
     },
@@ -4483,7 +4483,7 @@
     "workflows": {
       "manifest": {
         "use_case_1": "制限付きワークフロースクリプトを検証して確認するか、コアのマルチエージェントワークフロー実行をフェーズごとに監視します。",
-        "configuration_1": "junction app enable workflows で非表示のアプリを有効にします。Author で DSL Python を検証するか、実際のエージェントオーケストレーションが必要な場合はチャットまたは MCP ワークフローツールを使い、Runs で監視します。",
+        "configuration_1": "warding app enable workflows で非表示のアプリを有効にします。Author で DSL Python を検証するか、実際のエージェントオーケストレーションが必要な場合はチャットまたは MCP ワークフローツールを使い、Runs で監視します。",
         "description": "動的ワークフローを作成、実行、監視：通常はエージェントが素の英語のゴールから書く Python スクリプト。複数の Wardingエージェントを順序付けられたフェーズで駆動します。スクリプトは実行前にサンドボックス化されたワークフローコマンドセットに対してチェックされるため、ミスは実行なしで明らかになり、実行時はページがフェーズごとにストリーミングされます。実行可能な例がアプリに組み込まれています。",
         "display_name": "Workflows",
         "highlight_1": "ワークフローを実行前に検証 — エラーが何も実行されずに明らかになります",
@@ -4869,7 +4869,6 @@
         "install_failed": "インストール失敗",
         "install_from_path": "パスからインストール",
         "installing": "インストール中…",
-        "junction_app_install_path": "junction app install <path>",
         "manage_app_sources": "アプリソースを管理",
         "path_to_app_directory": "/path/to/app-directory"
       },
@@ -5102,7 +5101,8 @@
       "used": "使用済み",
       "voice_input": "音声入力",
       "finishing": "処理中…",
-      "keep_holding_to_record": "押したままで録音"
+      "keep_holding_to_record": "押したままで録音",
+      "harness": "{{name}} で実行中"
     },
     "chatPane": {
       "agent_list": "エージェントリスト",
@@ -5986,6 +5986,7 @@
       "no_matches": "一致するものがありません"
     },
     "modelEffortDropdown": {
+      "check_again": "もう一度確認",
       "default_for_agent": "<agent/> のデフォルトモデル",
       "filter_models": "モデルをフィルター",
       "model_list": "モデルリスト",
@@ -5994,6 +5995,10 @@
       "reasoning": "推論",
       "set_default_for_agent": "<model/> を <agent/> のデフォルトモデルに設定",
       "set_default_for_new_sessions": "新規セッションのグローバルデフォルト…",
+      "sign_in_generic": "{{agent}} にサインインしてから、もう一度確認してください。",
+      "sign_in_run_command": "ターミナルで <command/> を実行してから、もう一度確認してください。",
+      "sign_in_to_see_models": "{{agent}} のモデルを表示するにはサインインしてください",
+      "still_not_signed_in": "まだサインインしていません。",
       "type_to_filter": "フィルターするには入力…"
     },
     "monacoCodeBlock": {
@@ -7180,7 +7185,7 @@
       "no_microphone_found_connect_one_or_pick_a_differ": "マイクが見つかりません。接続するか、設定で別のデバイスを選択してください。"
     },
     "theme": {
-      "high_contrast": "🔆 高コントラスト"
+      "high_contrast": "高コントラスト"
     },
     "useCronActions": {
       "failed_to_cancel_job": "ジョブのキャンセルに失敗しました",
@@ -8187,6 +8192,9 @@
         "delete": "削除"
       },
       "errorCard": {
+        "auth_required_run_command": "ターミナルで <command/> を実行してから、メッセージをもう一度送信してください。",
+        "auth_required_sign_in": "{{agent}} にサインインしてから、メッセージをもう一度送信してください。",
+        "auth_required_title": "{{agent}} にサインインしていません",
         "continue": "続行",
         "continue_hint": "停止した箇所から再開します。ディスクに書き込まれた作業内容はそのまま残ります。"
       },
@@ -8971,7 +8979,7 @@
       "boots_any_worktree_as_an_isolated_throwaway_gate": "は任意のワークツリーを分離された使い捨てゲートウェイとして\n              起動し、稼働中のインスタンスに影響を与えずに機能ブランチを QA できます。",
       "branch": "ブランチ:",
       "build_pending": "ビルド保留中",
-      "build_pending_restart_gateway_to_apply_junction": "ビルド保留中 — ゲートウェイを再起動して適用します（junction restart）",
+      "build_pending_restart_gateway_to_apply_junction": "ビルド保留中 — ゲートウェイを再起動して適用します（warding restart）",
       "building": "ビルド中…",
       "build_finished_restarting_gateway": "ビルド完了 — ゲートウェイを再起動しています…",
       "built": "ビルド済み",
@@ -9013,7 +9021,7 @@
       "force_remove_confirm_title": "ワークツリーを強制削除しますか？",
       "force_remove_warning": "選択したワークツリーには未マージの作業があります — 削除は永久的で、元に戻せません。",
       "force_remove": "{{name}} を強制削除",
-      "gateway_did_not_come_back_within_60s_reload_the": "ゲートウェイが60秒以内に復帰しませんでした — ページを手動で再度読み込むか、`junction logs`を確認してください。",
+      "gateway_did_not_come_back_within_60s_reload_the": "ゲートウェイが60秒以内に復帰しませんでした — ページを手動で再度読み込むか、`warding logs`を確認してください。",
       "gateway_restarted_mid_sync_run_lost_check_git_st": "ゲートウェイが同期中に再起動しました — 実行が失われました。Gitの状態を確認して、プル+ビルドを再実行してください",
       "git_status_failed": "Gitステータス失敗",
       "has_unmerged_work_removing_deletes_permanently": "マージされていない作業があります — 削除が永久に削除されます。",
@@ -9857,7 +9865,7 @@
         "path_placeholder": "/path/to/your-model.gguf",
         "reembed_done": "再埋め込み完了",
         "reembed_failed": "再埋め込み失敗",
-        "reembed_failed_hint": "モデルを適用できませんでした。詳細はホバーするか、「junction doctor」を実行してください。",
+        "reembed_failed_hint": "モデルを適用できませんでした。詳細はホバーするか、「warding doctor」を実行してください。",
         "reembedding": "メモリを再埋め込み中…",
         "subtitle": "ローカルで実行されます。変更するとバックグラウンドで保存されたメモリが再埋め込みされます。",
         "title": "埋め込みモデル",
@@ -10016,7 +10024,7 @@
         "no_lessons": "レッスンなし",
         "no_lessons_yet": "まだレッスンはありません",
         "no_sessions_to_consolidate_start_a_chat_first": "統合するセッションがありません — まずチャットを開始してください",
-        "persistent_lessons_injected_into_every_session_a": "すべてのセッションに注入される永続的なレッスン。Task Runnerの失敗から自動抽出されます。'junction learn add' を使って手動で追加できます。ベクトルメモリがアクティブな場合、レッスンはセマンティックタブで lesson.* エントリとして管理されます。",
+        "persistent_lessons_injected_into_every_session_a": "すべてのセッションに注入される永続的なレッスン。Task Runnerの失敗から自動抽出されます。'warding learn add' を使って手動で追加できます。ベクトルメモリがアクティブな場合、レッスンはセマンティックタブで lesson.* エントリとして管理されます。",
         "preference": "優先度",
         "preferences": "優先度",
         "projects": "プロジェクト",
@@ -11443,7 +11451,7 @@
         "instances_stay_warm_live_tunnel_at_once_the_rest": "リモートインスタンスは一度にウォーム状態を保ちます（ライブトンネル）。\n                残りはオンデマンドで再接続します。",
         "is_installed_somewhere_non_standard_on_the_remot": "はリモート上の非標準の場所にインストールされています。\n            通常の pip インストール on PATH の場合は空白のままにしてください。見つけるには、\n            リモートホストで実行してください：",
         "junction": "junction",
-        "junction_restart": "junction restart",
+        "junction_restart": "warding restart",
         "loading": "読み込み中…",
         "local_bin_junction": "~/.local/bin/junction",
         "multi_instance_management_is": "リモートインスタンス管理は",
@@ -12418,7 +12426,20 @@
         "kind_research": "調査",
         "kind_docs": "ドキュメント作成",
         "kind_quick": "小さな修正",
-        "kind_bulk": "一括変更"
+        "kind_bulk": "一括変更",
+        "chat_harness_title": "チャットのエージェント",
+        "chat_harness_description": "新しいチャットに応答するコーディングエージェントです。すでに開いているチャットは、終了するまで開始時のエージェントのままです。下のルーティングはサブエージェントのタスクの送り先だけを決めます。",
+        "chat_harness_auto": "自動",
+        "chat_harness_auto_description": "最初にインストールされたエージェントです。現在：{{agent}}。",
+        "chat_harness_auto_none": "最初にインストールされたエージェントです。まだインストールされていません。",
+        "chat_harness_active": "使用中",
+        "chat_harness_not_installed_reason": "未インストールです。下でインストールしてから、ここで選んでください。",
+        "chat_harness_needs_login_note": "今すぐ選べます。サインインするまで、このエージェントでのチャットは失敗します。",
+        "chat_harness_starts_on": "新しいチャットは {{agent}} で開始されます。",
+        "chat_harness_none_ready": "チャットを開始できるインストール済みエージェントがまだありません。下でインストールしてください。",
+        "chat_harness_save_failed": "チャットのエージェントを変更できませんでした。",
+        "chat_harness_unknown": "{{productName}} はそのエージェントを実行できないため、何も変更していません。",
+        "chat_harness_overridden": "保存しましたが、config.local.json が別のエージェントを指定しており、そちらが優先されます。"
       }
     },
     "settingsPage": {

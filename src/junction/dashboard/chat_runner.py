@@ -24,6 +24,8 @@ from junction.acp.client import (
     model_is_unusable,
 )
 from junction.acp.types import (
+    ACP_BACKENDS_SPEC_FAMILY,
+    AUTH_REQUIRED_CODE,
     EVENT_AGENT_SWITCHED,
     EVENT_CLEAR_STATUS,
     EVENT_COMPACTION_STATUS,
@@ -198,7 +200,7 @@ from junction.messaging.renderer import chunk_for_transport
 from junction.metrics.events import TURN_TIMEOUT_CAUSE, emit_counter
 from junction.metrics.provider import get_recorder
 from junction.platform import redact_via_context
-from junction.providers.acp import is_claude_backend
+from junction.providers.acp import is_claude_backend, provider_backend
 from junction.providers.base import (
     EVENT_COMPLETE,
     EVENT_PERMISSION_REQUEST,
@@ -1569,7 +1571,7 @@ def _emit_mcp_oauth_request(
             f"🚫 {label} sent an authentication URL containing a credential "
             "pattern (rejected). If this is a self-hosted or otherwise "
             "unlisted identity provider, its authorization endpoint may need "
-            "adding to oauth_endpoints.json in the Junction data home; "
+            "adding to oauth_endpoints.json in the Warding data home; "
             "otherwise ask the server owner to fix the URL.",
             "msg msg-warn",
             meta={
@@ -2365,6 +2367,37 @@ def _resolve_mirror_target(state: Any, session_key: str) -> Any:
     )
 
 
+def _note_slot_harness(state: Any, slot: _ChatSlot, provider: Any) -> None:
+    """Record the backend *slot*'s session runs on, and publish it when it changed.
+
+    *provider* is the live session the turn just obtained. ``None`` means the
+    session failed to start (a harness that is not signed in, say): the label
+    then names the backend the manager targeted, which it adopted before the
+    spawn, so the failure card and the label name the same harness. Where no
+    backend can be named (a provider that cannot say, or ``auto`` with no
+    installed runtime, which spawned nothing) the label is cleared: it states
+    what runs, never a guess from config or the routing fallback, and not the
+    previous session's harness either.
+
+    A change is pushed to the browsers at once. Its snapshot of the slot was
+    taken before the session existed, and the next slots update may be the end
+    of a long response.
+    """
+    try:
+        backend = (
+            provider_backend(provider)
+            if provider is not None
+            else state.sessions.targeted_backend()
+        )
+        recorded = backend if isinstance(backend, str) else None
+        if slot._harness_backend == recorded:
+            return
+        slot._harness_backend = recorded
+        state.push_slots_update()
+    except Exception:
+        logger.debug("harness label: could not record for slot %s", slot.key, exc_info=True)
+
+
 async def _retire_sessions_on_identity_change(state: Any) -> None:
     """Recycle kiro-backed children when the signed-in account has changed.
 
@@ -2449,6 +2482,59 @@ def _mark_kiro_signed_out(state: Any) -> None:
         service.mark_signed_out()
     except Exception:
         logger.debug("Could not latch Kiro signed-out state", exc_info=True)
+
+
+def _auth_required_card_meta(exc: AcpAuthRequired) -> dict[str, str] | None:
+    """Structured fields for a harness sign-in error row, or None to keep it plain text.
+
+    The dashboard renders its own translated card from ``code`` and the harness,
+    agent label and login command beside it. The English ``content`` stays as the
+    fallback for surfaces that show raw text (Slack, an older bundle). Only the
+    spec-family handshake names its harness; the kiro-cli sites keep their
+    established message and get no card meta.
+    """
+    if exc.backend in ACP_BACKENDS_SPEC_FAMILY:
+        from junction.harness_router.connect import sign_in_facts
+        from junction.harness_router.lanes import harness_name
+
+        return {"code": AUTH_REQUIRED_CODE, **sign_in_facts(harness_name(exc.backend))}
+    return None
+
+
+async def _record_auth_required(state: Any, exc: AcpAuthRequired) -> None:
+    """Feed a turn's sign-in failure back to whatever gates on that harness.
+
+    A harness that reported ACP's ``auth_required`` gets a ``needs_login``
+    connection result: Settings > Agents & plans and ``/api/models`` read it, and
+    would otherwise keep showing an older ``connected`` result, or nothing, after
+    the turn has shown that the harness is signed out. Every other raise site is
+    kiro-cli or KAS and latches the Kiro prerequisite service as it always has,
+    so one harness's sign-out never marks another's signed out. Best-effort:
+    never disrupt the turn's teardown.
+    """
+    if exc.backend in ACP_BACKENDS_SPEC_FAMILY:
+        await _record_harness_needs_login(exc.backend, str(exc))
+    else:
+        _mark_kiro_signed_out(state)
+
+
+async def _record_harness_needs_login(backend: str, detail: str) -> None:
+    """Persist a ``needs_login`` connection result for *backend*. Best-effort."""
+    try:
+        from junction.harness_router.connect import STATUS_NEEDS_LOGIN, ProbeResult
+        from junction.harness_router.lanes import harness_name
+        from junction.harness_router.service import get_router
+
+        result = ProbeResult(
+            harness=harness_name(backend),
+            status=STATUS_NEEDS_LOGIN,
+            detail=detail,
+            checked_at=time.time(),
+        )
+        # File lock plus atomic replace: off the loop.
+        await asyncio.to_thread(get_router().probes.save, result)
+    except Exception:
+        logger.debug("Could not record the %s sign-in failure", backend, exc_info=True)
 
 
 async def _deliver_auth_error_to_slack(
@@ -3212,7 +3298,7 @@ async def _eager_spawn(
                 # which case the speculative session/load runs here and the
                 # resumed=True observation is armed for the real turn. See
                 # get_or_create's docstring.
-                _, is_new, resumed = await sessions.get_or_create(
+                eager_provider, is_new, resumed = await sessions.get_or_create(
                     session_key,
                     agent=kiro_agent or slot.agent or None,
                     # Canonical agent identity — the resolver's alias, which
@@ -3273,6 +3359,9 @@ async def _eager_spawn(
                 )
                 await sessions.remove(session_key)
                 return
+            # Only a session that survived the checks above is the slot's session:
+            # one removed for a deleted slot or changed bindings runs nothing.
+            _note_slot_harness(state, slot, eager_provider)
             logger.info(
                 "Eager spawn: session ready for %s in %.0fms (new=%s resumed=%s)",
                 session_key,
@@ -3291,6 +3380,15 @@ async def _eager_spawn(
             # exchanges behind the preserved old sid.
     except asyncio.CancelledError:
         raise
+    except AcpAuthRequired as exc:
+        if exc.backend in ACP_BACKENDS_SPEC_FAMILY:
+            # Expected while the harness is signed out, not a crash: the first
+            # real turn reports it as an error card, so no traceback here. Record
+            # it so the model picker and Agents & plans say so before that turn.
+            logger.info("Eager spawn: slot %s left to first turn (%s)", slot.key, exc)
+            await _record_harness_needs_login(exc.backend, str(exc))
+        else:
+            logger.warning("Eager spawn failed for slot %s", slot.key, exc_info=True)
     except Exception:
         logger.warning("Eager spawn failed for slot %s", slot.key, exc_info=True)
 
@@ -5086,17 +5184,22 @@ async def _run_chat(
         # as is gone. Retiring it here means this turn cold-starts on the current
         # account instead of running as the previous one.
         await _retire_sessions_on_identity_change(state)
-        client, is_new, resumed = await state.sessions.get_or_create(
-            session_key,
-            agent=kiro_agent or slot.agent or None,
-            # Same canonical agent identity as the eager-spawn path — the two
-            # must agree or an eager session and its real first turn would
-            # carry different watchdog windows.
-            canonical_agent=agent_alias,
-            model=slot.model or agent_model or None,
-            cwd=slot.project or None,
-            reasoning_effort_override=slot.reasoning_effort or None,
-        )
+        try:
+            client, is_new, resumed = await state.sessions.get_or_create(
+                session_key,
+                agent=kiro_agent or slot.agent or None,
+                # Same canonical agent identity as the eager-spawn path — the two
+                # must agree or an eager session and its real first turn would
+                # carry different watchdog windows.
+                canonical_agent=agent_alias,
+                model=slot.model or agent_model or None,
+                cwd=slot.project or None,
+                reasoning_effort_override=slot.reasoning_effort or None,
+            )
+        except BaseException:
+            _note_slot_harness(state, slot, None)
+            raise
+        _note_slot_harness(state, slot, client)
         _acquired = True
         # Member activity pointer — once per SESSION, not per turn: the log
         # answers "which sessions did this member take part in", so a per-turn
@@ -8637,9 +8740,10 @@ async def _run_chat(
     except AcpAuthRequired as exc:
         # The signed-out CLI is discovered HERE, not by a probe: this is the
         # authoritative logout signal now that readiness is latched at boot.
-        # Non-retryable — respawning hits the same wall — so never re-queue, and
-        # latch the service signed-out so the fail-closed gates stop trusting a
-        # stale ready value.
+        # Non-retryable — respawning hits the same wall — so never re-queue.
+        # ``_record_auth_required`` below latches the Kiro service signed-out so
+        # the fail-closed gates stop trusting a stale ready value; a spec-family
+        # harness records a ``needs_login`` probe instead and leaves that latch.
         logger.warning("ACP auth required in slot %s: %s", slot.key, exc)
         # Every queued prompt would hit the same wall. Popping them one by one
         # would drain the whole queue into identical failures, leaving nothing to
@@ -8653,9 +8757,10 @@ async def _run_chat(
                 redact_credentials(redact_exfiltration_urls(assistant_text)[0])[0],
                 "msg msg-a",
             )
-        _auth_msg = str(exc)
-        slot.append("error", _auth_msg, "msg msg-err")
-        _mark_kiro_signed_out(state)
+        _auth_msg, _ = redact_exfiltration_urls(str(exc))
+        _auth_msg, _ = redact_credentials(_auth_msg)
+        slot.append("error", _auth_msg, "msg msg-err", meta=_auth_required_card_meta(exc))
+        await _record_auth_required(state, exc)
         await _deliver_auth_error_to_slack(state, slot, sessions, session_key, _auth_msg)
     except AcpProcessDied as exc:
         logger.warning("ACP process died in slot %s: %s — resetting session", slot.key, exc)
