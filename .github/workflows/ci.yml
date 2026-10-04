@@ -543,6 +543,14 @@ jobs:
           REDUCED: ${{ steps.scope.outputs.reduced }}
           TARGETS_FILE: ${{ runner.temp }}/backend-targets.txt
         run: |
+          # Python 3.12 is the lane where #104 has lost workers. Diagnostics
+          # observe only; scheduler, timeout, strictness and coverage are unchanged.
+          DIAG=()
+          if [ "${{ matrix.python-version }}" = "3.12" ]; then
+            DIAG=(-p scripts.ci_pytest_diagnostics
+              "--hang-diagnostics-dir=${RUNNER_TEMP}/pytest-hang-diagnostics")
+          fi
+
           # Reduced scope (frontend-only diff): run just the cross-surface
           # files, still sharded, with coverage off -- a subset's coverage is
           # not comparable to the repo floor, so Coverage Combine/Gate skip the
@@ -550,13 +558,13 @@ jobs:
           if [ "$REDUCED" = "true" ]; then
             TARGETS=()
             while IFS= read -r line; do line=${line%$'\r'}; if [ -n "$line" ]; then TARGETS+=("$line"); fi; done < "$TARGETS_FILE"
-            pytest -q -n auto --timeout=120 \
+            python -m pytest "${DIAG[@]}" -q -n auto --timeout=120 \
               --splits "$SHARD_COUNT" --group ${{ matrix.group }} \
               --no-cov \
               "${TARGETS[@]}"
             exit 0
           fi
-          pytest -q -n auto --timeout=120 \
+          python -m pytest "${DIAG[@]}" -q -n auto --timeout=120 \
             --splits "$SHARD_COUNT" --group ${{ matrix.group }} \
             ${{ matrix.python-version == '3.12' && '--cov=junction --cov=sage_lib' || '--no-cov' }}
         # Nothing is deselected. The eleven files that used to be -- the two sandbox
@@ -564,6 +572,15 @@ jobs:
         # each carry `skipif(not userns_available())` on the tests that need a namespace
         # sandbox, so on this runner (`unshare(CLONE_NEWNS)` -> EPERM) those skip with a
         # named reason and the other ~523 run. See the note above the `jobs:` key.
+
+      - name: Preserve Python 3.12 hang diagnostics
+        if: ${{ always() && matrix.python-version == '3.12' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-hang-diagnostics-${{ matrix.group }}-${{ github.run_attempt }}
+          retention-days: 7
+          path: ${{ runner.temp }}/pytest-hang-diagnostics
+          if-no-files-found: warn
 
       - name: Stage shard coverage data
         if: matrix.python-version == '3.12' && steps.scope.outputs.reduced != 'true'
