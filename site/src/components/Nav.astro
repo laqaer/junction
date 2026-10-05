@@ -15,10 +15,13 @@ const current = (href: string) => (href.startsWith("/") && href !== "/" && path.
 ---
 <header class="site-header">
   <div class={`${wide ? "wrap-wide" : "wrap"} nav-row`}>
-    <a class="brand" href="/" aria-label={`${site.name} home`}>
-      <WardSeal size={24} />
-      <span class="wordmark">warding</span>
-    </a>
+    <div class="brand-group">
+      <a class="brand" href="/" aria-label={`${site.name} home`}>
+        <WardSeal size={24} />
+        <span class="wordmark">warding</span>
+      </a>
+      <a class="publisher" href={site.publisher.url} rel="noopener">by {site.publisher.name}</a>
+    </div>
     <nav id="primary-nav" class="primary-nav" aria-label="Primary">
       <ul>
         {primaryNav.map((l) => (
@@ -41,7 +44,10 @@ const current = (href: string) => (href.startsWith("/") && href !== "/" && path.
 <style>
   .site-header { position: relative; z-index: 20; background: transparent; }
   .nav-row { display: flex; align-items: center; gap: 24px; min-height: 72px; }
+  .brand-group { display: flex; flex-direction: column; align-items: flex-start; flex-shrink: 0; }
   .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; }
+  .publisher { display: inline-flex; align-items: center; min-height: 24px; margin-left: 34px; color: var(--fg-2); font-size: 0.75rem; text-decoration: none; }
+  .publisher:hover { color: var(--fg); text-decoration: underline; }
   .wordmark {
     font-family: var(--font-display); font-weight: 600; font-size: 1.375rem; letter-spacing: -0.015em; line-height: 1;
     font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 144;
