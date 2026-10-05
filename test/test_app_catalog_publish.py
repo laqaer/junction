@@ -109,7 +109,7 @@ class TestStockListing:
 
     @pytest.fixture
     def registered(self, monkeypatch):
-        from junction.apps.manager import register_builtin_apps
+        from junction.apps import manager
 
         async def _identity(entry):
             return entry
@@ -120,7 +120,13 @@ class TestStockListing:
         # The seed rows would otherwise fetch their manifests from the network.
         monkeypatch.setattr(registry, "_resolve_manifest", _identity)
         monkeypatch.setattr(registry, "_load_external_registries", _no_external)
-        register_builtin_apps()
+        # Registration records a proof per built-in in a process-global dict keyed by
+        # the per-test data home. That home is deleted at teardown, but registration
+        # only clears the CURRENT home's proofs, so without a private dict every test
+        # leaves a full shipped set behind on its worker. monkeypatch restores the
+        # original dict afterwards.
+        monkeypatch.setattr(manager, "_registered_builtin_installations", {})
+        manager.register_builtin_apps()
 
     @staticmethod
     def _builtin_rows(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
