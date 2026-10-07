@@ -97,6 +97,79 @@ class TestCommittedDocument:
         assert enriched and not any(row["updateAvailable"] for row in enriched)
 
 
+class TestStockListing:
+    """What Discover lists with and without a catalog, on the REAL shipped built-ins.
+
+    The shelf's own tests build synthetic built-ins; these two run the whole
+    shipped set through ``register_builtin_apps`` and the store listing, which is
+    the path a user's dashboard takes. Without a catalog the listing is the only
+    thing that puts a built-in on Discover, so a regression there empties the shelf
+    while every unit test stays green.
+    """
+
+    @pytest.fixture
+    def registered(self, monkeypatch):
+        from junction.apps import manager
+
+        async def _identity(entry):
+            return entry
+
+        async def _no_external():
+            return []
+
+        # The seed rows would otherwise fetch their manifests from the network.
+        monkeypatch.setattr(registry, "_resolve_manifest", _identity)
+        monkeypatch.setattr(registry, "_load_external_registries", _no_external)
+        # Registration records a proof per built-in in a process-global dict keyed by
+        # the per-test data home. That home is deleted at teardown, but registration
+        # only clears the CURRENT home's proofs, so without a private dict every test
+        # leaves a full shipped set behind on its worker. monkeypatch restores the
+        # original dict afterwards.
+        monkeypatch.setattr(manager, "_registered_builtin_installations", {})
+        manager.register_builtin_apps()
+
+    @staticmethod
+    def _builtin_rows(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        return {r["name"]: r for r in rows if r.get("source") == {"type": "builtin"}}
+
+    @pytest.mark.asyncio
+    async def test_a_stock_install_lists_every_visible_shipped_builtin(
+        self, monkeypatch, registered
+    ):
+        monkeypatch.delenv(official_catalog.CATALOG_BASE_ENV, raising=False)
+        manifests = _manifests()
+        visible = {m["name"] for m in manifests if not m.get("hidden")}
+        hidden = {m["name"] for m in manifests if m.get("hidden")}
+        assert visible and hidden
+
+        rows = await registry.list_registry()
+        builtins = self._builtin_rows(rows)
+
+        assert set(builtins) == visible
+        assert not hidden & {r["name"] for r in rows}
+        for row in builtins.values():
+            assert row["installed"] is True
+            assert row["origin"] == "builtin"
+            assert row["provenance"] == "builtin"
+            assert row["verified"] is True
+            # A built-in updates only with the wheel.
+            assert row["updateAvailable"] is False
+
+    @pytest.mark.asyncio
+    async def test_a_builtin_renders_the_same_without_the_catalog(self, monkeypatch, registered):
+        # Discover must show a built-in identically whether the catalog is on, off
+        # or unreachable. The conftest origin is a reserved `.invalid` host, so
+        # nothing here can reach a real network.
+        monkeypatch.delenv(official_catalog.CATALOG_BASE_ENV, raising=False)
+        offline = self._builtin_rows(await registry.list_registry())
+
+        monkeypatch.setenv(official_catalog.CATALOG_BASE_ENV, "https://apps.test.invalid/")
+        monkeypatch.setattr(official_catalog, "load_official_catalog", lambda: _published()["apps"])
+        online = self._builtin_rows(await registry.list_catalog_apps())
+
+        assert offline and offline == online
+
+
 class TestHosting:
     def test_a_stock_client_names_no_catalog_origin(self, monkeypatch):
         # Publishing the document never turns the fetch on: the operator opts in.
