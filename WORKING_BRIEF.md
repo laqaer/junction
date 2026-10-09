@@ -16,7 +16,7 @@ kept for provenance, not as current context.
 | Lineage | Built on Amazon's open-source Kiro agent workspace, published under Apache-2.0 in 2026. Most of the code is theirs; the attribution notice is in NOTICE. Not affiliated with Amazon. Credited in line one of anything long; elsewhere, the upstream project. |
 | Voice | The night watchman who is also a good notary: calm, dry, exact about time and mechanism. Clock times as nouns. The limit in the same sentence as the feature. The mechanism in every security claim. No owned phrases, no numbers we did not measure, no universal quantifiers about security, no emoji, no exclamation marks. |
 | Visual | Paper and the Ward Seal by day (bg `#F3EEE3`, ink `#1A1814`, seal `#B3301A`); the night office by night (bg `#0B0E14`, warm white `#ECE8E1`, lamp `#FFB547`, refusal `#FF7A5C`); factory theme slug `junction`. Mark: the Ward Seal, a keyhole crossed by three ward bars with one drop of wax; the seal is the only mark. Type: Fraunces (wordmark, display) + IBM Plex Sans (body, UI), bundled. Lucide icons only. Motifs: the seal and the refusal, the lit window, the three ward bars; no mascot. Brand kit: `assets/brand/build.py`. |
-| Site | https://getjunction.dev (`www` redirects there) until the owner registers the Warding domain; that host then 301s path-for-path. |
+| Site | https://warding.dev (`www` redirects there). The pre-rename getjunction.dev (apex and `www`) 301s path-for-path once the owner attaches it to the site's Vercel project; `apps.warding.dev` serves the app catalog by rewrite. |
 | GitHub slug | `laqaer/junction` |
 | Package / data home | `junction`, `JUNCTION_HOME`, `~/.junction`, Electron package name `junction-desktop` stay as implementation identifiers. |
 

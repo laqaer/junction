@@ -20,7 +20,7 @@ A vendor agent CLI is optional. Dock Cursor, Claude, Codex, or another ACP runti
 See [Getting Started](getting-started.md) for the source install, first-time
 setup, and connecting messaging channels.
 
-Site: https://getjunction.dev
+Site: https://warding.dev
 
 ## Core Capabilities
 

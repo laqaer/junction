@@ -91,7 +91,7 @@ if (scene === 'desktop') {
 } else if (scene === 'command') {
   store.dispatch(sseStatus({
     update_available: true, update_latest_version: '0.5.0', update_can_apply: false,
-    update_command: 'curl -fsSL https://download.getjunction.dev/cli.sh | sh',
+    update_command: 'curl -fsSL https://download.warding.dev/cli.sh | sh',
   } as StatusData))
 } else if (scene === 'apply') {
   store.dispatch(sseStatus({

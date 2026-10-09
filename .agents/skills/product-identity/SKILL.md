@@ -46,6 +46,7 @@ the NO-SAY list), [`../../../WORKING_BRIEF.md`](../../../WORKING_BRIEF.md),
   `laqaer/junction`, Electron package name `junction-desktop`.
 - Do not present Warding as a public fork in README, site, CLI help, or
   prompts; the lineage line is the credit.
-- `SITE_URL` stays `https://getjunction.dev` until the owner registers the
-  Warding domain.
+- `SITE_URL` is `https://warding.dev`, and `domain` in `site/src/data/site.ts`
+  equals it (a test pins the pair). getjunction.dev is the pre-rename host: it
+  only redirects, and new copy never links to it.
 - Do not edit `CHANGELOG.md` on a feature PR.

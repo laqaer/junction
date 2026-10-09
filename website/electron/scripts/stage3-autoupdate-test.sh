@@ -214,7 +214,7 @@ build_dir() {  # $1 = version -> unpacked .app in dist/ ; echoes the .app path
     cache_dir_name="$("$NODE" -p "require('./package.json').name.toLowerCase() + '-updater'")"
     cat > "$app/Contents/Resources/app-update.yml" <<YML
 provider: generic
-url: https://updates.getjunction.dev/feed/stable/
+url: https://updates.warding.dev/feed/stable/
 updaterCacheDirName: ${cache_dir_name}
 YML
     echo "    wrote app-update.yml (dir target does not emit it)" >&2

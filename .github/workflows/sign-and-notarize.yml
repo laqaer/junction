@@ -718,7 +718,7 @@ jobs:
       # exact shape electron-builder generates -- version, files[] with
       # url + sha512 + size, legacy top-level path/sha512, releaseDate.
       # website/electron/auto-update.js reads the per-channel feed
-      # DIRECTORY (updates.getjunction.dev/feed/<channel>/) and the library
+      # DIRECTORY (updates.warding.dev/feed/<channel>/) and the library
       # appends the platform filename.
       #
       # Two properties are load-bearing (see test_publish_feed_contract.py):
@@ -726,8 +726,8 @@ jobs:
       #     never hex: electron-updater string-compares base64; a hex value
       #     makes every download fail checksum verification.
       #   - files[].url are ABSOLUTE byte-host urls (CLI_CDN_BASE =
-      #     download.getjunction.dev). The yml itself lives on the POINTER
-      #     host (updates.getjunction.dev/feed/...); electron-updater's
+      #     download.warding.dev). The yml itself lives on the POINTER
+      #     host (updates.warding.dev/feed/...); electron-updater's
       #     newUrlFromBase does `new URL(fileUrl, base)`, which ignores the
       #     base for absolute urls -- that is what preserves the
       #     pointer/bytes host split. A bare filename here would resolve
@@ -858,7 +858,7 @@ jobs:
           # a guard that fails on permissions instead of on the condition it
           # guards. Same convention as publish-linux.yml's byte compare, which
           # goes through the CDN for exactly this reason. CLI_CDN_BASE and
-          # updates.getjunction.dev are alternate domains of the SAME
+          # updates.warding.dev are alternate domains of the SAME
           # distribution, and feed/* is CACHING_DISABLED, so this response
           # comes from origin and reflects the object just written.
           FEED_CC=$(curl -fsS --retry 3 --retry-delay 2 \

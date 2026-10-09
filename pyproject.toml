@@ -20,7 +20,7 @@ requires-python = ">=3.10"
 dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
-Homepage = "https://getjunction.dev"
+Homepage = "https://warding.dev"
 Repository = "https://github.com/laqaer/junction"
 
 [project.scripts]

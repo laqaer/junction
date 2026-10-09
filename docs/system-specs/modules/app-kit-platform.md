@@ -793,8 +793,12 @@ inventory; an unreachable one degrades the listing to the seed.
 published, `scripts/build_app_catalog.py` generates the document in this repo
 and commits it at `site/public/catalog/official-registry.json`. The `site/`
 Vercel deployment serves it under `build_app_catalog.PUBLISHED_BASE`
-(`https://apps.getjunction.dev/`) through a host-conditioned REWRITE in
-`site/vercel.json` (never a redirect: `fetch_document` refuses 3xx). That is a
+(`https://apps.warding.dev/`) through a host-conditioned REWRITE in
+`site/vercel.json` (never a redirect: `fetch_document` refuses 3xx). The
+pre-rename `https://apps.getjunction.dev/` keeps the same rewrite for as long as
+that domain stays registered; `build_app_catalog.SERVED_BASES` lists both, and
+`test/test_app_catalog_publish.py` refuses any redirect rule whose host condition
+could match either. That is a
 published location, not a client default: a stock build leaves
 `JUNCTION_APP_CATALOG_BASE` empty and lists the seed, and an operator points the
 variable at the published base once the host answers. The generator's inputs and rules, each closing a way the store can go wrong:

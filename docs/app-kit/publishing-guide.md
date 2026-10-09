@@ -354,7 +354,7 @@ There are two listing surfaces, and they take different paths:
 **The official App Store catalog** is the `official-registry.json` document a
 client fetches from the origin named by `JUNCTION_APP_CATALOG_BASE`. A stock
 build names no origin, so it lists the bundled seed below; the `site/`
-deployment publishes the document for `https://apps.getjunction.dev/`, and an
+deployment publishes the document for `https://apps.warding.dev/`, and an
 operator opts in by pointing the variable there once that host is live. For a
 client that fetches it, the catalog is the store's inventory: an entry there is
 what makes your app appear in the store *and installable*, with **no Warding

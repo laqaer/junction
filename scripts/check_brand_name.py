@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """check_brand_name.py — gate the retired upstream identity on lines a change adds.
 
-Junction started as a fork, and the upstream product's identity is **retired**,
+Warding started as a fork, and the upstream product's identity is **retired**,
 not misspelled: no system in this tree still owns any of its spellings. The CLI,
 the Python package, the environment prefix, the data home, the download and
 update hosts, the bundle id, the repository slug and the mascot all moved to
-Junction's own (``junction``, ``JUNCTION_*``, ``~/.junction``,
-``getjunction.dev``, ``dev.junction.desktop``, ``laqaer/junction``, the
-J-and-switch mark). So every rendering of the old identity is residue, in prose
+this product's own (``warding`` and the ``junction`` alias, ``JUNCTION_*``,
+``~/.junction``, ``warding.dev``, ``dev.junction.desktop``, ``laqaer/junction``,
+the Ward Seal). So every rendering of the old identity is residue, in prose
 and in identifiers alike, and this gate reports each one:
 
 * the upstream two-word product name in any case, with its words glued or
@@ -34,7 +34,7 @@ and in identifiers alike, and this gate reports each one:
   -- is flagged, and a slug naming the retired product also reports the name;
 * the upstream ghost mascot's component name.
 
-What the gate leaves alone is kiro-cli, the harness Junction drives: its own
+What the gate leaves alone is kiro-cli, the harness Warding drives: its own
 home ``~/.kiro`` and kiro-cli's own directories in it (``~/.kiro/settings``,
 ``~/.kiro/agents``), ``kiro-cli``, ``Kiro CLI``, ``ACP_BACKEND_KIRO``, the
 ``kiro.dev`` documentation site, and citations of kiro-cli's own repository
@@ -202,7 +202,7 @@ _HOST_RE = _DOT.join((_CREW, _KIRO, _DEV))
 _BUNDLE_RE = _DOT.join(("com", "amazon", _KIRO, _CREW))
 
 # The upstream organisation also owns kiro-cli's own public repository, whose
-# name is the bare first word. kiro-cli is the harness Junction drives, so a
+# name is the bare first word. kiro-cli is the harness Warding drives, so a
 # citation of THAT repository -- as a slug (``<org>/<Kiro>``, ``<org>/<Kiro>#123``,
 # ``github.com/<org>/<Kiro>/issues``) or as an owner/repo pair (``owner: '<org>',
 # repo: '<Kiro>'``, ``"<org>", "<Kiro>"``) -- is kiro-cli's identity, not the
@@ -238,14 +238,17 @@ RETIRED = re.compile(
 )
 
 # What each rule's residue becomes. Printed beside every finding, so a
-# contributor sees the Junction spelling without opening this file.
+# contributor sees this product's spelling without opening this file.
 REPLACEMENTS: dict[str, str] = {
-    "brand": "Junction (prose), junction / JUNCTION_* (identifiers), ~/.junction (data home)",
+    "brand": (
+        "Warding (prose), warding (CLI), junction / JUNCTION_* (identifiers),"
+        " ~/.junction (data home)"
+    ),
     "home": "~/.junction (or $JUNCTION_HOME)",
-    "host": "getjunction.dev (download., updates., apps.)",
+    "host": "warding.dev (download., updates., apps.)",
     "bundle": "dev.junction.desktop",
     "org": "laqaer/junction",
-    "mascot": "the Junction mark, generated from assets/brand/build.py",
+    "mascot": "the Ward Seal, generated from assets/brand/build.py",
 }
 
 # ---------------------------------------------------------------------------
@@ -733,7 +736,7 @@ def report(violations: Iterable[Violation], *, enforcing: bool, base: str | None
             f"::error::brand gate: {len(violations)} retired upstream identity "
             f"spelling(s) on lines this change adds. The upstream product's name, "
             f"data homes, hosts, bundle id, organisation and mascot are retired in "
-            f"every spelling and every context; use Junction's own instead."
+            f"every spelling and every context; use Warding's own instead."
         )
     else:
         print(

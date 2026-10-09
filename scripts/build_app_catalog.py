@@ -62,13 +62,18 @@ BUILTINS_DIR = REPO_ROOT / "src" / "junction" / "apps" / "builtins"
 SEED_PATH = REPO_ROOT / "src" / "junction" / "apps" / "app-registry.json"
 PINS_PATH = REPO_ROOT / "scripts" / "app_catalog_pins.json"
 #: Under the marketing site's ``public/`` so the site build copies it; the
-#: site's ``vercel.json`` rewrites the ``apps.getjunction.dev`` host onto this
+#: site's ``vercel.json`` rewrites every host in :data:`SERVED_BASES` onto this
 #: directory, which is what puts the document under :data:`PUBLISHED_BASE`.
 OUTPUT_PATH = REPO_ROOT / "site" / "public" / "catalog" / "official-registry.json"
 #: The catalog base the ``site/`` deployment serves this document under. Not a
 #: client default: a stock build leaves ``JUNCTION_APP_CATALOG_BASE`` empty, and
 #: an operator sets it to this value once the host is live.
-PUBLISHED_BASE = "https://apps.getjunction.dev/"
+PUBLISHED_BASE = "https://apps.warding.dev/"
+#: Every catalog base the deployment answers on. The pre-rename host keeps the
+#: same REWRITE for as long as getjunction.dev stays registered, so an operator
+#: who already points the catalog base there keeps a working store: the client
+#: refuses redirects, so a 301 would silently drop it back to the bundled seed.
+SERVED_BASES = (PUBLISHED_BASE, "https://apps.getjunction.dev/")
 
 #: The manifest fields baked into every catalog row, and the row key each lands
 #: on. ``description`` becomes ``summary`` because that is the list copy the

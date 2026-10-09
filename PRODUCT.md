@@ -81,7 +81,7 @@ there — what ran, what asked, what was refused, nothing leaked.
 
 Nothing in the Apache tree is ever gated. Every paid item carries one of three
 labels: Available now, Pre-order, or Waitlist. The live list is the
-[pricing page](https://getjunction.dev/pricing/).
+[pricing page](https://warding.dev/pricing/).
 
 | Offer | Label | What it is |
 |---|---|---|
@@ -142,7 +142,9 @@ export), `warding switch <runtime>` (change harness with a carried-over list).
 
 Python package `junction`. Data-home env `JUNCTION_HOME`; a new install stores
 data in `~/.junction`. GitHub slug `laqaer/junction`. Electron package name
-`junction-desktop`. Site: https://getjunction.dev until the owner moves it.
+`junction-desktop`. Site: https://warding.dev; the pre-rename host getjunction.dev
+stays registered and redirects there path-for-path from `site/vercel.json` once
+it is attached to the site's Vercel project.
 These spellings are implementation, not the product name.
 
 ## Authority

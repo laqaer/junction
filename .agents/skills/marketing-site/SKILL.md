@@ -1,6 +1,6 @@
 ---
 name: marketing-site
-description: "Warding marketing site under site/ (Astro). Use when changing hero, tagline, copy, motif, or deploy. Paper and the Ward Seal by day, the night office by night; no emoji; every claim true or labelled in development. Vercel on getjunction.dev until the owner moves the domain; no GitHub Pages."
+description: "Warding marketing site under site/ (Astro). Use when changing hero, tagline, copy, motif, or deploy. Paper and the Ward Seal by day, the night office by night; no emoji; every claim true or labelled in development. Vercel on warding.dev (www and the pre-rename getjunction.dev redirect there from site/vercel.json); no GitHub Pages."
 ---
 
 # Marketing site
@@ -35,7 +35,10 @@ NO-SAY list: [`../../../JUNCTION.md`](../../../JUNCTION.md). Preview:
   four chat-only.
 - Prerendered static HTML on every page; a visible pause control on every
   looping surface; reduced motion draws once.
-- Deploy: Vercel project from `site/`, production host
-  https://getjunction.dev until the owner buys the Warding domain. No GitHub
-  Pages workflow (Astro's absolute asset paths break under a sub-path). The
-  `site.yml` workflow is a test-and-build gate only.
+- Deploy: Vercel project from `site/`, production host https://warding.dev.
+  `site/vercel.json` redirects www.warding.dev and the pre-rename
+  getjunction.dev (apex and www) there path-for-path, and rewrites
+  apps.warding.dev and apps.getjunction.dev onto the catalog (a rewrite, never a
+  redirect: the catalog client refuses redirects). No GitHub Pages workflow
+  (Astro's absolute asset paths break under a sub-path). The `site.yml` workflow
+  is a test-and-build gate only.

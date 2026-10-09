@@ -62,7 +62,7 @@ describe('editorial artwork', () => {
   it('uses the curator artwork over the app own hero image', () => {
     mount({
       apps: [app('hero-app', { heroImage: 'https://app.example/hero.png' } as Partial<RegistryApp>)],
-      artwork: { url: 'https://apps.getjunction.dev/assets/editorial/aaa.png' },
+      artwork: { url: 'https://apps.warding.dev/assets/editorial/aaa.png' },
     })
     // Query the image directly: the card carries `role="presentation"` wrappers
     // around each row's control, so a role query is ambiguous here.
@@ -94,8 +94,8 @@ describe('editorial artwork', () => {
     mockTheme.value = 'dark'
     mount({
       artwork: {
-        url: 'https://apps.getjunction.dev/assets/editorial/light.png',
-        urlDark: 'https://apps.getjunction.dev/assets/editorial/dark.png',
+        url: 'https://apps.warding.dev/assets/editorial/light.png',
+        urlDark: 'https://apps.warding.dev/assets/editorial/dark.png',
       },
     })
     const img = document.querySelector('img') as HTMLImageElement
@@ -104,7 +104,7 @@ describe('editorial artwork', () => {
 
   it('reuses the light bytes when no dark variant is published', () => {
     mockTheme.value = 'dark'
-    mount({ artwork: { url: 'https://apps.getjunction.dev/assets/editorial/only.png' } })
+    mount({ artwork: { url: 'https://apps.warding.dev/assets/editorial/only.png' } })
     const img = document.querySelector('img') as HTMLImageElement
     expect(img.getAttribute('src')).toContain('only.png')
   })
@@ -113,20 +113,20 @@ describe('editorial artwork', () => {
     // The server drops dark-only artwork, but the component must not depend on
     // that: two guards, and this one is cheap.
     mockTheme.value = 'light'
-    mount({ artwork: { url: '', urlDark: 'https://apps.getjunction.dev/assets/editorial/d.png' } as never })
+    mount({ artwork: { url: '', urlDark: 'https://apps.warding.dev/assets/editorial/d.png' } as never })
     const img = document.querySelector('img') as HTMLImageElement
     expect(img.getAttribute('src')).toContain('d.png')
   })
 
   it('carries the published alt text', () => {
     mount({
-      artwork: { url: 'https://apps.getjunction.dev/assets/editorial/a.png', alt: 'A quiet timeline' },
+      artwork: { url: 'https://apps.warding.dev/assets/editorial/a.png', alt: 'A quiet timeline' },
     })
     expect(screen.getByAltText('A quiet timeline')).toBeTruthy()
   })
 
   it('uses an empty alt when the artwork is decorative', () => {
-    mount({ artwork: { url: 'https://apps.getjunction.dev/assets/editorial/a.png' } })
+    mount({ artwork: { url: 'https://apps.warding.dev/assets/editorial/a.png' } })
     const img = document.querySelector('img') as HTMLImageElement
     expect(img.getAttribute('alt')).toBe('')
   })
@@ -146,7 +146,7 @@ describe('editorial artwork', () => {
     mountCollection({
       curated: true,
       apps: [app('first'), app('second')],
-      artwork: { url: 'https://apps.getjunction.dev/assets/editorial/c.png' },
+      artwork: { url: 'https://apps.warding.dev/assets/editorial/c.png' },
     })
     const img = document.querySelector('img') as HTMLImageElement
     expect(img.getAttribute('src')).toContain('assets/editorial/c.png')

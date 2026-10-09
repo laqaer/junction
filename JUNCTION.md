@@ -67,8 +67,9 @@ ADRs: [0002](docs/adr/0002-two-planes.md),
 [0007](docs/adr/0007-builtin-model-catalog.md). Spec:
 [`docs/system-specs/modules/model-router.md`](docs/system-specs/modules/model-router.md).
 
-Site: https://getjunction.dev (301s to the Warding domain once the owner
-registers it).
+Site: https://warding.dev. The pre-rename host getjunction.dev stays registered
+and 301s there path-for-path once the owner attaches it to the site's Vercel
+project (the rules are in `site/vercel.json`).
 
 ## The NO-SAY list
 
