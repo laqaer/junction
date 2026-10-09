@@ -271,10 +271,11 @@ CLI_BIN = "warding"
 # checked so a process started through it can still be found.
 CLI_CONSOLE_STEMS: tuple[str, ...] = (CLI_BIN, "junction")
 
-# Canonical public hostname. CLI chrome and the marketing site use this.
-# www.getjunction.dev redirects here. It stays on the getjunction.dev host
-# until the owner registers the Warding domain; that host then 301s here.
-SITE_URL = "https://getjunction.dev"
+# Canonical public hostname. `domain` in site/src/data/site.ts must equal it (a
+# test pins the pair). site/vercel.json redirects www.warding.dev and the
+# pre-rename getjunction.dev here path-for-path; each rule takes effect once its
+# domain is attached to the site's Vercel project.
+SITE_URL = "https://warding.dev"
 
 # Public GitHub slug. Clone URLs and issue links use this.
 GITHUB_SLUG = "laqaer/junction"

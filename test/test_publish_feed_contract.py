@@ -13,8 +13,8 @@ field days later:
   base64`` for ``sha512sum`` (hex) keeps the feed parsing fine while every
   download fails checksum verification.
 * **files[].url is ABSOLUTE and points at the byte host.** The yml lives on
-  the POINTER host (updates.getjunction.dev/feed/<channel>/); the artifact
-  bytes live on the BYTE host (download.getjunction.dev/desktop/...).
+  the POINTER host (updates.warding.dev/feed/<channel>/); the artifact
+  bytes live on the BYTE host (download.warding.dev/desktop/...).
   electron-updater's ``newUrlFromBase`` does ``new URL(fileUrl, base)``,
   which ignores the base for absolute urls -- that behaviour is what makes
   the pointer/bytes host split work. A bare filename would resolve against
@@ -66,7 +66,7 @@ _SUBS = {
     "ARTIFACT_SIZE": "333",
     "FEED_PREFIX": "feed/nightly",
 }
-_CDN_BASE = "https://download.getjunction.dev"
+_CDN_BASE = "https://download.warding.dev"
 
 
 def _jobs(path: Path) -> dict:
@@ -186,7 +186,7 @@ def test_feed_urls_are_absolute_byte_host_urls() -> None:
         for line in url_lines:
             assert "${{ vars.CLI_CDN_BASE }}/" in line, (
                 f"{path.name}: {line!r} must be an ABSOLUTE ${{{{ vars.CLI_CDN_BASE }}}} url. "
-                "The yml lives on the pointer host (updates.getjunction.dev/feed/...); a "
+                "The yml lives on the pointer host (updates.warding.dev/feed/...); a "
                 "relative filename would resolve against feed/<channel>/ and 404. "
                 "electron-updater ignores the feed base only for absolute urls."
             )

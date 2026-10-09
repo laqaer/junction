@@ -75,7 +75,27 @@ def test_constants_are_warding() -> None:
     assert PRODUCT_NAME == "Warding"
     assert CLI_BIN == "warding"
     assert TAGLINE == "The lamp stays on. The rules stay shut."
-    assert SITE_URL == "https://getjunction.dev"
+    assert SITE_URL == "https://warding.dev"
+
+
+def test_the_site_publishes_under_site_url() -> None:
+    # The marketing site derives every canonical, OG and sitemap URL from its own
+    # `domain`; if it drifts from SITE_URL the site and the product name two homes.
+    site_ts = (_REPO_ROOT / "site" / "src" / "data" / "site.ts").read_text(encoding="utf-8")
+    [domain] = re.findall(r'^\s*domain:\s*"([^"]+)"', site_ts, flags=re.MULTILINE)
+    assert domain == SITE_URL
+
+
+def test_the_public_links_name_site_url() -> None:
+    # The package index, the README and the docs shipped in the wheel each link
+    # the public home; a move that skips one leaves a reader on the old host.
+    pyproject = (_REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    [homepage] = re.findall(r'^Homepage\s*=\s*"([^"]+)"', pyproject, flags=re.MULTILINE)
+    assert homepage == SITE_URL
+    assert f'<a href="{SITE_URL}">' in _readme()
+    for doc in ("index.md", "getting-started.md"):
+        text = (_REPO_ROOT / "src" / "junction" / "docs" / doc).read_text(encoding="utf-8")
+        assert f"Site: {SITE_URL}\n" in text, doc
 
 
 def test_readme_leads_with_warding_and_the_lineage_line() -> None:

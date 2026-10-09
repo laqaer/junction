@@ -39,7 +39,7 @@ const status = (channel, running) => ({
   update_checked: true,
   update_available: false,
   update_self_updatable: false,
-  update_command: `curl -fsSL https://download.getjunction.dev/cli.sh | sh -s -- --channel ${channel}`,
+  update_command: `curl -fsSL https://download.warding.dev/cli.sh | sh -s -- --channel ${channel}`,
 })
 
 async function main() {

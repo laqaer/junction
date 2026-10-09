@@ -114,7 +114,7 @@ document.documentElement.setAttribute('data-theme', theme)
     channelSwitchable: false,
     channelPreference: '',
     platform: 'darwin-arm64',
-    downloadUrl: 'https://download.getjunction.dev/desktop/nightly/latest/Junction.dmg',
+    downloadUrl: 'https://download.warding.dev/desktop/nightly/latest/Junction.dmg',
     packaged: true,
   }),
 }

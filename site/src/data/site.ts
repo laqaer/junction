@@ -12,10 +12,12 @@ export const site = {
     name: "Myrmitis",
     url: "https://myrmitis.com",
   },
-  // The owner flips this to "https://warding.dev" once that domain is bought and
-  // live; getjunction.dev is the host that serves today. Every canonical URL,
-  // OG image URL, sitemap entry and the footer domain text derive from it.
-  domain: "https://getjunction.dev",
+  // The canonical host, equal to SITE_URL in src/junction/constants.py (a test
+  // pins the pair). Every canonical URL, OG image URL, sitemap entry, the footer
+  // domain text and the contact address derive from it. ../../vercel.json
+  // redirects www.warding.dev and the pre-rename getjunction.dev here once those
+  // domains are attached to the site's Vercel project.
+  domain: "https://warding.dev",
   githubRepo: "https://github.com/laqaer/junction", // owner updates after the rename
   version: "0.5.0", // pyproject version; shown next to the install command
   nightsVerified: false, // flips [pre] -> [post] copy; the claims test enforces it

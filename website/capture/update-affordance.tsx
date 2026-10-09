@@ -28,7 +28,7 @@ import SettingsPage from '../src/pages/SettingsPage'
 import '../src/index.css'
 
 const COMMAND =
-  "curl -fsSL --proto '=https' https://download.getjunction.dev/cli.sh | sh -s -- --channel insider"
+  "curl -fsSL --proto '=https' https://download.warding.dev/cli.sh | sh -s -- --channel insider"
 
 /** A wheel install (the cli.sh managed venv) with an update waiting. */
 const WHEEL_UPDATE_AVAILABLE = {

@@ -12,7 +12,7 @@ notice is in [NOTICE](NOTICE). Not affiliated with Amazon.
 
 <p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-656d76?style=flat-square" alt="Apache 2.0 license"></a>
-  <a href="https://getjunction.dev"><img src="https://img.shields.io/badge/Site-getjunction.dev-B3301A?style=flat-square" alt="Warding site"></a>
+  <a href="https://warding.dev"><img src="https://img.shields.io/badge/Site-warding.dev-B3301A?style=flat-square" alt="Warding site"></a>
   <a href="docs/README.md"><img src="https://img.shields.io/badge/Docs-1A1814?style=flat-square" alt="Documentation"></a>
   <a href="SECURITY.md"><img src="https://img.shields.io/badge/Security%20policy-2E6B45?style=flat-square" alt="Security policy"></a>
 </p>
@@ -225,7 +225,7 @@ development.
 
 Everything in this repository is free, Apache-2.0, and nothing in the tree is
 gated. The paid items, each labelled as available, pre-order or waitlist, are
-on the [pricing page](https://getjunction.dev/pricing/): a Founding Supporter
+on the [pricing page](https://warding.dev/pricing/): a Founding Supporter
 tier with real digital goods, a paid setup session on your own machine, and
 free waitlists for a Team companion and a hosted late desk.
 

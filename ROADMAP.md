@@ -44,9 +44,10 @@ console script, banner, dashboard product name, PWA manifest, Electron
 `productName`, README and root docs, brand assets.
 
 Owner-only, still open: trademark knockout on "Warding", "Warding Labs" and
-the phonetic Warden / AI Warden cluster (classes 9 and 42); buy the domain and
-301 `getjunction.dev` to it; claim the GitHub org, npm, PyPI and social
-handles in one hour; publish "Warding has no token or coin". If the knockout
+the phonetic Warden / AI Warden cluster (classes 9 and 42); attach
+`getjunction.dev` to the site's Vercel project so its 301 to `warding.dev`
+(bought, serving the site) takes effect; claim the GitHub org, npm, PyPI and
+social handles in one hour; publish "Warding has no token or coin". If the knockout
 comes back unclear, the fallback name is Keeplit, already checked, without a
 fourth round.
 

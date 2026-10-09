@@ -82,6 +82,6 @@ Connect Slack, Discord, or other channels later from the dashboard
 
 ## Docs
 
-Site: https://getjunction.dev
+Site: https://warding.dev
 
 Source: https://github.com/laqaer/junction

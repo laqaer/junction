@@ -1,6 +1,6 @@
 """The published official catalog: in sync, accepted by the client, and hosted.
 
-``site/public/catalog/official-registry.json`` is what ``apps.getjunction.dev``
+``site/public/catalog/official-registry.json`` is what ``apps.warding.dev``
 serves. A stock client names no catalog origin; once an operator points
 ``JUNCTION_APP_CATALOG_BASE`` there and it is reachable, the store renders from
 it INSTEAD of the bundled seed. So a stale or incomplete document is not
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import urllib.parse
 from pathlib import Path
@@ -20,6 +21,7 @@ from typing import Any
 import pytest
 
 from junction.apps import official_catalog, registry
+from junction.constants import SITE_URL
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SCRIPT_PATH = _REPO_ROOT / "scripts" / "build_app_catalog.py"
@@ -177,20 +179,26 @@ class TestHosting:
         assert not official_catalog.catalog_configured()
         assert official_catalog.catalog_document_url(official_catalog.OFFICIAL_CATALOG_FILE) == ""
 
-    def test_the_catalog_host_serves_the_committed_file(self, monkeypatch):
-        # The chain an operator opts into: with the catalog base pointed at the
-        # published base, the document URL's host is rewritten (never redirected --
+    @pytest.mark.parametrize("base", builder.SERVED_BASES)
+    def test_the_catalog_host_serves_the_committed_file(self, monkeypatch, base):
+        # The chain an operator opts into: with the catalog base pointed at a
+        # served base, the document URL's host is rewritten (never redirected --
         # the client refuses redirects) onto the directory the generator writes
         # into, under the site's `public/`.
-        monkeypatch.setenv(official_catalog.CATALOG_BASE_ENV, builder.PUBLISHED_BASE)
+        monkeypatch.setenv(official_catalog.CATALOG_BASE_ENV, base)
         url = urllib.parse.urlsplit(
             official_catalog.catalog_document_url(official_catalog.OFFICIAL_CATALOG_FILE)
         )
         assert url.hostname
-        config = json.loads((_REPO_ROOT / "site" / "vercel.json").read_text(encoding="utf-8"))
+        config = _vercel_config()
+        # Redirects run before rewrites, and a host `value` is a regex unless it is
+        # an operator object, so a bare "getjunction.dev" rule would also catch
+        # "apps.getjunction.dev" and silently drop the store back to the seed.
         assert not any(
-            {"type": "host", "value": url.hostname} in r.get("has", [])
+            _host_condition_may_match(cond.get("value"), url.hostname)
             for r in config.get("redirects", [])
+            for cond in r.get("has", [])
+            if cond.get("type") == "host"
         )
         [rewrite] = [
             r
@@ -200,6 +208,47 @@ class TestHosting:
         assert rewrite["source"] == "/:path*"
         destination = rewrite["destination"].replace(":path*", url.path.lstrip("/"))
         assert _REPO_ROOT / "site" / "public" / destination.lstrip("/") == builder.OUTPUT_PATH
+
+    def test_the_published_base_is_the_first_served_base(self):
+        assert builder.SERVED_BASES[0] == builder.PUBLISHED_BASE
+        assert len(set(builder.SERVED_BASES)) == len(builder.SERVED_BASES)
+
+    @pytest.mark.parametrize("host", ["www.warding.dev", "getjunction.dev", "www.getjunction.dev"])
+    def test_a_secondary_host_redirects_path_for_path_to_the_site(self, host):
+        # www and the pre-rename host answer with a permanent redirect onto the
+        # canonical site, keeping the path. Each rule names its host exactly.
+        [rule] = [
+            r
+            for r in _vercel_config().get("redirects", [])
+            if {"type": "host", "value": {"eq": host}} in r.get("has", [])
+        ]
+        assert rule["source"] == "/(.*)"
+        assert rule["destination"] == f"{SITE_URL}/$1"
+        assert rule.get("permanent") is True or rule.get("statusCode") in (301, 308)
+
+
+def _vercel_config() -> dict[str, Any]:
+    return json.loads((_REPO_ROOT / "site" / "vercel.json").read_text(encoding="utf-8"))
+
+
+def _host_condition_may_match(value: Any, host: str) -> bool:
+    """Could a Vercel ``has`` host ``value`` match *host*? Unknown shapes say yes."""
+    if isinstance(value, str):
+        return re.search(value, host) is not None
+    if not isinstance(value, dict):
+        return True
+    checks = {
+        "eq": lambda v: host == v,
+        "neq": lambda v: host != v,
+        "inc": lambda v: host in v,
+        "ninc": lambda v: host not in v,
+        "pre": lambda v: host.startswith(v),
+        "suf": lambda v: host.endswith(v),
+        "re": lambda v: re.search(v, host) is not None,
+    }
+    if not value or any(op not in checks for op in value):
+        return True
+    return all(checks[op](v) for op, v in value.items())
 
 
 class TestGeneratorRefuses:

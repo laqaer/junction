@@ -7,8 +7,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { site } from "./src/data/site.ts";
 
 export default defineConfig({
-  // The canonical host comes from one place: src/data/site.ts. The owner flips
-  // `domain` there when the new domain is live; nothing else hardcodes it.
+  // The canonical host comes from one place: `domain` in src/data/site.ts;
+  // nothing else hardcodes it.
   site: site.domain,
   output: "static",
   // Astro 7 defaults to "jsx" whitespace rules, which glue words across line

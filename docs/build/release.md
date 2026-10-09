@@ -150,13 +150,17 @@ notarized/<channel>/<version>/      signed, stapled, Gatekeeper-verified archive
 
 The **distribution bucket** is private with BLOCK_ALL and served only through
 CloudFront with Origin Access Control. Two advertised hostnames alias the same
-distribution: `updates.getjunction.dev` for pointers and
-`download.getjunction.dev` for artifact bytes. Splitting the URL classes across
+distribution: `updates.warding.dev` for pointers and
+`download.warding.dev` for artifact bytes. Splitting the URL classes across
 hostnames means future protective policy on the byte surface can never touch the
 availability-critical feed path.
 
-> **Not provisioned yet.** Junction owns both hostnames, but neither serves a
-> distribution today. Until one does, the channel installer and the in-app
+> **Not provisioned yet.** Neither hostname serves a distribution today: the
+> owner adds both to the distribution as alternate domain names, with their DNS
+> records on `warding.dev`, and sets `CLI_CDN_BASE` to the byte host before the
+> first publish. Never publish while `CLI_CDN_BASE` names another host: signed
+> manifests embed it, and `cli.sh` fetches the manifest and the wheel without
+> following redirects. Until one does, the channel installer and the in-app
 > updater reach no feed by default; set `JUNCTION_CDN_BASE` to a distribution
 > you host (it replaces both bases) to exercise the channel path.
 
@@ -260,7 +264,7 @@ PyPI is not a supported path. `publish-cli.yml` builds a **private static PEP 50
 index** per channel under `feed/<channel>/simple/` and installs go through it:
 
 ```bash
-pip install --pre junction --extra-index-url https://updates.getjunction.dev/feed/insider/simple/
+pip install --pre junction --extra-index-url https://updates.warding.dev/feed/insider/simple/
 ```
 
 `--extra-index-url` (not `--index-url`) is deliberate: the channel index carries
@@ -465,7 +469,7 @@ signed with a non-exportable RSA KMS key:
   "sha256": "<wheel digest>",
   "signature": "<base64 RSA signature over canonical JSON without this field>",
   "version": "0.2.0",
-  "wheel_url": "https://download.getjunction.dev/cli/insider/0.2.0/junction-0.2.0-py3-none-any.whl"
+  "wheel_url": "https://download.warding.dev/cli/insider/0.2.0/junction-0.2.0-py3-none-any.whl"
 }
 ```
 
@@ -617,13 +621,13 @@ electron-updater string-compares it and a hex value fails every download:
 ```yaml
 version: 0.1.0-nightly.20260721t061155
 files:
-  - url: https://download.getjunction.dev/desktop/nightly/0.1.0-nightly.20260721t061155/Junction.zip
+  - url: https://download.warding.dev/desktop/nightly/0.1.0-nightly.20260721t061155/Junction.zip
     sha512: '<base64>'
     size: 123456789
-  - url: https://download.getjunction.dev/desktop/nightly/0.1.0-nightly.20260721t061155/Junction.dmg
+  - url: https://download.warding.dev/desktop/nightly/0.1.0-nightly.20260721t061155/Junction.dmg
     sha512: '<base64>'
     size: 234567890
-path: https://download.getjunction.dev/desktop/nightly/0.1.0-nightly.20260721t061155/Junction.zip
+path: https://download.warding.dev/desktop/nightly/0.1.0-nightly.20260721t061155/Junction.zip
 sha512: '<base64>'
 releaseDate: '2026-07-21T06:22:13Z'
 ```
@@ -864,8 +868,8 @@ Manual spot-check of a channel after a release:
 
 ```bash
 CH=stable
-BYTES=https://download.getjunction.dev
-PTR=https://updates.getjunction.dev
+BYTES=https://download.warding.dev
+PTR=https://updates.warding.dev
 
 curl -fsSI "$BYTES/desktop/$CH/latest/Junction.dmg" | head -1
 curl -fsSI "$BYTES/desktop/$CH/latest/Junction-x86_64.AppImage" | head -1

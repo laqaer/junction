@@ -368,9 +368,9 @@ class TestRetiredLiterals:
 
     def test_each_finding_names_its_replacement(self) -> None:
         cases = {
-            f"Run {_NAME} now": "Junction",
+            f"Run {_NAME} now": "Warding",
             f"under {_HOME_POSIX}": "~/.junction",
-            f"https://download.{_HOST}/": "getjunction.dev",
+            f"https://download.{_HOST}/": "warding.dev",
             f"id {_BUNDLE_ID}": "dev.junction.desktop",
             f"ghcr.io/{_ORG}/x": "laqaer/junction",
             f"<{_MASCOT} />": "assets/brand/build.py",
@@ -422,6 +422,9 @@ class TestNotFlagged:
             "Junction routes agents and models.",
             "Run `junction gateway` on loopback.",
             "~/.junction/security_policy.json",
+            "https://download.warding.dev/cli.sh",
+            "https://apps.warding.dev/official-registry.json",
+            # The pre-rename host, kept registered for its redirects.
             "https://download.getjunction.dev/cli.sh",
             "dev.junction.desktop",
             "laqaer/junction",
@@ -677,7 +680,7 @@ class TestDiffScopedRun:
         assert result.returncode == 1, result.stdout
         assert result.stdout.startswith("::error::brand gate:")
         assert "doc.md:2" in result.stdout
-        assert "Junction" in result.stdout
+        assert "Warding" in result.stdout
 
     @pytest.mark.parametrize(
         "line",

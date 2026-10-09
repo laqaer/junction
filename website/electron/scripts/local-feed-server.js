@@ -20,8 +20,8 @@
  * failure rather than a format error.
  *
  * files[].url is emitted ABSOLUTE, matching the production feed layout, where the
- * metadata is served from the pointer host (updates.getjunction.dev) and the bytes
- * from the byte host (download.getjunction.dev). electron-updater resolves file urls
+ * metadata is served from the pointer host (updates.warding.dev) and the bytes
+ * from the byte host (download.warding.dev). electron-updater resolves file urls
  * with `new URL(fileUrl, base)`, which ignores the base for absolute urls.
  *
  * Usage:

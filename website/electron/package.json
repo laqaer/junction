@@ -2,7 +2,7 @@
   "name": "junction-desktop",
   "version": "0.5.0",
   "description": "Warding \u2014 runs your coding agent on your own machine, under a policy it cannot edit",
-  "homepage": "https://github.com/laqaer/junction",
+  "homepage": "https://warding.dev",
   "desktopName": "junction-desktop.desktop",
   "main": "main.js",
   "scripts": {
