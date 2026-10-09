@@ -796,9 +796,10 @@ Vercel deployment serves it under `build_app_catalog.PUBLISHED_BASE`
 (`https://apps.warding.dev/`) through a host-conditioned REWRITE in
 `site/vercel.json` (never a redirect: `fetch_document` refuses 3xx). The
 pre-rename `https://apps.getjunction.dev/` keeps the same rewrite for as long as
-that domain stays registered; `build_app_catalog.SERVED_BASES` lists both, and
-`test/test_app_catalog_publish.py` refuses any redirect rule whose host condition
-could match either. That is a
+that domain stays registered, because the public nightly images built before the
+rename default their catalog to it. `build_app_catalog.SERVED_BASES` lists both,
+and `test/test_app_catalog_publish.py` refuses any redirect rule whose host
+condition could match either. That is a
 published location, not a client default: a stock build leaves
 `JUNCTION_APP_CATALOG_BASE` empty and lists the seed, and an operator points the
 variable at the published base once the host answers. The generator's inputs and rules, each closing a way the store can go wrong:

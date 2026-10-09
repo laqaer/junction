@@ -70,9 +70,9 @@ OUTPUT_PATH = REPO_ROOT / "site" / "public" / "catalog" / "official-registry.jso
 #: an operator sets it to this value once the host is live.
 PUBLISHED_BASE = "https://apps.warding.dev/"
 #: Every catalog base the deployment answers on. The pre-rename host keeps the
-#: same REWRITE for as long as getjunction.dev stays registered, so an operator
-#: who already points the catalog base there keeps a working store: the client
-#: refuses redirects, so a 301 would silently drop it back to the bundled seed.
+#: same REWRITE for as long as getjunction.dev stays registered: the public
+#: nightly images built before the rename default their catalog to it, and the
+#: client refuses redirects, so a 301 would silently drop them back to the seed.
 SERVED_BASES = (PUBLISHED_BASE, "https://apps.getjunction.dev/")
 
 #: The manifest fields baked into every catalog row, and the row key each lands
