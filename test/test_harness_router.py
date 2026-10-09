@@ -425,13 +425,18 @@ def test_a_limit_another_process_records_survives_an_older_dispatchs_success(
         " harness='codex')\n"
     )
     source = str(Path(junction.__file__).resolve().parents[1])
-    env = {**os.environ, "PYTHONPATH": os.pathsep.join([source, os.environ.get("PYTHONPATH", "")])}
+    inherited = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join([source, *inherited])}
+    # The child writes ledger files: run it under tmp_path, never pytest's CWD (the repo).
+    workdir = tmp_path / "child"
+    workdir.mkdir()
     proc = subprocess.run(
         [sys.executable, "-c", script, str(tmp_path), _LIMIT_3H],
         capture_output=True,
         text=True,
         timeout=120,
         env=env,
+        cwd=workdir,
     )
     assert proc.returncode == 0, proc.stderr
     ledger.record_outcome("codex", ok=True, harness="codex", dispatch_seq=older)
