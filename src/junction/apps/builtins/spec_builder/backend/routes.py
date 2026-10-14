@@ -1338,6 +1338,41 @@ async def _touch_spec(
 
 # ── path resolution ──────────────────────────────────────────────────────────
 
+#: Win32's extended-length path prefix, and its UNC form. ``realpath`` on Windows can
+#: return either one; ``_real_path`` says when and why it removes them.
+_EXTENDED_PATH_PREFIX = "\\\\?\\"
+_EXTENDED_UNC_PREFIX = "\\\\?\\UNC\\"
+
+
+def _real_path(path: str | os.PathLike[str]) -> str:
+    """``os.path.realpath(path)`` without an extended-length prefix the resolver added.
+
+    Windows' ``realpath`` gets a ``\\\\?\\``-prefixed path from the OS. It removes the
+    prefix only when a second, verifying lookup returns the same string, or fails with
+    the same Win32 error as the first lookup. When another request creates the path,
+    or one of its missing parents, between the two lookups, the lookups disagree and
+    the prefix stays. Create runs ``_prepare_spec_dir`` before it takes the directory
+    turn lock, so two creates for one project cause exactly that. ``relative_to`` then
+    compares a ``\\\\?\\C:`` anchor with ``C:`` and refuses a path inside its root.
+
+    The prefix is removed here, before any comparison, when the input did not carry
+    one. Both spellings have the same components, so containment gives the same
+    answer for either, and the sensitive-path test sees the plain spelling that this
+    module stores. A prefix that the caller supplied stays, as ``realpath`` keeps it.
+    A POSIX ``realpath`` never returns this prefix, so the check does nothing there.
+    """
+    raw = os.fspath(path)
+    real = os.path.realpath(raw)
+    # Windows' realpath tests for a caller-supplied prefix after normpath, which also
+    # turns a forward-slash spelling of the prefix into this one.
+    if os.path.normpath(raw).startswith(_EXTENDED_PATH_PREFIX):
+        return real
+    if real.startswith(_EXTENDED_UNC_PREFIX):
+        return "\\\\" + real[len(_EXTENDED_UNC_PREFIX) :]
+    if real.startswith(_EXTENDED_PATH_PREFIX):
+        return real[len(_EXTENDED_PATH_PREFIX) :]
+    return real
+
 
 def _safe_dir(raw: str, *, must_exist: bool = True) -> Path | None:
     """Sanitize a caller-supplied directory path.
@@ -1376,7 +1411,7 @@ def _safe_dir(raw: str, *, must_exist: bool = True) -> Path | None:
     # were then pointed at it.
     if not os.path.isabs(expanded):
         return None
-    resolved = Path(os.path.realpath(expanded))
+    resolved = Path(_real_path(expanded))
     if is_sensitive_path(str(resolved)):
         return None
     if must_exist:
@@ -1404,9 +1439,12 @@ def _contained(child: Path, root: Path) -> bool:
     Belt-and-braces against traversal: ``_NAME_RE`` already forbids ``.`` and
     ``/`` in spec names, but the containment test makes the invariant explicit
     at the point of use rather than implied by a regex three functions away.
+
+    Both sides resolve through ``_real_path``. A Windows prefix that the resolver
+    kept on one side only would otherwise refuse a path that is inside its root.
     """
     try:
-        Path(os.path.realpath(child)).relative_to(Path(os.path.realpath(root)))
+        Path(_real_path(child)).relative_to(Path(_real_path(root)))
         return True
     except ValueError:
         return False
@@ -1462,7 +1500,7 @@ def _scan_subdirs(base: str) -> list[dict[str, str]]:
             try:
                 if not entry.is_dir(follow_symlinks=True):
                     continue
-                if is_sensitive_path(os.path.realpath(entry.path)):
+                if is_sensitive_path(_real_path(entry.path)):
                     continue
             except OSError:
                 continue
@@ -1474,11 +1512,16 @@ def _scan_subdirs(base: str) -> list[dict[str, str]]:
 
 def _resolve_spec_dir(working_dir: str, name: str) -> Path:
     """Default: ``<working_dir>/.kiro/specs/<name>``. When settings.base_path is
-    an absolute path, use ``<base_path>/<name>`` instead (still per-spec)."""
+    an absolute path, use ``<base_path>/<name>`` instead (still per-spec).
+
+    Resolved through ``_real_path``: the spec directory usually does not exist yet,
+    and a concurrent create can make it or its parents during the lookup, which is
+    when Windows keeps the extended-length prefix. The result is stored in the index
+    and compared lexically, so it must be the plain spelling."""
     base = _load_settings().get("base_path", "").strip()
     if base:
-        return (Path(base) / name).resolve()
-    return (Path(working_dir) / ".kiro" / "specs" / name).resolve()
+        return Path(_real_path(Path(base) / name))
+    return Path(_real_path(Path(working_dir) / ".kiro" / "specs" / name))
 
 
 #: A slot key is a history-file identity: it becomes a session filename and flows
@@ -1748,10 +1791,12 @@ def _spec_file(spec_dir: Path, fname: str) -> Path | None:
     try:
         if p.is_symlink():
             return None
-        real = Path(os.path.realpath(p))
-        # Containment is checked against the REAL spec dir so a symlinked
-        # ancestor can't widen the allowed set.
-        if not _contained(real, Path(os.path.realpath(spec_dir))):
+        # _real_path, because the agent can create this file during the lookup, and
+        # on Windows that keeps the extended-length prefix on the result.
+        real = Path(_real_path(p))
+        # _contained resolves the spec dir too, so containment is checked against the
+        # REAL spec dir and a symlinked ancestor can't widen the allowed set.
+        if not _contained(real, spec_dir):
             return None
         if is_sensitive_path(str(real)):
             return None
@@ -1852,6 +1897,12 @@ def _verified_spec_dir(spec_dir: Path) -> Path | None:
     symlink to a PAUSED spec's directory could make the handoff endpoint delete
     that other spec's STOP file and resume a run the user had stopped. Following
     the link was the bug; refusing it is the fix.
+
+    This is the one comparison that uses ``os.path.realpath`` directly, not
+    ``_real_path``. The directory already exists, so Windows keeps the
+    extended-length prefix only when the plain spelling did not reach this directory
+    for the whole lookup: it was created, removed or replaced meanwhile, or Win32
+    rewrites that spelling. Refusing is the correct answer to either.
     """
     try:
         if not spec_dir.is_absolute():
