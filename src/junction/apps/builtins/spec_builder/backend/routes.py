@@ -1338,39 +1338,30 @@ async def _touch_spec(
 
 # ── path resolution ──────────────────────────────────────────────────────────
 
-#: Win32's extended-length path prefix, and its UNC form. ``realpath`` on Windows can
-#: return either one; ``_real_path`` says when and why it removes them.
+#: Win32's extended-length path prefix, including its UNC form.
 _EXTENDED_PATH_PREFIX = "\\\\?\\"
-_EXTENDED_UNC_PREFIX = "\\\\?\\UNC\\"
 
 
 def _real_path(path: str | os.PathLike[str]) -> str:
-    """``os.path.realpath(path)`` without an extended-length prefix the resolver added.
+    """Resolve a path, with one retry for a resolver-added Windows prefix.
 
-    Windows' ``realpath`` gets a ``\\\\?\\``-prefixed path from the OS. It removes the
-    prefix only when a second, verifying lookup returns the same string, or fails with
-    the same Win32 error as the first lookup. When another request creates the path,
-    or one of its missing parents, between the two lookups, the lookups disagree and
-    the prefix stays. Create runs ``_prepare_spec_dir`` before it takes the directory
-    turn lock, so two creates for one project cause exactly that. ``relative_to`` then
-    compares a ``\\\\?\\C:`` anchor with ``C:`` and refuses a path inside its root.
+    A concurrent create can change the path between Windows realpath's lookups.
+    Its equivalence check then keeps the extended-length prefix. Retry from the
+    original input once, so realpath can check the now-settled path itself.
 
-    The prefix is removed here, before any comparison, when the input did not carry
-    one. Both spellings have the same components, so containment gives the same
-    answer for either, and the sensitive-path test sees the plain spelling that this
-    module stores. A prefix that the caller supplied stays, as ``realpath`` keeps it.
-    A POSIX ``realpath`` never returns this prefix, so the check does nothing there.
+    Never strip the prefix here. A link target can need extended semantics,
+    such as a trailing dot or space. If realpath retains that canonical spelling,
+    preserve it. A caller-supplied prefix also stays. Continued mutation can
+    still fail containment; it must not redirect an operation to another path.
     """
+
     raw = os.fspath(path)
     real = os.path.realpath(raw)
-    # Windows' realpath tests for a caller-supplied prefix after normpath, which also
-    # turns a forward-slash spelling of the prefix into this one.
-    if os.path.normpath(raw).startswith(_EXTENDED_PATH_PREFIX):
-        return real
-    if real.startswith(_EXTENDED_UNC_PREFIX):
-        return "\\\\" + real[len(_EXTENDED_UNC_PREFIX) :]
-    if real.startswith(_EXTENDED_PATH_PREFIX):
-        return real[len(_EXTENDED_PATH_PREFIX) :]
+    # Windows checks for a caller-supplied prefix after normalizing separators.
+    if real.startswith(_EXTENDED_PATH_PREFIX) and not os.path.normpath(raw).startswith(
+        _EXTENDED_PATH_PREFIX
+    ):
+        return os.path.realpath(raw)
     return real
 
 

@@ -746,9 +746,15 @@ def test_a_prefix_kept_by_one_lookup_reaches_no_result_or_comparison(tmp_path, m
     }[site]
     real_realpath = os.path.realpath
 
+    retained = False
+
     def _keeps_prefix(path: Any, *, strict: Any = False) -> Any:
+        nonlocal retained
         resolved = real_realpath(path, strict=strict)
-        return _WIN_EXTENDED + resolved if resolved == str(kept) else resolved
+        if resolved == str(kept) and not retained:
+            retained = True
+            return _WIN_EXTENDED + resolved
+        return resolved
 
     monkeypatch.setattr(routes.os.path, "realpath", _keeps_prefix)
     assert call() == expected
@@ -765,12 +771,40 @@ def test_a_prefix_kept_by_one_lookup_reaches_no_result_or_comparison(tmp_path, m
     ],
     ids=["unc", "caller-prefix"],
 )
-def test_real_path_removes_only_a_prefix_the_resolver_added(
+def test_real_path_retries_a_transient_prefix_but_preserves_a_caller_prefix(
     monkeypatch, requested, resolved, expected
 ):
-    """The two branches of ``_real_path`` that the create race above does not reach."""
-    monkeypatch.setattr(routes.os.path, "realpath", lambda _path: resolved)
+    """A settled UNC lookup returns plain; caller-supplied extended semantics stay."""
+    results = iter([resolved, expected])
+    monkeypatch.setattr(routes.os.path, "realpath", lambda _path: next(results))
     assert routes._real_path(requested) == expected
+
+
+@pytest.mark.parametrize(
+    ("requested", "canonical"),
+    [
+        (r"C:\project-link", "\\\\?\\C:\\project. "),
+        (r"\\host\share\project-link", "\\\\?\\UNC\\host\\share\\project."),
+    ],
+    ids=["drive-target", "unc-target"],
+)
+def test_real_path_preserves_a_genuinely_non_equivalent_extended_target(
+    monkeypatch, requested, canonical
+):
+    """A link can resolve to a target whose trailing dot or space needs the prefix.
+
+    Win32 changes that target when the prefix is removed. The resolver therefore
+    retains its canonical spelling on each lookup, unlike the transient create race.
+    """
+    calls = []
+
+    def _canonical_target(path):
+        calls.append(os.fspath(path))
+        return canonical
+
+    monkeypatch.setattr(routes.os.path, "realpath", _canonical_target)
+    assert routes._real_path(requested) == canonical
+    assert all(path == requested for path in calls)
 
 
 @pytest.mark.asyncio
