@@ -320,8 +320,10 @@ commit status plus one `readiness:` label**.
 - **Always required:** CI, Build, Code Review.
 - **Additionally required on a same-repo PR:** CodeQL.
 - **CodeQL is not a checked-in workflow.** It runs via GitHub default setup and is
-  resolved by `path == "dynamic/github-code-scanning/codeql"`. `skipped` counts as
-  passed for it.
+  resolved by `path == "dynamic/github-code-scanning/codeql"`. When the revision
+  has no analyzable language (a workflow-only or docs-only diff), default setup
+  creates no workflow run and only a `neutral` `CodeQL` check run; readiness then
+  reads that check run instead. `skipped` and `neutral` count as passed for it.
 - **Labels:** `readiness: checking` (pending), `readiness: action required` (a
   blocker), `readiness: passed`. Exactly one is ever present.
 

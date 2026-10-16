@@ -435,6 +435,27 @@ jobs:
                 | sort_by(.created_at)
                 | last // empty
               ' <<<"$runs")"
+              if [ -z "$run" ]; then
+                # Default-setup CodeQL creates NO workflow run when the
+                # revision touches no analyzable language (a workflow-only or
+                # docs-only diff, every Dependabot actions bump). It still
+                # publishes a `CodeQL` check run from the
+                # github-advanced-security app, concluded `neutral`. Without
+                # this fallback that lane read "(not started)" forever and
+                # the verdict froze at pending (PRs #122, #124, #125).
+                checks="$(gh_retry gh api --method GET \
+                  "repos/$REPO/commits/$SHA/check-runs?check_name=CodeQL&per_page=100")" || {
+                  rc=$?
+                  if [ "$rc" -eq 22 ]; then exit 1; fi
+                  transport_failed=true
+                  break
+                }
+                run="$(jq -c '
+                  [.check_runs[] | select(.app.slug == "github-advanced-security")]
+                  | sort_by(.started_at)
+                  | last // empty
+                ' <<<"$checks")"
+              fi
             else
               runs="$(gh_retry gh api --method GET \
                 "repos/$REPO/actions/workflows/$file/runs?event=pull_request&head_sha=$SHA&per_page=20")" || {
@@ -468,8 +489,10 @@ jobs:
               pending+=("$label ($status)")
             else
               if [ "$file" = "dynamic/github-code-scanning/codeql" ]; then
+                # `neutral` is the check-run conclusion for "nothing to
+                # analyze" (see the fallback above); it is not a finding.
                 case "$conclusion" in
-                  success|skipped) passed+=("$label") ;;
+                  success|skipped|neutral) passed+=("$label") ;;
                   *) failed+=("$label ($conclusion)") ;;
                 esac
               else

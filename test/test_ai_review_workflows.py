@@ -113,7 +113,18 @@ class TestPrReadiness:
             "dynamic/github-code-scanning/codeql|CodeQL",
         ):
             assert workflow_name in workflow
-        assert 'success|skipped) passed+=("$label")' in workflow
+        assert 'success|skipped|neutral) passed+=("$label")' in workflow
+
+    def test_readiness_reads_the_codeql_check_run_when_no_workflow_run_exists(self) -> None:
+        # Default-setup CodeQL creates no workflow run for a revision with no
+        # analyzable language (a workflow-only diff, every Dependabot actions
+        # bump) and publishes only a `neutral` check run. Without the check-run
+        # fallback the lane read "(not started)" forever and the verdict froze
+        # at pending.
+        workflow = _workflow("pr-readiness.yml")
+
+        assert "check-runs?check_name=CodeQL" in workflow
+        assert '.app.slug == "github-advanced-security"' in workflow
 
     def test_every_monitored_workflow_exists(self) -> None:
         """A `workflow_run` trigger naming a workflow that does not exist never
