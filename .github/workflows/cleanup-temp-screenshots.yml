@@ -6,14 +6,16 @@ name: Cleanup Temp Screenshots
 # resolving from the pinned historical commit even after the file is deleted
 # from main's tip -- so pruning old files never breaks a past PR's images.
 #
-# This is a SCHEDULED job (weekly), NOT a per-PR job: it runs on a timer like a
-# dependency-audit job, prunes files older than the retention window, and -- since
-# main is a protected branch -- opens a PR for review instead of pushing directly.
-# If nothing is stale, it exits quietly (no branch, no PR).
+# This is a maintenance job, NOT a per-PR job: it prunes files older than the
+# retention window, and -- since main is a protected branch -- pushes a branch
+# for review instead of pushing to main. If nothing is stale, it exits quietly
+# (no branch, no PR).
+#
+# Manual dispatch only. This repository does not let GitHub Actions create pull
+# requests, so a run that finds stale files fails at its last step. A manual run
+# still pushes the branch, and a maintainer opens the PR from it.
 
 on:
-  schedule:
-    - cron: "0 8 * * 1" # Mondays 08:00 UTC
   workflow_dispatch:
     inputs:
       retention_days:
