@@ -1,5 +1,8 @@
 # Rules for AI Assistants
 
+> **Retired on 2026-10-14.** Do not change this repository.
+> The live successor is [myrmitis/warding](https://github.com/myrmitis/warding). Make all new work there.
+
 **This file is a ROUTER, not a manual.** It carries only the rules whose violation
 causes damage before a pointer could be read. Everything else is a link you MUST
 open before touching that subsystem: see

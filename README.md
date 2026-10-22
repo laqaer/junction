@@ -1,3 +1,6 @@
+> **Retired on 2026-10-14.** Do not change this repository.
+> The live successor is [myrmitis/warding](https://github.com/myrmitis/warding). Make all new work there.
+
 <p align="center">
   <img src="assets/banner.svg" alt="Warding. The lamp stays on. The rules stay shut." width="100%">
 </p>
