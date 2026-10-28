@@ -33,7 +33,8 @@ names, so an amended commit's old URL breaks.
 ## Lifecycle
 
 `.github/workflows/cleanup-temp-screenshots.yml` prunes files older than the
-retention window (14 days) weekly, opening a PR because `main` is protected.
+retention window (14 days) when a maintainer dispatches it. It pushes a branch
+because `main` is protected, and the maintainer opens the PR from it.
 Committed blobs stay reachable in git history by design even after the tip is
 pruned, so an already-published PR description's pinned URL keeps resolving:
 pruning the tip never breaks a past PR's images.
