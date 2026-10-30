@@ -124,7 +124,7 @@ jobs:
         # two annotations carried two DIFFERENT keys. Same job, different step.
         # (The x64 leg stayed quiet only because ci.yml's linux-packaging job
         # already writes that key, so both post steps hit and skip saving.)
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
 
       - name: Stamp version
         env:
